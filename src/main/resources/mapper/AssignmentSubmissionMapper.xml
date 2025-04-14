@@ -5,7 +5,7 @@
 <mapper namespace="com.coursistant.lms.mapper.assignment.AssignmentSubmissionMapper">
 
     <sql id="Base_Column_List">
-        id, user_id, course_id,title,start,due,description
+        id, assignment_id,student_id,grader_id,date,status,grade,comment
     </sql>
 
     <!-- 查询所有 AssignmentSubmission // Select all AssignmentSubmissions -->
