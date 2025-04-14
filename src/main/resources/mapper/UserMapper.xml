@@ -2,13 +2,13 @@
 <!DOCTYPE mapper
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.coursistant.individual.mapper.user.UserMapper">
+<mapper namespace="com.coursistant.lms.mapper.user.UserMapper">
 
     <sql id="Base_Column_List">
         id,username,password,name,phone,email,avatar,role,level,invitation
     </sql>
 
-    <select id="selectAll" resultType="com.coursistant.individual.entity.User">
+    <select id="selectAll" resultType="com.coursistant.lms.entity.User">
         select
         <include refid="Base_Column_List" />
         from User
@@ -27,7 +27,7 @@
         </where>
     </select>
 
-    <select id="selectById" resultType="com.coursistant.individual.entity.User">
+    <select id="selectById" resultType="com.coursistant.lms.entity.User">
         select
         <include refid="Base_Column_List" />
         from User
@@ -39,7 +39,7 @@
         where  id = #{id}
     </delete>
 
-    <insert id="insert" parameterType="com.coursistant.individual.entity.User" useGeneratedKeys="true">
+    <insert id="insert" parameterType="com.coursistant.lms.entity.User" useGeneratedKeys="true">
         insert into User
         <trim prefix="(" suffix=")" suffixOverrides=",">
             <if test="id != null">id,</if>
@@ -69,7 +69,7 @@
         </trim>
     </insert>
 
-    <update id="updateById" parameterType="com.coursistant.individual.entity.User">
+    <update id="updateById" parameterType="com.coursistant.lms.entity.User">
         update User
         <set>
             <if test="username != null">

@@ -1,0 +1,78 @@
+package com.coursistant.lms.service.interaction;
+import com.coursistant.lms.entity.Feedback;
+import org.springframework.stereotype.Service;
+import com.coursistant.lms.mapper.interaction.FeedbackMapper;
+
+import javax.annotation.Resource;
+import java.util.List;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
+@Service
+public class FeedbackService {
+
+    @Resource
+    private FeedbackMapper feedbackMapper;
+
+    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+    /**
+     * 新增 Feedback
+     * Add new Feedback
+     */
+    public void addFeedback(Feedback feedback) {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        feedback.setDate(LocalDateTime.now().format(formatter));  // 这里进行格式化 // Format the date here
+        feedbackMapper.insert(feedback);
+    }
+
+    /**
+     * 根据 ID 删除 Feedback
+     * Delete Feedback by ID
+     */
+    public void deleteById(Integer id) {
+        feedbackMapper.deleteById(id);
+    }
+
+    /**
+     * 批量删除 Feedback
+     * Batch delete Feedback
+     */
+    public void deleteBatch(List<Integer> ids) {
+        for (Integer id : ids) {
+            feedbackMapper.deleteById(id);
+        }
+    }
+
+    /**
+     * 更新 Feedback
+     * Update Feedback
+     */
+    public void updateById(Feedback feedback) {
+        feedbackMapper.updateById(feedback);
+    }
+
+    /**
+     * 根据 ID 查询 Feedback
+     * Select Feedback by ID
+     */
+    public Feedback selectById(Integer id) {
+        return feedbackMapper.selectById(id);
+    }
+
+    /**
+     * 查询所有 Feedback
+     * Select all Feedback
+     */
+    public List<Feedback> selectAll() {
+        return feedbackMapper.selectAll();
+    }
+
+    /**
+     * 查询某个用户的所有 Feedback
+     * Select all Feedback from a specific user
+     */
+    public List<Feedback> selectByUserId(Integer userId) {
+        return feedbackMapper.selectByUserId(userId);
+    }
+}

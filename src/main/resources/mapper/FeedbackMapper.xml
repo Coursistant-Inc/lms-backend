@@ -2,14 +2,14 @@
 <!DOCTYPE mapper
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.coursistant.individual.mapper.interaction.FeedbackMapper">
+<mapper namespace="com.coursistant.lms.mapper.interaction.FeedbackMapper">
 
     <sql id="Base_Column_List">
         id, user_id, course_id, content, date, level, current_url
     </sql>
 
     <!-- 查询所有 Feedback // Select all Feedback records -->
-    <select id="selectAll" resultType="com.coursistant.individual.entity.Feedback">
+    <select id="selectAll" resultType="com.coursistant.lms.entity.Feedback">
         select
         <include refid="Base_Column_List"/>
         from Feedback
@@ -25,7 +25,7 @@
     </select>
 
     <!-- 通过 ID 查询 // Select Feedback by ID -->
-    <select id="selectById" resultType="com.coursistant.individual.entity.Feedback">
+    <select id="selectById" resultType="com.coursistant.lms.entity.Feedback">
         select
         <include refid="Base_Column_List"/>
         from Feedback
@@ -38,7 +38,7 @@
     </delete>
 
     <!-- 插入新的 Feedback // Insert a new Feedback record -->
-    <insert id="insert" parameterType="com.coursistant.individual.entity.Feedback" useGeneratedKeys="true" keyProperty="id">
+    <insert id="insert" parameterType="com.coursistant.lms.entity.Feedback" useGeneratedKeys="true" keyProperty="id">
         insert into Feedback
         <trim prefix="(" suffix=")" suffixOverrides=",">
             <if test="userId != null">user_id,</if>
@@ -59,7 +59,7 @@
     </insert>
 
     <!-- 更新 Feedback // Update Feedback -->
-    <update id="updateById" parameterType="com.coursistant.individual.entity.Feedback">
+    <update id="updateById" parameterType="com.coursistant.lms.entity.Feedback">
         update Feedback
         <set>
             <if test="userId != null">

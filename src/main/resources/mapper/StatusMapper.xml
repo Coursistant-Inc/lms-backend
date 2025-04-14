@@ -2,14 +2,14 @@
 <!DOCTYPE mapper
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.coursistant.individual.mapper.user.StatusMapper">
+<mapper namespace="com.coursistant.lms.mapper.user.StatusMapper">
 
     <sql id="Base_Column_List">
         id, type, due
     </sql>
 
     <!-- 查询所有 Status // Select all Statuss -->
-    <select id="selectAll" resultType="com.coursistant.individual.entity.Status">
+    <select id="selectAll" resultType="com.coursistant.lms.entity.Status">
         select
         <include refid="Base_Column_List" />
         from Status
@@ -21,7 +21,7 @@
     </select>
 
     <!-- 通过 ID 查询 Status // Select Status by ID -->
-    <select id="selectById" resultType="com.coursistant.individual.entity.Status">
+    <select id="selectById" resultType="com.coursistant.lms.entity.Status">
         select
         <include refid="Base_Column_List" />
         from Status
@@ -35,7 +35,7 @@
     </delete>
 
     <!-- 插入新的 Status // Insert a new Status -->
-    <insert id="insert" parameterType="com.coursistant.individual.entity.Status" useGeneratedKeys="true">
+    <insert id="insert" parameterType="com.coursistant.lms.entity.Status" useGeneratedKeys="true">
         insert into Status
         <trim prefix="(" suffix=")" suffixOverrides=",">
             <if test="id != null">id,</if>
@@ -50,7 +50,7 @@
     </insert>
 
     <!-- 更新 Status // Update Status -->
-    <update id="updateById" parameterType="com.coursistant.individual.entity.Status">
+    <update id="updateById" parameterType="com.coursistant.lms.entity.Status">
         update Status
         <set>
             <if test="type != null">

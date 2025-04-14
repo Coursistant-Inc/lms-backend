@@ -2,7 +2,7 @@
 <!DOCTYPE mapper
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.coursistant.individual.mapper.assignment.AssignmentMapper">
+<mapper namespace="com.coursistant.lms.mapper.assignment.AssignmentMapper">
 
     <sql id="Base_Column_List">
         id, user_id, course_id, title, start, due, description, criteria,
@@ -10,7 +10,7 @@
     </sql>
 
     <!-- 查询所有 Assignment // Select all Assignments -->
-    <select id="selectAll" resultType="com.coursistant.individual.entity.Assignment">
+    <select id="selectAll" resultType="com.coursistant.lms.entity.Assignment">
         select
         <include refid="Base_Column_List" />
         from Assignment
@@ -34,7 +34,7 @@
     </select>
 
     <!-- 通过 ID 查询 Assignment // Select Assignment by ID -->
-    <select id="selectById" resultType="com.coursistant.individual.entity.Assignment">
+    <select id="selectById" resultType="com.coursistant.lms.entity.Assignment">
         select
         <include refid="Base_Column_List" />
         from Assignment
@@ -48,7 +48,7 @@
     </delete>
 
     <!-- 插入新的 Assignment // Insert a new Assignment -->
-    <insert id="insert" parameterType="com.coursistant.individual.entity.Assignment" useGeneratedKeys="true" keyProperty="id">
+    <insert id="insert" parameterType="com.coursistant.lms.entity.Assignment" useGeneratedKeys="true" keyProperty="id">
         insert into Assignment
         <trim prefix="(" suffix=")" suffixOverrides=",">
             <if test="id != null">id,</if>
@@ -85,7 +85,7 @@
 
 
     <!-- 更新 Assignment // Update Assignment -->
-    <update id="updateById" parameterType="com.coursistant.individual.entity.Assignment">
+    <update id="updateById" parameterType="com.coursistant.lms.entity.Assignment">
         update Assignment
         <set>
             <if test="userId != null">user_id = #{userId},</if>

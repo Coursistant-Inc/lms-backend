@@ -83,7 +83,7 @@ spring:
   redis:
     general:
       host: labserver101.ddns.net
-      port: 6380
+      port: 6381
       username: ${REDIS_DEFAULT_USERNAME}
       password: ${REDIS_DEFAULT_PASSWORD}
       database: 2
@@ -96,7 +96,7 @@ spring:
 
     adminAll:
       host: labserver101.ddns.net
-      port: 6380
+      port: 6381
       username: ${REDIS_DEFAULT_USERNAME}
       password: ${REDIS_DEFAULT_PASSWORD}
       database: 3
@@ -109,7 +109,7 @@ spring:
 
     adminPage:
       host: labserver101.ddns.net
-      port: 6380
+      port: 6381
       username: ${REDIS_DEFAULT_USERNAME}
       password: ${REDIS_DEFAULT_PASSWORD}
       database: 4
@@ -122,7 +122,7 @@ spring:
 
     userAll:
       host: labserver101.ddns.net
-      port: 6380
+      port: 6381
       username: ${REDIS_DEFAULT_USERNAME}
       password: ${REDIS_DEFAULT_PASSWORD}
       database: 5
@@ -135,7 +135,7 @@ spring:
 
     userPage:
       host: labserver101.ddns.net
-      port: 6380
+      port: 6381
       username: ${REDIS_DEFAULT_USERNAME}
       password: ${REDIS_DEFAULT_PASSWORD}
       database: 6
@@ -148,7 +148,7 @@ spring:
 
     courseAll:
       host: labserver101.ddns.net
-      port: 6380
+      port: 6381
       username: ${REDIS_DEFAULT_USERNAME}
       password: ${REDIS_DEFAULT_PASSWORD}
       database: 7
@@ -161,7 +161,7 @@ spring:
 
     coursePage:
       host: labserver101.ddns.net
-      port: 6380
+      port: 6381
       username: ${REDIS_DEFAULT_USERNAME}
       password: ${REDIS_DEFAULT_PASSWORD}
       database: 8
@@ -174,7 +174,7 @@ spring:
 
     teachAll:
       host: labserver101.ddns.net
-      port: 6380
+      port: 6381
       username: ${REDIS_DEFAULT_USERNAME}
       password: ${REDIS_DEFAULT_PASSWORD}
       database: 9
@@ -187,7 +187,7 @@ spring:
 
     teachPage:
       host: labserver101.ddns.net
-      port: 6380
+      port: 6381
       username: ${REDIS_DEFAULT_USERNAME}
       password: ${REDIS_DEFAULT_PASSWORD}
       database: 10
@@ -200,7 +200,7 @@ spring:
 
     learnAll:
       host: labserver101.ddns.net
-      port: 6380
+      port: 6381
       username: ${REDIS_DEFAULT_USERNAME}
       password: ${REDIS_DEFAULT_PASSWORD}
       database: 11
@@ -213,7 +213,7 @@ spring:
 
     learnPage:
       host: labserver101.ddns.net
-      port: 6380
+      port: 6381
       username: ${REDIS_DEFAULT_USERNAME}
       password: ${REDIS_DEFAULT_PASSWORD}
       database: 12
@@ -226,7 +226,7 @@ spring:
 
     refreshToken:
       host: labserver101.ddns.net
-      port: 6380
+      port: 6381
       username: ${REDIS_DEFAULT_USERNAME}
       password: ${REDIS_DEFAULT_PASSWORD}
       database: 13
@@ -241,7 +241,7 @@ spring:
 # 配置mybatis实体和xml映射
 mybatis:
   mapper-locations: classpath:mapper/*.xml
-  type-aliases-package: com.coursistant.individual.entity
+  type-aliases-package: com.coursistant.lms.entity
   configuration:
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
     map-underscore-to-camel-case: true

@@ -2,13 +2,13 @@
 <!DOCTYPE mapper
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.coursistant.individual.mapper.chat.DialogueMapper">
+<mapper namespace="com.coursistant.lms.mapper.chat.DialogueMapper">
 
     <sql id="Base_Column_List">
         id, user_id, course_id, summary, update_time, `delete`, delete_time,recent_message
     </sql>
 
-    <select id="selectAll" resultType="com.coursistant.individual.entity.Dialogue">
+    <select id="selectAll" resultType="com.coursistant.lms.entity.Dialogue">
         select
         <include refid="Base_Column_List" />
         from Dialogue
@@ -26,7 +26,7 @@
         order by update_time desc
     </select>
 
-    <select id="selectByUserIdAndKeyword" resultType="com.coursistant.individual.entity.Dialogue">
+    <select id="selectByUserIdAndKeyword" resultType="com.coursistant.lms.entity.Dialogue">
         select distinct d.* 
         from Dialogue d
         LEFT JOIN Chat c ON d.id = c.dialogue_id
@@ -42,7 +42,7 @@
         ORDER BY d.update_time DESC
     </select>
 
-    <select id="selectById" resultType="com.coursistant.individual.entity.Dialogue">
+    <select id="selectById" resultType="com.coursistant.lms.entity.Dialogue">
         select
         <include refid="Base_Column_List" />
         from Dialogue
@@ -59,7 +59,7 @@
     </select>
 
 
-    <insert id="insert" parameterType="com.coursistant.individual.entity.Dialogue" useGeneratedKeys="true" keyProperty="id">
+    <insert id="insert" parameterType="com.coursistant.lms.entity.Dialogue" useGeneratedKeys="true" keyProperty="id">
         insert into Dialogue
         <trim prefix="(" suffix=")" suffixOverrides=",">
             <if test="id != null">id,</if>
@@ -85,7 +85,7 @@
         </trim>
     </insert>
 
-    <update id="updateById" parameterType="com.coursistant.individual.entity.Dialogue">
+    <update id="updateById" parameterType="com.coursistant.lms.entity.Dialogue">
         update Dialogue
         <set>
             <if test="userId != null">

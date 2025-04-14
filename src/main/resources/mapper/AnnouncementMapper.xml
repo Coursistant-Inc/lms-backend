@@ -2,14 +2,14 @@
 <!DOCTYPE mapper
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.coursistant.individual.mapper.interaction.AnnouncementMapper">
+<mapper namespace="com.coursistant.lms.mapper.interaction.AnnouncementMapper">
 
     <sql id="Base_Column_List">
         a.id, a.user_id, a.course_id, a.content, a.date, a.title
     </sql>
 
     <!-- 查询所有 Announcement，并且通过 user_id 关联查询 name // Select all Announcements and join with User table to get name -->
-    <select id="selectAll" resultType="com.coursistant.individual.entity.Announcement">
+    <select id="selectAll" resultType="com.coursistant.lms.entity.Announcement">
         select <include refid="Base_Column_List" />, u.name as name
         from Announcement a
         left join User u on a.user_id = u.id
@@ -24,7 +24,7 @@
     </select>
 
     <!-- 通过 ID 查询（不包含 name） // Select by ID (without name) -->
-    <select id="selectById" resultType="com.coursistant.individual.entity.Announcement">
+    <select id="selectById" resultType="com.coursistant.lms.entity.Announcement">
         select <include refid="Base_Column_List" />
         from Announcement a
         where a.id = #{id}
@@ -36,7 +36,7 @@
     </delete>
 
     <!-- 插入新的 Announcement // Insert a new Announcement -->
-    <insert id="insert" parameterType="com.coursistant.individual.entity.Announcement" useGeneratedKeys="true" keyProperty="id">
+    <insert id="insert" parameterType="com.coursistant.lms.entity.Announcement" useGeneratedKeys="true" keyProperty="id">
         insert into Announcement
         <trim prefix="(" suffix=")" suffixOverrides=",">
             <if test="userId != null">user_id,</if>
@@ -55,7 +55,7 @@
     </insert>
 
     <!-- 更新 Announcement // Update Announcement -->
-    <update id="updateById" parameterType="com.coursistant.individual.entity.Announcement">
+    <update id="updateById" parameterType="com.coursistant.lms.entity.Announcement">
         update Announcement
         <set>
             <if test="userId != null"> user_id = #{userId}, </if>

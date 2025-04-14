@@ -2,14 +2,14 @@
 <!DOCTYPE mapper
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.coursistant.individual.mapper.course.TeachMapper">
+<mapper namespace="com.coursistant.lms.mapper.course.TeachMapper">
 
     <sql id="Base_Column_List">
         id, user_id, course_id
     </sql>
 
 
-    <select id="selectAll" resultType="com.coursistant.individual.entity.Teach">
+    <select id="selectAll" resultType="com.coursistant.lms.entity.Teach">
         select Teach.*, Course.name as courseName, Course.course_code as courseCode
         from Teach
         left join Course on Teach.course_id = Course.id
@@ -20,7 +20,7 @@
         </where>
     </select>
 
-    <select id="selectById" resultType="com.coursistant.individual.entity.Teach">
+    <select id="selectById" resultType="com.coursistant.lms.entity.Teach">
         select
         <include refid="Base_Column_List" />
         from Teach
@@ -32,7 +32,7 @@
         where id = #{id}
     </delete>
 
-    <insert id="insert" parameterType="com.coursistant.individual.entity.Teach" useGeneratedKeys="true">
+    <insert id="insert" parameterType="com.coursistant.lms.entity.Teach" useGeneratedKeys="true">
         insert into Teach
         <trim prefix="(" suffix=")" suffixOverrides=",">
             <if test="id != null">id,</if>
@@ -46,7 +46,7 @@
         </trim>
     </insert>
 
-    <update id="updateById" parameterType="com.coursistant.individual.entity.Teach">
+    <update id="updateById" parameterType="com.coursistant.lms.entity.Teach">
         update Teach
         <set>
             <if test="userId != null">

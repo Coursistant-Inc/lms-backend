@@ -1,0 +1,42 @@
+package com.coursistant.lms.mapper.interaction;
+
+import com.coursistant.lms.entity.Bookmark;
+
+import java.util.List;
+
+/**
+ * 操作 bookmark 相关数据接口
+ * Data access interface for bookmark-related operations
+ */
+public interface BookmarkMapper {
+
+    /**
+     * 新增
+     * Insert a new bookmark record
+     */
+    int insert(Bookmark bookmark);
+
+    /**
+     * 删除
+     * Delete a bookmark record by ID
+     */
+    int deleteById(Integer id);
+
+    /**
+     * 修改
+     * Update a bookmark record by ID
+     */
+    int updateById(Bookmark bookmark);
+
+    /**
+     * 根据 ID 查询
+     * Query a bookmark record by ID
+     */
+    Bookmark selectById(Integer id);
+
+    /**
+     * 查询所有
+     * Query all bookmark records
+     */
+    List<Bookmark> selectAll(Bookmark bookmark);
+}

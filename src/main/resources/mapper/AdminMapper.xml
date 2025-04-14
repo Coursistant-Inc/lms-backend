@@ -2,13 +2,13 @@
 <!DOCTYPE mapper
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.coursistant.individual.mapper.system.AdminMapper">
+<mapper namespace="com.coursistant.lms.mapper.system.AdminMapper">
 
     <sql id="Base_Column_List">
         id,username,password,name,phone,email,avatar,role
     </sql>
 
-    <select id="selectAll" resultType="com.coursistant.individual.entity.Admin">
+    <select id="selectAll" resultType="com.coursistant.lms.entity.Admin">
         select
         <include refid="Base_Column_List" />
         from Admin
@@ -24,7 +24,7 @@
         </where>
     </select>
 
-    <select id="selectById" resultType="com.coursistant.individual.entity.Admin">
+    <select id="selectById" resultType="com.coursistant.lms.entity.Admin">
         select
         <include refid="Base_Column_List" />
         from Admin
@@ -36,7 +36,7 @@
         where  id = #{id}
     </delete>
 
-    <insert id="insert" parameterType="com.coursistant.individual.entity.Admin" useGeneratedKeys="true">
+    <insert id="insert" parameterType="com.coursistant.lms.entity.Admin" useGeneratedKeys="true">
         insert into Admin
         <trim prefix="(" suffix=")" suffixOverrides=",">
             <if test="id != null">id,</if>
@@ -60,7 +60,7 @@
         </trim>
     </insert>
 
-    <update id="updateById" parameterType="com.coursistant.individual.entity.Admin">
+    <update id="updateById" parameterType="com.coursistant.lms.entity.Admin">
         update Admin
         <set>
             <if test="username != null">

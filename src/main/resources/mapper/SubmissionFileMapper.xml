@@ -2,14 +2,14 @@
 <!DOCTYPE mapper
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.coursistant.individual.mapper.file.SubmissionFileMapper">
+<mapper namespace="com.coursistant.lms.mapper.file.SubmissionFileMapper">
 
     <sql id="Base_Column_List">
         id,submission_id,name,path
     </sql>
 
     <!-- 查询所有 SubmissionFile // Select all SubmissionFiles -->
-    <select id="selectAll" resultType="com.coursistant.individual.entity.SubmissionFile">
+    <select id="selectAll" resultType="com.coursistant.lms.entity.SubmissionFile">
         select
         <include refid="Base_Column_List" />
         from SubmissionFile
@@ -23,7 +23,7 @@
     </select>
 
     <!-- 通过 ID 查询 SubmissionFile // Select SubmissionFile by ID -->
-    <select id="selectById" resultType="com.coursistant.individual.entity.SubmissionFile">
+    <select id="selectById" resultType="com.coursistant.lms.entity.SubmissionFile">
         select
         <include refid="Base_Column_List" />
         from SubmissionFile
@@ -37,7 +37,7 @@
     </delete>
 
     <!-- 插入新的 SubmissionFile // Insert a new SubmissionFile -->
-    <insert id="insert" parameterType="com.coursistant.individual.entity.SubmissionFile" useGeneratedKeys="true">
+    <insert id="insert" parameterType="com.coursistant.lms.entity.SubmissionFile" useGeneratedKeys="true">
         insert into SubmissionFile
         <trim prefix="(" suffix=")" suffixOverrides=",">
             <if test="id != null">id,</if>
@@ -55,7 +55,7 @@
 
 
     <!-- 更新 SubmissionFile // Update SubmissionFile -->
-    <update id="updateById" parameterType="com.coursistant.individual.entity.SubmissionFile">
+    <update id="updateById" parameterType="com.coursistant.lms.entity.SubmissionFile">
         update SubmissionFile
         <set>
             <if test="submissionId != null">
