@@ -1,0 +1,30 @@
+# 🔹 忽略 Maven target 目录（Maven 编译时生成）
+target/
+logs/
+*.log
+hs_err_pid*
+src/main/resources/application.yml
+main/resources/application.yml
+disk/
+
+# 🔹 忽略本地 Maven 依赖缓存
+.mvn/
+.settings/
+.classpath
+.project
+
+# 🔹 忽略 IntelliJ IDEA 相关文件
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# 🔹 忽略 VS Code 配置
+.vscode/
+
+# 🔹 忽略 OS 相关文件
+.DS_Store
+Thumbs.db
+.env
+private.pem

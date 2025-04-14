@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.coursistant.individual.mapper.assignment.AssignmentSubmissionMapper">
+
+    <sql id="Base_Column_List">
+        id, user_id, course_id,title,start,due,description
+    </sql>
+
+    <!-- 查询所有 AssignmentSubmission // Select all AssignmentSubmissions -->
+    <select id="selectAll" resultType="com.coursistant.individual.entity.AssignmentSubmission">
+        select
+        <include refid="Base_Column_List" />
+        from AssignmentSubmission
+        <where>
+            <if test="id != null"> and id = #{id}</if>
+            <if test="assignmentId != null"> and assignment_id = #{assignmentId}</if>
+            <if test="studentId != null"> and student_id = #{studentId}</if>
+            <if test="graderId != null"> and grader_id = #{graderId}</if>
+            <if test="date != null"> and date = #{date}</if>
+            <if test="status != null"> and status = #{status}</if>
+            <if test="grade != null"> and grade = #{grade}</if>
+            <if test="comment != null"> and comment = #{comment}</if>
+        </where>
+
+    </select>
+
+    <!-- 通过 ID 查询 AssignmentSubmission // Select AssignmentSubmission by ID -->
+    <select id="selectById" resultType="com.coursistant.individual.entity.AssignmentSubmission">
+        select
+        <include refid="Base_Column_List" />
+        from AssignmentSubmission
+        where id = #{id}
+    </select>
+
+    <!-- 通过 ID 删除 AssignmentSubmission // Delete AssignmentSubmission by ID -->
+    <delete id="deleteById">
+        delete from AssignmentSubmission
+        where id = #{id}
+    </delete>
+
+    <!-- 插入新的 AssignmentSubmission // Insert a new AssignmentSubmission -->
+    <insert id="insert" parameterType="com.coursistant.individual.entity.AssignmentSubmission" useGeneratedKeys="true">
+        insert into AssignmentSubmission
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="id != null">id,</if>
+            <if test="assignmentId != null">assignment_id,</if>
+            <if test="studentId != null">student_id,</if>
+            <if test="graderId != null">grader_id,</if>
+            <if test="date != null">date,</if>
+            <if test="status != null">status,</if>
+            <if test="grade != null">grade,</if>
+            <if test="comment != null">comment,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="id != null">#{id},</if>
+            <if test="assignmentId != null">#{assignmentId},</if>
+            <if test="studentId != null">#{studentId},</if>
+            <if test="graderId != null">#{graderId},</if>
+            <if test="date != null">#{date},</if>
+            <if test="status != null">#{status},</if>
+            <if test="grade != null">#{grade},</if>
+            <if test="comment != null">#{comment},</if>
+        </trim>
+    </insert>
+
+
+    <!-- 更新 AssignmentSubmission // Update AssignmentSubmission -->
+    <update id="updateById" parameterType="com.coursistant.individual.entity.AssignmentSubmission">
+        update AssignmentSubmission
+        <set>
+            <if test="assignmentId != null">assignment_id = #{assignmentId},</if>
+            <if test="studentId != null">student_id = #{studentId},</if>
+            <if test="graderId != null">grader_id = #{graderId},</if>
+            <if test="date != null">date = #{date},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="grade != null">grade = #{grade},</if>
+            <if test="comment != null">comment = #{comment},</if>
+        </set>
+        where id = #{id}
+    </update>
+
+
+</mapper>

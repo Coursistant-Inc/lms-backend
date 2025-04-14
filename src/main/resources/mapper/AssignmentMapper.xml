@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.coursistant.individual.mapper.assignment.AssignmentMapper">
+
+    <sql id="Base_Column_List">
+        id, user_id, course_id, title, start, due, description, criteria,
+    submission_num, highest_grade, lowest_grade, average_grade, grade_publish
+    </sql>
+
+    <!-- 查询所有 Assignment // Select all Assignments -->
+    <select id="selectAll" resultType="com.coursistant.individual.entity.Assignment">
+        select
+        <include refid="Base_Column_List" />
+        from Assignment
+        <where>
+            <if test="id != null"> and id = #{id}</if>
+            <if test="userId != null"> and user_id = #{userId}</if>
+            <if test="courseId != null"> and course_id = #{courseId}</if>
+            <if test="title != null"> and title = #{title}</if>
+            <if test="start != null"> and start = #{start}</if>
+            <if test="due != null"> and due = #{due}</if>
+            <if test="description != null"> and description = #{description}</if>
+            <if test="criteria != null"> and criteria = #{criteria}</if>
+            <if test="submissionNum != null"> and submission_num = #{submissionNum}</if>
+            <if test="highestGrade != null"> and highest_grade = #{highestGrade}</if>
+            <if test="lowestGrade != null"> and lowest_grade = #{lowestGrade}</if>
+            <if test="averageGrade != null"> and average_grade = #{averageGrade}</if>
+            <if test="gradePublish != null"> and grade_publish = #{gradePublish}</if>
+
+        </where>
+
+    </select>
+
+    <!-- 通过 ID 查询 Assignment // Select Assignment by ID -->
+    <select id="selectById" resultType="com.coursistant.individual.entity.Assignment">
+        select
+        <include refid="Base_Column_List" />
+        from Assignment
+        where id = #{id}
+    </select>
+
+    <!-- 通过 ID 删除 Assignment // Delete Assignment by ID -->
+    <delete id="deleteById">
+        delete from Assignment
+        where id = #{id}
+    </delete>
+
+    <!-- 插入新的 Assignment // Insert a new Assignment -->
+    <insert id="insert" parameterType="com.coursistant.individual.entity.Assignment" useGeneratedKeys="true" keyProperty="id">
+        insert into Assignment
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="id != null">id,</if>
+            <if test="userId != null">user_id,</if>
+            <if test="courseId != null">course_id,</if>
+            <if test="title != null">title,</if>
+            <if test="start != null">start,</if>
+            <if test="due != null">due,</if>
+            <if test="description != null">description,</if>
+            <if test="criteria != null">criteria,</if>
+            <if test="submissionNum != null">submission_num,</if>
+            <if test="highestGrade != null">highest_grade,</if>
+            <if test="lowestGrade != null">lowest_grade,</if>
+            <if test="averageGrade != null">average_grade,</if>
+            <if test="gradePublish != null">grade_publish,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="id != null">#{id},</if>
+            <if test="userId != null">#{userId},</if>
+            <if test="courseId != null">#{courseId},</if>
+            <if test="title != null">#{title},</if>
+            <if test="start != null">#{start},</if>
+            <if test="due != null">#{due},</if>
+            <if test="description != null">#{description},</if>
+            <if test="criteria != null">#{criteria},</if>
+            <if test="submissionNum != null">#{submissionNum},</if>
+            <if test="highestGrade != null">#{highestGrade},</if>
+            <if test="lowestGrade != null">#{lowestGrade},</if>
+            <if test="averageGrade != null">#{averageGrade},</if>
+            <if test="gradePublish != null">#{gradePublish},</if>
+        </trim>
+    </insert>
+
+
+
+    <!-- 更新 Assignment // Update Assignment -->
+    <update id="updateById" parameterType="com.coursistant.individual.entity.Assignment">
+        update Assignment
+        <set>
+            <if test="userId != null">user_id = #{userId},</if>
+            <if test="courseId != null">course_id = #{courseId},</if>
+            <if test="title != null">title = #{title},</if>
+            <if test="start != null">start = #{start},</if>
+            <if test="due != null">due = #{due},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="criteria != null">criteria = #{criteria},</if>
+            <if test="submissionNum != null">submission_num = #{submissionNum},</if>
+            <if test="highestGrade != null">highest_grade = #{highestGrade},</if>
+            <if test="lowestGrade != null">lowest_grade = #{lowestGrade},</if>
+            <if test="averageGrade != null">average_grade = #{averageGrade},</if>
+            <if test="gradePublish != null">grade_publish = #{gradePublish},</if>
+        </set>
+        where id = #{id}
+    </update>
+
+
+
+</mapper>

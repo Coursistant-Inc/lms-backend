@@ -1,0 +1,62 @@
+package com.coursistant.individual.service.user;
+
+import com.coursistant.individual.entity.Profile;
+import com.coursistant.individual.mapper.user.ProfileMapper;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+/**
+ * 用户个人资料业务处理 // User profile service processing
+ */
+@Service
+public class ProfileService {
+    private final ProfileMapper profileMapper;
+
+    public ProfileService(ProfileMapper profileMapper) {
+        this.profileMapper = profileMapper;
+    }
+
+    /**
+     * 根据用户 ID 获取个人资料 // Get profile by user ID
+     */
+    public Profile getProfileByUserId(Integer userId) {
+        return profileMapper.selectByUserId(userId);
+    }
+
+    /**
+     * 获取所有个人资料 // Get all profiles
+     */
+    public List<Profile> getAllProfiles() {
+        return profileMapper.selectAll();
+    }
+
+    /**
+     * 创建个人资料 // Create a new profile
+     */
+    public void createProfile(Profile profile) {
+        profileMapper.insert(profile);
+    }
+
+    /**
+     * 更新个人资料 // Update profile
+     */
+    public void updateProfile(Profile profile) {
+        Profile existingProfile = profileMapper.selectByUserId(profile.getUserId());
+        if (existingProfile != null) {
+            // 个人资料存在，进行更新 // Profile exists, update it
+            profile.setId(existingProfile.getId());  // 确保使用正确的 ID // Ensure correct ID is used
+            profileMapper.updateById(profile);
+        } else {
+            // 个人资料不存在，创建新记录 // Profile does not exist, create a new one
+            profileMapper.insert(profile);
+        }
+    }
+
+    /**
+     * 根据 ID 删除个人资料 // Delete profile by ID
+     */
+    public void deleteProfile(Integer id) {
+        profileMapper.deleteById(id);
+    }
+}

@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.coursistant.individual.mapper.chat.DialogueMapper">
+
+    <sql id="Base_Column_List">
+        id, user_id, course_id, summary, update_time, `delete`, delete_time,recent_message
+    </sql>
+
+    <select id="selectAll" resultType="com.coursistant.individual.entity.Dialogue">
+        select
+        <include refid="Base_Column_List" />
+        from Dialogue
+        <where>
+            <if test="id != null"> and id = #{id}</if>
+            <if test="userId != null"> and user_id = #{userId}</if>
+            <if test="courseId != null"> and course_id = #{courseId}</if>
+            <if test="summary != null"> and summary = #{summary}</if>
+            <if test="updateTime != null"> and update_time = #{updateTime}</if>
+            <if test="delete != null"> and `delete` = #{delete}</if>
+            <if test="deleteTime != null"> and delete_time = #{deleteTime}</if>
+            <if test="recentMessage != null"> and recent_message = #{recentMessage}</if>
+            and (`delete` IS NULL OR `delete` = FALSE)
+        </where>
+        order by update_time desc
+    </select>
+
+    <select id="selectByUserIdAndKeyword" resultType="com.coursistant.individual.entity.Dialogue">
+        select distinct d.* 
+        from Dialogue d
+        LEFT JOIN Chat c ON d.id = c.dialogue_id
+        WHERE d.user_id = #{userId}
+        AND (d.`delete` IS NULL OR d.`delete` = FALSE)
+        AND (
+        d.summary LIKE CONCAT('%', #{keyword}, '%')
+        OR d.update_time LIKE CONCAT('%', #{keyword}, '%')
+        OR d.recent_message LIKE CONCAT('%', #{keyword}, '%')
+        OR c.query_text LIKE CONCAT('%', #{keyword}, '%')
+        OR c.answer_text LIKE CONCAT('%', #{keyword}, '%')
+        )
+        ORDER BY d.update_time DESC
+    </select>
+
+    <select id="selectById" resultType="com.coursistant.individual.entity.Dialogue">
+        select
+        <include refid="Base_Column_List" />
+        from Dialogue
+        where id = #{id}
+    </select>
+
+    <delete id="deleteById">
+        delete from Dialogue
+        where id = #{id}
+    </delete>
+
+    <select id="selectMaxId" resultType="java.lang.Integer">
+        SELECT MAX(id) FROM Dialogue
+    </select>
+
+
+    <insert id="insert" parameterType="com.coursistant.individual.entity.Dialogue" useGeneratedKeys="true" keyProperty="id">
+        insert into Dialogue
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="id != null">id,</if>
+            <if test="userId != null">user_id,</if>
+            <if test="courseId != null">course_id,</if>
+            <if test="summary != null">summary,</if>
+            <if test="updateTime != null">update_time,</if>
+            <if test="delete != null">`delete`,</if>
+            <if test="deleteTime != null">delete_time,</if>
+            <if test="recentMessage != null">recent_message,</if>
+
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="id != null">#{id},</if>
+            <if test="userId != null">#{userId},</if>
+            <if test="courseId != null">#{courseId},</if>
+            <if test="summary != null">#{summary},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+            <if test="delete != null">#{delete},</if>
+            <if test="deleteTime != null">#{deleteTime},</if>
+            <if test="recentMessage != null">#{recentMessage},</if>
+
+        </trim>
+    </insert>
+
+    <update id="updateById" parameterType="com.coursistant.individual.entity.Dialogue">
+        update Dialogue
+        <set>
+            <if test="userId != null">
+                user_id = #{userId},
+            </if>
+            <if test="courseId != null">
+                course_id = #{courseId},
+            </if>
+            <if test="summary != null">
+                summary = #{summary},
+            </if>
+            <if test="updateTime != null">
+                update_time = #{updateTime},
+            </if>
+            <if test="delete != null">
+                `delete` = #{delete},
+            </if>
+            <if test="deleteTime != null">
+                delete_time = #{deleteTime},
+            </if>
+            <if test="recentMessage != null">
+                recent_message = #{recentMessage},
+            </if>
+
+        </set>
+        where id = #{id}
+    </update>
+
+
+
+</mapper>

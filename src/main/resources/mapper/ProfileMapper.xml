@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.coursistant.individual.mapper.user.ProfileMapper">
+    <!-- Insert a new profile -->
+    <insert id="insert" parameterType="com.coursistant.individual.entity.Profile">
+        INSERT INTO Profile (user_id, preferred_name, pronouns, email, introduction, avatar, school_name, graduation_year, major, interest, profile)
+        VALUES (#{userId}, #{preferredName}, #{pronouns}, #{email}, #{introduction}, #{avatar}, #{schoolName}, #{graduationYear}, #{major}, #{interest}, #{profile})
+    </insert>
+
+    <!-- Delete a profile by ID -->
+    <delete id="deleteById">
+        DELETE FROM Profile WHERE id = #{id}
+    </delete>
+
+    <!-- Update a profile by ID -->
+    <update id="updateById" parameterType="com.coursistant.individual.entity.Profile">
+        UPDATE Profile
+        SET preferred_name = #{preferredName},
+            pronouns = #{pronouns},
+            introduction = #{introduction},
+            avatar = #{avatar},
+            school_name = #{schoolName},
+            graduation_year = #{graduationYear},
+            major = #{major},
+            interest = #{interest},
+            profile = #{profile},
+            email = #{email}
+        WHERE id = #{id}
+    </update>
+
+    <!-- Select a profile by ID -->
+    <select id="selectByUserId" resultType="com.coursistant.individual.entity.Profile">
+        SELECT * FROM Profile WHERE user_id = #{userId}
+    </select>
+
+    <!-- Select all profiles -->
+    <select id="selectAll" resultType="com.coursistant.individual.entity.Profile">
+        SELECT * FROM Profile
+    </select>
+</mapper>

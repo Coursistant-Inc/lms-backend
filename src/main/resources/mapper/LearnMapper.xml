@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.coursistant.individual.mapper.course.LearnMapper">
+
+    <sql id="Base_Column_List">
+        id, user_id, course_id
+    </sql>
+
+
+    <select id="selectAll" resultType="com.coursistant.individual.entity.Learn">
+        select Learn.*, Course.name as courseName, Course.course_code as courseCode,Course.instructor_name as instructorName, Course.school as school, Course.semester as semester,
+        User.name as studentName, User.username as studentUsername,
+        User.phone as studentPhone, User.email as studentEmail, User.avatar as studentAvatar
+        from Learn
+        left join Course on Learn.course_id = Course.id
+        left join User on Learn.user_id = User.id
+        <where>
+            <if test="id != null"> and id= #{id}</if>
+            <if test="userId != null"> and user_id= #{userId}</if>
+            <if test="courseId != null"> and course_id= #{courseId}</if>
+        </where>
+    </select>
+
+    <select id="selectById" resultType="com.coursistant.individual.entity.Learn">
+        select
+        <include refid="Base_Column_List" />
+        from Learn
+        where id = #{id}
+    </select>
+
+    <delete id="deleteById">
+        delete from Learn
+        where id = #{id}
+    </delete>
+
+    <insert id="insert" parameterType="com.coursistant.individual.entity.Learn" useGeneratedKeys="true">
+        insert into Learn
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="id != null">id,</if>
+            <if test="userId != null">user_id,</if>
+            <if test="courseId != null">course_id,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="id != null">#{id},</if>
+            <if test="userId != null">#{userId},</if>
+            <if test="courseId != null">#{courseId},</if>
+        </trim>
+    </insert>
+
+    <update id="updateById" parameterType="com.coursistant.individual.entity.Learn">
+        update Learn
+        <set>
+            <if test="userId != null">
+                user_id = #{userId},
+            </if>
+            <if test="courseId != null">
+                course_id = #{courseId},
+            </if>
+        </set>
+        where id = #{id}
+    </update>
+
+</mapper>
