@@ -2,6 +2,8 @@ package com.coursistant.lms.service.assignment;
 
 
 import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.util.ObjectUtil;
+
 import com.coursistant.lms.common.enums.ResultCodeEnum;
 import com.coursistant.lms.entity.AssignmentSubmission;
 import com.coursistant.lms.entity.DTO.AssignmentSubmissionDTO;
@@ -29,8 +31,10 @@ public class AssignmentSubmissionService {
     public void add(AssignmentSubmission assignmentSubmission, List<MultipartFile> files) {
         assignmentSubmissionMapper.insert(assignmentSubmission);
         int submissionId=assignmentSubmission.getId();
-        for (int i=0;i< files.size();i++){
-            submissionFileService.add(files.get(i),submissionId);
+        if (ObjectUtil.isNotNull(files)) {
+            for (int i=0;i< files.size();i++){
+                submissionFileService.add(files.get(i),submissionId);
+            }
         }
     }
 
