@@ -33,6 +33,12 @@ public interface AssignmentMapper {
     int updateById(Assignment assignment);
 
     /**
+     * 根据 ID 增加 Assignment Submission Number
+     * Increment the submission number by 1 in an Assignment by ID
+     */
+    int incrementSubNumById(Assignment assignment);
+
+    /**
      * 根据 ID 查询 Assignment
      * Query an Assignment by ID
      */

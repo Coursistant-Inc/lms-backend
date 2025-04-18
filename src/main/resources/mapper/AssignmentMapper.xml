@@ -104,6 +104,15 @@
         where id = #{id}
     </update>
 
+    <!-- 增加 Submission Number // Increment Assignment submission number by 1 -->
+    <update id="incrementSubNumById" parameterType="com.coursistant.lms.entity.Assignment">
+        update Assignment
+        <set>
+            submission_num = submission_num + 1,
+        </set>
+        where id = #{id}
+    </update>
+
 
 
 </mapper>

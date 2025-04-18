@@ -1,8 +1,10 @@
 package com.coursistant.lms.controller.assignment;
 
 import com.coursistant.lms.common.Result;
+import com.coursistant.lms.entity.Assignment;
 import com.coursistant.lms.entity.AssignmentSubmission;
 import com.coursistant.lms.entity.DTO.AssignmentSubmissionDTO;
+import com.coursistant.lms.service.assignment.AssignmentService;
 import com.coursistant.lms.service.assignment.AssignmentSubmissionService;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -21,6 +23,8 @@ public class AssignmentSubmissionController {
 
     @Resource
     private AssignmentSubmissionService assignmentSubmissionService;
+    @Resource
+    private AssignmentService assignmentService;
 
     private static final Logger logger = Logger.getLogger(AssignmentSubmissionController.class.getName());
 
@@ -41,6 +45,15 @@ public class AssignmentSubmissionController {
                       @RequestPart(value = "files", required = false) List<MultipartFile> files) {
         logRequest("add", assignmentSubmission.toString());
         assignmentSubmissionService.add(assignmentSubmission,files);
+        AssignmentSubmission qryItem = new AssignmentSubmission();
+        qryItem.setAssignmentId(assignmentSubmission.getAssignmentId());
+        qryItem.setStudentId(assignmentSubmission.getStudentId());
+        List<AssignmentSubmission> submissions = assignmentSubmissionService.selectAll(qryItem);
+        if (submissions.size() == 1) {
+            Assignment toUpdate = new Assignment();
+            toUpdate.setId(assignmentSubmission.getAssignmentId());
+            assignmentService.incrementSubNumById(toUpdate);
+        }
         logResponse("add", "Success");
         return Result.success();
     }

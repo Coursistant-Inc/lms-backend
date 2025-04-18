@@ -41,7 +41,7 @@
     </delete>
 
     <!-- 插入新的 AssignmentSubmission // Insert a new AssignmentSubmission -->
-    <insert id="insert" parameterType="com.coursistant.lms.entity.AssignmentSubmission" useGeneratedKeys="true">
+    <insert id="insert" parameterType="com.coursistant.lms.entity.AssignmentSubmission" useGeneratedKeys="true" keyProperty="id">
         insert into AssignmentSubmission
         <trim prefix="(" suffix=")" suffixOverrides=",">
             <if test="id != null">id,</if>

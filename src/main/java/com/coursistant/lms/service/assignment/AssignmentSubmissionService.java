@@ -23,7 +23,7 @@ public class AssignmentSubmissionService {
 
     @Resource
     private AssignmentSubmissionMapper assignmentSubmissionMapper;
-
+    
     @Resource
     private SubmissionFileService submissionFileService;
 
@@ -31,6 +31,7 @@ public class AssignmentSubmissionService {
     public void add(AssignmentSubmission assignmentSubmission, List<MultipartFile> files) {
         assignmentSubmissionMapper.insert(assignmentSubmission);
         int submissionId=assignmentSubmission.getId();
+        //System.out.println("submission id: " + Integer.toString(submissionId));
         if (ObjectUtil.isNotNull(files)) {
             for (int i=0;i< files.size();i++){
                 submissionFileService.add(files.get(i),submissionId);
@@ -96,9 +97,9 @@ public class AssignmentSubmissionService {
     public List<AssignmentSubmission> selectAll(AssignmentSubmission assignmentSubmission) {
         // 如果缓存不存在，从数据库查询
         // If cache does not exist, query from database
-        List<AssignmentSubmission> assignmentSubmissiones = assignmentSubmissionMapper.selectAll(assignmentSubmission);
+        List<AssignmentSubmission> assignmentSubmissions = assignmentSubmissionMapper.selectAll(assignmentSubmission);
 
-        return assignmentSubmissiones;
+        return assignmentSubmissions;
     }
 
 }

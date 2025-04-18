@@ -45,6 +45,7 @@ public class AssignmentService {
         }
         assignmentMapper.insert(assignment);
         int assignmentId=assignment.getId();
+        //System.out.println("assignment id: " + Integer.toString(assignmentId));
         if (ObjectUtil.isNotNull(files)) {
             for (int i=0;i< files.size();i++){
                 assignmentFileService.add(files.get(i),assignmentId);
@@ -84,6 +85,15 @@ public class AssignmentService {
      */
     public void updateById(Assignment assignment) {
         assignmentMapper.updateById(assignment);
+
+    }
+
+    /**
+     * 增加 Assignment Submission Number
+     * Increment the submission number by ID
+     */
+    public void incrementSubNumById(Assignment assignment) {
+        assignmentMapper.incrementSubNumById(assignment);
 
     }
 
