@@ -57,7 +57,7 @@ public class StatusService {
      * Query a status by ID
      */
     public Status selectById(Integer id) {
-        String cacheKey = "status:" + id;
+        //String cacheKey = "status:" + id;
 
         // 如果缓存不存在，从数据库查询
         // If cache does not exist, query from database

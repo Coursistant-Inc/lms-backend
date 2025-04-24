@@ -57,7 +57,7 @@ public class BookmarkService {
      * Query a bookmark by ID
      */
     public Bookmark selectById(Integer id) {
-        String cacheKey = "bookmark:" + id;
+        //String cacheKey = "bookmark:" + id;
 
         // 如果缓存不存在，从数据库查询
         // If cache does not exist, query from database

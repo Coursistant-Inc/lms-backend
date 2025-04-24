@@ -14,8 +14,6 @@ import com.coursistant.lms.service.system.AdminService;
 import com.coursistant.lms.service.user.UserService;
 import com.coursistant.lms.utils.RsaKeyUtil;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
@@ -31,7 +29,7 @@ import java.security.interfaces.RSAPublicKey;
 @Component
 public class JwtInterceptor implements HandlerInterceptor {
 
-    private static final Logger log = LoggerFactory.getLogger(JwtInterceptor.class);
+    //private static final Logger log = LoggerFactory.getLogger(JwtInterceptor.class);
 
     @Resource
     private AdminService adminService;
@@ -83,7 +81,6 @@ public class JwtInterceptor implements HandlerInterceptor {
         } catch (JWTVerificationException e) {
             throw new CustomException(ResultCodeEnum.TOKEN_CHECK_ERROR);
         } catch (Exception e) {
-            // TODO Auto-generated catch block
             throw new CustomException(ResultCodeEnum.TOKEN_CHECK_ERROR);
         }
         return true;

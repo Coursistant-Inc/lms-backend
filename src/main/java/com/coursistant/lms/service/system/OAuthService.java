@@ -117,11 +117,6 @@ public class OAuthService {
     }
 
     public Result getFacebookUserAccessToken(String code){
-        String tokenUrl = "https://graph.facebook.com/v18.0/oauth/access_token" +
-        "?client_id=" + facebookClientId +
-        "&redirect_uri=" + "http://localhost:9090/thirdParty/facebook/redirect" + 
-        "&client_secret=" + facebookClientSecret +
-        "&code=" + code;
         RestTemplate restTemplate = new RestTemplate();
         String url = UriComponentsBuilder.fromHttpUrl("https://graph.facebook.com/v18.0/oauth/access_token")
             .queryParam("client_id", facebookClientId)

@@ -80,7 +80,7 @@ public class AssignmentSubmissionService {
 
         AssignmentSubmission assignmentSubmission =assignmentSubmissionMapper.selectById(id);
         AssignmentSubmissionDTO DTO=new AssignmentSubmissionDTO();
-        if (DTO == null) {
+        if (ObjectUtil.isNull(DTO)) {
             throw new CustomException(ResultCodeEnum.ASSIGNMENT_NOT_EXIST_ERROR);
         }
         BeanUtil.copyProperties(assignmentSubmission, DTO);
