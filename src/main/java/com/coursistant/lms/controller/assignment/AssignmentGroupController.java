@@ -1,0 +1,79 @@
+package com.coursistant.lms.controller.assignment;
+
+import com.coursistant.lms.common.Result;
+import com.coursistant.lms.entity.AssignmentGroup;
+import com.coursistant.lms.service.assignment.AssignmentGroupService;
+import org.springframework.web.bind.annotation.*;
+
+import javax.annotation.Resource;
+import java.util.List;
+import java.util.logging.Logger;
+import java.util.Map;
+import java.util.HashMap;
+
+/**
+ * 小组分组控制器（用于作业）
+* Controller for assignment groups
+*/
+@RestController
+@RequestMapping("/assignmentGroup")
+public class AssignmentGroupController {
+
+    @Resource
+    private AssignmentGroupService assignmentGroupService;
+
+
+    private static final Logger logger = Logger.getLogger(AssignmentGroupController.class.getName());
+
+    @PostMapping("/add")
+    public Result add(@RequestBody AssignmentGroup group) {
+        assignmentGroupService.add(group);
+        return Result.success();
+    }
+
+    @PutMapping("/update")
+    public Result update(@RequestBody AssignmentGroup group) {
+        assignmentGroupService.updateById(group);
+        return Result.success();
+    }
+
+    @DeleteMapping("/delete/{id}")
+    public Result delete(@PathVariable Integer id) {
+        assignmentGroupService.deleteById(id);
+        return Result.success();
+    }
+
+    @GetMapping("/selectById/{id}")
+    public Result selectById(@PathVariable Integer id) {
+        AssignmentGroup group = assignmentGroupService.selectById(id);
+        return Result.success(group);
+    }
+
+    @GetMapping("/selectAll")
+    public Result selectAll(AssignmentGroup group) {
+        List<AssignmentGroup> list = assignmentGroupService.selectAll(group);
+        return Result.success(list);
+    }
+
+    @GetMapping("/selectByAssignment/{assignmentId}")
+    public Result selectByAssignment(@PathVariable Integer assignmentId) {
+        List<AssignmentGroup> list = assignmentGroupService.selectByAssignmentId(assignmentId);
+        return Result.success(list);
+    }
+
+    // @PostMapping("/autoGenerate")
+    // public Result autoGenerate(@RequestBody Map<String, Object> params) {
+    //     com.coursistant.lms.entity.Account loginUser = com.coursistant.lms.utils.TokenUtils.getCurrentUser();
+
+    //     if (!"Teacher".equalsIgnoreCase(loginUser.getLevel())) {
+    //         return Result.error("403", "Only teachers can perform auto grouping.");
+    //     }
+
+    //     Integer assignmentId = (Integer) params.get("assignmentId");
+    //     Integer groupSize = (Integer) params.get("groupSize");
+    //     assignmentGroupService.autoGroup(assignmentId, groupSize);
+    //     return Result.success("Auto grouping completed.");
+    // }
+
+
+}
