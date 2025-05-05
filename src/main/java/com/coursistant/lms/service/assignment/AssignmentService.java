@@ -31,6 +31,9 @@ public class AssignmentService {
         if (ObjectUtil.isNull(assignment.getSubmissionNum())) {
             assignment.setSubmissionNum(0);
         }
+        if (ObjectUtil.isNull(assignment.getAllowedSubmissionTimes())) {
+            assignment.setAllowedSubmissionTimes(1);
+        }
         if (ObjectUtil.isNull(assignment.getHighestGrade())) {
             assignment.setHighestGrade(0);
         }
@@ -123,9 +126,9 @@ public class AssignmentService {
     public List<Assignment> selectAll(Assignment assignment) {
         // 如果缓存不存在，从数据库查询
         // If cache does not exist, query from database
-        List<Assignment> assignmentes = assignmentMapper.selectAll(assignment);
+        List<Assignment> assignments = assignmentMapper.selectAll(assignment);
 
-        return assignmentes;
+        return assignments;
     }
 
 }

@@ -6,7 +6,7 @@
 
     <sql id="Base_Column_List">
         id, user_id, course_id, title, start, due, description, criteria,
-    submission_num, highest_grade, lowest_grade, average_grade, grade_publish
+    submission_num, allowed_submission_times, highest_grade, lowest_grade, average_grade, grade_publish
     </sql>
 
     <!-- 查询所有 Assignment // Select all Assignments -->
@@ -24,6 +24,7 @@
             <if test="description != null"> and description = #{description}</if>
             <if test="criteria != null"> and criteria = #{criteria}</if>
             <if test="submissionNum != null"> and submission_num = #{submissionNum}</if>
+            <if test="allowedSubmissionTimes != null"> and allowed_submission_times = #{allowedSubmissionTimes}</if>
             <if test="highestGrade != null"> and highest_grade = #{highestGrade}</if>
             <if test="lowestGrade != null"> and lowest_grade = #{lowestGrade}</if>
             <if test="averageGrade != null"> and average_grade = #{averageGrade}</if>
@@ -60,6 +61,7 @@
             <if test="description != null">description,</if>
             <if test="criteria != null">criteria,</if>
             <if test="submissionNum != null">submission_num,</if>
+            <if test="allowedSubmissionTimes != null">allowed_submission_times,</if>
             <if test="highestGrade != null">highest_grade,</if>
             <if test="lowestGrade != null">lowest_grade,</if>
             <if test="averageGrade != null">average_grade,</if>
@@ -75,6 +77,7 @@
             <if test="description != null">#{description},</if>
             <if test="criteria != null">#{criteria},</if>
             <if test="submissionNum != null">#{submissionNum},</if>
+            <if test="allowedSubmissionTimes != null">#{allowedSubmissionTimes},</if>
             <if test="highestGrade != null">#{highestGrade},</if>
             <if test="lowestGrade != null">#{lowestGrade},</if>
             <if test="averageGrade != null">#{averageGrade},</if>
@@ -96,6 +99,7 @@
             <if test="description != null">description = #{description},</if>
             <if test="criteria != null">criteria = #{criteria},</if>
             <if test="submissionNum != null">submission_num = #{submissionNum},</if>
+            <if test="allowedSubmissionTimes != null">allowed_submission_times = #{allowedSubmissionTimes},</if>
             <if test="highestGrade != null">highest_grade = #{highestGrade},</if>
             <if test="lowestGrade != null">lowest_grade = #{lowestGrade},</if>
             <if test="averageGrade != null">average_grade = #{averageGrade},</if>
