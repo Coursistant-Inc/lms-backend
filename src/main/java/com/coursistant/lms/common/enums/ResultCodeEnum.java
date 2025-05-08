@@ -58,6 +58,7 @@ public enum ResultCodeEnum {
     INVITATION_NOT_EXIST_ERROR("4044", "Invitation Not Exist"),
     ASSIGNMENT_NOT_EXIST_ERROR("4045", "Assignment Not Exist"),
     SUBMISSION_NOT_EXIST_ERROR("4046", "Submission Not Exist"),
+    SUBMISSION_NOT_VALID_ERROR("4046", "Submission Not Valid"),
 
     /**
      * External service errors (600X)

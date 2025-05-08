@@ -46,6 +46,9 @@ public class AssignmentDTO implements Serializable {
     /** 提交次数 */
     private Integer submissionNum;
 
+    /** 允许提交次数 */
+    private Integer allowedSubmissionTimes;
+
     /** 最高分 */
     private Integer highestGrade;
 
@@ -166,6 +169,14 @@ public class AssignmentDTO implements Serializable {
 
     public void setSubmissionNum(Integer submissionNum) {
         this.submissionNum = submissionNum;
+    }
+
+    public Integer getAllowedSubmissionTimes() {
+        return allowedSubmissionTimes;
+    }
+
+    public void setAllowedSubmissionTimes(Integer allowedSubmissionTimes) {
+        this.allowedSubmissionTimes = allowedSubmissionTimes;
     }
 
     public Integer getHighestGrade() {

@@ -31,6 +31,7 @@ public class AssignmentSubmissionService {
     public void add(AssignmentSubmission assignmentSubmission, List<MultipartFile> files) {
         assignmentSubmissionMapper.insert(assignmentSubmission);
         int submissionId=assignmentSubmission.getId();
+
         //System.out.println("submission id: " + Integer.toString(submissionId));
         if (ObjectUtil.isNotNull(files)) {
             for (int i=0;i< files.size();i++){
@@ -46,8 +47,10 @@ public class AssignmentSubmissionService {
     public void deleteById(Integer id) {
         assignmentSubmissionMapper.deleteById(id);
         List<SubmissionFile> submissionFiles=submissionFileService.selectBySubmissionId(id);
-        for (int i=0;i< submissionFiles.size();i++){
-            submissionFileService.deleteById(submissionFiles.get(i).getId());
+        if (ObjectUtil.isNotNull(submissionFiles)) {
+            for (int i=0;i< submissionFiles.size();i++){
+                submissionFileService.deleteById(submissionFiles.get(i).getId());
+            }
         }
     }
 

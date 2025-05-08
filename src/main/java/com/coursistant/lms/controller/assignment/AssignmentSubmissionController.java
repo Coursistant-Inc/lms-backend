@@ -1,8 +1,10 @@
 package com.coursistant.lms.controller.assignment;
 
 import com.coursistant.lms.common.Result;
+import com.coursistant.lms.common.enums.ResultCodeEnum;
 import com.coursistant.lms.entity.Assignment;
 import com.coursistant.lms.entity.AssignmentSubmission;
+import com.coursistant.lms.entity.DTO.AssignmentDTO;
 import com.coursistant.lms.entity.DTO.AssignmentSubmissionDTO;
 import com.coursistant.lms.service.assignment.AssignmentService;
 import com.coursistant.lms.service.assignment.AssignmentSubmissionService;
@@ -44,16 +46,22 @@ public class AssignmentSubmissionController {
     public Result add(@ModelAttribute AssignmentSubmission assignmentSubmission,
                       @RequestPart(value = "files", required = false) List<MultipartFile> files) {
         logRequest("add", assignmentSubmission.toString());
-        assignmentSubmissionService.add(assignmentSubmission,files);
+        int assignmentId = assignmentSubmission.getAssignmentId();
         AssignmentSubmission qryItem = new AssignmentSubmission();
         qryItem.setAssignmentId(assignmentSubmission.getAssignmentId());
         qryItem.setStudentId(assignmentSubmission.getStudentId());
         List<AssignmentSubmission> submissions = assignmentSubmissionService.selectAll(qryItem);
-        if (submissions.size() == 1) {
+        AssignmentDTO tocheck = assignmentService.selectById(assignmentId);
+        if (submissions.size() >= tocheck.getAllowedSubmissionTimes()){
+            return Result.error(ResultCodeEnum.SUBMISSION_NOT_VALID_ERROR);
+        }
+        
+        if (submissions.size() == 0) {
             Assignment toUpdate = new Assignment();
             toUpdate.setId(assignmentSubmission.getAssignmentId());
             assignmentService.incrementSubNumById(toUpdate);
         }
+        assignmentSubmissionService.add(assignmentSubmission,files);
         logResponse("add", "Success");
         return Result.success();
     }
