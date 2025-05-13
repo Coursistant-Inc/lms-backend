@@ -26,6 +26,7 @@ public enum ResultCodeEnum {
     VERIFICATION_CODE_ERROR("4014", "Incorrect Verification Code"),
     TOKEN_CREATION_ERROR("4015", "Error When Creating Token"),
     REFRESH_TOKEN_CHECK_ERROR("4016", "Refresh Token Validation Failed"),
+    INVALID_ACCESS_ERROR("4017", "User Role Invalid for Access"),
 
     /**
      * User-related errors (402X)
@@ -58,7 +59,7 @@ public enum ResultCodeEnum {
     INVITATION_NOT_EXIST_ERROR("4044", "Invitation Not Exist"),
     ASSIGNMENT_NOT_EXIST_ERROR("4045", "Assignment Not Exist"),
     SUBMISSION_NOT_EXIST_ERROR("4046", "Submission Not Exist"),
-    SUBMISSION_NOT_VALID_ERROR("4046", "Submission Not Valid"),
+    SUBMISSION_NOT_VALID_ERROR("4047", "Submission Not Valid"),
 
     /**
      * External service errors (600X)

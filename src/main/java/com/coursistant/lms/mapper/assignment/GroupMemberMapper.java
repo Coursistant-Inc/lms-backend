@@ -1,6 +1,7 @@
 package com.coursistant.lms.mapper.assignment;
 
 
+import com.coursistant.lms.entity.Assignment;
 import com.coursistant.lms.entity.GroupMember;
 import org.apache.ibatis.annotations.Mapper;
 
@@ -18,4 +19,6 @@ public interface GroupMemberMapper {
     List<GroupMember> selectByGroupId(Integer groupId);
 
     GroupMember selectByGroupIdAndUserId(Integer groupId, Integer userId);
+
+    List<GroupMember> selectAll(GroupMember member);
 }

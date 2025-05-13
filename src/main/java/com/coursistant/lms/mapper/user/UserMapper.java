@@ -61,4 +61,9 @@ public interface UserMapper {
      */
     @Select("select * from User where level = 'TEACHER'")
     List<User> selectTeachers();
+
+    /**
+     * Query all students by course ID
+     */
+    List<User> selectStudentsByCourseId(Integer courseId);
 }

@@ -58,6 +58,14 @@ public class GroupMemberService {
         return groupMemberMapper.selectByGroupIdAndUserId(groupId, userId);
     }
 
+    public List<GroupMember> selectAll(GroupMember member) {
+        // 如果缓存不存在，从数据库查询
+        // If cache does not exist, query from database
+        List<GroupMember> members = groupMemberMapper.selectAll(member);
+
+        return members;
+    }
+
     // public void addMemberByEmail(Integer groupId, String email) {
     //     com.coursistant.lms.entity.User user = userMapper.selectByEmail(email);
     //     if (user == null || !"STUDENT".equals(user.getLevel())) {

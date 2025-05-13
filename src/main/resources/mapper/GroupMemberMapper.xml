@@ -34,4 +34,17 @@
         WHERE group_id = #{groupId} AND user_id = #{userId}
     </select>
 
+    <select id="selectAll" resultType="com.coursistant.lms.entity.GroupMember">
+        select
+        <include refid="Base_Column_List" />
+        from GroupMembers
+        <where>
+            <if test="id != null"> and id= #{id}</if>
+            <if test="username != null"> and group_id = #{groupId}</if>
+            <if test="password != null"> and course_id= #{courseId}</if>
+            <if test="name != null"> and user_id= #{userId}</if>
+
+        </where>
+    </select>
+
 </mapper>

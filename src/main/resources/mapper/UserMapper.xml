@@ -34,6 +34,15 @@
         where id = #{id}
     </select>
 
+    <select id="selectStudentsByCourseId" resultType="com.coursistant.lms.entity.User">
+        select
+        <include refid="Base_Column_List" />
+        from User
+        where id in (
+            select user_id from Learn where course_id = #{courseId}
+        )
+    </select>
+
     <delete id="deleteById">
         delete from User
         where  id = #{id}

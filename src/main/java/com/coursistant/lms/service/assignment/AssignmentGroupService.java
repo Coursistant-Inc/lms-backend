@@ -1,7 +1,10 @@
 package com.coursistant.lms.service.assignment;
 
+import com.coursistant.lms.entity.Assignment;
 import com.coursistant.lms.entity.AssignmentGroup;
 import com.coursistant.lms.mapper.assignment.AssignmentGroupMapper;
+import com.coursistant.lms.entity.GroupMember;
+import com.coursistant.lms.entity.User;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
@@ -68,53 +71,50 @@ public class AssignmentGroupService {
     /**
      * 自动分组功能
     */
-    // public void autoGroup(Integer assignmentId, Integer groupSize) {
+    public void autoGroup(Integer assignmentId, Integer groupSize) {
 
-    //     // 清除旧分组数据
-    //     List<AssignmentGroup> oldGroups = assignmentGroupMapper.selectByAssignmentId(assignmentId);
-    //     for (AssignmentGroup group : oldGroups) {
-    //         groupMemberMapper.deleteByGroupId(group.getId());     // 删除旧成员
-    //         assignmentGroupMapper.deleteById(group.getId());       // 删除旧小组
-    //     }
-
-
-    //     com.coursistant.lms.entity.Assignment assignment = assignmentMapper.selectById(assignmentId);
-    //     if (assignment == null || assignment.getCourseId() == null) {
-    //         throw new RuntimeException("Assignment or course not found");
-    //     }
-    //     assignment.setGroupSize(groupSize);
-    //     assignmentMapper.updateById(assignment);
-    //     Integer courseId = assignment.getCourseId();
-
-    //     // 构造条件：只查学生
-    //     com.coursistant.lms.entity.User filter = new com.coursistant.lms.entity.User();
-    //     filter.setLevel("Student");  // ✅ 查 level 字段，过滤学生
-    //     List<com.coursistant.lms.entity.User> students = userMapper.selectStudentsByCourseId(courseId);
+        // 清除旧分组数据
+        List<AssignmentGroup> oldGroups = assignmentGroupMapper.selectByAssignmentId(assignmentId);
+        for (AssignmentGroup group : oldGroups) {
+            groupMemberMapper.deleteByGroupId(group.getId());     // 删除旧成员
+            assignmentGroupMapper.deleteById(group.getId());       // 删除旧小组
+        }
 
 
+        Assignment assignment = assignmentMapper.selectById(assignmentId);
+        if (assignment == null || assignment.getCourseId() == null) {
+            throw new RuntimeException("Assignment or course not found");
+        }
+        //assignment.setGroupSize(groupSize);
+        //assignmentMapper.updateById(assignment);
+        Integer courseId = assignment.getCourseId();
 
-    //     java.util.Collections.shuffle(students); // 打乱顺序
+        // 构造条件：只查学生
+        List<User> students = userMapper.selectStudentsByCourseId(courseId);
 
-    //     int index = 0;
-    //     int total = students.size();
-    //     int groupCount = (int) Math.ceil((double) total / groupSize);
 
-    //     for (int i = 0; i < groupCount; i++) {
-    //         AssignmentGroup group = new AssignmentGroup();
-    //         group.setAssignmentId(assignmentId);
-    //         group.setCourseId(courseId);
-    //         this.add(group);  // 调用已有方法
+        java.util.Collections.shuffle(students); // 打乱顺序
 
-    //         for (int j = 0; j < groupSize && index < total; j++, index++) {
-    //             com.coursistant.lms.entity.User student = students.get(index);
-    //             com.coursistant.lms.entity.GroupMember member = new com.coursistant.lms.entity.GroupMember();
-    //             member.setGroupId(group.getId());
-    //             member.setCourseId(courseId);
-    //             member.setUserId(student.getId());
-    //             groupMemberMapper.insert(member);
-    //         }
-    //     }
-    // }
+        int index = 0;
+        int total = students.size();
+        int groupCount = (int) Math.ceil((double) total / groupSize);
+
+        for (int i = 0; i < groupCount; i++) {
+            AssignmentGroup group = new AssignmentGroup();
+            group.setAssignmentId(assignmentId);
+            group.setCourseId(courseId);
+            this.add(group);  // 调用已有方法
+
+            for (int j = 0; j < groupSize && index < total; j++, index++) {
+                User student = students.get(index);
+                GroupMember member = new GroupMember();
+                member.setGroupId(group.getId());
+                member.setCourseId(courseId);
+                member.setUserId(student.getId());
+                groupMemberMapper.insert(member);
+            }
+        }
+    }
 
 
 }

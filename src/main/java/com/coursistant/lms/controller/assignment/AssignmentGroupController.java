@@ -1,6 +1,7 @@
 package com.coursistant.lms.controller.assignment;
 
 import com.coursistant.lms.common.Result;
+import com.coursistant.lms.common.enums.ResultCodeEnum;
 import com.coursistant.lms.entity.AssignmentGroup;
 import com.coursistant.lms.service.assignment.AssignmentGroupService;
 import org.springframework.web.bind.annotation.*;
@@ -61,19 +62,19 @@ public class AssignmentGroupController {
         return Result.success(list);
     }
 
-    // @PostMapping("/autoGenerate")
-    // public Result autoGenerate(@RequestBody Map<String, Object> params) {
-    //     com.coursistant.lms.entity.Account loginUser = com.coursistant.lms.utils.TokenUtils.getCurrentUser();
+    @PostMapping("/autoGenerate")
+    public Result autoGenerate(@RequestBody Map<String, Object> params) {
+        com.coursistant.lms.entity.Account loginUser = com.coursistant.lms.utils.TokenUtils.getCurrentUser();
 
-    //     if (!"Teacher".equalsIgnoreCase(loginUser.getLevel())) {
-    //         return Result.error("403", "Only teachers can perform auto grouping.");
-    //     }
+        if (!"Teacher".equalsIgnoreCase(loginUser.getLevel())) {
+            return Result.error(ResultCodeEnum.INVALID_ACCESS_ERROR);
+        }
 
-    //     Integer assignmentId = (Integer) params.get("assignmentId");
-    //     Integer groupSize = (Integer) params.get("groupSize");
-    //     assignmentGroupService.autoGroup(assignmentId, groupSize);
-    //     return Result.success("Auto grouping completed.");
-    // }
+        Integer assignmentId = (Integer) params.get("assignmentId");
+        Integer groupSize = (Integer) params.get("groupSize");
+        assignmentGroupService.autoGroup(assignmentId, groupSize);
+        return Result.success("Auto grouping completed.");
+    }
 
 
 }
