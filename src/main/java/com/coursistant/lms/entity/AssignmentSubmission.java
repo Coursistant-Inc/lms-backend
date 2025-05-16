@@ -34,11 +34,6 @@ public class AssignmentSubmission implements Serializable {
      */
     private String date;
 
-    /** 提交文件
-     * Submitted file
-     */
-    private String file;
-
     /** 状态
      * Submission status
      */
@@ -66,7 +61,6 @@ public class AssignmentSubmission implements Serializable {
         if (studentId != null) sb.append("\"studentId\":").append(studentId).append(",");
         if (graderId != null) sb.append("\"graderId\":").append(graderId).append(",");
         if (date != null) sb.append("\"date\":\"").append(date).append("\",");
-        if (file != null) sb.append("\"file\":\"").append(file).append("\",");
         if (status != null) sb.append("\"status\":\"").append(status).append("\",");
         if (grade != null) sb.append("\"grade\":\"").append(grade).append("\",");
         if (comment != null) sb.append("\"comment\":\"").append(comment).append("\",");
@@ -117,14 +111,6 @@ public class AssignmentSubmission implements Serializable {
 
     public void setDate(String date) {
         this.date = date;
-    }
-
-    public String getFile() {
-        return file;
-    }
-
-    public void setFile(String file) {
-        this.file = file;
     }
 
     public String getStatus() {
