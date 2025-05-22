@@ -60,6 +60,13 @@ public enum ResultCodeEnum {
     ASSIGNMENT_NOT_EXIST_ERROR("4045", "Assignment Not Exist"),
     SUBMISSION_NOT_EXIST_ERROR("4046", "Submission Not Exist"),
     SUBMISSION_NOT_VALID_ERROR("4047", "Submission Not Valid"),
+    GROUP_NOT_EXIST_ERROR("4048", "Group Not Exist"),
+
+    /**
+     * Invalid operation related errors (405X)
+     */
+    GROUP_JOIN_INVALID_ERROR("4050", "Group Is Full/Not Open for Join"),
+    DUPLICATED_GROUP_MEMBER_ERROR("4051", "User Already In Group"),
 
     /**
      * External service errors (600X)
