@@ -1,29 +1,34 @@
 package com.coursistant.lms.service.course;
 
-import cn.hutool.core.util.ObjectUtil;
-import com.coursistant.lms.exception.CustomException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.TimeUnit;
+
+import javax.annotation.Resource;
+
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellType;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.WorkbookFactory;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
 import com.coursistant.lms.common.enums.ResultCodeEnum;
 import com.coursistant.lms.entity.Learn;
 import com.coursistant.lms.entity.User;
+import com.coursistant.lms.exception.CustomException;
 import com.coursistant.lms.mapper.course.LearnMapper;
 import com.coursistant.lms.mapper.user.UserMapper;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
 
-import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
-
-import javax.annotation.Resource;
-import java.io.InputStream;
-import java.util.List;
-import java.util.Objects;
-import java.util.concurrent.TimeUnit;
-
-import org.apache.poi.ss.usermodel.*;
-
-import java.io.IOException;
-import java.util.ArrayList;
+import cn.hutool.core.util.ObjectUtil;
 
 @Service
 public class LearnService {
@@ -243,5 +248,28 @@ public class LearnService {
             throw new CustomException(ResultCodeEnum.FILE_READ_ERROR);
         }
         return emails;
+    }
+
+    public void updateCourseStatus(Integer userId, Integer courseId, String courseStatus)
+    {
+        learnMapper.updateLearnStatusById(userId, courseId, courseStatus);
+    }
+
+    public String selectCourseStatus(Integer userId, Integer courseId)
+    {
+       String courseStatus = learnMapper.selectLearnStatusById(userId, courseId);
+
+       return courseStatus;
+    }
+
+    public void updateCourseGrade(Integer userId, Integer courseId, String grade)
+    {
+        learnMapper.updateGradeById(userId, courseId, grade);
+    }
+
+    public String selectCourseGrade(Integer userId, Integer courseId)
+    {
+        String grade = learnMapper.selectGradeById(userId, courseId);
+        return grade;
     }
 }

@@ -1,17 +1,28 @@
 package com.coursistant.lms.controller.course;
 
-import cn.hutool.core.util.ObjectUtil;
+import java.util.List;
+import java.util.logging.Logger;
+
+import javax.annotation.Resource;
+
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+
 import com.coursistant.lms.common.Result;
 import com.coursistant.lms.common.enums.ResultCodeEnum;
 import com.coursistant.lms.entity.Learn;
 import com.coursistant.lms.service.course.LearnService;
 import com.github.pagehelper.PageInfo;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
-import javax.annotation.Resource;
-import java.util.List;
-import java.util.logging.Logger;
+import cn.hutool.core.util.ObjectUtil;
 
 /**
  * 部门信息表前端操作接口
@@ -136,4 +147,46 @@ public class LearnController {
         logResponse("selectPage", null);
         return Result.success(page);
     }
+
+    // @PostMapping("/update/courseStatus")
+    // public String updateCourseStatus(@RequestParam Integer userId, @RequestParam Integer courseId, @RequestParam String courseStatus)
+    // {
+    //     return "update course status method invoked!";
+    //     // System.out.println("User id: "+userId);
+    //     // System.out.println("courseId: "+courseId);
+    //     // System.out.println("courseStatus: "+courseStatus);
+
+    //     // return "Received parameters " + userId + " " + courseId + " " + courseStatus;
+    // }
+
+    @PostMapping("/update/courseStatus")
+    public String updateCourseStatus(@RequestParam(value="user_id") Integer userId, @RequestParam("course_id") Integer courseId, @RequestParam("course_status") String courseStatus)
+    {
+
+        learnService.updateCourseStatus(userId, courseId, courseStatus);
+        return "Update successful!";
+    }
+
+    @GetMapping("/select/courseStatus")
+    public String selectCourseStatus(@RequestParam(value="user_id") Integer userId, @RequestParam(value="course_id") Integer courseId) {
+        
+        String courseStatus = learnService.selectCourseStatus(userId, courseId);
+        return courseStatus;
+    }
+
+    @PostMapping("/update/grade")
+    public void updateCourseGrade(@RequestParam(value="user_id") Integer userId, @RequestParam(value="course_id") Integer courseId, @RequestParam(value="grade") String grade) {
+        //TODO: process POST request
+        
+        learnService.updateCourseGrade(userId, courseId, grade);
+    }
+
+    @GetMapping("/select/grade")
+    public String selectCourseGrade(@RequestParam(value="user_id") Integer userId, @RequestParam(value="course_id") Integer courseId) {
+        String grade = learnService.selectCourseGrade(userId, courseId);
+        return grade;
+    }
+    
+    
+    
 }

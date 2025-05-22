@@ -62,4 +62,20 @@
         where id = #{id}
     </update>
 
+    <update id="updateLearnStatusById" parameterType="com.coursistant.lms.entity.Learn">
+        UPDATE Learn SET course_status = #{courseStatus} WHERE user_id = #{userId} AND course_id = #{courseId}
+    </update>
+
+    <select id="selectLearnStatusById" parameterType="com.coursistant.lms.entity.Learn" resultType="String">
+        SELECT course_status FROM Learn WHERE user_id = #{userId} AND course_id = #{courseId}
+    </select>
+
+    <update id="updateGradeById" parameterType="com.coursistant.lms.entity.Learn">
+        UPDATE Learn SET grade = #{grade} WHERE user_id = #{userId} AND course_id = #{courseId}
+    </update>
+
+    <select id="selectGradeById" parameterType="com.coursistant.lms.entity.Learn" resultType="String">
+        SELECT grade FROM Learn WHERE user_id = #{userId} AND course_id = #{courseId}
+    </select>
+
 </mapper>
