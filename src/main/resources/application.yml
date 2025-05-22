@@ -1,8 +1,9 @@
 server:
-  port: 9090
+   port: 8080
   servlet:
     encoding:
       enabled: false
+      context-path: /api
 
 
 # spring配置
