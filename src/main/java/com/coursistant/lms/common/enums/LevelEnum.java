@@ -3,6 +3,7 @@ package com.coursistant.lms.common.enums;
 public enum LevelEnum {
     TEACHER("TEACHER"),
     STUDENT("STUDENT"),
+    SELF("SELF")
 
     ;
 

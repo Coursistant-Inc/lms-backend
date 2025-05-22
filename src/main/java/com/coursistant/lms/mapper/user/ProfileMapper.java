@@ -1,9 +1,10 @@
 package com.coursistant.lms.mapper.user;
 
-import com.coursistant.lms.entity.Profile;
+import java.util.List;
+
 import org.apache.ibatis.annotations.Mapper;
 
-import java.util.List;
+import com.coursistant.lms.entity.Profile;
 
 /**
  * 操作 Profile 相关数据接口
@@ -41,4 +42,8 @@ public interface ProfileMapper {
      * Query all Profile records
      */
     List<Profile> selectAll();
+
+    void updateUserPrivacyById(String privacy, Integer userId);
+
+    String selectUserPrivacyById(Integer userId);
 }

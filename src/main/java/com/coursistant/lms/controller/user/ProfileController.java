@@ -1,18 +1,32 @@
 package com.coursistant.lms.controller.user;
 
-import com.coursistant.lms.controller.course.CourseController;
-import com.coursistant.lms.entity.Profile;
-import com.coursistant.lms.service.user.ProfileService;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import org.springframework.http.MediaType;
-import java.text.SimpleDateFormat;
 import java.io.File;
+import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 import java.util.logging.Logger;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+
+import com.coursistant.lms.controller.course.CourseController;
+import com.coursistant.lms.entity.Profile;
+import com.coursistant.lms.service.user.ProfileService;
+import com.coursistant.lms.service.user.UserService;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 
 /**
  * 个人资料前端操作接口
@@ -22,6 +36,7 @@ import java.util.logging.Logger;
 @RequestMapping("/profile")
 public class ProfileController {
     private final ProfileService profileService;
+    private final UserService userService;
 
     private static final Logger logger = Logger.getLogger(CourseController.class.getName());
 
@@ -33,8 +48,10 @@ public class ProfileController {
         logger.info(() -> String.format("End %s: %s", methodName, response));
     }
 
-    public ProfileController(ProfileService profileService) {
+    public ProfileController(ProfileService profileService, UserService userService) {
         this.profileService = profileService;
+        this.userService = userService;
+        
     }
 
     /**
@@ -42,8 +59,16 @@ public class ProfileController {
      * Get profile by user ID
      */
     @GetMapping("/user/{userId}")
-    public Profile getProfileByUserId(@PathVariable Integer userId) {
-        return profileService.getProfileByUserId(userId);
+    public ResponseEntity<Object> getProfileByUserId(@PathVariable Integer userId,@RequestParam(value="self_user_id") Integer selfUserId) {
+        String selfLevel = userService.getUserLevel(selfUserId);
+        String userPrivacyLevel = profileService.selectUserPrivacy(userId);
+        if(userPrivacyLevel.equals(selfLevel))
+        {
+            Profile profile = profileService.getProfileByUserId(userId);
+            return ResponseEntity.ok(profile);
+        }
+
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Viewing profile of this user is not allowed as the user's level is: "+userPrivacyLevel + " and your level is: " + selfLevel);
     }
 
     /**
@@ -134,4 +159,14 @@ public class ProfileController {
         profileService.deleteProfile(id);
         return "Profile deleted successfully!";
     }
+
+    @PostMapping("/update/privacy")
+    public String updatePrivacy(@RequestParam(value="privacy") String privacy, @RequestParam(value="user_id") Integer userId) {
+        //TODO: process POST request
+        
+        profileService.updateUserPrivacy(privacy, userId);
+
+        return "Privacy setting updated.";
+    }
+    
 }

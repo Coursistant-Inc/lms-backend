@@ -1,9 +1,16 @@
 package com.coursistant.lms.service.user;
 
-import cn.hutool.core.util.ObjectUtil;
-import com.coursistant.lms.exception.CustomException;
-import com.coursistant.lms.service.system.RefreshTokenService;
-import com.coursistant.lms.utils.EmailUtil;
+import java.util.List;
+import java.util.Objects;
+import java.util.Random;
+import java.util.concurrent.TimeUnit;
+
+import javax.annotation.Resource;
+
+import org.springframework.beans.BeanUtils;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.stereotype.Service;
+
 import com.coursistant.lms.common.Constants;
 import com.coursistant.lms.common.enums.LevelEnum;
 import com.coursistant.lms.common.enums.ResultCodeEnum;
@@ -11,21 +18,16 @@ import com.coursistant.lms.common.enums.RoleEnum;
 import com.coursistant.lms.entity.Account;
 import com.coursistant.lms.entity.DTO.PasswordDTO;
 import com.coursistant.lms.entity.User;
+import com.coursistant.lms.exception.CustomException;
 import com.coursistant.lms.mapper.user.UserMapper;
+import com.coursistant.lms.service.system.RefreshTokenService;
+import com.coursistant.lms.utils.EmailUtil;
 import com.coursistant.lms.utils.PasswordEncoderUtil;
 import com.coursistant.lms.utils.TokenUtils;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
-import org.springframework.beans.BeanUtils;
-import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.stereotype.Service;
 
-import java.util.Random;
-
-import javax.annotation.Resource;
-import java.util.List;
-import java.util.Objects;
-import java.util.concurrent.TimeUnit;
+import cn.hutool.core.util.ObjectUtil;
 
 /**
  * User业务处理 // User business processing
@@ -407,5 +409,10 @@ public class UserService {
 
         // 发送邮件
         emailUtil.sendEmail(email, subject, content);
+    }
+
+    public String getUserLevel(Integer id)
+    {
+        return userMapper.selectUserLevelById(id);
     }
 }

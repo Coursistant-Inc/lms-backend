@@ -59,4 +59,15 @@ public class ProfileService {
     public void deleteProfile(Integer id) {
         profileMapper.deleteById(id);
     }
+
+    public void updateUserPrivacy(String privacy, Integer userId)
+    {
+        profileMapper.updateUserPrivacyById(privacy, userId);
+    }
+
+    public String selectUserPrivacy(Integer userId)
+    {
+        String privacy = profileMapper.selectUserPrivacyById(userId);
+        return privacy;
+    }
 }

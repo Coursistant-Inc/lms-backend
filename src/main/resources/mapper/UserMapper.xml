@@ -113,4 +113,8 @@
         where id = #{id}
     </update>
 
+    <select id="selectUserLevelById" parameterType="com.coursistant.lms.entity.User" resultType="String">
+        SELECT level FROM User WHERE id = #{userId}
+    </select>
+
 </mapper>

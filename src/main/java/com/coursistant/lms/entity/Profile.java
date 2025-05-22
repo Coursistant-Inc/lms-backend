@@ -13,6 +13,8 @@ public class Profile implements Serializable {
     private Integer id;
     private Integer userId;
 
+    private String privacy;
+
     // Educational Background
     private String schoolName;
     private String graduationYear;
@@ -133,4 +135,14 @@ public class Profile implements Serializable {
     public void setProfile(String profile) {
         this.profile = profile;
     }
+
+    public String getPrivacy() {
+        return privacy;
+    }
+
+    public void setPrivacy(String privacy) {
+        this.privacy = privacy;
+    }
+
+    
 }

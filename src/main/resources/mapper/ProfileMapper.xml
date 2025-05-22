@@ -30,11 +30,20 @@
 
     <!-- Select a profile by ID -->
     <select id="selectByUserId" resultType="com.coursistant.lms.entity.Profile">
-        SELECT * FROM Profile WHERE user_id = #{userId}
+        <!-- SELECT * FROM Profile WHERE user_id = #{userId} -->
+         SELECT p.*, c.name FROM Profile p, Course c, Learn l WHERE p.user_id = l.user_id AND l.course_id = c.id AND l.course_status = "completed";
     </select>
 
     <!-- Select all profiles -->
     <select id="selectAll" resultType="com.coursistant.lms.entity.Profile">
         SELECT * FROM Profile
+    </select>
+
+    <update id="updateUserPrivacyById" parameterType="com.coursistant.lms.entity.Profile">
+        UPDATE Profile SET privacy = #{privacy} WHERE user_id = #{userId}
+    </update>
+
+    <select id="selectUserPrivacyById" parameterType="com.coursistant.lms.entity.Profile" resultType="String">
+        SELECT privacy FROM Profile WHERE user_id = #{userId}
     </select>
 </mapper>
