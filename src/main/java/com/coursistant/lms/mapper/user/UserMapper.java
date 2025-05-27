@@ -70,4 +70,8 @@ public interface UserMapper {
 
     // @Select("SELECT level FROM User WHERE id = #{id}")
     String selectUserLevelById(Integer id);
+
+    void addNameChangeRequest(String currentName, String newName, Integer userId);
+
+    void reviewNameChangeRequest(String decision, Integer userId, Integer adminId);
 }

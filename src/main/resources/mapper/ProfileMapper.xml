@@ -39,10 +39,12 @@
         SELECT * FROM Profile
     </select>
 
+    <!--Change profile privacy settings for a user-->
     <update id="updateUserPrivacyById" parameterType="com.coursistant.lms.entity.Profile">
         UPDATE Profile SET privacy = #{privacy} WHERE user_id = #{userId}
     </update>
 
+    <!--Show privacy settings for a user-->
     <select id="selectUserPrivacyById" parameterType="com.coursistant.lms.entity.Profile" resultType="String">
         SELECT privacy FROM Profile WHERE user_id = #{userId}
     </select>

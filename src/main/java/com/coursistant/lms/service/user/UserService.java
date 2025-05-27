@@ -12,6 +12,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import com.coursistant.lms.common.Constants;
+import com.coursistant.lms.common.enums.AdminEnums;
 import com.coursistant.lms.common.enums.LevelEnum;
 import com.coursistant.lms.common.enums.ResultCodeEnum;
 import com.coursistant.lms.common.enums.RoleEnum;
@@ -414,5 +415,32 @@ public class UserService {
     public String getUserLevel(Integer id)
     {
         return userMapper.selectUserLevelById(id);
+    }
+
+    public void updateName(String currentName, String newName, Integer userId)
+    {
+        userMapper.addNameChangeRequest(currentName, newName, userId);
+    }
+
+    public void reviewNameChangeRequest(String decision, Integer userId, Integer adminId)
+    {
+        User user = userMapper.selectById(adminId);
+        String role = user.getRole();
+
+        if (!role.equals("ADMIN"))
+        {
+            throw new CustomException(ResultCodeEnum.INVALID_ACCESS_ERROR);
+        }
+        
+        if (decision.equals(AdminEnums.APPROVED)|| decision.equals(AdminEnums.DENIED))
+        {
+            userMapper.reviewNameChangeRequest(decision, userId, adminId);
+        }
+
+        else
+        {
+            throw new CustomException(ResultCodeEnum.PARAM_ERROR);
+        }
+
     }
 }

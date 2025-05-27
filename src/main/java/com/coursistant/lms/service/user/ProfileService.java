@@ -1,10 +1,14 @@
 package com.coursistant.lms.service.user;
 
-import com.coursistant.lms.entity.Profile;
-import com.coursistant.lms.mapper.user.ProfileMapper;
+import java.util.List;
+
 import org.springframework.stereotype.Service;
 
-import java.util.List;
+import com.coursistant.lms.common.enums.LevelEnum;
+import com.coursistant.lms.common.enums.ResultCodeEnum;
+import com.coursistant.lms.entity.Profile;
+import com.coursistant.lms.exception.CustomException;
+import com.coursistant.lms.mapper.user.ProfileMapper;
 
 /**
  * 用户个人资料业务处理 // User profile service processing
@@ -62,7 +66,15 @@ public class ProfileService {
 
     public void updateUserPrivacy(String privacy, Integer userId)
     {
-        profileMapper.updateUserPrivacyById(privacy, userId);
+        if(privacy.equals(LevelEnum.SELF.level)||privacy.equals(LevelEnum.TEACHER.level)||privacy.equals(LevelEnum.STUDENT.level))
+        {
+            profileMapper.updateUserPrivacyById(privacy, userId);
+        }
+
+        else
+        {
+            throw new CustomException(ResultCodeEnum.PARAM_ERROR);
+        }
     }
 
     public String selectUserPrivacy(Integer userId)
