@@ -1,6 +1,11 @@
 package com.coursistant.lms.entity;
 
 import java.io.Serializable;
+import java.time.LocalDateTime;
+
+import org.springframework.format.annotation.DateTimeFormat;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
 
 /**
  * 公告实体类
@@ -32,7 +37,11 @@ public class AssignmentSubmission implements Serializable {
     /** 提交日期
      * Submission date
      */
-    private String date;
+    @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "UTC")
+    private LocalDateTime date;
+
+    private String timezone;
 
     /** 状态
      * Submission status
@@ -105,12 +114,20 @@ public class AssignmentSubmission implements Serializable {
         this.graderId = graderId;
     }
 
-    public String getDate() {
+    public LocalDateTime getDate() {
         return date;
     }
 
-    public void setDate(String date) {
+    public void setDate(LocalDateTime date) {
         this.date = date;
+    }
+
+    public String getTimezone() {
+        return timezone;
+    }
+
+    public void setTimezone(String timezone) {
+        this.timezone = timezone;
     }
 
     public String getStatus() {

@@ -1,6 +1,11 @@
 package com.coursistant.lms.entity;
 
 import java.io.Serializable;
+import java.time.LocalDateTime;
+
+import org.springframework.format.annotation.DateTimeFormat;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
 
 /**
  * 公告实体类
@@ -32,9 +37,15 @@ public class Assignment implements Serializable {
     /** 公告日期
      * Assignment start and due
      */
-    private String due;
+    @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "UTC")
+    private LocalDateTime due;
 
-    private String start;
+    @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "UTC")
+    private LocalDateTime start;
+
+    private String timezone;
 
     private String description;
 
@@ -129,18 +140,28 @@ public class Assignment implements Serializable {
         this.title = title;
     }
 
-    public String getDue() {
+    public LocalDateTime getDue() {
         return due;
     }
 
-    public void setDue(String due) {
+    public void setDue(LocalDateTime due) {
         this.due = due;
     }
 
-
-
-    public String getStart() {
+    public LocalDateTime getStart() {
         return start;
+    }
+
+    public void setStart(LocalDateTime start) {
+        this.start = start;
+    }
+
+    public String getTimezone() {
+        return timezone;
+    }
+
+    public void setTimezone(String timezone) {
+        this.timezone = timezone;
     }
 
     public String getDescription() {
@@ -149,10 +170,6 @@ public class Assignment implements Serializable {
 
     public void setDescription(String description) {
         this.description = description;
-    }
-
-    public void setStart(String start) {
-        this.start = start;
     }
 
     public String getCriteria() {
