@@ -31,7 +31,11 @@
     <!-- Select a profile by ID -->
     <select id="selectByUserId" resultType="com.coursistant.lms.entity.Profile">
         <!-- SELECT * FROM Profile WHERE user_id = #{userId} -->
-         SELECT p.*, c.name FROM Profile p, Course c, Learn l WHERE p.user_id = l.user_id AND l.course_id = c.id AND l.course_status = "completed";
+         <!-- SELECT p.*, c.name FROM Profile p, Course c, Learn l WHERE p.user_id = #{userId} AND p.user_id = l.user_id AND l.course_id = c.id AND (l.course_status = "completed" OR l.course_status IS NULL); -->
+        SELECT p.*, CAST(GROUP_CONCAT(c.name) AS CHAR) AS completed_courses
+        FROM Profile p, Course c, Learn l 
+        WHERE p.user_id = #{userId} AND p.user_id = l.user_id AND l.course_id = c.id AND (l.course_status = "completed" OR l.course_status IS NULL)
+        GROUP BY p.user_id, p.id, p.preferred_name, p.pronouns, p.email, p.introduction, p.avatar, p.school_name, p.graduation_year, p.major, p.interest, p.profile, p.privacy;
     </select>
 
     <!-- Select all profiles -->
@@ -47,5 +51,13 @@
     <!--Show privacy settings for a user-->
     <select id="selectUserPrivacyById" parameterType="com.coursistant.lms.entity.Profile" resultType="String">
         SELECT privacy FROM Profile WHERE user_id = #{userId}
+    </select>
+
+    <select id="selectGradesById" resultType="map">
+        SELECT c.name,l.grade FROM Course c, Learn l WHERE l.course_id = c.id AND l.user_id = #{userId}
+    </select>
+
+    <select id="selectCourseGradesById" resultType="map">
+        SELECT u.name, l.grade FROM User u, Learn l, Course c, Teach t WHERE l.course_id = #{courseId} AND l.course_id = c.id AND t.course_id = #{courseId} AND u.id = l.user_id AND t.user_id = #{userId};
     </select>
 </mapper>

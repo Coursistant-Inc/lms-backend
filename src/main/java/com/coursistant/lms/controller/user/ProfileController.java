@@ -4,6 +4,7 @@ import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Logger;
 
 import org.springframework.http.HttpStatus;
@@ -62,9 +63,10 @@ public class ProfileController {
     public ResponseEntity<Object> getProfileByUserId(@PathVariable Integer userId,@RequestParam(value="self_user_id") Integer selfUserId) {
         String selfLevel = userService.getUserLevel(selfUserId);
         String userPrivacyLevel = profileService.selectUserPrivacy(userId);
-        if(userPrivacyLevel.equals(selfLevel))
+        if(userPrivacyLevel == null||userPrivacyLevel.equals(selfLevel))
         {
             Profile profile = profileService.getProfileByUserId(userId);
+            System.out.println("profile: "+profile);
             return ResponseEntity.ok(profile);
         }
 
@@ -106,6 +108,9 @@ public class ProfileController {
             // 将 JSON 字符串转换为 Profile 对象
             // Convert JSON string to Profile object
             profile = objectMapper.readValue(profileJson, Profile.class);
+
+            // System.out.println("Avatar file size in MB: "+avatarFileSizeInMB);
+
         } catch (JsonProcessingException e) {
             throw new RuntimeException("Invalid profile JSON format", e);
         }
@@ -115,6 +120,12 @@ public class ProfileController {
 
         if (avatar != null && !avatar.isEmpty()) {
             try {
+                long avatarFileSizeInMB = avatar.getSize()/1048576;
+                if(avatarFileSizeInMB > 50)
+                {
+                    return "File size limit exceeded";
+                }
+
                 // 1. 创建按日期存储的目录
                 // 1. Create a directory for today's date
                 String datePath = new SimpleDateFormat("yyyy/MM/dd").format(new Date());
@@ -144,10 +155,14 @@ public class ProfileController {
             } catch (Exception e) {
                 logger.severe("Error saving avatar: " + e.getMessage());
             }
+            // return avatarFileSizeInMB;
+
         }
         profileService.updateProfile(profile);
         logResponse("update", profile.toString());
         return "Profile updated (or created) successfully!";
+
+
     }
 
     /**
@@ -167,6 +182,22 @@ public class ProfileController {
         profileService.updateUserPrivacy(privacy, userId);
 
         return "Privacy setting updated.";
+    }
+
+    // Student viewing their grades
+    @PostMapping("/grades")
+    public ResponseEntity<List<Map<String,Object>>> viewGrades(@RequestParam("userId") Integer userId)
+    {
+        List<Map<String,Object>> grades = profileService.selectGradesById(userId);
+        return ResponseEntity.ok(grades);
+    }
+
+    // Viewing grades of students in a course by a professor
+    @PostMapping("/course/grades")
+    public ResponseEntity<List<Map<String,Object>>> viewCourseGrades(@RequestParam(value="userId") Integer userId, @RequestParam(value="courseId") Integer courseId)
+    {
+        List<Map<String,Object>> grades = profileService.selectCourseGradesById(userId, courseId);
+        return ResponseEntity.ok(grades);
     }
     
 }

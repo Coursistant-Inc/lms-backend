@@ -145,7 +145,7 @@ public class UserController {
         return "Your request has been received. You will be notified once a decision has been taken";
     }
 
-    // This method should be accessible only to admins
+    // This method should be accessible only to university admins
     @PostMapping("/reviewNameChange")
     public void reviewNameChangeRequest(@RequestParam("decision") String decision, @RequestParam("userId") Integer userId, @RequestParam("adminId") Integer adminId)
     {

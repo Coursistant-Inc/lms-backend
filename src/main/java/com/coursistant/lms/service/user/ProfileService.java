@@ -1,6 +1,7 @@
 package com.coursistant.lms.service.user;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.stereotype.Service;
 
@@ -81,5 +82,15 @@ public class ProfileService {
     {
         String privacy = profileMapper.selectUserPrivacyById(userId);
         return privacy;
+    }
+
+    public List<Map<String,Object>> selectGradesById(Integer userId)
+    {
+        return profileMapper.selectGradesById(userId);
+    }
+
+    public List<Map<String,Object>> selectCourseGradesById(Integer userId, Integer courseId)
+    {
+        return profileMapper.selectCourseGradesById(userId, courseId);
     }
 }
