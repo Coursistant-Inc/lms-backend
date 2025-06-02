@@ -1,10 +1,17 @@
 package com.coursistant.lms.service.assignment;
 
+import com.coursistant.lms.common.enums.ResultCodeEnum;
 import com.coursistant.lms.entity.Assignment;
 import com.coursistant.lms.entity.AssignmentGroup;
 import com.coursistant.lms.mapper.assignment.AssignmentGroupMapper;
+
+import cn.hutool.core.util.ObjectUtil;
+
 import com.coursistant.lms.entity.GroupMember;
 import com.coursistant.lms.entity.User;
+import com.coursistant.lms.exception.CustomException;
+
+import org.apache.poi.hssf.record.ObjRecord;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
@@ -82,11 +89,14 @@ public class AssignmentGroupService {
 
 
         Assignment assignment = assignmentMapper.selectById(assignmentId);
-        if (assignment == null || assignment.getCourseId() == null) {
-            throw new RuntimeException("Assignment or course not found");
+        if (ObjectUtil.isNull(assignment)) {
+            throw new CustomException(ResultCodeEnum.ASSIGNMENT_NOT_EXIST_ERROR);
         }
-        //assignment.setGroupSize(groupSize);
-        //assignmentMapper.updateById(assignment);
+        if (ObjectUtil.isEmpty(assignment.getCourseId())) {
+            throw new CustomException(ResultCodeEnum.COURSE_NOT_EXIST_ERROR);
+        }
+        assignment.setGroupSize(groupSize);
+        assignmentMapper.updateById(assignment);
         Integer courseId = assignment.getCourseId();
 
         // 构造条件：只查学生

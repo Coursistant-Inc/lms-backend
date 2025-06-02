@@ -1,6 +1,7 @@
 server:
   port: 9090
   servlet:
+    context-path: /api
     encoding:
       enabled: false
 
@@ -55,7 +56,7 @@ spring:
       defaultFS: hdfs://labserver101.ddns.net:9666 # HDFS 的地址 (替换为你的 Hadoop 集群地址)
       user: admir  # 访问 HDFS 的用户
 
-  mvc:
+  mvc:      
     pathmatch:
       matching-strategy: ant_path_matcher
 
