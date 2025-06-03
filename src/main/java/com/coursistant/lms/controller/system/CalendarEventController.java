@@ -1,0 +1,108 @@
+package com.coursistant.lms.controller.system;
+
+import com.coursistant.lms.common.Result;
+import com.coursistant.lms.entity.Assignment;
+import com.coursistant.lms.entity.CalendarEvent;
+import com.coursistant.lms.entity.DTO.AssignmentDTO;
+import com.coursistant.lms.service.assignment.AssignmentService;
+import com.coursistant.lms.service.system.CalendarEventService;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import javax.annotation.Resource;
+import java.util.List;
+import java.util.logging.Logger;
+
+/**
+ * 日历事件前端操作接口
+ * Calendar event frontend operation API
+ */
+@RestController
+@RequestMapping("/calendarEvent")
+public class CalendarEventController {
+
+    @Resource
+    private CalendarEventService calendarEventService;
+
+    private static final Logger logger = Logger.getLogger(CalendarEventController.class.getName());
+
+    private void logRequest(String methodName, String requestBody) {
+        logger.info(() -> String.format("Start %s: %s", methodName, requestBody));
+    }
+
+    private void logResponse(String methodName, String response) {
+        logger.info(() -> String.format("End %s: %s", methodName, response));
+    }
+
+    /**
+     * 新增事件
+     * Add a new calendar event
+     */
+    @PostMapping("/add")
+    public Result add(@RequestBody CalendarEvent calendarEvent) {
+        logRequest("add", calendarEvent.toString());
+        calendarEventService.add(calendarEvent);
+        logResponse("add", "Success");
+        return Result.success();
+    }
+
+    /**
+     * 根据 ID 删除事件
+     * Delete a calendar event by ID
+     */
+    @DeleteMapping("/delete/{id}")
+    public Result deleteById(@PathVariable Integer id) {
+        logRequest("deleteById", id.toString());
+        calendarEventService.deleteById(id);
+        logResponse("deleteById", "Success");
+        return Result.success();
+    }
+
+    /**
+     * 批量删除事件
+     * Batch delete calendar events
+     */
+    @DeleteMapping("/delete/batch")
+    public Result deleteBatch(@RequestBody List<Integer> ids) {
+        logRequest("deleteBatch", ids.toString());
+        calendarEventService.deleteBatch(ids);
+        logResponse("deleteBatch", "Success");
+        return Result.success();
+    }
+
+    /**
+     * 修改事件
+     * Update a calendar event
+     */
+    @PutMapping("/update")
+    public Result updateById(@RequestBody CalendarEvent calendarEvent) {
+        logRequest("updateById", calendarEvent.toString());
+        calendarEventService.updateById(calendarEvent);
+        logResponse("updateById", "Success");
+        return Result.success();
+    }
+
+    /**
+     * 根据 ID 查询事件
+     * Query a calendar event by ID
+     */
+    @GetMapping("/selectById/{id}")
+    public Result selectById(@PathVariable Integer id) {
+        logRequest("selectById", id.toString());
+        CalendarEvent calendarEvent = calendarEventService.selectById(id);
+        logResponse("selectById", calendarEvent.toString());
+        return Result.success(calendarEvent);
+    }
+
+    /**
+     * 查询所有事件
+     * Query all calendar events
+     */
+    @GetMapping("/selectAll")
+    public Result selectAll(CalendarEvent condition) {
+        logRequest("selectAll", condition != null ? condition.toString() : "null");
+        List<CalendarEvent> list = calendarEventService.selectAll(condition);
+        logResponse("selectAll", null);
+        return Result.success(list);
+    }
+}

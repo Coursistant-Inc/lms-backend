@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.coursistant.lms.mapper.system.CalendarEventMapper">
+
+    <sql id="Base_Column_List">
+        id, user_id, title, description, start_time, end_time, is_all_day, timezone, created_at, updated_at
+    </sql>
+
+    <select id="selectAll" resultType="com.coursistant.lms.entity.CalendarEvent">
+        select
+        <include refid="Base_Column_List"/>
+        from CalendarEvent
+        <where>
+            <if test="userId != null"> and user_id = #{userId}</if>
+            <if test="title != null"> and title like concat('%', #{title}, '%')</if>
+        </where>
+    </select>
+
+    <select id="selectById" resultType="com.coursistant.lms.entity.CalendarEvent">
+        select
+        <include refid="Base_Column_List"/>
+        from CalendarEvent
+        where id = #{id}
+    </select>
+
+    <select id="selectByUserAndRange" resultType="com.coursistant.lms.entity.CalendarEvent">
+        select
+        <include refid="Base_Column_List"/>
+        from CalendarEvent
+        where user_id = #{userId}
+        and start_time &gt;= #{start}
+        and end_time &lt;= #{end}
+    </select>
+
+    <delete id="deleteById">
+        delete from CalendarEvent where id = #{id}
+    </delete>
+
+    <insert id="insert" parameterType="com.coursistant.lms.entity.CalendarEvent" useGeneratedKeys="true" keyProperty="id">
+        insert into CalendarEvent
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="userId != null">user_id,</if>
+            <if test="title != null">title,</if>
+            <if test="description != null">description,</if>
+            <if test="startTime != null">start_time,</if>
+            <if test="endTime != null">end_time,</if>
+            <if test="isAllDay != null">is_all_day,</if>
+            <if test="timezone != null">timezone,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="userId != null">#{userId},</if>
+            <if test="title != null">#{title},</if>
+            <if test="description != null">#{description},</if>
+            <if test="startTime != null">#{startTime},</if>
+            <if test="endTime != null">#{endTime},</if>
+            <if test="isAllDay != null">#{isAllDay},</if>
+            <if test="timezone != null">#{timezone},</if>
+        </trim>
+    </insert>
+
+    <update id="updateById" parameterType="com.coursistant.lms.entity.CalendarEvent">
+        update CalendarEvent
+        <set>
+            <if test="title != null">title = #{title},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="startTime != null">start_time = #{startTime},</if>
+            <if test="endTime != null">end_time = #{endTime},</if>
+            <if test="isAllDay != null">is_all_day = #{isAllDay},</if>
+            <if test="timezone != null">timezone = #{timezone},</if>
+        </set>
+        where id = #{id}
+    </update>
+
+</mapper>

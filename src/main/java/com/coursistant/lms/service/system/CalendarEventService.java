@@ -1,0 +1,158 @@
+package com.coursistant.lms.service.system;
+
+
+import cn.hutool.core.util.ObjectUtil;
+import com.coursistant.lms.common.enums.ResultCodeEnum;
+import com.coursistant.lms.entity.CalendarDisplayEvent;
+import com.coursistant.lms.entity.CalendarEvent;
+import com.coursistant.lms.exception.CustomException;
+import com.coursistant.lms.mapper.system.CalendarEventMapper;
+import com.coursistant.lms.mapper.system.AdminMapper;
+
+import org.springframework.stereotype.Service;
+
+import javax.annotation.Resource;
+
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+
+import java.time.LocalDateTime;
+import java.util.stream.Collectors;
+
+/**
+ * 日历事件服务类
+ * Service for calendar event operations
+ */
+@Service
+public class CalendarEventService {
+
+    @Resource
+    private CalendarEventMapper calendarEventMapper;
+
+    /**
+     * 新增
+     * Insert a new calendar event
+     */
+    public void add(CalendarEvent calendarEvent) {
+        calendarEventMapper.insert(calendarEvent);
+    }
+
+    /**
+     * 删除
+     * Delete a calendar event by ID
+     */
+    public void deleteById(Integer id) {
+        calendarEventMapper.deleteById(id);
+    }
+
+    /**
+     * 批量删除
+     * Delete multiple calendar events by IDs
+     */
+    public void deleteBatch(List<Integer> ids) {
+        for (Integer id : ids) {
+            calendarEventMapper.deleteById(id);
+        }
+    }
+
+    /**
+     * 修改
+     * Update a calendar event
+     */
+    public void updateById(CalendarEvent calendarEvent) {
+        calendarEventMapper.updateById(calendarEvent);
+    }
+
+    /**
+     * 根据 ID 查询
+     * Select by ID
+     */
+    public CalendarEvent selectById(Integer id) {
+        CalendarEvent event = calendarEventMapper.selectById(id);
+        if (event == null) {
+            throw new CustomException(ResultCodeEnum.EVENT_NOT_EXIST_ERROR);
+        }
+        return event;
+    }
+
+    /**
+     * 查询所有
+     * Select all events
+     */
+    public List<CalendarEvent> selectAll(CalendarEvent calendarEvent) {
+        return calendarEventMapper.selectAll(calendarEvent);
+    }
+
+    /**
+     * 查询某用户在某时间段的事件
+     * Select events by user and time range
+     */
+    public List<CalendarEvent> selectByUserAndTimeRange(Integer userId, LocalDateTime start, LocalDateTime end) {
+        return calendarEventMapper.selectByUserAndRange(userId, start, end);
+    }
+
+    /**
+     * 查询某用户在指定时间范围内的个人事件，并转换为日历展示格式
+     * Query personal calendar events and convert to display events
+     */
+    public List<CalendarDisplayEvent> selectDisplayEventsByUserAndTimeRange(Integer userId, LocalDateTime start, LocalDateTime end) {
+        List<CalendarEvent> personalEvents = calendarEventMapper.selectByUserAndRange(userId, start, end);
+
+        return personalEvents.stream().map(e -> {
+            CalendarDisplayEvent display = new CalendarDisplayEvent();
+            display.setTitle(e.getTitle());
+            display.setStart(e.getStartTime());
+            display.setEnd(e.getEndTime());
+            display.setAllDay(e.getAllDay());
+            display.setType("personal");
+            display.setSourceId(e.getId());
+            display.setTimezone(e.getTimezone());
+            return display;
+        }).collect(Collectors.toList());
+    }
+
+    public String generateGoogleCalendarLink(CalendarDisplayEvent event) {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'").withZone(ZoneOffset.UTC);
+
+        String start = formatter.format(event.getStart().atZone(ZoneId.of(event.getTimezone())));
+        String end = formatter.format(event.getEnd().atZone(ZoneId.of(event.getTimezone())));
+
+        String details = "";
+
+        switch (event.getType()) {
+            case "assignment":
+                details = "Reminder: Assignment deadline is approaching.";
+                break;
+            case "personal":
+                details = "Reminder: Upcoming personal event.";
+                break;
+            case "course":
+                details = "Reminder: Scheduled course session.";
+                break;
+            default:
+                details = "Reminder: Upcoming calendar event.";
+        }
+
+
+        return String.format("https://www.google.com/calendar/render?action=TEMPLATE" +
+                        "&text=%s&dates=%s/%s&details=%s&ctz=%s",
+                URLEncoder.encode(event.getTitle(), StandardCharsets.UTF_8),
+                start,
+                end,
+                URLEncoder.encode(details, StandardCharsets.UTF_8),
+                URLEncoder.encode(event.getTimezone(), StandardCharsets.UTF_8));
+
+    }
+
+
+
+
+
+
+
+
+}

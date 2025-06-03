@@ -103,17 +103,5 @@ public class CourseController {
         return Result.success(list);
     }
 
-    /**
-     * 分页查询
-     * Paginated query for courses
-     */
-    @GetMapping("/selectPage")
-    public Result selectPage(Course course,
-                             @RequestParam(defaultValue = "1") Integer pageNum,
-                             @RequestParam(defaultValue = "10") Integer pageSize) {
-        logRequest("selectPage", String.format("course=%s, pageNum=%d, pageSize=%d", course, pageNum, pageSize));
-        PageInfo<Course> page = courseService.selectPage(course, pageNum, pageSize);
-        logResponse("selectPage", null);
-        return Result.success(page);
-    }
+
 }

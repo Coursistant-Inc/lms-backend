@@ -3,6 +3,9 @@ package com.coursistant.lms.service.assignment;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.ObjectUtil;
+import com.coursistant.lms.entity.CalendarDisplayEvent;
+import com.coursistant.lms.entity.Learn;
+import com.coursistant.lms.service.course.LearnService;
 import com.coursistant.lms.service.file.AssignmentFileService;
 import com.coursistant.lms.common.enums.ResultCodeEnum;
 import com.coursistant.lms.entity.Assignment;
@@ -14,6 +17,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 
@@ -25,6 +30,9 @@ public class AssignmentService {
 
     @Resource
     private AssignmentFileService assignmentFileService;
+
+    @Resource
+    private LearnService learnService;
 
 
     public void add(Assignment assignment, List<MultipartFile> files) {
@@ -119,6 +127,12 @@ public class AssignmentService {
         return assignmentDTO;
     }
 
+    public List<Assignment> selectByCourseId(Integer id){
+        List<Assignment> assignment=assignmentMapper.selectByCourseId(id);
+
+        return  assignment;
+    }
+
     /**
      * 查询所有
      * Query all assignments
@@ -130,5 +144,42 @@ public class AssignmentService {
 
         return assignments;
     }
+
+    public List<CalendarDisplayEvent> selectAssignmentByUserAndTimeRange(Integer userId, LocalDateTime start, LocalDateTime end) {
+        List<CalendarDisplayEvent> result = new ArrayList<>();
+
+        List<Learn> dblearn = learnService.selectByStudentId(userId);
+        if (dblearn == null || dblearn.isEmpty()) {
+            return result;
+        }
+
+        for (Learn singleLearn : dblearn) {
+            List<Assignment> assignments = assignmentMapper.selectByCourseId(singleLearn.getCourseId());
+            for (Assignment assignment : assignments) {
+
+                // ✅ 过滤：截止时间为空，或不在指定时间范围内则跳过
+                if (assignment.getDue() == null) {
+                    continue;
+                }
+                if (assignment.getDue().isBefore(start) || assignment.getDue().isAfter(end)) {
+                    continue;
+                }
+
+                CalendarDisplayEvent single = new CalendarDisplayEvent();
+                single.setTimezone(assignment.getTimezone());
+                single.setAllDay(false);
+                single.setStart(assignment.getDue().minusMinutes(5));
+                single.setEnd(assignment.getDue());
+                single.setType("assignment");
+                single.setTitle(assignment.getTitle());
+                single.setSourceId(assignment.getId());
+
+                result.add(single);
+            }
+        }
+
+        return result;
+    }
+
 
 }

@@ -56,4 +56,12 @@ public interface AssignmentMapper {
      */
     @Select("SELECT * FROM Assignment WHERE user_id = #{userId}")
     List<Assignment> selectByUserId(Integer userId);
+
+    /**
+     * 根据 course_id 查询 Assignment
+     * Query Assignments by course_id
+     */
+    @Select("SELECT * FROM Assignment WHERE course_id = #{courseId}")
+    List<Assignment> selectByCourseId(Integer courseId);
+
 }
