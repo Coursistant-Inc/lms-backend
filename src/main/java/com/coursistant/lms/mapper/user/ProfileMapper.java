@@ -1,10 +1,11 @@
 package com.coursistant.lms.mapper.user;
 
 import java.util.List;
+import java.util.Map;
+
 import org.apache.ibatis.annotations.Mapper;
 
 import com.coursistant.lms.entity.Profile;
-import java.util.Map;
 /**
  * 操作 Profile 相关数据接口
  * Data access interface for Profile-related operations
@@ -49,4 +50,6 @@ public interface ProfileMapper {
     List<Map<String,Object>> selectGradesById(Integer userId);
 
     List<Map<String,Object>> selectCourseGradesById(Integer userId, Integer courseId);
+
+    String selectAvatarPathById(Integer userId);
 }

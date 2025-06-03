@@ -93,4 +93,9 @@ public class ProfileService {
     {
         return profileMapper.selectCourseGradesById(userId, courseId);
     }
+
+    public String selectAvatarPathById(Integer userId)
+    {
+        return profileMapper.selectAvatarPathById(userId);
+    }
 }

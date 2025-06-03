@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
@@ -86,11 +85,98 @@ public class ProfileController {
      * 新增个人资料
      * Add a new profile
      */
-    @PostMapping("/add")
-    public String createProfile(@RequestBody Profile profile) {
+    // @PostMapping("/add")
+    // public String createProfile(@RequestBody Profile profile) {
+    //     logRequest("add", profile.toString());
+    //     profileService.createProfile(profile);
+    //     logResponse("add", profile.toString());
+    //     return "Profile created successfully!";
+    // }
+
+    @PostMapping(value = "/add", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public String createProfile(@RequestParam("userId") Integer userId, @RequestPart("profile") String profileJson,
+                                @RequestParam(value="avatar",required=false) MultipartFile avatar)
+
+    {
+        ObjectMapper objectMapper = new ObjectMapper();
+        Profile profile;
+
+        try
+        {
+            profile = objectMapper.readValue(profileJson, Profile.class);
+        }
+
+        catch(JsonProcessingException e)
+        {
+            throw new RuntimeException("Invalid profile JSON format: "+e);
+        }
+
+        Profile existingProfile = profileService.getProfileByUserId(userId);
+        if(existingProfile!=null)
+        {
+            return "A profile already exists.";
+        }
+
         logRequest("add", profile.toString());
+        if (avatar != null && !avatar.isEmpty()) {
+            try {
+
+               String avatarFileName = avatar.getOriginalFilename();
+                int i = avatarFileName.lastIndexOf(".");
+
+                if(i == -1)
+                {
+                    return "Invalid file";
+                }
+                String extension = i > 0? avatarFileName.substring(i + 1):"";
+                if(!extension.equals("jpg")&&!extension.equals("png"))
+                {
+                    return "Invalid avatar file format.";
+                }
+
+                long avatarFileSizeInMB = avatar.getSize()/1048576;
+                if(avatarFileSizeInMB > 50)
+                {
+                    return "File size limit exceeded";
+                }
+
+ 
+
+                // 1. 创建按日期存储的目录
+                // 1. Create a directory for today's date
+                String datePath = new SimpleDateFormat("yyyy/MM/dd").format(new Date());
+                String baseDir = "/home/admir/SpringBoot/saved_images/avatars/"; // 更改头像存储路径 / Change path for avatars
+                // String baseDir = System.getProperty("user.home") + "/SpringBoot/saved_images/avatars";
+                String uploadDir = baseDir + datePath + "/";
+                File dir = new File(uploadDir);
+                if (!dir.exists() && !dir.mkdirs()) {
+                    throw new RuntimeException("Failed to create directory: " + uploadDir);
+                }
+
+                // 2. 生成唯一的文件名
+                // 2. Generate a unique filename
+                String fileName = System.currentTimeMillis() + "_" + avatar.getOriginalFilename();
+                File destFile = new File(uploadDir + fileName);
+
+                // 3. 保存文件
+                // 3. Save the file
+                avatar.transferTo(destFile);
+                String absoluteFilePath = destFile.getAbsolutePath();
+
+                // 4. 设置头像文件路径
+                // 4. Set the avatar file path in the profile
+                profile.setAvatar(absoluteFilePath);
+                logger.info("Avatar saved at: " + absoluteFilePath);
+                System.out.println("TEST: Avatar saved at: " + absoluteFilePath);
+            } catch (Exception e) {
+                logger.severe("Error saving avatar: " + e.getMessage());
+            }
+            // return avatarFileSizeInMB;
+
+        }
+
         profileService.createProfile(profile);
-        logResponse("add", profile.toString());
+        logRequest("add",profile.toString());
         return "Profile created successfully!";
     }
 
@@ -120,10 +206,31 @@ public class ProfileController {
 
         if (avatar != null && !avatar.isEmpty()) {
             try {
+
+               String avatarFileName = avatar.getOriginalFilename();
+                int i = avatarFileName.lastIndexOf(".");
+                if(i == -1)
+                {
+                    return "Invalid file";
+                }
+                String extension = i > 0? avatarFileName.substring(i + 1):"";
+                if(!extension.equals("jpg")&&!extension.equals("png"))
+                {
+                    return "Invalid avatar file format.";
+                }
+
+
                 long avatarFileSizeInMB = avatar.getSize()/1048576;
                 if(avatarFileSizeInMB > 50)
                 {
                     return "File size limit exceeded";
+                }
+
+                String avatarPath = profileService.selectAvatarPathById(userId);
+                if(avatarPath != null&& !avatarPath.isEmpty())
+                {
+                    File oldAvatar = new File(avatarPath);
+                    oldAvatar.delete();
                 }
 
                 // 1. 创建按日期存储的目录
