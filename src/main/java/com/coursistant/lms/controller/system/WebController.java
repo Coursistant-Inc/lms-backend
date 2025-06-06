@@ -135,7 +135,7 @@ public class WebController {
      */
     @PostMapping("/register")
     public Result register(@RequestBody Account account) {
-        if (StrUtil.isBlank(account.getPassword()) ||  StrUtil.isBlank(account.getEmail())     // SECURITY WARNING: No check for non-empty password
+        if (StrUtil.isBlank(account.getPassword()) ||  StrUtil.isBlank(account.getEmail())
                 || ObjectUtil.isEmpty(account.getRole())) {
             return Result.error(ResultCodeEnum.PARAM_LOST_ERROR);
         }

@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
 import java.util.List;
-import java.util.logging.Logger;
+//import java.util.logging.Logger;
 import java.util.Map;
 import java.util.HashMap;
 
@@ -25,7 +25,7 @@ public class GroupMemberController {
     @Resource
     private GroupMemberService groupMemberService;
 
-    private static final Logger logger = Logger.getLogger(GroupMemberController.class.getName());
+    //private static final Logger logger = Logger.getLogger(GroupMemberController.class.getName());
 
 
 
