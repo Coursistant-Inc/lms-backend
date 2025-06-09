@@ -46,15 +46,17 @@ public class ProfileService {
     /**
      * 更新个人资料 // Update profile
      */
-    public void updateProfile(Profile profile) {
+    public String updateProfile(Profile profile) {
         Profile existingProfile = profileMapper.selectByUserId(profile.getUserId());
         if (existingProfile != null) {
             // 个人资料存在，进行更新 // Profile exists, update it
             profile.setId(existingProfile.getId());  // 确保使用正确的 ID // Ensure correct ID is used
             profileMapper.updateById(profile);
+            return "Profile updated successfully!";
         } else {
             // 个人资料不存在，创建新记录 // Profile does not exist, create a new one
-            profileMapper.insert(profile);
+            // profileMapper.insert(profile);
+            return "Profile not found!";
         }
     }
 
@@ -97,5 +99,10 @@ public class ProfileService {
     public String selectAvatarPathById(Integer userId)
     {
         return profileMapper.selectAvatarPathById(userId);
+    }
+
+    public void updateAvatarPathById(Integer userId, String avatarPath)
+    {
+        profileMapper.updateAvatarPathById(userId, avatarPath);
     }
 }

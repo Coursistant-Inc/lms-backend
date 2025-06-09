@@ -52,4 +52,6 @@ public interface ProfileMapper {
     List<Map<String,Object>> selectCourseGradesById(Integer userId, Integer courseId);
 
     String selectAvatarPathById(Integer userId);
+
+    void updateAvatarPathById(Integer userId, String avatarPath);
 }

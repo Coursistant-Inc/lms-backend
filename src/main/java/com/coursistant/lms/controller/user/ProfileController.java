@@ -65,6 +65,10 @@ public class ProfileController {
         if(userPrivacyLevel == null||userPrivacyLevel.equals(selfLevel))
         {
             Profile profile = profileService.getProfileByUserId(userId);
+            if(profile == null)
+            {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Profile not found!");
+            }
             System.out.println("profile: "+profile);
             return ResponseEntity.ok(profile);
         }
@@ -101,6 +105,11 @@ public class ProfileController {
         ObjectMapper objectMapper = new ObjectMapper();
         Profile profile;
 
+        if(profileJson==null)
+        {
+            return "Profile details not found!";
+        }
+
         try
         {
             profile = objectMapper.readValue(profileJson, Profile.class);
@@ -114,14 +123,14 @@ public class ProfileController {
         Profile existingProfile = profileService.getProfileByUserId(userId);
         if(existingProfile!=null)
         {
-            return "A profile already exists.";
+            return "A profile of this user already exists.";
         }
 
         logRequest("add", profile.toString());
         if (avatar != null && !avatar.isEmpty()) {
             try {
 
-               String avatarFileName = avatar.getOriginalFilename();
+                String avatarFileName = avatar.getOriginalFilename();
                 int i = avatarFileName.lastIndexOf(".");
 
                 if(i == -1)
@@ -145,7 +154,8 @@ public class ProfileController {
                 // 1. 创建按日期存储的目录
                 // 1. Create a directory for today's date
                 String datePath = new SimpleDateFormat("yyyy/MM/dd").format(new Date());
-                String baseDir = "/home/admir/SpringBoot/saved_images/avatars/"; // 更改头像存储路径 / Change path for avatars
+                // String baseDir = "/home/admir/SpringBoot/saved_images/avatars/"; // 更改头像存储路径 / Change path for avatars
+                String baseDir = "C:/Users/Shreyansh Bardia/LMS-pictures/";
                 // String baseDir = System.getProperty("user.home") + "/SpringBoot/saved_images/avatars";
                 String uploadDir = baseDir + datePath + "/";
                 File dir = new File(uploadDir);
@@ -166,6 +176,7 @@ public class ProfileController {
                 // 4. 设置头像文件路径
                 // 4. Set the avatar file path in the profile
                 profile.setAvatar(absoluteFilePath);
+                System.out.println("AVATAR FILE PATH:"+absoluteFilePath);
                 logger.info("Avatar saved at: " + absoluteFilePath);
                 System.out.println("TEST: Avatar saved at: " + absoluteFilePath);
             } catch (Exception e) {
@@ -175,9 +186,15 @@ public class ProfileController {
 
         }
 
+        else
+        {
+            return "Avatar file not found!";
+        }
+
         profileService.createProfile(profile);
         logRequest("add",profile.toString());
-        return "Profile created successfully!";
+        // return "Profile created successfully!";
+        return "Profile saved: "+profile.toString();
     }
 
     /**
@@ -186,30 +203,51 @@ public class ProfileController {
      */
     @PostMapping(value = "/update", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public String updateProfile(@RequestParam("userId") Integer userId,
-                                @RequestPart("profile") String profileJson,
+                                @RequestPart(value = "profile", required = false) String profileJson,
                                 @RequestParam(value = "avatar", required = false) MultipartFile avatar) {
         ObjectMapper objectMapper = new ObjectMapper();
         Profile profile;
         try {
+
             // 将 JSON 字符串转换为 Profile 对象
             // Convert JSON string to Profile object
-            profile = objectMapper.readValue(profileJson, Profile.class);
+            if(profileJson!=null)
+            {
+                profile = objectMapper.readValue(profileJson, Profile.class);
+
+            }
+
+            else
+            {
+                profile = null;
+            }
 
             // System.out.println("Avatar file size in MB: "+avatarFileSizeInMB);
 
         } catch (JsonProcessingException e) {
             throw new RuntimeException("Invalid profile JSON format", e);
         }
-        logRequest("update", profile.toString());
-        profile.setUserId(userId);
+        if(profile!=null)
+        {
+            logRequest("update", profile.toString());
+            profile.setUserId(userId);
+
+        }
         // System.out.println("TEST: Avatar ???" + avatar);
+
+        if(avatar == null || avatar.isEmpty())
+        {
+            return "No avatar file found";
+        }
+    
 
         if (avatar != null && !avatar.isEmpty()) {
             try {
 
                String avatarFileName = avatar.getOriginalFilename();
-                int i = avatarFileName.lastIndexOf(".");
-                if(i == -1)
+               System.out.println("AVATAR FILE NAME: "+avatarFileName);
+                Integer i = avatarFileName.lastIndexOf(".");
+                if(i == -1 || i == null)
                 {
                     return "Invalid file";
                 }
@@ -226,17 +264,19 @@ public class ProfileController {
                     return "File size limit exceeded";
                 }
 
-                String avatarPath = profileService.selectAvatarPathById(userId);
-                if(avatarPath != null&& !avatarPath.isEmpty())
+                String oldAvatarPath = profileService.selectAvatarPathById(userId);
+                if(oldAvatarPath != null&& !oldAvatarPath.isEmpty())
                 {
-                    File oldAvatar = new File(avatarPath);
+                    File oldAvatar = new File(oldAvatarPath);
                     oldAvatar.delete();
+                    System.out.println("OLD AVATAR DELETED");
                 }
 
                 // 1. 创建按日期存储的目录
                 // 1. Create a directory for today's date
                 String datePath = new SimpleDateFormat("yyyy/MM/dd").format(new Date());
-                String baseDir = "/home/admir/SpringBoot/saved_images/avatars/"; // 更改头像存储路径 / Change path for avatars
+                String baseDir = "/home/admir/SpringBoot/saved_images/avatars/";
+                // String baseDir = "C:/Users/Shreyansh Bardia/LMS-pictures/"; // 更改头像存储路径 / Change path for avatars
                 // String baseDir = System.getProperty("user.home") + "/SpringBoot/saved_images/avatars";
                 String uploadDir = baseDir + datePath + "/";
                 File dir = new File(uploadDir);
@@ -256,18 +296,29 @@ public class ProfileController {
 
                 // 4. 设置头像文件路径
                 // 4. Set the avatar file path in the profile
-                profile.setAvatar(absoluteFilePath);
+                // if(profile!=null)
+                // {
+                //     profile.setAvatar(absoluteFilePath);
+                // }
+
+                profileService.updateAvatarPathById(userId, absoluteFilePath);
+
                 logger.info("Avatar saved at: " + absoluteFilePath);
                 System.out.println("TEST: Avatar saved at: " + absoluteFilePath);
             } catch (Exception e) {
                 logger.severe("Error saving avatar: " + e.getMessage());
             }
-            // return avatarFileSizeInMB;
 
         }
-        profileService.updateProfile(profile);
-        logResponse("update", profile.toString());
-        return "Profile updated (or created) successfully!";
+        if(profile!=null)
+        {
+            String response = profileService.updateProfile(profile);
+            logResponse("update", profile.toString());
+            return response;
+
+
+        }
+        return "Profile updated successfully!";
 
 
     }
@@ -278,6 +329,14 @@ public class ProfileController {
      */
     @DeleteMapping("/delete/{id}")
     public String deleteProfile(@PathVariable Integer id) {
+
+        String oldAvatarPath = profileService.selectAvatarPathById(id);
+        if(oldAvatarPath != null&& !oldAvatarPath.isEmpty())
+        {
+            File oldAvatar = new File(oldAvatarPath);
+            oldAvatar.delete();
+            System.out.println("OLD AVATAR DELETED");
+        }
         profileService.deleteProfile(id);
         return "Profile deleted successfully!";
     }
