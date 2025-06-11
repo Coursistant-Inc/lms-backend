@@ -121,7 +121,7 @@ public class OAuthService {
         String url = UriComponentsBuilder.fromHttpUrl("https://graph.facebook.com/v18.0/oauth/access_token")
             .queryParam("client_id", facebookClientId)
             .queryParam("redirect_uri", facebookRedirectUri)
-            .queryParam("client_secret", facebookClientSecret) // Make sure this matches the one you set in Google Developer Console
+            .queryParam("client_secret", facebookClientSecret)
             .queryParam("code", code)
             .toUriString();
 

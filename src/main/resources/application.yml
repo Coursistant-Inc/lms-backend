@@ -16,7 +16,7 @@ spring:
             google:
               client-id: ${GOOGLE_CLIENT_ID}
               client-secret: ${GOOGLE_CLIENT_SECRET}
-              redirect-uri: https://dash.coursistant.com/login/oauth2/code/google
+              redirect-uri: http://localhost:5173/login/oauth2/code/google
             microsoft:
               client-id: ${MICROSOFT_CLIENT_ID}
               client-secret: ${MICROSOFT_CLIENT_SECRET}
