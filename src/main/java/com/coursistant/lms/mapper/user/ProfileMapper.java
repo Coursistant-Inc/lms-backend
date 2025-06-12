@@ -54,4 +54,6 @@ public interface ProfileMapper {
     String selectAvatarPathById(Integer userId);
 
     void updateAvatarPathById(Integer userId, String avatarPath);
+
+    void deleteAvatarById(Integer userId);
 }

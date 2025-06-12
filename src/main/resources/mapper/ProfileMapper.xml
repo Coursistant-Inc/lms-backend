@@ -81,6 +81,10 @@
     </select>
 
     <update id="updateAvatarPathById" parameterType="com.coursistant.lms.entity.Profile">
-        UPDATE Profile SET avatar = #{avatarPath} WHERE user_id = #{userId};
+        UPDATE Profile SET avatar = #{avatarPath} WHERE user_id = #{userId}
+    </update>
+
+    <update id="deleteAvatarById" parameterType="com.coursistant.lms.entity.Profile">
+        UPDATE Profile SET avatar = NULL WHERE user_id = #{userId}
     </update>
 </mapper>

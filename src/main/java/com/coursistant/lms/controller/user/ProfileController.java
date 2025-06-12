@@ -5,6 +5,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.springframework.http.HttpStatus;
@@ -64,12 +65,13 @@ public class ProfileController {
         String userPrivacyLevel = profileService.selectUserPrivacy(userId);
         if(userPrivacyLevel == null||userPrivacyLevel.equals(selfLevel))
         {
+            logger.log(Level.INFO,"view profile of :"+userId+" by: "+selfUserId);
             Profile profile = profileService.getProfileByUserId(userId);
             if(profile == null)
             {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Profile not found!");
             }
-            System.out.println("profile: "+profile);
+            logResponse("getProfileByUserId", profile.toString());
             return ResponseEntity.ok(profile);
         }
 
@@ -130,6 +132,8 @@ public class ProfileController {
         if (avatar != null && !avatar.isEmpty()) {
             try {
 
+                System.out.println("AVATAR FILE FOUND");
+
                 String avatarFileName = avatar.getOriginalFilename();
                 int i = avatarFileName.lastIndexOf(".");
 
@@ -154,8 +158,8 @@ public class ProfileController {
                 // 1. 创建按日期存储的目录
                 // 1. Create a directory for today's date
                 String datePath = new SimpleDateFormat("yyyy/MM/dd").format(new Date());
-                // String baseDir = "/home/admir/SpringBoot/saved_images/avatars/"; // 更改头像存储路径 / Change path for avatars
-                String baseDir = "C:/Users/Shreyansh Bardia/LMS-pictures/";
+                String baseDir = "/home/admir/SpringBoot/saved_images/avatars/"; // 更改头像存储路径 / Change path for avatars
+                // String baseDir = "C:/Users/Shreyansh Bardia/LMS-pictures/";
                 // String baseDir = System.getProperty("user.home") + "/SpringBoot/saved_images/avatars";
                 String uploadDir = baseDir + datePath + "/";
                 File dir = new File(uploadDir);
@@ -177,24 +181,18 @@ public class ProfileController {
                 // 4. Set the avatar file path in the profile
                 profile.setAvatar(absoluteFilePath);
                 System.out.println("AVATAR FILE PATH:"+absoluteFilePath);
-                logger.info("Avatar saved at: " + absoluteFilePath);
+                logger.log(Level.INFO, "Avatar saved at: {0}", absoluteFilePath);
                 System.out.println("TEST: Avatar saved at: " + absoluteFilePath);
             } catch (Exception e) {
                 logger.severe("Error saving avatar: " + e.getMessage());
             }
-            // return avatarFileSizeInMB;
 
         }
 
-        else
-        {
-            return "Avatar file not found!";
-        }
 
         profileService.createProfile(profile);
         logRequest("add",profile.toString());
-        // return "Profile created successfully!";
-        return "Profile saved: "+profile.toString();
+        return "Profile created successfully!";
     }
 
     /**
@@ -235,10 +233,7 @@ public class ProfileController {
         }
         // System.out.println("TEST: Avatar ???" + avatar);
 
-        if(avatar == null || avatar.isEmpty())
-        {
-            return "No avatar file found";
-        }
+
     
 
         if (avatar != null && !avatar.isEmpty()) {
@@ -323,6 +318,23 @@ public class ProfileController {
 
     }
 
+    @DeleteMapping("/delete/avatar/{id}")
+    public String deleteAvatar(@PathVariable Integer id)
+    {
+        String oldAvatarPath = profileService.selectAvatarPathById(id);
+        if(oldAvatarPath!=null &&!oldAvatarPath.isEmpty())
+        {
+            logger.log(Level.INFO,"deleteAvatar of: "+id);
+            File oldAvatar = new File(oldAvatarPath);
+            oldAvatar.delete();
+
+            profileService.deleteAvatatById(id);
+        }
+
+        return "Avatar deleted successfully!";
+
+    }
+
     /**
      * 根据 ID 删除个人资料
      * Delete profile by ID
@@ -333,9 +345,9 @@ public class ProfileController {
         String oldAvatarPath = profileService.selectAvatarPathById(id);
         if(oldAvatarPath != null&& !oldAvatarPath.isEmpty())
         {
+            logger.log(Level.INFO,"Deleted profile of user id: "+id);
             File oldAvatar = new File(oldAvatarPath);
             oldAvatar.delete();
-            System.out.println("OLD AVATAR DELETED");
         }
         profileService.deleteProfile(id);
         return "Profile deleted successfully!";
@@ -345,6 +357,9 @@ public class ProfileController {
     public String updatePrivacy(@RequestParam(value="privacy") String privacy, @RequestParam(value="user_id") Integer userId) {
         //TODO: process POST request
         
+        // logger.log(Level.INFO,"Deleted profile of user id: "+id);
+        logger.log(Level.INFO,"Updated privacy setting of user id: "+userId);
+
         profileService.updateUserPrivacy(privacy, userId);
 
         return "Privacy setting updated.";

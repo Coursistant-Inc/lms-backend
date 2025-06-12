@@ -105,4 +105,9 @@ public class ProfileService {
     {
         profileMapper.updateAvatarPathById(userId, avatarPath);
     }
+
+    public void deleteAvatatById(Integer userId)
+    {
+        profileMapper.deleteAvatarById(userId);
+    }
 }
