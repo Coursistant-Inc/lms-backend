@@ -1,12 +1,18 @@
 package com.coursistant.lms.service.assignment;
  
 import com.coursistant.lms.entity.GroupMember;
+import com.coursistant.lms.entity.User;
+import com.coursistant.lms.exception.CustomException;
 import com.coursistant.lms.mapper.assignment.GroupMemberMapper;
+
+import cn.hutool.core.util.ObjectUtil;
+
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
 import java.util.List;
 import com.coursistant.lms.entity.AssignmentGroup;
+import com.coursistant.lms.common.enums.ResultCodeEnum;
 import com.coursistant.lms.entity.Assignment;
 
 @Service
@@ -27,6 +33,17 @@ public class GroupMemberService {
      * 添加成员到小组
     */
     public void add(GroupMember member) {
+        Integer groupId = member.getGroupId();
+        AssignmentGroup group = assignmentGroupMapper.selectById(groupId);
+        if (ObjectUtil.isNull(group)) {
+            throw new CustomException(ResultCodeEnum.GROUP_NOT_EXIST_ERROR);
+        }
+        Integer assignmentId = group.getAssignmentId();
+        Assignment assignment = assignmentMapper.selectById(assignmentId);
+        if (ObjectUtil.isNull(assignment)) {
+            throw new CustomException(ResultCodeEnum.ASSIGNMENT_NOT_EXIST_ERROR);
+        }
+        checkGroupMemberLimit(groupId, assignment);
         groupMemberMapper.insert(member);
     }
 
@@ -66,58 +83,50 @@ public class GroupMemberService {
         return members;
     }
 
-    // public void addMemberByEmail(Integer groupId, String email) {
-    //     com.coursistant.lms.entity.User user = userMapper.selectByEmail(email);
-    //     if (user == null || !"STUDENT".equals(user.getLevel())) {
-    //         throw new RuntimeException("User not found or not a student");
-    //     }
+    public void addMemberById(Integer groupId, Integer userId) {
+        User user = userMapper.selectById(userId);
+        if (ObjectUtil.isNull(user) || !"STUDENT".equals(user.getLevel())) {
+            throw new CustomException(ResultCodeEnum.USER_NOT_EXIST_ERROR);
+        }
 
-    //     // 查 assignmentGroup → assignmentId
-    //     AssignmentGroup group = assignmentGroupMapper.selectById(groupId);
-    //     if (group == null) {
-    //         throw new RuntimeException("Group not found");
-    //     }
+        // 查 assignmentGroup → assignmentId
+        AssignmentGroup group = assignmentGroupMapper.selectById(groupId);
+        if (ObjectUtil.isNull(group)) {
+            throw new CustomException(ResultCodeEnum.GROUP_NOT_EXIST_ERROR);
+        }
 
-    //     Integer assignmentId = group.getAssignmentId();
-    //     Integer courseId = group.getCourseId();
+        Integer assignmentId = group.getAssignmentId();
+        Integer courseId = group.getCourseId();
 
-    //     // 查 assignment → groupSize
-    //     Assignment assignment = assignmentMapper.selectById(assignmentId);
+        // 查 assignment → groupSize
+        Assignment assignment = assignmentMapper.selectById(assignmentId);
+        if (ObjectUtil.isNull(assignment)) {
+            throw new CustomException(ResultCodeEnum.ASSIGNMENT_NOT_EXIST_ERROR);
+        }
 
-    //     if (Boolean.FALSE.equals(assignment.getIsGroup())) {
-    //         throw new RuntimeException("Not a group assignment");
-    //     }
-    //     if (!"free".equalsIgnoreCase(assignment.getGroupMode())) {
-    //         throw new RuntimeException("This assignment does not allow free grouping");
-    //     }
-
-
+        if (!"free".equalsIgnoreCase(assignment.getGroupMode())) {
+            throw new CustomException(ResultCodeEnum.GROUP_JOIN_INVALID_ERROR);
+        }
 
 
-    //     int groupSize = assignment.getGroupSize() != null ? assignment.getGroupSize() : 0;
+        // 判断是否已在该 assignment 的任意 group 中
+        List<AssignmentGroup> allGroups = assignmentGroupMapper.selectByAssignmentId(assignmentId);
+        for (AssignmentGroup g : allGroups) {
+            GroupMember exists = groupMemberMapper.selectByGroupIdAndUserId(g.getId(), user.getId());
+            if (exists != null) {
+                throw new CustomException(ResultCodeEnum.DUPLICATED_GROUP_MEMBER_ERROR);
+            }
+        }
 
-    //     // 判断是否已在该 assignment 的任意 group 中
-    //     List<AssignmentGroup> allGroups = assignmentGroupMapper.selectByAssignmentId(assignmentId);
-    //     for (AssignmentGroup g : allGroups) {
-    //         GroupMember exists = groupMemberMapper.selectByGroupIdAndUserId(g.getId(), user.getId());
-    //         if (exists != null) {
-    //             throw new RuntimeException("User is already in another group");
-    //         }
-    //     }
+        checkGroupMemberLimit(groupId, assignment);
 
-    //     // 判断当前 group 是否已满
-    //     List<GroupMember> members = groupMemberMapper.selectByGroupId(groupId);
-    //     if (members.size() >= groupSize) {
-    //         throw new RuntimeException("Group is full");
-    //     }
-
-    //     // 添加成员
-    //     GroupMember newMember = new GroupMember();
-    //     newMember.setGroupId(groupId);
-    //     newMember.setCourseId(courseId);
-    //     newMember.setUserId(user.getId());
-    //     groupMemberMapper.insert(newMember);
-    // }
+        // 添加成员
+        GroupMember newMember = new GroupMember();
+        newMember.setGroupId(groupId);
+        newMember.setCourseId(courseId);
+        newMember.setUserId(user.getId());
+        groupMemberMapper.insert(newMember);
+    }
 
     public void deleteByGroupIdAndUserId(Integer groupId, Integer userId) {
         List<GroupMember> list = groupMemberMapper.selectByGroupId(groupId);
@@ -126,6 +135,18 @@ public class GroupMemberService {
                 groupMemberMapper.deleteById(member.getId());
                 return;
             }
+        }
+    }
+
+    private void checkGroupMemberLimit(Integer groupId, Assignment assignment){
+        int groupSize = assignment.getGroupSize();
+        if (ObjectUtil.isEmpty(groupSize)){
+            groupSize = 0;
+        }
+        // 判断当前 group 是否已满
+        List<GroupMember> members = groupMemberMapper.selectByGroupId(groupId);
+        if (members.size() >= groupSize) {
+            throw new CustomException(ResultCodeEnum.GROUP_JOIN_INVALID_ERROR);
         }
     }
 
