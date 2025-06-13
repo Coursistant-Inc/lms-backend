@@ -5,7 +5,7 @@
 <mapper namespace="com.coursistant.lms.mapper.assignment.AssignmentSubmissionMapper">
 
     <sql id="Base_Column_List">
-        id, assignment_id,student_id,grader_id,date,status,grade,comment,timezone
+        id, assignment_id,student_id,grader_id,date,status,grade,comment
     </sql>
 
     <!-- 查询所有 AssignmentSubmission // Select all AssignmentSubmissions -->
@@ -22,7 +22,6 @@
             <if test="status != null"> and status = #{status}</if>
             <if test="grade != null"> and grade = #{grade}</if>
             <if test="comment != null"> and comment = #{comment}</if>
-            <if test="timezone != null"> and timezone = #{timezone}</if>
         </where>
 
     </select>
@@ -49,22 +48,18 @@
             <if test="assignmentId != null">assignment_id,</if>
             <if test="studentId != null">student_id,</if>
             <if test="graderId != null">grader_id,</if>
-            <if test="date != null">date,</if>
             <if test="status != null">status,</if>
             <if test="grade != null">grade,</if>
             <if test="comment != null">comment,</if>
-            <if test="timezone != null">timezone,</if>
         </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
             <if test="id != null">#{id},</if>
             <if test="assignmentId != null">#{assignmentId},</if>
             <if test="studentId != null">#{studentId},</if>
             <if test="graderId != null">#{graderId},</if>
-            <if test="date != null">#{date},</if>
             <if test="status != null">#{status},</if>
             <if test="grade != null">#{grade},</if>
             <if test="comment != null">#{comment},</if>
-            <if test="timezone != null">#{timezone},</if>
         </trim>
     </insert>
 
@@ -76,11 +71,9 @@
             <if test="assignmentId != null">assignment_id = #{assignmentId},</if>
             <if test="studentId != null">student_id = #{studentId},</if>
             <if test="graderId != null">grader_id = #{graderId},</if>
-            <if test="date != null">date = #{date},</if>
             <if test="status != null">status = #{status},</if>
             <if test="grade != null">grade = #{grade},</if>
             <if test="comment != null">comment = #{comment},</if>
-            <if test="timezone != null">comment = #{timezone},</if>
         </set>
         where id = #{id}
     </update>

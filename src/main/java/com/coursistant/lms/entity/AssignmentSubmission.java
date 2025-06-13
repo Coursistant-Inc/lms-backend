@@ -40,7 +40,6 @@ public class AssignmentSubmission implements Serializable {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "UTC")
     private LocalDateTime date;
 
-    private String timezone;
 
     /** 状态
      * Submission status
@@ -120,14 +119,7 @@ public class AssignmentSubmission implements Serializable {
     public void setDate(LocalDateTime date) {
         this.date = date;
     }
-
-    public String getTimezone() {
-        return timezone;
-    }
-
-    public void setTimezone(String timezone) {
-        this.timezone = timezone;
-    }
+    
 
     public String getStatus() {
         return status;

@@ -1,15 +1,19 @@
 package com.coursistant.lms.controller.system;
 
 import com.coursistant.lms.common.Result;
+import com.coursistant.lms.common.enums.ResultCodeEnum;
 import com.coursistant.lms.entity.Assignment;
 import com.coursistant.lms.entity.CalendarEvent;
 import com.coursistant.lms.entity.DTO.AssignmentDTO;
+import com.coursistant.lms.exception.CustomException;
 import com.coursistant.lms.service.assignment.AssignmentService;
 import com.coursistant.lms.service.system.CalendarEventService;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
+import java.time.DateTimeException;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.logging.Logger;
 
@@ -39,12 +43,20 @@ public class CalendarEventController {
      * Add a new calendar event
      */
     @PostMapping("/add")
-    public Result add(@RequestBody CalendarEvent calendarEvent) {
+    public Result add(@RequestBody CalendarEvent calendarEvent,
+                      @RequestHeader(value = "X-Timezone", required = true) String timezone) {
         logRequest("add", calendarEvent.toString());
-        calendarEventService.add(calendarEvent);
+        ZoneId zone;
+        try {
+            zone = ZoneId.of(timezone);  // IANA 格式，例如 America/New_York
+        } catch (DateTimeException e) {
+            throw new CustomException(ResultCodeEnum.INVALID_TIMEZONE);
+        }
+        calendarEventService.add(calendarEvent, zone);
         logResponse("add", "Success");
         return Result.success();
     }
+
 
     /**
      * 根据 ID 删除事件
@@ -75,34 +87,58 @@ public class CalendarEventController {
      * Update a calendar event
      */
     @PutMapping("/update")
-    public Result updateById(@RequestBody CalendarEvent calendarEvent) {
+    public Result updateById(@RequestBody CalendarEvent calendarEvent,
+                             @RequestHeader(value = "X-Timezone", required = true) String timezone) {
         logRequest("updateById", calendarEvent.toString());
-        calendarEventService.updateById(calendarEvent);
+        ZoneId zone;
+        try {
+            zone = ZoneId.of(timezone);  // IANA 格式，例如 America/New_York
+        } catch (DateTimeException e) {
+            throw new CustomException(ResultCodeEnum.INVALID_TIMEZONE);
+        }
+        calendarEventService.updateById(calendarEvent, zone);
         logResponse("updateById", "Success");
         return Result.success();
     }
+
 
     /**
      * 根据 ID 查询事件
      * Query a calendar event by ID
      */
     @GetMapping("/selectById/{id}")
-    public Result selectById(@PathVariable Integer id) {
+    public Result selectById(@PathVariable Integer id,
+                             @RequestHeader(value = "X-Timezone", required = true) String timezone) {
         logRequest("selectById", id.toString());
-        CalendarEvent calendarEvent = calendarEventService.selectById(id);
+        ZoneId zone;
+        try {
+            zone = ZoneId.of(timezone);
+        } catch (DateTimeException e) {
+            throw new CustomException(ResultCodeEnum.INVALID_TIMEZONE);
+        }
+        CalendarEvent calendarEvent = calendarEventService.selectById(id, zone);
         logResponse("selectById", calendarEvent.toString());
         return Result.success(calendarEvent);
     }
+
 
     /**
      * 查询所有事件
      * Query all calendar events
      */
     @GetMapping("/selectAll")
-    public Result selectAll(CalendarEvent condition) {
+    public Result selectAll(CalendarEvent condition,
+                            @RequestHeader(value = "X-Timezone", required = true) String timezone) {
         logRequest("selectAll", condition != null ? condition.toString() : "null");
-        List<CalendarEvent> list = calendarEventService.selectAll(condition);
+        ZoneId zone;
+        try {
+            zone = ZoneId.of(timezone);
+        } catch (DateTimeException e) {
+            throw new CustomException(ResultCodeEnum.INVALID_TIMEZONE);
+        }
+        List<CalendarEvent> list = calendarEventService.selectAll(condition, zone);
         logResponse("selectAll", null);
         return Result.success(list);
     }
+
 }

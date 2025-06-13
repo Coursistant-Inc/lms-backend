@@ -44,7 +44,6 @@
             <if test="userId != null">user_id,</if>
             <if test="courseId != null">course_id,</if>
             <if test="content != null">content,</if>
-            <if test="date != null">date,</if> <!-- 这里date已经是字符串格式 // date is already a string format -->
             <if test="level != null">level,</if>
             <if test="currentUrl != null">current_url,</if>
         </trim>
@@ -52,7 +51,6 @@
             <if test="userId != null">#{userId},</if>
             <if test="courseId != null">#{courseId},</if>
             <if test="content != null">#{content},</if>
-            <if test="date != null">#{date},</if> <!-- 这里是字符串格式 // This is a string format -->
             <if test="level != null">#{level},</if>
             <if test="currentUrl != null">#{currentUrl},</if>
         </trim>

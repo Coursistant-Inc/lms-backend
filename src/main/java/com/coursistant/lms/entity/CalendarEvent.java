@@ -20,7 +20,6 @@ public class CalendarEvent implements Serializable {
     private String title;               // 标题
     private String description;         // 描述
     private Boolean isAllDay;           // 是否为全天事件
-    private String timezone;            // 时区（如 UTC）
     @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")  // 表单、@RequestParam 参数绑定用
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "UTC") // JSON 请求体用
     private LocalDateTime startTime;
@@ -48,7 +47,6 @@ public class CalendarEvent implements Serializable {
         if (startTime != null) sb.append("\"startTime\":\"").append(startTime).append("\",");
         if (endTime != null) sb.append("\"endTime\":\"").append(endTime).append("\",");
         if (isAllDay != null) sb.append("\"isAllDay\":").append(isAllDay).append(",");
-        if (timezone != null) sb.append("\"timezone\":\"").append(timezone).append("\",");
         if (createdAt != null) sb.append("\"createdAt\":\"").append(createdAt).append("\",");
         if (updatedAt != null) sb.append("\"updatedAt\":\"").append(updatedAt).append("\",");
 
@@ -116,13 +114,6 @@ public class CalendarEvent implements Serializable {
         isAllDay = allDay;
     }
 
-    public String getTimezone() {
-        return timezone;
-    }
-
-    public void setTimezone(String timezone) {
-        this.timezone = timezone;
-    }
 
     public LocalDateTime getCreatedAt() {
         return createdAt;

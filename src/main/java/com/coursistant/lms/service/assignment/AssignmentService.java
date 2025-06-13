@@ -13,11 +13,14 @@ import com.coursistant.lms.entity.AssignmentFile;
 import com.coursistant.lms.entity.DTO.AssignmentDTO;
 import com.coursistant.lms.exception.CustomException;
 import com.coursistant.lms.mapper.assignment.AssignmentMapper;
+import com.coursistant.lms.utils.TimeZoneUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
+import java.sql.Time;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -35,7 +38,7 @@ public class AssignmentService {
     private LearnService learnService;
 
 
-    public void add(Assignment assignment, List<MultipartFile> files) {
+    public void add(Assignment assignment, List<MultipartFile> files, ZoneId timezone) {
         if (ObjectUtil.isNull(assignment.getSubmissionNum())) {
             assignment.setSubmissionNum(0);
         }
@@ -54,6 +57,9 @@ public class AssignmentService {
         if (ObjectUtil.isNull(assignment.getGradePublish())) {
             assignment.setGradePublish(false);
         }
+        assignment.setStart(TimeZoneUtils.toUtcLocalDateTime(assignment.getStart(),timezone));
+        assignment.setDue(TimeZoneUtils.toUtcLocalDateTime(assignment.getDue(),timezone));
+
         assignmentMapper.insert(assignment);
         int assignmentId=assignment.getId();
         //System.out.println("assignment id: " + Integer.toString(assignmentId));
@@ -94,7 +100,11 @@ public class AssignmentService {
      * 修改
      * Update a assignment by ID
      */
-    public void updateById(Assignment assignment) {
+    public void updateById(Assignment assignment, ZoneId timezone) {
+
+        assignment.setStart(TimeZoneUtils.toUtcLocalDateTime(assignment.getStart(),timezone));
+        assignment.setDue(TimeZoneUtils.toUtcLocalDateTime(assignment.getDue(),timezone));
+
         assignmentMapper.updateById(assignment);
 
     }
@@ -112,7 +122,7 @@ public class AssignmentService {
      * 根据ID查询
      * Query a assignment by ID
      */
-    public AssignmentDTO selectById(Integer id) {
+    public AssignmentDTO selectById(Integer id, ZoneId timezone) {
 
 
         Assignment assignment = assignmentMapper.selectById(id);
@@ -120,6 +130,9 @@ public class AssignmentService {
         if (assignment == null) {
             throw new CustomException(ResultCodeEnum.ASSIGNMENT_NOT_EXIST_ERROR);
         }
+        assignment.setStart(TimeZoneUtils.fromUtcLocalDateTime(assignment.getStart(),timezone));
+        assignment.setDue(TimeZoneUtils.fromUtcLocalDateTime(assignment.getDue(),timezone));
+
         BeanUtil.copyProperties(assignment, assignmentDTO);
         List<AssignmentFile> assignmentFiles=assignmentFileService.selectByAssignmentId(id);
         assignmentDTO.setFiles(assignmentFiles);
@@ -127,55 +140,55 @@ public class AssignmentService {
         return assignmentDTO;
     }
 
-    public List<Assignment> selectByCourseId(Integer id){
-        List<Assignment> assignment=assignmentMapper.selectByCourseId(id);
+    public List<Assignment> selectByCourseId(Integer id, ZoneId timezone){
+        List<Assignment> assignments=assignmentMapper.selectByCourseId(id);
 
-        return  assignment;
+        for (Assignment assignment:assignments){
+            assignment.setStart(TimeZoneUtils.fromUtcLocalDateTime(assignment.getStart(),timezone));
+            assignment.setDue(TimeZoneUtils.fromUtcLocalDateTime(assignment.getDue(),timezone));
+        }
+
+
+        return  assignments;
     }
 
     /**
      * 查询所有
      * Query all assignments
      */
-    public List<Assignment> selectAll(Assignment assignment) {
+    public List<Assignment> selectAll(Assignment assignment1, ZoneId timezone) {
         // 如果缓存不存在，从数据库查询
         // If cache does not exist, query from database
-        List<Assignment> assignments = assignmentMapper.selectAll(assignment);
+        List<Assignment> assignments = assignmentMapper.selectAll(assignment1);
+
+        for (Assignment assignment:assignments){
+            assignment.setStart(TimeZoneUtils.fromUtcLocalDateTime(assignment.getStart(),timezone));
+            assignment.setDue(TimeZoneUtils.fromUtcLocalDateTime(assignment.getDue(),timezone));
+        }
+
 
         return assignments;
     }
 
-    public List<CalendarDisplayEvent> selectAssignmentByUserAndTimeRange(Integer userId, LocalDateTime start, LocalDateTime end) {
+    public List<CalendarDisplayEvent> selectAssignmentByUserAndTimeRange(Integer userId, LocalDateTime start, LocalDateTime end, ZoneId timezone) {
+        start=TimeZoneUtils.toUtcLocalDateTime(start,timezone);
+        end=TimeZoneUtils.toUtcLocalDateTime(end,timezone);
+        List<Assignment> assignments = assignmentMapper.selectAssignmentsByUserAndTimeRange(userId, start, end);
         List<CalendarDisplayEvent> result = new ArrayList<>();
 
-        List<Learn> dblearn = learnService.selectByStudentId(userId);
-        if (dblearn == null || dblearn.isEmpty()) {
-            return result;
-        }
+        for (Assignment assignment : assignments) {
+            LocalDateTime localtime = TimeZoneUtils.fromUtcLocalDateTime(assignment.getDue(), timezone);
 
-        for (Learn singleLearn : dblearn) {
-            List<Assignment> assignments = assignmentMapper.selectByCourseId(singleLearn.getCourseId());
-            for (Assignment assignment : assignments) {
+            CalendarDisplayEvent event = new CalendarDisplayEvent();
+            event.setTimezone(timezone.toString());
+            event.setAllDay(false);
+            event.setStart(localtime.minusMinutes(5));
+            event.setEnd(localtime);
+            event.setType("assignment");
+            event.setTitle(assignment.getTitle());
+            event.setSourceId(assignment.getId());
 
-                // ✅ 过滤：截止时间为空，或不在指定时间范围内则跳过
-                if (assignment.getDue() == null) {
-                    continue;
-                }
-                if (assignment.getDue().isBefore(start) || assignment.getDue().isAfter(end)) {
-                    continue;
-                }
-
-                CalendarDisplayEvent single = new CalendarDisplayEvent();
-                single.setTimezone(assignment.getTimezone());
-                single.setAllDay(false);
-                single.setStart(assignment.getDue().minusMinutes(5));
-                single.setEnd(assignment.getDue());
-                single.setType("assignment");
-                single.setTitle(assignment.getTitle());
-                single.setSourceId(assignment.getId());
-
-                result.add(single);
-            }
+            result.add(event);
         }
 
         return result;

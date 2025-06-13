@@ -9,12 +9,15 @@ import com.coursistant.lms.exception.CustomException;
 import com.coursistant.lms.service.assignment.AssignmentService;
 import com.coursistant.lms.service.course.CourseScheduleService;
 import com.coursistant.lms.service.system.CalendarEventService;
+import com.coursistant.lms.utils.TimeZoneUtils;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
+import java.time.DateTimeException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
@@ -87,11 +90,19 @@ public class CalendarController {
     public Result selectByUserAndTimeRange(
             @RequestParam Integer id,
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime start,
-            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime end) {
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime end,
+            @RequestHeader(value = "X-Timezone", required = true) String timezone) {
+
+        ZoneId zone;
+        try {
+            zone = ZoneId.of(timezone);  // IANA 格式，例如 America/New_York
+        } catch (DateTimeException e) {
+            throw new CustomException(ResultCodeEnum.INVALID_TIMEZONE);
+        }
 
         logRequest("selectByUserAndTimeRange", "userId=" + id + ", start=" + start + ", end=" + end);
 
-        List<CalendarDisplayEvent> list = calendarEventService.selectDisplayEventsByUserAndTimeRange(id, start, end);
+        List<CalendarDisplayEvent> list = calendarEventService.selectDisplayEventsByUserAndTimeRange(id, start, end, zone);
 
         logResponse("selectByUserAndTimeRange", "size=" + list.size());
 
@@ -108,19 +119,24 @@ public class CalendarController {
             @RequestParam Integer id,
             @RequestParam String type,
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime start,
-            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime end) {
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime end,
+            @RequestHeader(value = "X-Timezone", required = false) String timezone) {
 
-        logRequest("selectUnifiedById", "Id=" + id + ", start=" + start + ", end=" + end);
+        ZoneId zone=TimeZoneUtils.resolveZoneId(timezone);
+
+
+        logRequest("selectUnifiedById", "Id=" + id + ", start=" + start + ", end=" + end + ", zone=" + timezone);
+
 
         // 查询课程安排
         List<CalendarDisplayEvent> courseEvents = new ArrayList<>();
         List<CalendarDisplayEvent> list=new ArrayList<>();
 
-        List<CalendarDisplayEvent> personalEvents = calendarEventService.selectDisplayEventsByUserAndTimeRange(id, start, end);
+        List<CalendarDisplayEvent> personalEvents = calendarEventService.selectDisplayEventsByUserAndTimeRange(id, start, end,zone);
         // 查询私人日历事件（假设 studentId 即 userId）
         if (type.equals("student")){
             courseEvents = courseScheduleService.selectCourseOccurrencesByStudentId(id, start, end);
-            list = assignmentService.selectAssignmentByUserAndTimeRange(id, start, end);
+            list = assignmentService.selectAssignmentByUserAndTimeRange(id, start, end,zone);
         }
         else if (type.equals("teacher")){
             courseEvents = courseScheduleService.selectCourseOccurrencesByTeacherId(id, start, end);
@@ -150,11 +166,12 @@ public class CalendarController {
     public Result selectAssignmentsByUserAndTimeRange(
             @RequestParam Integer id,
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime start,
-            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime end) {
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime end,
+            @RequestHeader(value = "X-Timezone", required = false) String timezone) {
 
         logRequest("selectAssignmentsByUserAndTimeRange", "userId=" + id + ", start=" + start + ", end=" + end);
-
-        List<CalendarDisplayEvent> list = assignmentService.selectAssignmentByUserAndTimeRange(id, start, end);
+        ZoneId zone= TimeZoneUtils.resolveZoneId(timezone);
+        List<CalendarDisplayEvent> list = assignmentService.selectAssignmentByUserAndTimeRange(id, start, end,zone);
 
         logResponse("selectAssignmentsByUserAndTimeRange", "size=" + list.size());
 

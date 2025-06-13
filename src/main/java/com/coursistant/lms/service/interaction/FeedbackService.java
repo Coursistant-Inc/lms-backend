@@ -1,9 +1,11 @@
 package com.coursistant.lms.service.interaction;
 import com.coursistant.lms.entity.Feedback;
+import com.coursistant.lms.utils.TimeZoneUtils;
 import org.springframework.stereotype.Service;
 import com.coursistant.lms.mapper.interaction.FeedbackMapper;
 
 import javax.annotation.Resource;
+import java.time.ZoneId;
 import java.util.List;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -21,8 +23,6 @@ public class FeedbackService {
      * Add new Feedback
      */
     public void addFeedback(Feedback feedback) {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-        feedback.setDate(LocalDateTime.now().format(formatter));  // 这里进行格式化 // Format the date here
         feedbackMapper.insert(feedback);
     }
 
@@ -56,23 +56,34 @@ public class FeedbackService {
      * 根据 ID 查询 Feedback
      * Select Feedback by ID
      */
-    public Feedback selectById(Integer id) {
-        return feedbackMapper.selectById(id);
+    public Feedback selectById(Integer id, ZoneId timezone) {
+        Feedback feedback=feedbackMapper.selectById(id);
+        feedback.setDate(TimeZoneUtils.fromUtcLocalDateTime(feedback.getDate(),timezone));
+        return feedback;
     }
 
     /**
      * 查询所有 Feedback
      * Select all Feedback
      */
-    public List<Feedback> selectAll() {
-        return feedbackMapper.selectAll();
+    public List<Feedback> selectAll(Feedback feedback1, ZoneId timezone) {
+        List<Feedback> feedbacks=feedbackMapper.selectAll(feedback1);
+        for (Feedback feedback:feedbacks){
+            feedback.setDate(TimeZoneUtils.fromUtcLocalDateTime(feedback.getDate(),timezone));
+        }
+        return feedbacks;
     }
 
     /**
      * 查询某个用户的所有 Feedback
      * Select all Feedback from a specific user
      */
-    public List<Feedback> selectByUserId(Integer userId) {
-        return feedbackMapper.selectByUserId(userId);
+    public List<Feedback> selectByUserId(Integer userId, ZoneId timezone) {
+
+        List<Feedback> feedbacks=feedbackMapper.selectByUserId(userId);
+        for (Feedback feedback:feedbacks){
+            feedback.setDate(TimeZoneUtils.fromUtcLocalDateTime(feedback.getDate(),timezone));
+        }
+        return feedbacks;
     }
 }

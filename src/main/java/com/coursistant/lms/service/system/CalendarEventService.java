@@ -9,6 +9,7 @@ import com.coursistant.lms.exception.CustomException;
 import com.coursistant.lms.mapper.system.CalendarEventMapper;
 import com.coursistant.lms.mapper.system.AdminMapper;
 
+import com.coursistant.lms.utils.TimeZoneUtils;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
@@ -37,7 +38,9 @@ public class CalendarEventService {
      * 新增
      * Insert a new calendar event
      */
-    public void add(CalendarEvent calendarEvent) {
+    public void add(CalendarEvent calendarEvent, ZoneId timezone) {
+        calendarEvent.setStartTime(TimeZoneUtils.toUtcLocalDateTime(calendarEvent.getStartTime(),timezone));
+        calendarEvent.setEndTime(TimeZoneUtils.toUtcLocalDateTime(calendarEvent.getEndTime(),timezone));
         calendarEventMapper.insert(calendarEvent);
     }
 
@@ -63,7 +66,9 @@ public class CalendarEventService {
      * 修改
      * Update a calendar event
      */
-    public void updateById(CalendarEvent calendarEvent) {
+    public void updateById(CalendarEvent calendarEvent, ZoneId timezone) {
+        calendarEvent.setStartTime(TimeZoneUtils.toUtcLocalDateTime(calendarEvent.getStartTime(),timezone));
+        calendarEvent.setEndTime(TimeZoneUtils.toUtcLocalDateTime(calendarEvent.getEndTime(),timezone));
         calendarEventMapper.updateById(calendarEvent);
     }
 
@@ -71,36 +76,59 @@ public class CalendarEventService {
      * 根据 ID 查询
      * Select by ID
      */
-    public CalendarEvent selectById(Integer id) {
-        CalendarEvent event = calendarEventMapper.selectById(id);
-        if (event == null) {
+    public CalendarEvent selectById(Integer id, ZoneId timezone) {
+        CalendarEvent calendarEvent = calendarEventMapper.selectById(id);
+        if (calendarEvent == null) {
             throw new CustomException(ResultCodeEnum.EVENT_NOT_EXIST_ERROR);
         }
-        return event;
+        calendarEvent.setStartTime(TimeZoneUtils.fromUtcLocalDateTime(calendarEvent.getStartTime(),timezone));
+        calendarEvent.setEndTime(TimeZoneUtils.fromUtcLocalDateTime(calendarEvent.getEndTime(),timezone));
+        return calendarEvent;
     }
 
     /**
      * 查询所有
      * Select all events
      */
-    public List<CalendarEvent> selectAll(CalendarEvent calendarEvent) {
-        return calendarEventMapper.selectAll(calendarEvent);
+    public List<CalendarEvent> selectAll(CalendarEvent calendarEvent1, ZoneId timezone) {
+        List<CalendarEvent> lists=calendarEventMapper.selectAll(calendarEvent1);
+        for (CalendarEvent calendarEvent:lists){
+            calendarEvent.setStartTime(TimeZoneUtils.fromUtcLocalDateTime(calendarEvent.getStartTime(),timezone));
+            calendarEvent.setEndTime(TimeZoneUtils.fromUtcLocalDateTime(calendarEvent.getEndTime(),timezone));
+        }
+        return lists;
     }
 
     /**
      * 查询某用户在某时间段的事件
      * Select events by user and time range
      */
-    public List<CalendarEvent> selectByUserAndTimeRange(Integer userId, LocalDateTime start, LocalDateTime end) {
-        return calendarEventMapper.selectByUserAndRange(userId, start, end);
+    public List<CalendarEvent> selectByUserAndTimeRange(Integer userId, LocalDateTime start, LocalDateTime end,ZoneId timezone) {
+        start=TimeZoneUtils.toUtcLocalDateTime(start,timezone);
+        end=TimeZoneUtils.toUtcLocalDateTime(end,timezone);
+        List<CalendarEvent> lists=calendarEventMapper.selectByUserAndRange(userId, start, end);
+        for (CalendarEvent calendarEvent:lists){
+            calendarEvent.setStartTime(TimeZoneUtils.fromUtcLocalDateTime(calendarEvent.getStartTime(),timezone));
+            calendarEvent.setEndTime(TimeZoneUtils.fromUtcLocalDateTime(calendarEvent.getEndTime(),timezone));
+        }
+        return lists;
     }
 
     /**
      * 查询某用户在指定时间范围内的个人事件，并转换为日历展示格式
      * Query personal calendar events and convert to display events
      */
-    public List<CalendarDisplayEvent> selectDisplayEventsByUserAndTimeRange(Integer userId, LocalDateTime start, LocalDateTime end) {
+    public List<CalendarDisplayEvent> selectDisplayEventsByUserAndTimeRange(Integer userId, LocalDateTime start, LocalDateTime end, ZoneId timezone) {
+
+        start=TimeZoneUtils.toUtcLocalDateTime(start,timezone);
+        end=TimeZoneUtils.toUtcLocalDateTime(end,timezone);
+
         List<CalendarEvent> personalEvents = calendarEventMapper.selectByUserAndRange(userId, start, end);
+
+        for (CalendarEvent calendarEvent:personalEvents){
+            calendarEvent.setStartTime(TimeZoneUtils.fromUtcLocalDateTime(calendarEvent.getStartTime(),timezone));
+            calendarEvent.setEndTime(TimeZoneUtils.fromUtcLocalDateTime(calendarEvent.getEndTime(),timezone));
+        }
 
         return personalEvents.stream().map(e -> {
             CalendarDisplayEvent display = new CalendarDisplayEvent();
@@ -110,7 +138,7 @@ public class CalendarEventService {
             display.setAllDay(e.getAllDay());
             display.setType("personal");
             display.setSourceId(e.getId());
-            display.setTimezone(e.getTimezone());
+            display.setTimezone(timezone.toString());
             return display;
         }).collect(Collectors.toList());
     }

@@ -11,10 +11,12 @@ import com.coursistant.lms.entity.SubmissionFile;
 import com.coursistant.lms.exception.CustomException;
 import com.coursistant.lms.mapper.assignment.AssignmentSubmissionMapper;
 import com.coursistant.lms.service.file.SubmissionFileService;
+import com.coursistant.lms.utils.TimeZoneUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
+import java.time.ZoneId;
 import java.util.List;
 
 
@@ -32,7 +34,7 @@ public class AssignmentSubmissionService {
         assignmentSubmissionMapper.insert(assignmentSubmission);
         int submissionId=assignmentSubmission.getId();
 
-        //System.out.println("submission id: " + Integer.toString(submissionId));
+
         if (ObjectUtil.isNotNull(files)) {
             for (int i=0;i< files.size();i++){
                 submissionFileService.add(files.get(i),submissionId);
@@ -77,11 +79,12 @@ public class AssignmentSubmissionService {
      * 根据ID查询
      * Query a assignmentSubmission by ID
      */
-    public AssignmentSubmissionDTO selectById(Integer id) {
+    public AssignmentSubmissionDTO selectById(Integer id, ZoneId timezone) {
 
 
 
         AssignmentSubmission assignmentSubmission =assignmentSubmissionMapper.selectById(id);
+        assignmentSubmission.setDate(TimeZoneUtils.fromUtcLocalDateTime(assignmentSubmission.getDate(),timezone));
         AssignmentSubmissionDTO DTO=new AssignmentSubmissionDTO();
         if (ObjectUtil.isNull(DTO)) {
             throw new CustomException(ResultCodeEnum.ASSIGNMENT_NOT_EXIST_ERROR);
@@ -97,10 +100,13 @@ public class AssignmentSubmissionService {
      * 查询所有
      * Query all assignmentSubmissions
      */
-    public List<AssignmentSubmission> selectAll(AssignmentSubmission assignmentSubmission) {
+    public List<AssignmentSubmission> selectAll(AssignmentSubmission assignmentSubmission1, ZoneId timezone) {
         // 如果缓存不存在，从数据库查询
         // If cache does not exist, query from database
-        List<AssignmentSubmission> assignmentSubmissions = assignmentSubmissionMapper.selectAll(assignmentSubmission);
+        List<AssignmentSubmission> assignmentSubmissions = assignmentSubmissionMapper.selectAll(assignmentSubmission1);
+        for (AssignmentSubmission assignmentSubmission:assignmentSubmissions){
+            assignmentSubmission.setDate(TimeZoneUtils.fromUtcLocalDateTime(assignmentSubmission.getDate(),timezone));
+        }
 
         return assignmentSubmissions;
     }

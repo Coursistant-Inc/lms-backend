@@ -40,7 +40,7 @@ public interface FeedbackMapper {
      * 查询所有反馈
      * Query all Feedback records
      */
-    List<Feedback> selectAll();
+    List<Feedback> selectAll(Feedback feedback);
 
     /**
      * 查询某个用户的所有反馈

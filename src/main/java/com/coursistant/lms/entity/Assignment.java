@@ -44,7 +44,6 @@ public class Assignment implements Serializable {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "UTC")
     private LocalDateTime start;
 
-    private String timezone;
 
     private String description;
 
@@ -151,13 +150,7 @@ public class Assignment implements Serializable {
         this.start = start;
     }
 
-    public String getTimezone() {
-        return timezone;
-    }
 
-    public void setTimezone(String timezone) {
-        this.timezone = timezone;
-    }
 
     public String getDescription() {
         return description;
