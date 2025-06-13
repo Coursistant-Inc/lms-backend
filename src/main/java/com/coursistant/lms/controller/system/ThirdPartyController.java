@@ -48,6 +48,18 @@ public class ThirdPartyController {
     }
 
     /**
+     *
+     * continue
+     */
+    @PostMapping("/register")
+    public Result registerWithThirdParty(@RequestBody Account account) {
+        logRequest("registerWithThirdParty", null);
+        oAuthService.register(account);
+        logResponse("registerWithThirdParty", "Success");
+        return Result.success();
+    }
+
+    /**
      * login url
      */
     @PostMapping("/linkedIn/loginUrl")
@@ -68,18 +80,6 @@ public class ThirdPartyController {
         LinkedInDTO dto= linkedInAuthService.continueWithLinkedIn(authorizationCode);
         logResponse("continueWithLinkedIn", "Success");
         return Result.success(dto);
-    }
-
-    /**
-     *
-     * continue
-     */
-    @PostMapping("/linkedIn/register")
-    public Result registerWithLinkedIn(@RequestBody Account account) {
-        logRequest("registerWithLinkedIn", null);
-        linkedInAuthService.register(account);
-        logResponse("registerWithLinkedIn", "Success");
-        return Result.success();
     }
 
     @GetMapping("/google")
@@ -106,7 +106,7 @@ public class ThirdPartyController {
     public Result facebookRedirect(@RequestParam String authorizationCode)
     {
         // logRequest("facebookRedirect",code);
-        Result userInfo = oAuthService.getFacebookUserAccessToken(authorizationCode);
+        Result userInfo = oAuthService.getEmailFromAuthCodeFacebook(authorizationCode);
         return userInfo;  
     }
 

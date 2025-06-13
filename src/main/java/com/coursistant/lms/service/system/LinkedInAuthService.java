@@ -26,7 +26,7 @@ import org.springframework.http.converter.FormHttpMessageConverter;
 import org.springframework.http.converter.StringHttpMessageConverter;
 
 /**
- * 使用 LinkedIn 账号登录（示例）
+ * 使用 LinkedIn 账号登录（Deprecated）
  */
 @Service
 public class LinkedInAuthService {
@@ -132,26 +132,6 @@ public class LinkedInAuthService {
         return response.getBody();
     }
 
-    /**
-     * 登录 // User login
-     */
-    public Account login(String authorizationCode) {
-
-        Account dbUser;
-
-        String linkedIn_token=getAccessToken(authorizationCode);
-        LinkedInUserInfo userInfo=getUserInfo(linkedIn_token);
-        dbUser = userMapper.selectByEmail(userInfo.getEmail());
-
-        if (ObjectUtil.isNull(dbUser)) {
-            throw new CustomException(ResultCodeEnum.USER_NOT_EXIST_ERROR);
-        }
-
-        String tokenData = dbUser.getId() + "-" + RoleEnum.USER.name();
-        String token = TokenUtils.createAccessToken(tokenData);
-        dbUser.setAccessToken(token);
-        return dbUser;
-    }
 
     /**
      * 注册 register
