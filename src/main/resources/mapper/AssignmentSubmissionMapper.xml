@@ -49,7 +49,6 @@
             <if test="assignmentId != null">assignment_id,</if>
             <if test="studentId != null">student_id,</if>
             <if test="graderId != null">grader_id,</if>
-            <if test="date != null">date,</if>
             <if test="status != null">status,</if>
             <if test="grade != null">grade,</if>
             <if test="comment != null">comment,</if>
@@ -60,7 +59,6 @@
             <if test="assignmentId != null">#{assignmentId},</if>
             <if test="studentId != null">#{studentId},</if>
             <if test="graderId != null">#{graderId},</if>
-            <if test="date != null">#{date},</if>
             <if test="status != null">#{status},</if>
             <if test="grade != null">#{grade},</if>
             <if test="comment != null">#{comment},</if>
@@ -76,7 +74,6 @@
             <if test="assignmentId != null">assignment_id = #{assignmentId},</if>
             <if test="studentId != null">student_id = #{studentId},</if>
             <if test="graderId != null">grader_id = #{graderId},</if>
-            <if test="date != null">date = #{date},</if>
             <if test="status != null">status = #{status},</if>
             <if test="grade != null">grade = #{grade},</if>
             <if test="comment != null">comment = #{comment},</if>

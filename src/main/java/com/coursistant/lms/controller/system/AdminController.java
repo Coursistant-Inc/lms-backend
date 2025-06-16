@@ -102,17 +102,5 @@ public class AdminController {
         return Result.success(list);
     }
 
-    /**
-     * 分页查询
-     * Paginated query
-     */
-    @GetMapping("/selectPage")
-    public Result selectPage(Admin admin,
-                             @RequestParam(defaultValue = "1") Integer pageNum,
-                             @RequestParam(defaultValue = "10") Integer pageSize) {
-        logRequest("selectPage", String.format("admin=%s, pageNum=%d, pageSize=%d", admin, pageNum, pageSize));
-        PageInfo<Admin> page = adminService.selectPage(admin, pageNum, pageSize);
-        logResponse("selectPage", "null");
-        return Result.success(page);
-    }
+
 }

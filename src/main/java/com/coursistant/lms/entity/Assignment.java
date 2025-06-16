@@ -1,11 +1,10 @@
 package com.coursistant.lms.entity;
 
-import java.io.Serializable;
-import java.time.LocalDateTime;
-
+import com.fasterxml.jackson.annotation.JsonFormat;
 import org.springframework.format.annotation.DateTimeFormat;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
+import java.io.Serializable;
+import java.time.LocalDateTime;
 
 /**
  * 公告实体类
@@ -45,7 +44,6 @@ public class Assignment implements Serializable {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "UTC")
     private LocalDateTime start;
 
-    private String timezone;
 
     private String description;
 
@@ -68,10 +66,6 @@ public class Assignment implements Serializable {
 
     /** 是否发布成绩（0-未发布，1-已发布） */
     private Boolean gradePublish;
-
-    private String groupMode;
-
-    private Integer groupSize;
 
 
 
@@ -156,13 +150,7 @@ public class Assignment implements Serializable {
         this.start = start;
     }
 
-    public String getTimezone() {
-        return timezone;
-    }
 
-    public void setTimezone(String timezone) {
-        this.timezone = timezone;
-    }
 
     public String getDescription() {
         return description;
@@ -171,6 +159,8 @@ public class Assignment implements Serializable {
     public void setDescription(String description) {
         this.description = description;
     }
+
+
 
     public String getCriteria() {
         return criteria;
@@ -226,21 +216,5 @@ public class Assignment implements Serializable {
 
     public void setGradePublish(Boolean gradePublish) {
         this.gradePublish = gradePublish;
-    }
-
-    public String getGroupMode() {
-        return groupMode;
-    }
-
-    public void setGroupMode(String groupMode) {
-        this.groupMode = groupMode;
-    }
-
-    public Integer getGroupSize() {
-        return groupSize;
-    }
-
-    public void setGroupSize(Integer groupSize) {
-        this.groupSize = groupSize;
     }
 }

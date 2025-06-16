@@ -34,6 +34,7 @@
             <if test="groupSize != null"> and group_size = #{groupSize}, </if>
             <if test="timezone != null"> and timezone = #{timezone}</if>
 
+
         </where>
 
     </select>
@@ -129,6 +130,16 @@
         </set>
         where id = #{id}
     </update>
+
+    <select id="selectAssignmentsByUserAndTimeRange" resultType="com.coursistant.lms.entity.Assignment">
+        SELECT a.*
+        FROM assignment a
+                 INNER JOIN learn l ON a.course_id = l.course_id
+        WHERE l.student_id = #{userId}
+          AND a.due IS NOT NULL
+          AND a.due BETWEEN #{start} AND #{end}
+    </select>
+
 
 
 

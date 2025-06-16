@@ -1,11 +1,16 @@
 package com.coursistant.lms.controller.interaction;
 
 import com.coursistant.lms.common.Result;
+import com.coursistant.lms.common.enums.ResultCodeEnum;
 import com.coursistant.lms.entity.Announcement;
+import com.coursistant.lms.exception.CustomException;
 import com.coursistant.lms.service.interaction.AnnouncementService;
+import com.coursistant.lms.utils.TimeZoneUtils;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
+import java.time.DateTimeException;
+import java.time.ZoneId;
 import java.util.List;
 
 /**
@@ -54,7 +59,7 @@ public class AnnouncementController {
      * Update an announcement
      */
     @PutMapping("/update")
-    public Result updateById(@RequestBody Announcement announcement) {
+    public Result updateById(@RequestBody Announcement announcement){
         announcementService.updateById(announcement);
         return Result.success();
     }
@@ -64,8 +69,11 @@ public class AnnouncementController {
      * Query an announcement by ID
      */
     @GetMapping("/selectById/{id}")
-    public Result selectById(@PathVariable Integer id) {
-        Announcement announcement = announcementService.selectById(id);
+    public Result selectById(@PathVariable Integer id,
+                             @RequestHeader(value = "X-Timezone", required = false)
+            String timezone) {
+        ZoneId zone = TimeZoneUtils.resolveZoneId(timezone);
+        Announcement announcement = announcementService.selectById(id,zone);
         return Result.success(announcement);
     }
 
@@ -74,8 +82,10 @@ public class AnnouncementController {
      * Query all announcements
      */
     @GetMapping("/selectAll")
-    public Result selectAll() {
-        List<Announcement> list = announcementService.selectAll();
+    public Result selectAll(@RequestHeader(value = "X-Timezone", required = false)
+                                        String timezone) {
+        ZoneId zone = TimeZoneUtils.resolveZoneId(timezone);
+        List<Announcement> list = announcementService.selectAll(zone);
         return Result.success(list);
     }
 
@@ -84,8 +94,25 @@ public class AnnouncementController {
      * Query all announcements of a specific user
      */
     @GetMapping("/selectByUserId/{userId}")
-    public Result selectByUserId(@PathVariable Integer userId) {
-        List<Announcement> list = announcementService.selectByUserId(userId);
+    public Result selectByUserId(@PathVariable Integer userId,
+                                 @RequestHeader(value = "X-Timezone", required = false)
+            String timezone) {
+        ZoneId zone = TimeZoneUtils.resolveZoneId(timezone);
+        List<Announcement> list = announcementService.selectByUserId(userId,zone);
         return Result.success(list);
     }
+
+    /**
+     * 查询某课程的所有公告
+     * Query all announcements of a specific course
+     */
+    @GetMapping("/selectByCourseId/{courseId}")
+    public Result selectByCourseId(@PathVariable Integer courseId,
+                                   @RequestHeader(value = "X-Timezone", required = false)
+                                           String timezone) {
+        ZoneId zone = TimeZoneUtils.resolveZoneId(timezone);
+        List<Announcement> list = announcementService.selectByCourseId(courseId, zone);
+        return Result.success(list);
+    }
+
 }

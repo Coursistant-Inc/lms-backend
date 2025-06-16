@@ -5,12 +5,20 @@
 <mapper namespace="com.coursistant.lms.mapper.interaction.AnnouncementMapper">
 
     <sql id="Base_Column_List">
-        a.id, a.user_id, a.course_id, a.content, a.date, a.title
+        id, user_id, course_id, content, title, created_at, updated_at
     </sql>
 
-    <!-- 查询所有 Announcement，并且通过 user_id 关联查询 name // Select all Announcements and join with User table to get name -->
+    <!-- 查询所有 Announcement，并通过 user_id 关联查询发布人名称 -->
     <select id="selectAll" resultType="com.coursistant.lms.entity.Announcement">
-        select <include refid="Base_Column_List" />, u.name as name
+        select
+        a.id,
+        a.user_id,
+        a.course_id,
+        a.content,
+        a.title,
+        a.created_at as createdAt,
+        a.updated_at as updatedAt,
+        u.name as name
         from Announcement a
         left join User u on a.user_id = u.id
         <where>
@@ -18,53 +26,68 @@
             <if test="userId != null"> and a.user_id = #{userId}</if>
             <if test="courseId != null"> and a.course_id = #{courseId}</if>
             <if test="content != null"> and a.content like concat('%', #{content}, '%')</if>
-            <if test="date != null"> and a.date = #{date}</if>
             <if test="title != null"> and a.title = #{title}</if>
+            <if test="createdAt != null"> and a.created_at = #{createdAt}</if>
+            <if test="updatedAt != null"> and a.updated_at = #{updatedAt}</if>
         </where>
+        order by a.id desc
     </select>
 
-    <!-- 通过 ID 查询（不包含 name） // Select by ID (without name) -->
+
+
+
     <select id="selectById" resultType="com.coursistant.lms.entity.Announcement">
-        select <include refid="Base_Column_List" />
+        select
+            a.id,
+            a.user_id,
+            a.course_id,
+            a.content,
+            a.title,
+            a.created_at as createdAt,
+            a.updated_at as updatedAt,
+            u.name as name
         from Announcement a
+                 left join User u on a.user_id = u.id
         where a.id = #{id}
     </select>
 
-    <!-- 通过 ID 删除 // Delete by ID -->
+
+
+
+    <!-- 通过 ID 删除 -->
     <delete id="deleteById">
         delete from Announcement where id = #{id}
     </delete>
 
-    <!-- 插入新的 Announcement // Insert a new Announcement -->
+    <!-- 插入新的 Announcement -->
     <insert id="insert" parameterType="com.coursistant.lms.entity.Announcement" useGeneratedKeys="true" keyProperty="id">
         insert into Announcement
         <trim prefix="(" suffix=")" suffixOverrides=",">
             <if test="userId != null">user_id,</if>
             <if test="courseId != null">course_id,</if>
             <if test="content != null">content,</if>
-            <if test="date != null">date,</if>
             <if test="title != null">title,</if>
         </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
             <if test="userId != null">#{userId},</if>
             <if test="courseId != null">#{courseId},</if>
             <if test="content != null">#{content},</if>
-            <if test="date != null">#{date},</if>
             <if test="title != null">#{title},</if>
         </trim>
     </insert>
 
-    <!-- 更新 Announcement // Update Announcement -->
+
+    <!-- 更新 Announcement -->
     <update id="updateById" parameterType="com.coursistant.lms.entity.Announcement">
         update Announcement
         <set>
             <if test="userId != null"> user_id = #{userId}, </if>
             <if test="courseId != null"> course_id = #{courseId}, </if>
             <if test="content != null"> content = #{content}, </if>
-            <if test="date != null"> date = #{date}, </if>
             <if test="title != null"> title = #{title}, </if>
         </set>
         where id = #{id}
     </update>
+
 
 </mapper>

@@ -28,8 +28,7 @@ public class CourseService {
     @Resource(name = "courseAllRedisTemplate")
     private RedisTemplate<String, Object> courseAllRedisTemplate;
 
-    @Resource(name = "coursePageRedisTemplate")
-    private RedisTemplate<String, Object> coursePageRedisTemplate;
+
 
     // 缓存过期时间（秒） / Cache expiration time (seconds)
     private static final long CACHE_EXPIRE_TIME = 300;
@@ -45,16 +44,7 @@ public class CourseService {
         System.out.println("Cleared all data from courseAll database.");
     }
 
-    /**
-     * 清空 coursePage 数据库
-     * Clear the coursePage database
-     */
-    public void clearCoursePageCache() {
-        Objects.requireNonNull(coursePageRedisTemplate.getConnectionFactory())
-                .getConnection()
-                .flushDb();
-        System.out.println("Cleared all data from coursePage database.");
-    }
+
 
     /**
      * 新增
@@ -64,7 +54,7 @@ public class CourseService {
         courseMapper.insert(course);
         // 清理相关缓存 / Clear related cache
         clearCourseAllCache();
-        clearCoursePageCache();
+
     }
 
     /**
@@ -75,7 +65,7 @@ public class CourseService {
         courseMapper.deleteById(id);
         // 清理相关缓存 / Clear related cache
         clearCourseAllCache();
-        clearCoursePageCache();
+
         generalRedisTemplate.delete("course:" + id);
     }
 
@@ -89,7 +79,7 @@ public class CourseService {
             generalRedisTemplate.delete("course:" + id);
         }
         clearCourseAllCache();
-        clearCoursePageCache();
+
     }
 
     /**
@@ -100,7 +90,7 @@ public class CourseService {
         courseMapper.updateById(course);
         // 清理相关缓存 / Clear related cache
         clearCourseAllCache();
-        clearCoursePageCache();
+
         generalRedisTemplate.delete("course:" + course.getId());
     }
 
@@ -154,31 +144,5 @@ public class CourseService {
         return courses;
     }
 
-    /**
-     * 分页查询
-     * Paginate query for courses
-     */
-    public PageInfo<Course> selectPage(Course course, Integer pageNum, Integer pageSize) {
-        String cacheKey = "course:page:" + pageNum + ":" + pageSize;
-        if (course != null) {
-            cacheKey += ":" + course.toString();
-        }
 
-        // 从 Redis 获取缓存 / Get cache from Redis
-        PageInfo<Course> pageInfo = (PageInfo<Course>) coursePageRedisTemplate.opsForValue().get(cacheKey);
-        if (pageInfo != null) {
-            System.out.println("from cache: " + cacheKey);
-            return pageInfo;
-        }
-
-        // 如果缓存不存在，从数据库查询 / If cache does not exist, query from database
-        PageHelper.startPage(pageNum, pageSize);
-        List<Course> list = courseMapper.selectAll(course);
-        pageInfo = PageInfo.of(list);
-
-        if (!list.isEmpty()) {
-            coursePageRedisTemplate.opsForValue().set(cacheKey, pageInfo, CACHE_EXPIRE_TIME, TimeUnit.SECONDS);
-        }
-        return pageInfo;
-    }
 }
