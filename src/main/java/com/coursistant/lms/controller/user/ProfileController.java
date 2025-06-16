@@ -318,6 +318,13 @@ public class ProfileController {
 
     }
 
+    @GetMapping("/avatar/{id}")
+    public String selectAvatar(@PathVariable Integer id)
+    {
+        logger.log(Level.INFO,"selectAvatar of: "+id);
+        return profileService.selectAvatarPathById(id);
+    }
+
     @DeleteMapping("/delete/avatar/{id}")
     public String deleteAvatar(@PathVariable Integer id)
     {
