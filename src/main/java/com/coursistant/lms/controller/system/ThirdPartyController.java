@@ -85,7 +85,7 @@ public class ThirdPartyController {
     @GetMapping("/google")
     public RedirectView googleLogin() {
         // Custom logic for initiating Google login, can be extended as needed
-        return new RedirectView("/oauth2/authorization/google"); // This redirects to the default Google OAuth2 flow
+        return new RedirectView("/api/oauth2/authorization/google"); // This redirects to the default Google OAuth2 flow
     }
 
     @PostMapping("/google/continue")
@@ -99,7 +99,7 @@ public class ThirdPartyController {
     @GetMapping("/facebook")
     public void facebookLogin(HttpServletResponse response) throws IOException
     {
-        response.sendRedirect("/oauth2/authorization/facebook");
+        response.sendRedirect("/api/oauth2/authorization/facebook");
     }
 
     @PostMapping("/facebook/continue")
@@ -113,7 +113,7 @@ public class ThirdPartyController {
     @GetMapping("/microsoft")
     public RedirectView microsoftLogin() {
         // Custom logic for initiating Google login, can be extended as needed
-        return new RedirectView("/oauth2/authorization/microsoft"); // This redirects to the default Google OAuth2 flow
+        return new RedirectView("/api/oauth2/authorization/microsoft"); // This redirects to the default Google OAuth2 flow
     }
 
     @PostMapping("/microsoft/continue")
