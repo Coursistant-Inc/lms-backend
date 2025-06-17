@@ -67,6 +67,9 @@ public class Assignment implements Serializable {
     /** 是否发布成绩（0-未发布，1-已发布） */
     private Boolean gradePublish;
 
+    private String groupMode;
+
+    private Integer groupSize;
 
 
 
@@ -216,5 +219,21 @@ public class Assignment implements Serializable {
 
     public void setGradePublish(Boolean gradePublish) {
         this.gradePublish = gradePublish;
+    }
+
+    public String getGroupMode() {
+        return groupMode;
+    }
+
+    public void setGroupMode(String groupMode) {
+        this.groupMode = groupMode;
+    }
+
+    public Integer getGroupSize() {
+        return groupSize;
+    }
+
+    public void setGroupSize(Integer groupSize) {
+        this.groupSize = groupSize;
     }
 }

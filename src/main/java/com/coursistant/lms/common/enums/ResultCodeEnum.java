@@ -63,6 +63,13 @@ public enum ResultCodeEnum {
     SUBMISSION_NOT_VALID_ERROR("4047", "Submission Not Valid"),
     EVENT_NOT_EXIST_ERROR("4048", "Event Not Exist"),
     COURSE_SCHEDULE_NOT_EXIST_ERROR("4049", "Course Schedule Not Exist"),
+    GROUP_NOT_EXIST_ERROR("4050", "Group Not Exist"),
+
+    /**
+     * Invalid operation related errors (405X)
+     */
+    GROUP_JOIN_INVALID_ERROR("4050", "Group Is Full/Not Open for Join"),
+    DUPLICATED_GROUP_MEMBER_ERROR("4051", "User Already In Group"),
 
     /**
      * External service errors (600X)

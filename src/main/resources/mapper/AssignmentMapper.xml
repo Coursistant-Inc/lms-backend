@@ -7,7 +7,7 @@
     <sql id="Base_Column_List">
         id, user_id, course_id, title, start, due, description, criteria,
     submission_num, allowed_submission_times, highest_grade, lowest_grade, average_grade, grade_publish, 
-    group_mode, group_size, timezone
+    group_mode, group_size
     </sql>
 
     <!-- 查询所有 Assignment // Select all Assignments -->
@@ -32,7 +32,6 @@
             <if test="gradePublish != null"> and grade_publish = #{gradePublish}</if>
             <if test="groupMode != null"> and group_mode = #{groupMode}, </if>
             <if test="groupSize != null"> and group_size = #{groupSize}, </if>
-            <if test="timezone != null"> and timezone = #{timezone}</if>
 
 
         </where>
@@ -73,7 +72,7 @@
             <if test="gradePublish != null">grade_publish,</if>
             <if test="groupMode != null"> group_mode,</if>
             <if test="groupSize != null"> group_size,</if>
-            <if test="timezone != null">timezone,</if>
+
         </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
             <if test="id != null">#{id},</if>
@@ -92,7 +91,7 @@
             <if test="gradePublish != null">#{gradePublish},</if>
             <if test="groupMode != null">#{groupMode},</if>
             <if test="groupSize != null">#{groupSize},</if>
-            <if test="timezone != null">#{timezone},</if>
+
         </trim>
     </insert>
 
@@ -117,7 +116,7 @@
             <if test="gradePublish != null">grade_publish = #{gradePublish},</if>
             <if test="groupMode != null">group_mode = #{groupMode},</if>
             <if test="groupSize != null">group_size = #{groupSize},</if>
-            <if test="timezone != null">timezone = #{timezone},</if>
+
         </set>
         where id = #{id}
     </update>
@@ -133,9 +132,9 @@
 
     <select id="selectAssignmentsByUserAndTimeRange" resultType="com.coursistant.lms.entity.Assignment">
         SELECT a.*
-        FROM assignment a
-                 INNER JOIN learn l ON a.course_id = l.course_id
-        WHERE l.student_id = #{userId}
+        FROM Assignment a
+                 INNER JOIN Learn l ON a.course_id = l.course_id
+        WHERE l.user_id = #{userId}
           AND a.due IS NOT NULL
           AND a.due BETWEEN #{start} AND #{end}
     </select>
