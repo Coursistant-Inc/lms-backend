@@ -1,6 +1,11 @@
 package com.coursistant.lms.entity;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+import org.springframework.format.annotation.DateTimeFormat;
+
 import java.io.Serializable;
+import java.time.LocalDateTime;
+
 
 /**
  * chat
@@ -20,11 +25,15 @@ public class Chat implements Serializable {
 
     private String answerImage;
 
-    private String time;
+    @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "UTC")
+    private LocalDateTime time;
 
     private Boolean delete;
 
-    private String deleteTime;
+    @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "UTC")
+    private LocalDateTime time;
 
     //
     //private String base64QueryImage;
@@ -79,11 +88,11 @@ public class Chat implements Serializable {
         this.answerImage = answerImage;
     }
 
-    public String getTime() {
+    public LocalDateTime getTime() {
         return time;
     }
 
-    public void setTime(String time) {
+    public void setTime(LocalDateTime time) {
         this.time = time;
     }
 
@@ -111,11 +120,11 @@ public class Chat implements Serializable {
         this.base64AnswerImage = base64AnswerImage;
     }*/
 
-    public String getDeleteTime() {
+    public LocalDateTime getDeleteTime() {
         return deleteTime;
     }
 
-    public void setDeleteTime(String deleteTime) {
+    public void setDeleteTime(LocalDateTime deleteTime) {
         this.deleteTime = deleteTime;
     }
 }

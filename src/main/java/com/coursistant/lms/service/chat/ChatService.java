@@ -5,10 +5,12 @@ import com.coursistant.lms.exception.CustomException;
 import com.coursistant.lms.common.enums.ResultCodeEnum;
 import com.coursistant.lms.entity.Chat;
 import com.coursistant.lms.mapper.chat.ChatMapper;
+import com.coursistant.lms.utils.TimeZoneUtils;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
@@ -20,7 +22,9 @@ public class ChatService {
     private ChatMapper chatMapper;
 
 
-    public void add(Chat chat) {
+    public void add(Chat chat, ZoneId timezone) {
+        chat.setTime(TimeZoneUtils.toUtcLocalDateTime(chat.getTime(), timezone));
+        chat.setDeleteTime(TimeZoneUtils.toUtcLocalDateTime(chat.getDeleteTime(), timezone));
         chatMapper.insert(chat);
     }
 
@@ -62,7 +66,9 @@ public class ChatService {
      * 修改
      * Update a chat by ID
      */
-    public void updateById(Chat chat) {
+    public void updateById(Chat chat, ZoneId timezone) {
+        chat.setTime(TimeZoneUtils.toUtcLocalDateTime(chat.getTime(), timezone));
+        chat.setDeleteTime(TimeZoneUtils.toUtcLocalDateTime(chat.getDeleteTime(), timezone));
         chatMapper.updateById(chat);
     }
 
@@ -70,13 +76,14 @@ public class ChatService {
      * 根据ID查询
      * Query a chat by ID
      */
-    public Chat selectById(Integer id) {
+    public Chat selectById(Integer id, ZoneId timezone) {
 
         Chat chat = chatMapper.selectById(id);
         if (chat == null) {
             throw new CustomException(ResultCodeEnum.CHAT_NOT_EXIST_ERROR);
         }
-
+        chat.setTime(TimeZoneUtils.fromUtcLocalDateTime(chat.getTime(), timezone));
+        chat.setDeleteTime(TimeZoneUtils.fromUtcLocalDateTime(chat.getDeleteTime(), timezone));
         return chat;
     }
 
@@ -84,10 +91,13 @@ public class ChatService {
      * 查询所有
      * Query all chats
      */
-    public List<Chat> selectAll(Chat chat) {
+    public List<Chat> selectAll(Chat chat, ZoneId timezone) {
 
         List<Chat> chats = chatMapper.selectAll(chat);
-
+        for (Chat chat : chats) {
+            chat.setTime(TimeZoneUtils.fromUtcLocalDateTime(chat.getTime(), timezone));
+            chat.setDeleteTime(TimeZoneUtils.fromUtcLocalDateTime(chat.getDeleteTime(), timezone));
+        }
         return chats;
     }
 
