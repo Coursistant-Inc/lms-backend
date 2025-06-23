@@ -29,7 +29,7 @@ public class ChatService {
     }
 
 
-    public void softDelete(Integer id) {
+    public void softDelete(Integer id, ZoneId timezone) {
         // 搜索 / Search
         Chat chat = chatMapper.selectById(id);
         if (chat == null) {
@@ -38,7 +38,7 @@ public class ChatService {
         // 修改 / Modify
         chat.setDelete(true);
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-        chat.setDeleteTime(LocalDateTime.now().format(formatter));
+        chat.setDeleteTime(TimeZoneUtils.toUtcLocalDateTime(LocalDateTime.now(), timezone));
         // 更新 / Update
         chatMapper.updateById(chat);
     }
@@ -94,9 +94,9 @@ public class ChatService {
     public List<Chat> selectAll(Chat chat, ZoneId timezone) {
 
         List<Chat> chats = chatMapper.selectAll(chat);
-        for (Chat chat : chats) {
-            chat.setTime(TimeZoneUtils.fromUtcLocalDateTime(chat.getTime(), timezone));
-            chat.setDeleteTime(TimeZoneUtils.fromUtcLocalDateTime(chat.getDeleteTime(), timezone));
+        for (Chat c : chats) {
+            c.setTime(TimeZoneUtils.fromUtcLocalDateTime(c.getTime(), timezone));
+            c.setDeleteTime(TimeZoneUtils.fromUtcLocalDateTime(c.getDeleteTime(), timezone));
         }
         return chats;
     }
@@ -116,9 +116,9 @@ public class ChatService {
      * 根据对话 ID 软删除
      * Soft delete chats by dialogue ID
      */
-    public void updateSoftDeleteByDialogueId(Integer dialogueId) {
+    public void updateSoftDeleteByDialogueId(Integer dialogueId, ZoneId timezone) {
         int rowsUpdated = chatMapper.updateSoftDeleteByDialogueId(dialogueId, 1,
-                LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+                TimeZoneUtils.toUtcLocalDateTime(LocalDateTime.now(), timezone));
     }
 
     //return last 5 chat

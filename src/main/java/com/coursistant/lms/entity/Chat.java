@@ -33,7 +33,7 @@ public class Chat implements Serializable {
 
     @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "UTC")
-    private LocalDateTime time;
+    private LocalDateTime deleteTime;
 
     //
     //private String base64QueryImage;

@@ -6,6 +6,7 @@ import com.coursistant.lms.common.enums.ResultCodeEnum;
 import com.coursistant.lms.entity.Chat;
 import com.coursistant.lms.entity.Dialogue;
 import com.coursistant.lms.mapper.chat.DialogueMapper;
+import com.coursistant.lms.utils.TimeZoneUtils;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
@@ -38,7 +39,7 @@ public class DialogueService {
      * 软删除对话
      * Soft delete a dialogue
      */
-    public void softDelete(Integer id) {
+    public void softDelete(Integer id, ZoneId timezone) {
         // 查询对话 / Search dialogue
         Dialogue dialogue = dialogueMapper.selectById(id);
         if (dialogue == null) {
@@ -46,11 +47,10 @@ public class DialogueService {
         }
         // 修改删除状态 / Modify delete status
         dialogue.setDelete(true);
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-        dialogue.setDeleteTime(LocalDateTime.now().format(formatter));
+        dialogue.setDeleteTime(TimeZoneUtils.toUtcLocalDateTime(LocalDateTime.now(),timezone));
         // 更新对话状态 / Update dialogue status
         dialogueMapper.updateById(dialogue);
-        chatService.updateSoftDeleteByDialogueId(dialogue.getId());
+        chatService.updateSoftDeleteByDialogueId(dialogue.getId(), timezone);
     }
 
     /**

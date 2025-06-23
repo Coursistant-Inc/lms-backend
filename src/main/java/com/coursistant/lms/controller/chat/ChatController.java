@@ -3,12 +3,13 @@ package com.coursistant.lms.controller.chat;
 import com.coursistant.lms.common.Result;
 import com.coursistant.lms.entity.Chat;
 import com.coursistant.lms.service.chat.ChatService;
+import com.coursistant.lms.utils.TimeZoneUtils;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
 import java.util.List;
 import java.util.logging.Logger;
-
+import java.time.ZoneId;
 /**
  * 部门信息表前端操作接口
  * Chat frontend operation API
@@ -39,7 +40,7 @@ public class ChatController {
                       @RequestHeader(value = "X-Timezone", required = false) String timezone) {
         logRequest("add", chat.toString());
         ZoneId zone = TimeZoneUtils.resolveZoneId(timezone);
-        chatService.add(chat, timezone);
+        chatService.add(chat, zone);
         logResponse("add", "Success");
         return Result.success();
     }
@@ -49,9 +50,11 @@ public class ChatController {
      * Soft delete a chat record
      */
     @PostMapping("/softDelete/{id}")
-    public Result softDelete(@PathVariable Integer id) {
+    public Result softDelete(@PathVariable Integer id,
+                             @RequestHeader(value = "X-Timezone", required = false) String timezone) {
         logRequest("add", id.toString());
-        chatService.softDelete(id);
+        ZoneId zone = TimeZoneUtils.resolveZoneId(timezone);
+        chatService.softDelete(id, zone);
         logResponse("add", "Success");
         return Result.success();
     }

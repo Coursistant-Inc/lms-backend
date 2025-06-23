@@ -35,6 +35,7 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Date;
@@ -65,7 +66,7 @@ public class CoursistanceService {
      * 处理查询请求
      * Process query request
      */
-    public Query query(File file, Integer courseId, String query, Integer dialogueId, Integer userId) {
+    public Query query(File file, Integer courseId, String query, Integer dialogueId, Integer userId, ZoneId timezone) {
         Query returnQuery = new Query();
 
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -93,15 +94,15 @@ public class CoursistanceService {
             }
 
             // 更新对话 / Update dialogue
-            dialogue.setUpdateTime(LocalDateTime.now().format(formatter));
-            dialogueService.updateById(dialogue);
+            dialogue.setUpdateTime(LocalDateTime.now());
+            dialogueService.updateById(dialogue, timezone);
         } else {
             // 创建新的对话 / Create a new dialogue
             dialogue=new Dialogue();
             dialogue.setCourseId(courseId);
             dialogue.setUserId(userId);
-            dialogue.setUpdateTime(LocalDateTime.now().format(formatter));
-            dialogueService.add(dialogue);
+            dialogue.setUpdateTime(LocalDateTime.now());
+            dialogueService.add(dialogue, timezone);
             dialogueId=dialogue.getId();
 
             initial=true;
@@ -111,7 +112,7 @@ public class CoursistanceService {
         Chat chat = new Chat();
         chat.setQueryText(query);
         chat.setQueryImage(file != null ? file.getAbsolutePath() : null);
-        chat.setTime(LocalDateTime.now().format(formatter));
+        chat.setTime(LocalDateTime.now());
         chat.setDialogueId(dialogueId);
 
         //get user info
@@ -250,7 +251,7 @@ public class CoursistanceService {
                         dialogue.setSummary(summary);
                     }
                     dialogue.setRecentMessage(answer);
-                    dialogueService.updateById(dialogue);
+                    dialogueService.updateById(dialogue, timezone);
                     //String imageBase64 = "Image not found".equals(imageValue) ? null : imageValue;
 
                     logger.info("Query analysis result: " + answer);
@@ -297,7 +298,7 @@ public class CoursistanceService {
         }
 
         // 上传聊天记录 / Upload chat history
-        chatService.add(chat);
+        chatService.add(chat, timezone);
 
         return returnQuery;
     }
