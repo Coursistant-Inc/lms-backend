@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import org.springframework.format.annotation.DateTimeFormat;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
@@ -56,13 +57,13 @@ public class Assignment implements Serializable {
     private Integer allowedSubmissionTimes;
 
     /** 最高分 */
-    private Integer highestGrade;
+    private BigDecimal highestGrade;
 
     /** 最低分 */
-    private Integer lowestGrade;
+    private BigDecimal lowestGrade;
 
     /** 平均分 */
-    private Integer averageGrade;
+    private BigDecimal averageGrade;
 
     /** 是否发布成绩（0-未发布，1-已发布） */
     private Boolean gradePublish;
@@ -189,27 +190,27 @@ public class Assignment implements Serializable {
         this.allowedSubmissionTimes = allowedSubmissionTimes;
     }
 
-    public Integer getHighestGrade() {
+    public BigDecimal getHighestGrade() {
         return highestGrade;
     }
 
-    public void setHighestGrade(Integer highestGrade) {
+    public void setHighestGrade(BigDecimal highestGrade) {
         this.highestGrade = highestGrade;
     }
 
-    public Integer getLowestGrade() {
+    public BigDecimal getLowestGrade() {
         return lowestGrade;
     }
 
-    public void setLowestGrade(Integer lowestGrade) {
+    public void setLowestGrade(BigDecimal lowestGrade) {
         this.lowestGrade = lowestGrade;
     }
 
-    public Integer getAverageGrade() {
+    public BigDecimal getAverageGrade() {
         return averageGrade;
     }
 
-    public void setAverageGrade(Integer averageGrade) {
+    public void setAverageGrade(BigDecimal averageGrade) {
         this.averageGrade = averageGrade;
     }
 

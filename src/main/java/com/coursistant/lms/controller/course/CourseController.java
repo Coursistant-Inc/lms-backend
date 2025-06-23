@@ -103,5 +103,16 @@ public class CourseController {
         return Result.success(list);
     }
 
+    /**
+     * 查询所有
+     * Query all courses by userId
+     */
+    @GetMapping("/selectByUserId/{id}")
+    public Result selectByUserId(@PathVariable Integer id) {
+        logRequest("selectById", id.toString());
+        List<Course> list = courseService.selectByUserId(id);
+        logResponse("selectById", null);
+        return Result.success(list);
+    }
 
 }

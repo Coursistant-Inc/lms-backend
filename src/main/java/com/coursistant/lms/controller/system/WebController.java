@@ -167,6 +167,17 @@ public class WebController {
         return Result.success();
     }
 
+    /**
+     * 校验邮箱验证码 // Validate email verification code
+     */
+    @PostMapping("/validateRegisterEmailVerification")
+    public Result validateRegisterEmailVerification(@RequestParam("email") String email,
+                                                    @RequestParam("code") String code) {
+        userService.validateEmailVerificationCode(email, code);
+        return Result.success();
+    }
+
+
 
     @PostMapping("/sendResetEmailVerification")
     public Result sendResetEmailVerification(String email) {

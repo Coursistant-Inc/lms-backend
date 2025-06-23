@@ -8,6 +8,10 @@
         id,name,course_code,teacher_id,semester,instructor_name,school
     </sql>
 
+    <sql id="Base_Column_List_WithPrefix">
+        c.id, c.name, c.course_code, c.teacher_id, c.semester, c.instructor_name, c.school
+    </sql>
+
     <select id="selectAll" resultType="com.coursistant.lms.entity.Course">
         select Course.*, User.name as teacherName, User.phone as teacherPhone, User.email as teacherEmail
         from Course
@@ -82,6 +86,30 @@
         </set>
         where id = #{id}
     </update>
+
+    <!-- 查询某用户通过 Teach 表教授的所有课程（含老师信息） -->
+    <select id="selectByUserIdFromTeach" resultType="com.coursistant.lms.entity.Course">
+        SELECT c.*, u.name AS teacherName, u.phone AS teacherPhone, u.email AS teacherEmail
+        FROM Teach t
+                 JOIN Course c ON t.course_id = c.id
+                 LEFT JOIN User u ON c.teacher_id = u.id
+        WHERE t.user_id = #{userId}
+        ORDER BY c.id DESC
+    </select>
+
+    <!-- 查询某用户通过 Learn 表学习的所有课程（含老师信息） -->
+    <select id="selectByUserIdFromLearn" resultType="com.coursistant.lms.entity.Course">
+        SELECT c.*, u.name AS teacherName, u.phone AS teacherPhone, u.email AS teacherEmail
+        FROM Learn l
+                 JOIN Course c ON l.course_id = c.id
+                 LEFT JOIN User u ON c.teacher_id = u.id
+        WHERE l.user_id = #{userId}
+        ORDER BY c.id DESC
+    </select>
+
+
+
+
 
 
 </mapper>

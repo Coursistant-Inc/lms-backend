@@ -45,15 +45,6 @@ public class AssignmentService {
         if (ObjectUtil.isNull(assignment.getAllowedSubmissionTimes())) {
             assignment.setAllowedSubmissionTimes(1);
         }
-        if (ObjectUtil.isNull(assignment.getHighestGrade())) {
-            assignment.setHighestGrade(0);
-        }
-        if (ObjectUtil.isNull(assignment.getLowestGrade())) {
-            assignment.setLowestGrade(0);
-        }
-        if (ObjectUtil.isNull(assignment.getAverageGrade())) {
-            assignment.setAverageGrade(0);
-        }
         if (ObjectUtil.isNull(assignment.getGradePublish())) {
             assignment.setGradePublish(false);
         }
@@ -102,12 +93,17 @@ public class AssignmentService {
      */
     public void updateById(Assignment assignment, ZoneId timezone) {
 
-        assignment.setStart(TimeZoneUtils.toUtcLocalDateTime(assignment.getStart(),timezone));
-        assignment.setDue(TimeZoneUtils.toUtcLocalDateTime(assignment.getDue(),timezone));
+        if (assignment.getStart() != null) {
+            assignment.setStart(TimeZoneUtils.toUtcLocalDateTime(assignment.getStart(), timezone));
+        }
+
+        if (assignment.getDue() != null) {
+            assignment.setDue(TimeZoneUtils.toUtcLocalDateTime(assignment.getDue(), timezone));
+        }
 
         assignmentMapper.updateById(assignment);
-
     }
+
 
     /**
      * 增加 Assignment Submission Number

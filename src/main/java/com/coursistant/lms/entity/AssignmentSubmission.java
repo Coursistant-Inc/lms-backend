@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import org.springframework.format.annotation.DateTimeFormat;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
@@ -49,12 +50,14 @@ public class AssignmentSubmission implements Serializable {
     /** 成绩
      * Grade
      */
-    private String grade;
+    private BigDecimal grade;
 
     /** 评语
      * Comment
      */
     private String comment;
+
+    private Boolean isFinal;
 
 
 
@@ -71,6 +74,7 @@ public class AssignmentSubmission implements Serializable {
         if (status != null) sb.append("\"status\":\"").append(status).append("\",");
         if (grade != null) sb.append("\"grade\":\"").append(grade).append("\",");
         if (comment != null) sb.append("\"comment\":\"").append(comment).append("\",");
+        if (isFinal != null) sb.append("\"isFinal\":").append(isFinal).append(",");
 
         if (sb.charAt(sb.length() - 1) == ',') {
             sb.deleteCharAt(sb.length() - 1);
@@ -79,6 +83,7 @@ public class AssignmentSubmission implements Serializable {
         sb.append("}");
         return sb.toString();
     }
+
 
     public Integer getId() {
         return id;
@@ -129,11 +134,11 @@ public class AssignmentSubmission implements Serializable {
         this.status = status;
     }
 
-    public String getGrade() {
+    public BigDecimal getGrade() {
         return grade;
     }
 
-    public void setGrade(String grade) {
+    public void setGrade(BigDecimal grade) {
         this.grade = grade;
     }
 
@@ -145,5 +150,11 @@ public class AssignmentSubmission implements Serializable {
         this.comment = comment;
     }
 
+    public Boolean getFinal() {
+        return isFinal;
+    }
 
+    public void setFinal(Boolean aFinal) {
+        isFinal = aFinal;
+    }
 }

@@ -49,24 +49,7 @@ public class AssignmentSubmissionController {
                       @RequestPart(value = "files", required = false) List<MultipartFile> files,
                       @RequestHeader(value = "X-Timezone", required = false) String timezone) {
         logRequest("add", assignmentSubmission.toString());
-        int assignmentId = assignmentSubmission.getAssignmentId();
-        AssignmentSubmission qryItem = new AssignmentSubmission();
-        qryItem.setAssignmentId(assignmentSubmission.getAssignmentId());
-        qryItem.setStudentId(assignmentSubmission.getStudentId());
 
-        ZoneId zone= TimeZoneUtils.resolveZoneId(timezone);
-
-        List<AssignmentSubmission> submissions = assignmentSubmissionService.selectAll(qryItem,zone);
-        AssignmentDTO tocheck = assignmentService.selectById(assignmentId,zone);
-        if (submissions.size() >= tocheck.getAllowedSubmissionTimes()){
-            return Result.error(ResultCodeEnum.SUBMISSION_NOT_VALID_ERROR);
-        }
-        
-        if (submissions.size() == 0) {
-            Assignment toUpdate = new Assignment();
-            toUpdate.setId(assignmentSubmission.getAssignmentId());
-            assignmentService.incrementSubNumById(toUpdate);
-        }
         assignmentSubmissionService.add(assignmentSubmission,files);
         logResponse("add", "Success");
         return Result.success();
@@ -104,6 +87,18 @@ public class AssignmentSubmissionController {
     public Result updateById(@RequestBody AssignmentSubmission assignmentSubmission) {
         logRequest("updateById", assignmentSubmission.toString());
         assignmentSubmissionService.updateById(assignmentSubmission);
+        logResponse("updateById", "Success");
+        return Result.success();
+    }
+
+    /**
+     * 更新
+     * Update grade
+     */
+    @PutMapping("/updateGrade")
+    public Result updateGradeById(@RequestBody AssignmentSubmission assignmentSubmission) {
+        logRequest("updateById", assignmentSubmission.toString());
+        assignmentSubmissionService.updateGradeById(assignmentSubmission);
         logResponse("updateById", "Success");
         return Result.success();
     }

@@ -233,32 +233,39 @@ public class UserService {
         User user = new User();
         BeanUtils.copyProperties(account, user);
 
-        //check email
-        String redisKey = "email:verification:" + "register"+":"+account.getEmail();
-        String cachedCode = (String) generalRedisTemplate.opsForValue().get(redisKey);
 
-        if (ObjectUtil.isEmpty(cachedCode) || !cachedCode.equals(account.getVerification())) {
-            throw new CustomException(ResultCodeEnum.VERIFICATION_CODE_ERROR);
-        }
-
-        //check
+        // check invitation code
         String invitation = user.getInvitation();
         if ("PZMWXN4UUO".equals(invitation)) {
-            user.setInvitation("Local Student"); // 本土学生
+            user.setInvitation("Local Student");
         } else if ("YK0AU47BZ1".equals(invitation)) {
-            user.setInvitation("International Student"); // 留学生
+            user.setInvitation("International Student");
         } else if ("OPH31E5TOK".equals(invitation)) {
-            user.setInvitation("Developer"); // 开发人员
+            user.setInvitation("Developer");
         } else if ("Z4G2MZ1XO1".equals(invitation)) {
-            user.setInvitation("Teaching Class"); // 教学班级
+            user.setInvitation("Teaching Class");
         } else {
             throw new CustomException(ResultCodeEnum.INVITATION_NOT_EXIST_ERROR);
         }
 
         add(user);
         clearUserAllCache();
-        generalRedisTemplate.delete(redisKey);
+        generalRedisTemplate.delete("email:verification:register:" + account.getEmail());
     }
+
+    /**
+     * VERIFICATION_CODE
+     */
+    public void validateEmailVerificationCode(String email, String verificationCode) {
+        String redisKey = "email:verification:register:" + email;
+        String cachedCode = (String) generalRedisTemplate.opsForValue().get(redisKey);
+
+        if (ObjectUtil.isEmpty(cachedCode) || !cachedCode.equals(verificationCode)) {
+            throw new CustomException(ResultCodeEnum.VERIFICATION_CODE_ERROR);
+        }
+    }
+
+
 
     /**
      * 修改密码 Change Password
