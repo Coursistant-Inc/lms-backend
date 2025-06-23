@@ -1,7 +1,7 @@
 package com.coursistant.lms.service.chat;
 
 import cn.hutool.core.util.ObjectUtil;
-
+import cn.hutool.core.io.FileUtil;
 import com.coursistant.lms.common.enums.ResultCodeEnum;
 import com.coursistant.lms.entity.Chat;
 import com.coursistant.lms.entity.Dialogue;
@@ -153,7 +153,7 @@ public class CoursistanceService {
 
         // 定义两个 API 地址 / Define two API endpoints
         String queryApiUrl = "http://labserver101.ddns.net:5000/chat";
-        String analyzeImageApiUrl = "http://labserver101.ddns.net:5001/analyze-image";
+        String analyzeImageUrl = "http://labserver101.ddns.net:5001/analyze-image";
         String analyzeFileUrl   = "http://labserver101.ddns.net:5005/analyze-file";
         try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
             String analyzedResult = null;
@@ -161,7 +161,7 @@ public class CoursistanceService {
             // 如果文件存在且不为空，调用 analyze-image/file API
             // If the file exists and is not empty, call the analyze-image/file API
             if (file != null && file.exists()) {
-                String ext = FilenameUtils.getExtension(file.getName()).toLowerCase();
+                String ext = FileUtil.extName(file.getName()).toLowerCase();
                 String apiUrl = (List.of("png","jpg","jpeg","bmp","gif").contains(ext))
                         ? analyzeImageUrl : analyzeFileUrl;
                 HttpPost post = new HttpPost(apiUrl);
@@ -181,10 +181,10 @@ public class CoursistanceService {
                 }
                 post.setEntity(mb.build());
 
-                try (CloseableHttpResponse resp = client.execute(post)) {
+                try (CloseableHttpResponse resp = httpClient.execute(post)) {
                     int code = resp.getStatusLine().getStatusCode();
                     if (code == 200) {
-                        String analyzeResponseJson = EntityUtils.toString(analyzeResponse.getEntity());
+                        String analyzeResponseJson = EntityUtils.toString(resp.getEntity());
 
                         // 解析 JSON 响应 / Parse JSON response
                         ObjectMapper objectMapper = new ObjectMapper();
@@ -192,8 +192,8 @@ public class CoursistanceService {
 
                         // 提取 result 和 status / Extract result and status
                         String status = analyzeRootNode.path("status").asText();
-                        if ("success".equalsIgnoreCase(root.path("status").asText())) {
-                            analyzedResult = root.path("result").asText();
+                        if ("success".equalsIgnoreCase(status)) {
+                            analyzedResult = analyzeRootNode.path("result").asText();
                         } else {
                             throw new IOException("File analysis failed with status: " + status);
                         }

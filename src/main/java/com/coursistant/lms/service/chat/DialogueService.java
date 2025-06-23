@@ -12,6 +12,8 @@ import javax.annotation.Resource;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.sql.Time;
+import java.time.ZoneId;
 
 @Service
 public class DialogueService {
@@ -25,8 +27,11 @@ public class DialogueService {
      * 添加对话
      * Add a new dialogue
      */
-    public void add(Dialogue dialogue) {
+    public void add(Dialogue dialogue, ZoneId timezone) {
+        dialogue.setUpdateTime(TimeZoneUtils.toUtcLocalDateTime(dialogue.getUpdateTime(),timezone));
+        dialogue.setDeleteTime(TimeZoneUtils.toUtcLocalDateTime(dialogue.getDeleteTime(),timezone));
         dialogueMapper.insert(dialogue);
+
     }
 
     /**
@@ -75,7 +80,9 @@ public class DialogueService {
      * 更新对话
      * Update dialogue
      */
-    public void updateById(Dialogue dialogue) {
+    public void updateById(Dialogue dialogue, ZoneId timezone) {
+        dialogue.setUpdateTime(TimeZoneUtils.toUtcLocalDateTime(dialogue.getUpdateTime(),timezone));
+        dialogue.setDeleteTime(TimeZoneUtils.toUtcLocalDateTime(dialogue.getDeleteTime(),timezone));
         dialogueMapper.updateById(dialogue);
     }
 
@@ -83,11 +90,14 @@ public class DialogueService {
      * 根据 ID 查询对话
      * Select dialogue by ID
      */
-    public Dialogue selectById(Integer id) {
+    public Dialogue selectById(Integer id, ZoneId timezone) {
         Dialogue dialogue = dialogueMapper.selectById(id);
         if (dialogue == null) {
             throw new CustomException(ResultCodeEnum.CHAT_NOT_EXIST_ERROR);
         }
+        dialogue.setUpdateTime(TimeZoneUtils.fromUtcLocalDateTime(dialogue.getUpdateTime(),timezone));
+        dialogue.setDeleteTime(TimeZoneUtils.fromUtcLocalDateTime(dialogue.getDeleteTime(),timezone));
+
         List<Chat> chats = chatService.selectByDialogueId(dialogue.getId());
         dialogue.setChats(chats);
         return dialogue;
@@ -97,7 +107,7 @@ public class DialogueService {
      * 根据用户 ID 查询对话
      * Select dialogues by user ID
      */
-    public List<Dialogue> selectByUserId(Integer id) {
+    public List<Dialogue> selectByUserId(Integer id, ZoneId timezone) {
 
         List<Dialogue> dialogues = dialogueMapper.selectByUserId(id);
         if (!ObjectUtil.isNotNull(dialogues)){
@@ -105,7 +115,11 @@ public class DialogueService {
         }
 
         for (int i=0;i<dialogues.size();i++){
-            Integer singleid=dialogues.get(i).getId();
+            Dialogue dialogue = dialogues.get(i);
+            dialogue.setUpdateTime(TimeZoneUtils.fromUtcLocalDateTime(dialogue.getUpdateTime(),timezone));
+            dialogue.setDeleteTime(TimeZoneUtils.fromUtcLocalDateTime(dialogue.getDeleteTime(),timezone));
+
+            Integer singleid=dialogue.getId();
             List<Chat> chats=chatService.selectByDialogueId(singleid);
             dialogues.get(i).setChats(chats);
         }
@@ -117,9 +131,13 @@ public class DialogueService {
      * 根据用户 ID 和关键词查询对话
      * Select dialogues by user ID and keyword
      */
-    public List<Dialogue> selectByUserIdAndKeyword(Integer userId, String keyword) {
+    public List<Dialogue> selectByUserIdAndKeyword(Integer userId, String keyword, ZoneId timezone) {
 
         List<Dialogue> dialogues = dialogueMapper.selectByUserIdAndKeyword(userId, keyword);
+        for (Dialogue d : dialogues) {
+            d.setUpdateTime(TimeZoneUtils.fromUtcLocalDateTime(d.getUpdateTime(), timezone));
+            d.setDeleteTime(TimeZoneUtils.fromUtcLocalDateTime(d.getDeleteTime(), timezone));
+        }
         return dialogues;
     }
 
@@ -127,10 +145,13 @@ public class DialogueService {
      * 查询所有对话
      * Select all dialogues
      */
-    public List<Dialogue> selectAll(Dialogue dialogue) {
+    public List<Dialogue> selectAll(Dialogue dialogue, ZoneId timezone) {
 
         List<Dialogue> dialogues = dialogueMapper.selectAll(dialogue);
-
+        for (Dialogue d : dialogues) {
+            d.setUpdateTime(TimeZoneUtils.fromUtcLocalDateTime(d.getUpdateTime(), timezone));
+            d.setDeleteTime(TimeZoneUtils.fromUtcLocalDateTime(d.getDeleteTime(), timezone));
+        }
         return dialogues;
     }
 
