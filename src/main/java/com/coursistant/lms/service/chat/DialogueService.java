@@ -29,8 +29,13 @@ public class DialogueService {
      * Add a new dialogue
      */
     public void add(Dialogue dialogue, ZoneId timezone) {
-        dialogue.setUpdateTime(TimeZoneUtils.toUtcLocalDateTime(dialogue.getUpdateTime(),timezone));
-        dialogue.setDeleteTime(TimeZoneUtils.toUtcLocalDateTime(dialogue.getDeleteTime(),timezone));
+        if (dialogue.getUpdateTime() != null) {
+            dialogue.setUpdateTime(TimeZoneUtils.toUtcLocalDateTime(dialogue.getUpdateTime(), timezone));
+        }
+        if (dialogue.getDeleteTime() != null) {
+            dialogue.setDeleteTime(TimeZoneUtils.toUtcLocalDateTime(dialogue.getDeleteTime(), timezone));
+        }
+
         dialogueMapper.insert(dialogue);
 
     }
@@ -39,7 +44,7 @@ public class DialogueService {
      * 软删除对话
      * Soft delete a dialogue
      */
-    public void softDelete(Integer id, ZoneId timezone) {
+    public void softDelete(Integer id) {
         // 查询对话 / Search dialogue
         Dialogue dialogue = dialogueMapper.selectById(id);
         if (dialogue == null) {
@@ -47,10 +52,10 @@ public class DialogueService {
         }
         // 修改删除状态 / Modify delete status
         dialogue.setDelete(true);
-        dialogue.setDeleteTime(TimeZoneUtils.toUtcLocalDateTime(LocalDateTime.now(),timezone));
+        dialogue.setDeleteTime(TimeZoneUtils.toUtcLocalDateTime(LocalDateTime.now(), ZoneId.systemDefault()));
         // 更新对话状态 / Update dialogue status
         dialogueMapper.updateById(dialogue);
-        chatService.updateSoftDeleteByDialogueId(dialogue.getId(), timezone);
+        chatService.updateSoftDeleteByDialogueId(dialogue.getId());
     }
 
     /**
@@ -81,8 +86,13 @@ public class DialogueService {
      * Update dialogue
      */
     public void updateById(Dialogue dialogue, ZoneId timezone) {
-        dialogue.setUpdateTime(TimeZoneUtils.toUtcLocalDateTime(dialogue.getUpdateTime(),timezone));
-        dialogue.setDeleteTime(TimeZoneUtils.toUtcLocalDateTime(dialogue.getDeleteTime(),timezone));
+        if (dialogue.getUpdateTime() != null) {
+            dialogue.setUpdateTime(TimeZoneUtils.toUtcLocalDateTime(dialogue.getUpdateTime(), timezone));
+        }
+        if (dialogue.getDeleteTime() != null) {
+            dialogue.setDeleteTime(TimeZoneUtils.toUtcLocalDateTime(dialogue.getDeleteTime(), timezone));
+        }
+
         dialogueMapper.updateById(dialogue);
     }
 
@@ -95,8 +105,12 @@ public class DialogueService {
         if (dialogue == null) {
             throw new CustomException(ResultCodeEnum.CHAT_NOT_EXIST_ERROR);
         }
-        dialogue.setUpdateTime(TimeZoneUtils.fromUtcLocalDateTime(dialogue.getUpdateTime(),timezone));
-        dialogue.setDeleteTime(TimeZoneUtils.fromUtcLocalDateTime(dialogue.getDeleteTime(),timezone));
+        if (dialogue.getUpdateTime() != null) {
+            dialogue.setUpdateTime(TimeZoneUtils.fromUtcLocalDateTime(dialogue.getUpdateTime(), timezone));
+        }
+        if (dialogue.getDeleteTime() != null) {
+            dialogue.setDeleteTime(TimeZoneUtils.fromUtcLocalDateTime(dialogue.getDeleteTime(), timezone));
+        }
 
         List<Chat> chats = chatService.selectByDialogueId(dialogue.getId());
         dialogue.setChats(chats);
@@ -116,8 +130,12 @@ public class DialogueService {
 
         for (int i=0;i<dialogues.size();i++){
             Dialogue dialogue = dialogues.get(i);
-            dialogue.setUpdateTime(TimeZoneUtils.fromUtcLocalDateTime(dialogue.getUpdateTime(),timezone));
-            dialogue.setDeleteTime(TimeZoneUtils.fromUtcLocalDateTime(dialogue.getDeleteTime(),timezone));
+            if (dialogue.getUpdateTime() != null) {
+                dialogue.setUpdateTime(TimeZoneUtils.fromUtcLocalDateTime(dialogue.getUpdateTime(), timezone));
+            }
+            if (dialogue.getDeleteTime() != null) {
+                dialogue.setDeleteTime(TimeZoneUtils.fromUtcLocalDateTime(dialogue.getDeleteTime(), timezone));
+            }
 
             Integer singleid=dialogue.getId();
             List<Chat> chats=chatService.selectByDialogueId(singleid);
@@ -135,8 +153,13 @@ public class DialogueService {
 
         List<Dialogue> dialogues = dialogueMapper.selectByUserIdAndKeyword(userId, keyword);
         for (Dialogue d : dialogues) {
-            d.setUpdateTime(TimeZoneUtils.fromUtcLocalDateTime(d.getUpdateTime(), timezone));
-            d.setDeleteTime(TimeZoneUtils.fromUtcLocalDateTime(d.getDeleteTime(), timezone));
+            if (d.getUpdateTime() != null) {
+                d.setUpdateTime(TimeZoneUtils.fromUtcLocalDateTime(d.getUpdateTime(), timezone));
+            }
+            if (d.getDeleteTime() != null) {
+                d.setDeleteTime(TimeZoneUtils.fromUtcLocalDateTime(d.getDeleteTime(), timezone));
+            }
+
         }
         return dialogues;
     }
@@ -149,8 +172,13 @@ public class DialogueService {
 
         List<Dialogue> dialogues = dialogueMapper.selectAll(dialogue);
         for (Dialogue d : dialogues) {
-            d.setUpdateTime(TimeZoneUtils.fromUtcLocalDateTime(d.getUpdateTime(), timezone));
-            d.setDeleteTime(TimeZoneUtils.fromUtcLocalDateTime(d.getDeleteTime(), timezone));
+            if (d.getUpdateTime() != null) {
+                d.setUpdateTime(TimeZoneUtils.fromUtcLocalDateTime(d.getUpdateTime(), timezone));
+            }
+            if (d.getDeleteTime() != null) {
+                d.setDeleteTime(TimeZoneUtils.fromUtcLocalDateTime(d.getDeleteTime(), timezone));
+            }
+
         }
         return dialogues;
     }

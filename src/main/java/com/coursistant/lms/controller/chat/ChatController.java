@@ -50,11 +50,9 @@ public class ChatController {
      * Soft delete a chat record
      */
     @PostMapping("/softDelete/{id}")
-    public Result softDelete(@PathVariable Integer id,
-                             @RequestHeader(value = "X-Timezone", required = false) String timezone) {
+    public Result softDelete(@PathVariable Integer id) {
         logRequest("add", id.toString());
-        ZoneId zone = TimeZoneUtils.resolveZoneId(timezone);
-        chatService.softDelete(id, zone);
+        chatService.softDelete(id);
         logResponse("add", "Success");
         return Result.success();
     }

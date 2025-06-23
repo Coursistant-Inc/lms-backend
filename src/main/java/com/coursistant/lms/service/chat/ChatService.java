@@ -23,13 +23,17 @@ public class ChatService {
 
 
     public void add(Chat chat, ZoneId timezone) {
-        chat.setTime(TimeZoneUtils.toUtcLocalDateTime(chat.getTime(), timezone));
-        chat.setDeleteTime(TimeZoneUtils.toUtcLocalDateTime(chat.getDeleteTime(), timezone));
+        if (chat.getTime() != null) {
+            chat.setTime(TimeZoneUtils.toUtcLocalDateTime(chat.getTime(), timezone));
+        }
+        if (chat.getDeleteTime() != null) {
+            chat.setDeleteTime(TimeZoneUtils.toUtcLocalDateTime(chat.getDeleteTime(), timezone));
+        }
         chatMapper.insert(chat);
     }
 
 
-    public void softDelete(Integer id, ZoneId timezone) {
+    public void softDelete(Integer id) {
         // 搜索 / Search
         Chat chat = chatMapper.selectById(id);
         if (chat == null) {
@@ -37,8 +41,7 @@ public class ChatService {
         }
         // 修改 / Modify
         chat.setDelete(true);
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-        chat.setDeleteTime(TimeZoneUtils.toUtcLocalDateTime(LocalDateTime.now(), timezone));
+        chat.setDeleteTime(TimeZoneUtils.toUtcLocalDateTime(LocalDateTime.now(), ZoneId.systemDefault()));
         // 更新 / Update
         chatMapper.updateById(chat);
     }
@@ -67,8 +70,12 @@ public class ChatService {
      * Update a chat by ID
      */
     public void updateById(Chat chat, ZoneId timezone) {
-        chat.setTime(TimeZoneUtils.toUtcLocalDateTime(chat.getTime(), timezone));
-        chat.setDeleteTime(TimeZoneUtils.toUtcLocalDateTime(chat.getDeleteTime(), timezone));
+        if (chat.getTime() != null) {
+            chat.setTime(TimeZoneUtils.toUtcLocalDateTime(chat.getTime(), timezone));
+        }
+        if (chat.getDeleteTime() != null) {
+            chat.setDeleteTime(TimeZoneUtils.toUtcLocalDateTime(chat.getDeleteTime(), timezone));
+        }
         chatMapper.updateById(chat);
     }
 
@@ -82,8 +89,12 @@ public class ChatService {
         if (chat == null) {
             throw new CustomException(ResultCodeEnum.CHAT_NOT_EXIST_ERROR);
         }
-        chat.setTime(TimeZoneUtils.fromUtcLocalDateTime(chat.getTime(), timezone));
-        chat.setDeleteTime(TimeZoneUtils.fromUtcLocalDateTime(chat.getDeleteTime(), timezone));
+        if (chat.getTime() != null) {
+            chat.setTime(TimeZoneUtils.fromUtcLocalDateTime(chat.getTime(), timezone));
+        }
+        if (chat.getDeleteTime() != null) {
+            chat.setDeleteTime(TimeZoneUtils.fromUtcLocalDateTime(chat.getDeleteTime(), timezone));
+        }
         return chat;
     }
 
@@ -94,9 +105,13 @@ public class ChatService {
     public List<Chat> selectAll(Chat chat, ZoneId timezone) {
 
         List<Chat> chats = chatMapper.selectAll(chat);
-        for (Chat c : chats) {
-            c.setTime(TimeZoneUtils.fromUtcLocalDateTime(c.getTime(), timezone));
-            c.setDeleteTime(TimeZoneUtils.fromUtcLocalDateTime(c.getDeleteTime(), timezone));
+        for (Chat singleChat : chats) {
+            if (singleChat.getTime() != null) {
+                singleChat.setTime(TimeZoneUtils.fromUtcLocalDateTime(singleChat.getTime(), timezone));
+            }
+            if (singleChat.getDeleteTime() != null) {
+                singleChat.setDeleteTime(TimeZoneUtils.fromUtcLocalDateTime(singleChat.getDeleteTime(), timezone));
+            }
         }
         return chats;
     }
@@ -116,9 +131,9 @@ public class ChatService {
      * 根据对话 ID 软删除
      * Soft delete chats by dialogue ID
      */
-    public void updateSoftDeleteByDialogueId(Integer dialogueId, ZoneId timezone) {
+    public void updateSoftDeleteByDialogueId(Integer dialogueId) {
         int rowsUpdated = chatMapper.updateSoftDeleteByDialogueId(dialogueId, 1,
-                TimeZoneUtils.toUtcLocalDateTime(LocalDateTime.now(), timezone));
+                TimeZoneUtils.toUtcLocalDateTime(LocalDateTime.now(), ZoneId.systemDefault()));
     }
 
     //return last 5 chat

@@ -52,11 +52,9 @@ public class DialogueController {
      * Soft delete a dialogue
      */
     @PostMapping("/softDelete/{id}")
-    public Result softDelete(@PathVariable Integer id,
-                             @RequestHeader(value = "X-Timezone", required = false) String timezone) {
+    public Result softDelete(@PathVariable Integer id) {
         logRequest("add", id.toString());
-        ZoneId zone = TimeZoneUtils.resolveZoneId(timezone);
-        dialogueService.softDelete(id, zone);
+        dialogueService.softDelete(id);
         logResponse("add", "Success");
         return Result.success();
     }
