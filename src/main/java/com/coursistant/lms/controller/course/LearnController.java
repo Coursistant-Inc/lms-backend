@@ -148,43 +148,37 @@ public class LearnController {
         return Result.success(page);
     }
 
-    // @PostMapping("/update/courseStatus")
-    // public String updateCourseStatus(@RequestParam Integer userId, @RequestParam Integer courseId, @RequestParam String courseStatus)
-    // {
-    //     return "update course status method invoked!";
-    //     // System.out.println("User id: "+userId);
-    //     // System.out.println("courseId: "+courseId);
-    //     // System.out.println("courseStatus: "+courseStatus);
 
-    //     // return "Received parameters " + userId + " " + courseId + " " + courseStatus;
-    // }
 
     @PostMapping("/update/courseStatus")
-    public String updateCourseStatus(@RequestParam(value="user_id") Integer userId, @RequestParam("course_id") Integer courseId, @RequestParam("course_status") String courseStatus)
+    public Result updateCourseStatus(@RequestParam(value="user_id") Integer userId, @RequestParam("course_id") Integer courseId, @RequestParam("course_status") String courseStatus)
     {
 
         learnService.updateCourseStatus(userId, courseId, courseStatus);
-        return "Update successful!";
+        // return "Update successful!";
+        return Result.success();
     }
 
     @GetMapping("/select/courseStatus")
-    public String selectCourseStatus(@RequestParam(value="user_id") Integer userId, @RequestParam(value="course_id") Integer courseId) {
+    public Result selectCourseStatus(@RequestParam(value="user_id") Integer userId, @RequestParam(value="course_id") Integer courseId) {
         
         String courseStatus = learnService.selectCourseStatus(userId, courseId);
-        return courseStatus;
+        return Result.success(courseStatus);
     }
 
     @PostMapping("/update/grade")
-    public void updateCourseGrade(@RequestParam(value="user_id") Integer userId, @RequestParam(value="course_id") Integer courseId, @RequestParam(value="grade") String grade) {
+    public Result updateCourseGrade(@RequestParam(value="user_id") Integer userId, @RequestParam(value="course_id") Integer courseId, @RequestParam(value="grade") String grade) {
         //TODO: process POST request
         
         learnService.updateCourseGrade(userId, courseId, grade);
+        return Result.success();
     }
 
     @GetMapping("/select/grade")
-    public String selectCourseGrade(@RequestParam(value="user_id") Integer userId, @RequestParam(value="course_id") Integer courseId) {
+    public Result selectCourseGrade(@RequestParam(value="user_id") Integer userId, @RequestParam(value="course_id") Integer courseId) {
         String grade = learnService.selectCourseGrade(userId, courseId);
-        return grade;
+        // return grade;
+        return Result.success(grade);
     }
     
     

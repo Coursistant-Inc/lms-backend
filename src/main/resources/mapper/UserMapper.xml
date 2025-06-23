@@ -114,7 +114,9 @@
     </update>
 
     <select id="selectUserLevelById" parameterType="com.coursistant.lms.entity.User" resultType="String">
-        SELECT level FROM User WHERE id = #{userId}
+        SELECT level 
+        FROM User 
+        WHERE id = #{userId}
     </select>
 
     <!-- <update id="AddNameChangeRequest" parameterType="com.coursistant.lms.entity.User">
@@ -122,11 +124,14 @@
     </update> -->
 
     <insert id="addNameChangeRequest" parameterType="com.coursistant.lms.entity.User">
-        INSERT INTO NameChangeRequest(user_id, current_name, new_name) VALUES (#{user_id}, #{currentName}, #{newName})
+        INSERT INTO NameChangeRequest(user_id, current_name, new_name) 
+        VALUES (#{user_id}, #{currentName}, #{newName})
     </insert>
 
     <update id="reviewNameChangeRequest" parameterType="com.coursistant.lms.entity.User">
-        UPDATE NameChangeRequest SET decision=#{decision}, adminId = #{adminId} WHERE user_id = #{userId}
+        UPDATE NameChangeRequest 
+        SET decision=#{decision}, adminId = #{adminId} 
+        WHERE user_id = #{userId}
     </update>
 
 </mapper>

@@ -60,31 +60,45 @@
 
     <!--Change profile privacy settings for a user-->
     <update id="updateUserPrivacyById" parameterType="com.coursistant.lms.entity.Profile">
-        UPDATE Profile SET privacy = #{privacy} WHERE user_id = #{userId}
+        UPDATE Profile 
+        SET privacy = #{privacy} 
+        WHERE user_id = #{userId}
     </update>
 
     <!--Show privacy settings for a user-->
     <select id="selectUserPrivacyById" parameterType="com.coursistant.lms.entity.Profile" resultType="String">
-        SELECT privacy FROM Profile WHERE user_id = #{userId}
+        SELECT privacy 
+        FROM Profile 
+        WHERE user_id = #{userId}
     </select>
 
     <select id="selectGradesById" resultType="map">
-        SELECT c.name,l.grade FROM Course c, Learn l WHERE l.course_id = c.id AND l.user_id = #{userId}
+        SELECT c.name,l.grade 
+        FROM Course c, Learn l 
+        WHERE l.course_id = c.id AND l.user_id = #{userId}
     </select>
 
     <select id="selectCourseGradesById" resultType="map">
-        SELECT u.name, l.grade FROM User u, Learn l, Course c, Teach t WHERE l.course_id = #{courseId} AND l.course_id = c.id AND t.course_id = #{courseId} AND u.id = l.user_id AND t.user_id = #{userId};
+        SELECT u.name, l.grade 
+        FROM User u, Learn l, Course c, Teach t 
+        WHERE l.course_id = #{courseId} AND l.course_id = c.id AND t.course_id = #{courseId} AND u.id = l.user_id AND t.user_id = #{userId};
     </select>
 
     <select id="selectAvatarPathById" parameterType="com.coursistant.lms.entity.Profile" resultType="String">
-        SELECT avatar FROM Profile WHERE user_id = #{userId}
+        SELECT avatar 
+        FROM Profile 
+        WHERE user_id = #{userId}
     </select>
 
     <update id="updateAvatarPathById" parameterType="com.coursistant.lms.entity.Profile">
-        UPDATE Profile SET avatar = #{avatarPath} WHERE user_id = #{userId}
+        UPDATE Profile 
+        SET avatar = #{avatarPath} 
+        WHERE user_id = #{userId}
     </update>
 
     <update id="deleteAvatarById" parameterType="com.coursistant.lms.entity.Profile">
-        UPDATE Profile SET avatar = NULL WHERE user_id = #{userId}
+        UPDATE Profile 
+        SET avatar = NULL 
+        WHERE user_id = #{userId}
     </update>
 </mapper>

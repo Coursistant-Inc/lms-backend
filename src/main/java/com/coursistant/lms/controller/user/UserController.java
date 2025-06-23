@@ -139,10 +139,11 @@ public class UserController {
     }
 
     @PostMapping("/nameChange")
-    public String nameChangeRequest(@RequestParam("currentName") String currentName, @RequestParam("newName") String newName, @RequestParam("userId") Integer userId)
+    public Result nameChangeRequest(@RequestParam("currentName") String currentName, @RequestParam("newName") String newName, @RequestParam("userId") Integer userId)
     {
         userService.updateName(currentName, newName, userId);
-        return "Your request has been received. You will be notified once a decision has been taken";
+        // return "Your request has been received. You will be notified once a decision has been taken";
+        return Result.success("Your request has been received. You will be notified once a decision has been taken");
     }
 
     // This method should be accessible only to university admins

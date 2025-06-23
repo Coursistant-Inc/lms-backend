@@ -33,6 +33,7 @@ public enum ResultCodeEnum {
      */
     USER_EXIST_ERROR("4020", "Username Already Exists"),
     USER_NOT_EXIST_ERROR("4021", "User Does Not Exist"),
+    
 
     /**
      * File-related errors (403X)
@@ -43,6 +44,16 @@ public enum ResultCodeEnum {
     FILE_NOT_FOUND("4033", "File Not Found"),
     FILE_UPLOAD_ERROR("4034", "File upload error"),
     FILE_DELETION_ERROR("4035", "File deletion error"),
+    FILE_LIMIT_EXCEEDED("4036","File size limit exceeded"),
+
+    /**
+     * Profile-related errors(404X)
+     */
+    PROFILE_NOT_FOUND("4040","Profile not found!"),
+    PROFILE_VIEWING_NOT_ALLOWED("4041","Viewing the profile of this user is not permitted"),
+    PROFILE_ALREADY_EXISTS("4042","Profile already exists"),
+    INVALID_AVATAR_FILE("4043","Invalid Avatar File"),
+
 
     /**
      * System errors (500X)

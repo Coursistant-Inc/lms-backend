@@ -8,9 +8,8 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
+import org.springframework.util.ObjectUtils;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -21,6 +20,8 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.coursistant.lms.common.Result;
+import com.coursistant.lms.common.enums.ResultCodeEnum;
 import com.coursistant.lms.controller.course.CourseController;
 import com.coursistant.lms.entity.Profile;
 import com.coursistant.lms.service.user.ProfileService;
@@ -60,22 +61,25 @@ public class ProfileController {
      * Get profile by user ID
      */
     @GetMapping("/user/{userId}")
-    public ResponseEntity<Object> getProfileByUserId(@PathVariable Integer userId,@RequestParam(value="self_user_id") Integer selfUserId) {
+    public Result getProfileByUserId(@PathVariable Integer userId,@RequestParam(value="self_user_id") Integer selfUserId) {
         String selfLevel = userService.getUserLevel(selfUserId);
         String userPrivacyLevel = profileService.selectUserPrivacy(userId);
-        if(userPrivacyLevel == null||userPrivacyLevel.equals(selfLevel))
+        if(ObjectUtils.isEmpty(userPrivacyLevel)||userPrivacyLevel.equals(selfLevel))
         {
             logger.log(Level.INFO,"view profile of :"+userId+" by: "+selfUserId);
             Profile profile = profileService.getProfileByUserId(userId);
-            if(profile == null)
+            // if(profile == null)
+            if(ObjectUtils.isEmpty(profile))
             {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Profile not found!");
+                // return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Profile not found!");
+                return Result.error(ResultCodeEnum.PROFILE_NOT_FOUND);
             }
             logResponse("getProfileByUserId", profile.toString());
-            return ResponseEntity.ok(profile);
+            return Result.success(profile);
         }
 
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Viewing profile of this user is not allowed as the user's level is: "+userPrivacyLevel + " and your level is: " + selfLevel);
+        // return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Viewing profile of this user is not allowed as the user's level is: "+userPrivacyLevel + " and your level is: " + selfLevel);
+        return Result.error(ResultCodeEnum.PROFILE_VIEWING_NOT_ALLOWED);
     }
 
     /**
@@ -83,8 +87,9 @@ public class ProfileController {
      * Get all profiles
      */
     @GetMapping("/selectAll")
-    public List<Profile> getAllProfiles() {
-        return profileService.getAllProfiles();
+    public Result getAllProfiles() {
+        List<Profile> allProfiles = profileService.getAllProfiles();
+        return Result.success(allProfiles);
     }
 
     /**
@@ -100,16 +105,17 @@ public class ProfileController {
     // }
 
     @PostMapping(value = "/add", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public String createProfile(@RequestParam("userId") Integer userId, @RequestPart("profile") String profileJson,
+    public Result createProfile(@RequestParam("userId") Integer userId, @RequestPart("profile") String profileJson,
                                 @RequestParam(value="avatar",required=false) MultipartFile avatar)
 
     {
         ObjectMapper objectMapper = new ObjectMapper();
         Profile profile;
 
-        if(profileJson==null)
+        if(ObjectUtils.isEmpty(profileJson))
         {
-            return "Profile details not found!";
+            // return "Profile details not found!";
+            return Result.error(ResultCodeEnum.PARAM_LOST_ERROR);
         }
 
         try
@@ -123,34 +129,40 @@ public class ProfileController {
         }
 
         Profile existingProfile = profileService.getProfileByUserId(userId);
-        if(existingProfile!=null)
+        // if(existingProfile!=null)
+        if(!ObjectUtils.isEmpty(existingProfile))
         {
-            return "A profile of this user already exists.";
+            // return "A profile of this user already exists.";
+            return Result.error(ResultCodeEnum.PROFILE_ALREADY_EXISTS);
         }
 
         logRequest("add", profile.toString());
-        if (avatar != null && !avatar.isEmpty()) {
+        if (!ObjectUtils.isEmpty(avatar) && !avatar.isEmpty()) {
             try {
 
-                System.out.println("AVATAR FILE FOUND");
 
                 String avatarFileName = avatar.getOriginalFilename();
                 int i = avatarFileName.lastIndexOf(".");
 
                 if(i == -1)
                 {
-                    return "Invalid file";
+                    // return "Invalid file";
+                    return Result.error(ResultCodeEnum.FILE_READ_ERROR);
                 }
                 String extension = i > 0? avatarFileName.substring(i + 1):"";
                 if(!extension.equals("jpg")&&!extension.equals("png"))
                 {
-                    return "Invalid avatar file format.";
+                    // return "Invalid avatar file format.";
+                    // return Result.error("4030","Invalid file");
+                    return Result.error(ResultCodeEnum.INVALID_AVATAR_FILE);
+
                 }
 
                 long avatarFileSizeInMB = avatar.getSize()/1048576;
                 if(avatarFileSizeInMB > 50)
                 {
-                    return "File size limit exceeded";
+                    // return "File size limit exceeded";
+                    return Result.error(ResultCodeEnum.FILE_LIMIT_EXCEEDED);
                 }
 
  
@@ -192,7 +204,8 @@ public class ProfileController {
 
         profileService.createProfile(profile);
         logRequest("add",profile.toString());
-        return "Profile created successfully!";
+        // return "Profile created successfully!";
+        return Result.success("Profile created successfully!");
     }
 
     /**
@@ -200,16 +213,23 @@ public class ProfileController {
      * Update profile
      */
     @PostMapping(value = "/update", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public String updateProfile(@RequestParam("userId") Integer userId,
+    public Result updateProfile(@RequestParam("userId") Integer userId,
                                 @RequestPart(value = "profile", required = false) String profileJson,
                                 @RequestParam(value = "avatar", required = false) MultipartFile avatar) {
         ObjectMapper objectMapper = new ObjectMapper();
         Profile profile;
         try {
 
+            Profile profileExists = profileService.getProfileByUserId(userId);
+            if(ObjectUtils.isEmpty(profileExists))
+            {
+                return Result.error(ResultCodeEnum.PROFILE_NOT_FOUND);
+            }
+
             // 将 JSON 字符串转换为 Profile 对象
             // Convert JSON string to Profile object
-            if(profileJson!=null)
+            // if(profileJson!=null)
+            if(ObjectUtils.isEmpty(profileJson))
             {
                 profile = objectMapper.readValue(profileJson, Profile.class);
 
@@ -236,35 +256,38 @@ public class ProfileController {
 
     
 
-        if (avatar != null && !avatar.isEmpty()) {
+        if (ObjectUtils.isEmpty(avatar) && !avatar.isEmpty()) {
             try {
 
                String avatarFileName = avatar.getOriginalFilename();
                System.out.println("AVATAR FILE NAME: "+avatarFileName);
                 Integer i = avatarFileName.lastIndexOf(".");
-                if(i == -1 || i == null)
+                if(i == -1 || ObjectUtils.isEmpty(i))
                 {
-                    return "Invalid file";
+                    // return "Invalid file";
+                    return Result.error(ResultCodeEnum.FILE_READ_ERROR);
                 }
                 String extension = i > 0? avatarFileName.substring(i + 1):"";
                 if(!extension.equals("jpg")&&!extension.equals("png"))
                 {
-                    return "Invalid avatar file format.";
+                    // return "Invalid avatar file format.";
+                    return Result.error(ResultCodeEnum.INVALID_AVATAR_FILE);
                 }
 
 
                 long avatarFileSizeInMB = avatar.getSize()/1048576;
                 if(avatarFileSizeInMB > 50)
                 {
-                    return "File size limit exceeded";
+                    // return "File size limit exceeded";
+                    return Result.error(ResultCodeEnum.FILE_LIMIT_EXCEEDED);
                 }
 
                 String oldAvatarPath = profileService.selectAvatarPathById(userId);
-                if(oldAvatarPath != null&& !oldAvatarPath.isEmpty())
+                if(ObjectUtils.isEmpty(oldAvatarPath)&& !oldAvatarPath.isEmpty())
                 {
                     File oldAvatar = new File(oldAvatarPath);
                     oldAvatar.delete();
-                    System.out.println("OLD AVATAR DELETED");
+                    // System.out.println("OLD AVATAR DELETED");
                 }
 
                 // 1. 创建按日期存储的目录
@@ -305,31 +328,33 @@ public class ProfileController {
             }
 
         }
-        if(profile!=null)
+        // if(profile!=null)
+        if(!ObjectUtils.isEmpty(profile))
         {
-            String response = profileService.updateProfile(profile);
+            profileService.updateProfile(profile);
             logResponse("update", profile.toString());
-            return response;
-
-
+            // return response;
         }
-        return "Profile updated successfully!";
+        // return "Profile updated successfully!";
+        return Result.success("profile updated successfully!");
 
 
     }
 
     @GetMapping("/avatar/{id}")
-    public String selectAvatar(@PathVariable Integer id)
+    public Result selectAvatar(@PathVariable Integer id)
     {
         logger.log(Level.INFO,"selectAvatar of: "+id);
-        return profileService.selectAvatarPathById(id);
+        // return profileService.selectAvatarPathById(id);
+        String avatarPath = profileService.selectAvatarPathById(id);
+        return Result.success(avatarPath);
     }
 
     @DeleteMapping("/delete/avatar/{id}")
-    public String deleteAvatar(@PathVariable Integer id)
+    public Result deleteAvatar(@PathVariable Integer id)
     {
         String oldAvatarPath = profileService.selectAvatarPathById(id);
-        if(oldAvatarPath!=null &&!oldAvatarPath.isEmpty())
+        if(!ObjectUtils.isEmpty(oldAvatarPath) &&!oldAvatarPath.isEmpty())
         {
             logger.log(Level.INFO,"deleteAvatar of: "+id);
             File oldAvatar = new File(oldAvatarPath);
@@ -338,7 +363,8 @@ public class ProfileController {
             profileService.deleteAvatatById(id);
         }
 
-        return "Avatar deleted successfully!";
+        // return "Avatar deleted successfully!";
+        return Result.success("Avatar deleted successfully!");
 
     }
 
@@ -347,21 +373,22 @@ public class ProfileController {
      * Delete profile by ID
      */
     @DeleteMapping("/delete/{id}")
-    public String deleteProfile(@PathVariable Integer id) {
+    public Result deleteProfile(@PathVariable Integer id) {
 
         String oldAvatarPath = profileService.selectAvatarPathById(id);
-        if(oldAvatarPath != null&& !oldAvatarPath.isEmpty())
+        if(ObjectUtils.isEmpty(oldAvatarPath)&& !oldAvatarPath.isEmpty())
         {
             logger.log(Level.INFO,"Deleted profile of user id: "+id);
             File oldAvatar = new File(oldAvatarPath);
             oldAvatar.delete();
         }
         profileService.deleteProfile(id);
-        return "Profile deleted successfully!";
+        // return "Profile deleted successfully!";
+        return Result.success("Profile deleted successfully!");
     }
 
     @PostMapping("/update/privacy")
-    public String updatePrivacy(@RequestParam(value="privacy") String privacy, @RequestParam(value="user_id") Integer userId) {
+    public Result updatePrivacy(@RequestParam(value="privacy") String privacy, @RequestParam(value="user_id") Integer userId) {
         //TODO: process POST request
         
         // logger.log(Level.INFO,"Deleted profile of user id: "+id);
@@ -369,23 +396,26 @@ public class ProfileController {
 
         profileService.updateUserPrivacy(privacy, userId);
 
-        return "Privacy setting updated.";
+        // return "Privacy setting updated.";
+        return Result.success("Privacy setting updated.");
     }
 
     // Student viewing their grades
     @PostMapping("/grades")
-    public ResponseEntity<List<Map<String,Object>>> viewGrades(@RequestParam("userId") Integer userId)
+    public Result viewGrades(@RequestParam("userId") Integer userId)
     {
         List<Map<String,Object>> grades = profileService.selectGradesById(userId);
-        return ResponseEntity.ok(grades);
+        // return ResponseEntity.ok(grades);
+        return Result.success(grades);
     }
 
     // Viewing grades of students in a course by a professor
     @PostMapping("/course/grades")
-    public ResponseEntity<List<Map<String,Object>>> viewCourseGrades(@RequestParam(value="userId") Integer userId, @RequestParam(value="courseId") Integer courseId)
+    public Result viewCourseGrades(@RequestParam(value="userId") Integer userId, @RequestParam(value="courseId") Integer courseId)
     {
         List<Map<String,Object>> grades = profileService.selectCourseGradesById(userId, courseId);
-        return ResponseEntity.ok(grades);
+        // return ResponseEntity.ok(grades);
+        return Result.success(grades);
     }
     
 }
