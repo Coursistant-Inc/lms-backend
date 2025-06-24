@@ -15,7 +15,7 @@ public enum ResultCodeEnum {
     PARAM_PASSWORD_ERROR("4002", "Incorrect Original Password"),
     PARAM_STATUS_ERROR("4003", "Please Select Review Status"),
     FILE_CATEGORY_MISMATCH("4004", "File and Category Count Mismatch"),
-
+    INVALID_TIMEZONE("4005", "Invalid or Missing Timezone Header"),
     /**
      * Authentication and authorization errors (401X)
      */
