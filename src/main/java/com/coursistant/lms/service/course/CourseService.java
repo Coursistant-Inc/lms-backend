@@ -5,12 +5,14 @@ import cn.hutool.core.util.ObjectUtil;
 import com.coursistant.lms.common.enums.ResultCodeEnum;
 import com.coursistant.lms.entity.Course;
 import com.coursistant.lms.entity.Learn;
+import com.coursistant.lms.entity.Teach;
 import com.coursistant.lms.entity.User;
 import com.coursistant.lms.exception.CustomException;
 import com.coursistant.lms.mapper.course.CourseMapper;
 import com.coursistant.lms.service.user.UserService;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
+import org.apache.poi.ss.formula.functions.T;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -30,8 +32,6 @@ public class CourseService {
     @Resource
     private UserService userService;
 
-    @Resource
-    private LearnService learnService;
 
     @Resource
     private TeachService teachService;
@@ -66,6 +66,10 @@ public class CourseService {
      */
     public void add(Course course) {
         courseMapper.insert(course);
+        Teach teach=new Teach();
+        teach.setCourseId(course.getId());
+        teach.setUserId(course.getTeacherId());
+        teachService.add(teach);
         // 清理相关缓存 / Clear related cache
         clearCourseAllCache();
 
@@ -79,6 +83,12 @@ public class CourseService {
         courseMapper.deleteById(id);
         // 清理相关缓存 / Clear related cache
         clearCourseAllCache();
+        Teach teach=new Teach();
+        teach.setCourseId(id);
+        List<Teach> teaches=teachService.selectAll(teach);
+        for (Teach teach1:teaches){
+            teachService.deleteByCourseId(teach1.getCourseId());
+        }
 
         generalRedisTemplate.delete("course:" + id);
     }
@@ -89,7 +99,7 @@ public class CourseService {
      */
     public void deleteBatch(List<Integer> ids) {
         for (Integer id : ids) {
-            courseMapper.deleteById(id);
+            deleteById(id);
             generalRedisTemplate.delete("course:" + id);
         }
         clearCourseAllCache();

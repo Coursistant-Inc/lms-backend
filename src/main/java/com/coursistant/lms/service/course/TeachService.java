@@ -68,6 +68,16 @@ public class TeachService {
 
         generalRedisTemplate.delete("teach:" + id);
     }
+    /**
+     * 根据课程 ID 删除记录 // Delete by Course ID
+     */
+    public void deleteByCourseId(Integer courseId) {
+        teachMapper.deleteByCourseId(courseId);
+        // 清理相关缓存 // Clear related cache
+        clearTeachAllCache();
+
+    }
+
 
     /**
      * 批量删除 // Batch delete
