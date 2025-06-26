@@ -3,7 +3,7 @@ package com.coursistant.lms.mapper.chat;
 import com.coursistant.lms.entity.Chat;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Param;
-
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -47,7 +47,7 @@ public interface ChatMapper {
 
     int updateSoftDeleteByDialogueId(@Param("dialogueId") Integer dialogueId,
                                      @Param("delete") int delete,
-                                     @Param("deleteTime") String deleteTime);
+                                     @Param("deleteTime") LocalDateTime deleteTime);
 
 
     @Select("SELECT * FROM Chat WHERE dialogue_id = #{dialogueId} ORDER BY id DESC LIMIT 5")
