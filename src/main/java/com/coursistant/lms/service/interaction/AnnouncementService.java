@@ -16,7 +16,6 @@ public class AnnouncementService {
     @Resource
     private AnnouncementMapper announcementMapper;
 
-    //private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     /**
      * 新增 Announcement

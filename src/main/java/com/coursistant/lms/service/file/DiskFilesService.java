@@ -56,12 +56,12 @@ public class DiskFilesService {
      * 新增文件
      * Add a new file
      */
-    public FileSummary add(MultipartFile file, String courseName, Integer userId, String category, Integer analysis) {
+    public FileSummary add(MultipartFile file, Integer courseId, Integer userId, String category, Integer analysis) {
         FileSummary summary = new FileSummary();
 
         // 创建文件存储路径
         // Create file storage path
-        String path = filePath + courseName + "/";
+        String path = filePath + courseId + "/";
         if (!FileUtil.exist(path)) {
             FileUtil.mkdir(path);
         }
@@ -74,7 +74,7 @@ public class DiskFilesService {
 
         // 检查文件是否已存在 duplicate?
         // Check if the file already exists
-        List<DiskFiles> exist=diskFilesMapper.selectByCourseName(courseName);
+        List<DiskFiles> exist=diskFilesMapper.selectByCourseName(courseId);
         if (ObjectUtil.isNotNull(exist)){
             for (int i=0;i<exist.size();i++){
                 if (exist.get(i).getName().equals(filename)){
@@ -88,7 +88,7 @@ public class DiskFilesService {
         diskFiles.setCreateTime(now);
         diskFiles.setName(filename);
         diskFiles.setType(extName);
-        diskFiles.setCourseName(courseName);
+        diskFiles.setCourseId(courseId);
         diskFiles.setPath(fullpath);
         diskFiles.setUserId(userId);
         diskFiles.setCategory(category);
@@ -134,7 +134,7 @@ public class DiskFilesService {
 
         // ============ 异步调用部分 ==============
         // 在这里触发异步上传到 5100/file 的逻辑，不阻塞 add 的返回
-        asyncFileUploadService.asyncUploadFile(courseName, fullpath);
+        asyncFileUploadService.asyncUploadFile(courseId, fullpath);
 
         return summary;
     }
@@ -143,10 +143,10 @@ public class DiskFilesService {
      * 覆盖文件
      * Overwrite file
      */
-    public void overwrite(MultipartFile file, String courseName, Integer userId) {
+    public void overwrite(MultipartFile file, Integer courseId, Integer userId) {
         // 创建存储路径
         // Create storage path
-        String path=filePath+courseName+"/";
+        String path=filePath+courseId+"/";
         if (!FileUtil.exist(filePath)) {
             FileUtil.mkdir(path);
         }
@@ -160,7 +160,7 @@ public class DiskFilesService {
         // Find duplicate files
         List<DiskFiles> exist=new ArrayList<>();
         DiskFiles oldone=new DiskFiles();
-        exist=diskFilesMapper.selectByCourseName(courseName);
+        exist=diskFilesMapper.selectByCourseName(courseId);
         Boolean duplicate=false;
         for (int i=0;i<exist.size();i++){
             if (exist.get(i).getName().equals(filename)){
