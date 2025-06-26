@@ -131,4 +131,11 @@ public class AssignmentService {
         return assignments;
     }
 
+    public List<Assignment> selectAssignmentsByUserId(Integer userId)
+    {
+        List<Assignment> assignmentDetails = assignmentMapper.selectAssignmentsByUserId(userId);
+        
+        return assignmentDetails;
+    }
+
 }

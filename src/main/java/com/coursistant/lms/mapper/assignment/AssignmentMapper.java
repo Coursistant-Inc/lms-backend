@@ -56,4 +56,6 @@ public interface AssignmentMapper {
      */
     @Select("SELECT * FROM Assignment WHERE user_id = #{userId}")
     List<Assignment> selectByUserId(Integer userId);
+
+    List<Assignment> selectAssignmentsByUserId(Integer userId);
 }

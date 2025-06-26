@@ -10,6 +10,7 @@
     group_mode, group_size, timezone
     </sql>
 
+
     <!-- 查询所有 Assignment // Select all Assignments -->
     <select id="selectAll" resultType="com.coursistant.lms.entity.Assignment">
         select
@@ -129,6 +130,27 @@
         </set>
         where id = #{id}
     </update>
+
+    <select id="selectAssignmentsByUserId" resultType="com.coursistant.lms.entity.DTO.AssignmentDetailsDTO">
+        SELECT a.title,c.name,a.due,
+        CASE
+            WHEN EXISTS (
+                SELECT 1
+                FROM AssignmentSubmission
+                WHERE assignment_id = a.id AND student_id = #{userId}
+            ) THEN 'completed'
+            WHEN a.due &lt; NOW() THEN 'overdue'
+            ELSE 'pending'
+        END AS status,
+        CASE
+            WHEN asgmt_sub.grade IS NOT NULL THEN asgmt_sub.grade
+            ELSE "Not graded"
+        END AS grade
+        FROM Assignment a
+        JOIN Course c ON a.course_id = c.id
+        LEFT JOIN AssignmentSubmission asgmt_sub
+        ON asgmt_sub.assignment_id = a.id AND asgmt_sub.student_id = #{userId};
+    </select>
 
 
 
