@@ -1,7 +1,13 @@
 package com.coursistant.lms.entity;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+import org.springframework.format.annotation.DateTimeFormat;
+
 import java.io.Serializable;
 import java.util.List;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 /**
  * teach
@@ -17,11 +23,15 @@ public class Dialogue implements Serializable {
 
     private String summary;
 
-    private String updateTime;
+    @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "UTC")
+    private LocalDateTime updateTime;
 
     private Boolean delete;
 
-    private String deleteTime;
+    @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "UTC")
+    private LocalDateTime deleteTime;
 
     private String recentMessage;
 
@@ -60,11 +70,11 @@ public class Dialogue implements Serializable {
         this.summary = summary;
     }
 
-    public String getUpdateTime() {
+    public LocalDateTime getUpdateTime() {
         return updateTime;
     }
 
-    public void setUpdateTime(String updateTime) {
+    public void setUpdateTime(LocalDateTime updateTime) {
         this.updateTime = updateTime;
     }
 
@@ -76,11 +86,11 @@ public class Dialogue implements Serializable {
         this.delete = delete;
     }
 
-    public String getDeleteTime() {
+    public LocalDateTime getDeleteTime() {
         return deleteTime;
     }
 
-    public void setDeleteTime(String deleteTime) {
+    public void setDeleteTime(LocalDateTime deleteTime) {
         this.deleteTime = deleteTime;
     }
 

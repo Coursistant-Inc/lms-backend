@@ -1,7 +1,7 @@
 package com.coursistant.lms.service.chat;
 
 import cn.hutool.core.util.ObjectUtil;
-
+import cn.hutool.core.io.FileUtil;
 import com.coursistant.lms.common.enums.ResultCodeEnum;
 import com.coursistant.lms.entity.Chat;
 import com.coursistant.lms.entity.Dialogue;
@@ -35,6 +35,7 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Date;
@@ -65,7 +66,7 @@ public class CoursistanceService {
      * 处理查询请求
      * Process query request
      */
-    public Query query(File file, Integer courseId, String query, Integer dialogueId, Integer userId) {
+    public Query query(File file, Integer courseId, String query, Integer dialogueId, Integer userId, ZoneId timezone) {
         Query returnQuery = new Query();
 
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -76,7 +77,7 @@ public class CoursistanceService {
         if (ObjectUtil.isNotNull(dialogue)) {
             //get last 5 chats and put to json
             ObjectMapper objectMapper = new ObjectMapper();
-            
+
             Map<String, String> chatMap = new LinkedHashMap<>();
             List<Chat> last5chats=chatService.getTop5ChatsByDialogueId(dialogueId);
             for (int i=0;i<last5chats.size();i++){
@@ -93,15 +94,15 @@ public class CoursistanceService {
             }
 
             // 更新对话 / Update dialogue
-            dialogue.setUpdateTime(LocalDateTime.now().format(formatter));
-            dialogueService.updateById(dialogue);
+            dialogue.setUpdateTime(LocalDateTime.now());
+            dialogueService.updateById(dialogue, timezone);
         } else {
             // 创建新的对话 / Create a new dialogue
             dialogue=new Dialogue();
             dialogue.setCourseId(courseId);
             dialogue.setUserId(userId);
-            dialogue.setUpdateTime(LocalDateTime.now().format(formatter));
-            dialogueService.add(dialogue);
+            dialogue.setUpdateTime(LocalDateTime.now());
+            dialogueService.add(dialogue, timezone);
             dialogueId=dialogue.getId();
 
             initial=true;
@@ -111,7 +112,7 @@ public class CoursistanceService {
         Chat chat = new Chat();
         chat.setQueryText(query);
         chat.setQueryImage(file != null ? file.getAbsolutePath() : null);
-        chat.setTime(LocalDateTime.now().format(formatter));
+        chat.setTime(LocalDateTime.now());
         chat.setDialogueId(dialogueId);
 
         //get user info
@@ -131,51 +132,60 @@ public class CoursistanceService {
                     courseList.add(String.valueOf(teaches.get(i).getCourseId()));
                 }
                 course_list = String.join(",", courseList);
-                
+
             }
             else{
                 Learn serLearn=new Learn();
-                serLearn.setUserId(userId);        
+                serLearn.setUserId(userId);
                 List<Learn> learns=learnService.selectAll(serLearn);
                 for (int i = 0; i < learns.size(); i++) {
                     courseList.add(String.valueOf(learns.get(i).getCourseId()));
                 }
                 course_list = String.join(",", courseList);
-                
+
             }
         }
 
-        
-        
 
 
-        
+
+
+
 
         // 定义两个 API 地址 / Define two API endpoints
         String queryApiUrl = "http://labserver101.ddns.net:5000/chat";
-        String analyzeImageApiUrl = "http://labserver101.ddns.net:5001/analyze-image";
-
+        String analyzeImageUrl = "http://labserver101.ddns.net:5001/analyze-image";
+        String analyzeFileUrl   = "http://labserver101.ddns.net:5005/analyze-file";
         try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
             String analyzedResult = null;
 
-            // 如果文件存在且不为空，调用 analyze-image API
-            // If the file exists and is not empty, call the analyze-image API
+            // 如果文件存在且不为空，调用 analyze-image/file API
+            // If the file exists and is not empty, call the analyze-image/file API
             if (file != null && file.exists()) {
-                HttpPost analyzePost = new HttpPost(analyzeImageApiUrl);
-                MultipartEntityBuilder fileBuilder = MultipartEntityBuilder.create();
-                fileBuilder.addBinaryBody(
-                        "image",
-                        file,
-                        ContentType.MULTIPART_FORM_DATA,
-                        file.getName()
-                );
+                String ext = FileUtil.extName(file.getName()).toLowerCase();
+                String apiUrl = (List.of("png","jpg","jpeg","bmp","gif").contains(ext))
+                        ? analyzeImageUrl : analyzeFileUrl;
+                HttpPost post = new HttpPost(apiUrl);
+                MultipartEntityBuilder mb = MultipartEntityBuilder.create();
+                if (apiUrl.equals(analyzeImageUrl)) {
+                    mb.addBinaryBody(
+                            "image",
+                            file,
+                            ContentType.MULTIPART_FORM_DATA,
+                            file.getName());
+                } else {
+                    mb.addBinaryBody(
+                            "file",
+                            file,
+                            ContentType.DEFAULT_BINARY,
+                            file.getName());
+                }
+                post.setEntity(mb.build());
 
-                HttpEntity fileEntity = fileBuilder.build();
-                analyzePost.setEntity(fileEntity);
-
-                try (CloseableHttpResponse analyzeResponse = httpClient.execute(analyzePost)) {
-                    if (analyzeResponse.getStatusLine().getStatusCode() == 200) {
-                        String analyzeResponseJson = EntityUtils.toString(analyzeResponse.getEntity());
+                try (CloseableHttpResponse resp = httpClient.execute(post)) {
+                    int code = resp.getStatusLine().getStatusCode();
+                    if (code == 200) {
+                        String analyzeResponseJson = EntityUtils.toString(resp.getEntity());
 
                         // 解析 JSON 响应 / Parse JSON response
                         ObjectMapper objectMapper = new ObjectMapper();
@@ -186,15 +196,14 @@ public class CoursistanceService {
                         if ("success".equalsIgnoreCase(status)) {
                             analyzedResult = analyzeRootNode.path("result").asText();
                         } else {
-                            throw new IOException("Image analysis failed with status: " + status);
+                            throw new IOException("File analysis failed with status: " + status);
                         }
                     } else {
-                        throw new IOException("Failed to call analyze-image API. HTTP Status: " +
-                                analyzeResponse.getStatusLine().getStatusCode());
+                        throw new IOException("Failed to call analyze API. HTTP Status " + code);
                     }
                 }
             } else {
-                System.out.println("No image file provided. Skipping analyze-image API call.");
+                System.out.println("No file provided. Skipping analyze-file/image API call.");
             }
 
             // 创建 POST 请求到 query API / Create POST request to query API
@@ -208,8 +217,8 @@ public class CoursistanceService {
             // 如果图片分析成功，将 analyzedResult 拼接到 query 后，并加上英文说明
             // If image analysis is successful, append analyzedResult to query with English explanation
             if (analyzedResult != null) {
-                logger.info("Image analysis result: " + analyzedResult);
-                query = query + " The question includes an image: " + analyzedResult;
+                logger.info("File analysis: " + analyzedResult);
+                query += " The question includes a file: " + analyzedResult;
             }
             queryBuilder.addTextBody("text", query, ContentType.TEXT_PLAIN);
 
@@ -242,7 +251,7 @@ public class CoursistanceService {
                         dialogue.setSummary(summary);
                     }
                     dialogue.setRecentMessage(answer);
-                    dialogueService.updateById(dialogue);
+                    dialogueService.updateById(dialogue, timezone);
                     //String imageBase64 = "Image not found".equals(imageValue) ? null : imageValue;
 
                     logger.info("Query analysis result: " + answer);
@@ -289,7 +298,7 @@ public class CoursistanceService {
         }
 
         // 上传聊天记录 / Upload chat history
-        chatService.add(chat);
+        chatService.add(chat, timezone);
 
         return returnQuery;
     }
