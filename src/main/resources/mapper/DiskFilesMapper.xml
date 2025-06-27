@@ -5,7 +5,7 @@
 <mapper namespace="com.coursistant.lms.mapper.file.DiskFilesMapper">
 
     <sql id="Base_Column_List">
-        id,name,path,user_id,course_name,type,size,create_time,hadooped_time,qdranted_time,`delete`,hadooped,qdranted,hadoop_path,category,summary
+        id,name,path,user_id,course_id,type,size,create_time,hadooped_time,qdranted_time,`delete`,hadooped,qdranted,hadoop_path,category,summary
     </sql>
 
 
@@ -19,8 +19,8 @@
             <if test="userId != null">
                 AND user_id = #{userId}
             </if>
-            <if test="courseName != null">
-                AND course_name = #{courseName}
+            <if test="courseId != null">
+                AND course_id = #{courseId}
             </if>
             <if test="type != null">
                 AND type = #{type}
@@ -86,7 +86,7 @@
             <if test="type != null">type,</if>
             <if test="size != null">size,</if>
             <if test="createTime != null">create_time,</if>
-            <if test="courseName != null">course_name,</if>
+            <if test="courseId != null">course_id,</if>
             <if test="category != null">category,</if>
             <if test="summary != null">summary,</if>
         </trim>
@@ -99,7 +99,7 @@
             <if test="type != null">#{type},</if>
             <if test="size != null">#{size},</if>
             <if test="createTime != null">#{createTime},</if>
-            <if test="courseName != null">#{courseName},</if>
+            <if test="courseId != null">#{courseId},</if>
             <if test="category != null">#{category},</if>
             <if test="summary != null">#{summary},</if>
         </trim>
@@ -132,8 +132,8 @@
             <if test="qdrantedTime != null">
                 qdranted_time = #{qdrantedTime},
             </if>
-            <if test="courseName != null">
-                course_name = #{courseName},
+            <if test="courseId != null">
+                course_id = #{courseId},
             </if>
             <if test="delete != null">
                 `delete` = #{delete},
