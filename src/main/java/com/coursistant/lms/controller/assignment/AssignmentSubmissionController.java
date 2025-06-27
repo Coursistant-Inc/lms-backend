@@ -8,10 +8,12 @@ import com.coursistant.lms.entity.DTO.AssignmentDTO;
 import com.coursistant.lms.entity.DTO.AssignmentSubmissionDTO;
 import com.coursistant.lms.service.assignment.AssignmentService;
 import com.coursistant.lms.service.assignment.AssignmentSubmissionService;
+import com.coursistant.lms.utils.TimeZoneUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.logging.Logger;
 
@@ -39,28 +41,15 @@ public class AssignmentSubmissionController {
     }
 
     /**
-     * 新增书签
+     * 新增
      * Add a new assignmentSubmission
      */
     @PostMapping("/add")
     public Result add(@ModelAttribute AssignmentSubmission assignmentSubmission,
-                      @RequestPart(value = "files", required = false) List<MultipartFile> files) {
+                      @RequestPart(value = "files", required = false) List<MultipartFile> files,
+                      @RequestHeader(value = "X-Timezone", required = false) String timezone) {
         logRequest("add", assignmentSubmission.toString());
-        int assignmentId = assignmentSubmission.getAssignmentId();
-        AssignmentSubmission qryItem = new AssignmentSubmission();
-        qryItem.setAssignmentId(assignmentSubmission.getAssignmentId());
-        qryItem.setStudentId(assignmentSubmission.getStudentId());
-        List<AssignmentSubmission> submissions = assignmentSubmissionService.selectAll(qryItem);
-        AssignmentDTO tocheck = assignmentService.selectById(assignmentId);
-        if (submissions.size() >= tocheck.getAllowedSubmissionTimes()){
-            return Result.error(ResultCodeEnum.SUBMISSION_NOT_VALID_ERROR);
-        }
-        
-        if (submissions.size() == 0) {
-            Assignment toUpdate = new Assignment();
-            toUpdate.setId(assignmentSubmission.getAssignmentId());
-            assignmentService.incrementSubNumById(toUpdate);
-        }
+
         assignmentSubmissionService.add(assignmentSubmission,files);
         logResponse("add", "Success");
         return Result.success();
@@ -103,13 +92,27 @@ public class AssignmentSubmissionController {
     }
 
     /**
+     * 更新
+     * Update grade
+     */
+    @PutMapping("/updateGrade")
+    public Result updateGradeById(@RequestBody AssignmentSubmission assignmentSubmission) {
+        logRequest("updateById", assignmentSubmission.toString());
+        assignmentSubmissionService.updateGradeById(assignmentSubmission);
+        logResponse("updateById", "Success");
+        return Result.success();
+    }
+
+    /**
      * 根据 ID 查询书签
      * Query a assignmentSubmission by ID
      */
     @GetMapping("/selectById/{id}")
-    public Result selectById(@PathVariable Integer id) {
+    public Result selectById(@PathVariable Integer id,
+                             @RequestHeader(value = "X-Timezone", required = false) String timezone) {
         logRequest("selectById", id.toString());
-        AssignmentSubmissionDTO assignmentSubmission = assignmentSubmissionService.selectById(id);
+        ZoneId zone=TimeZoneUtils.resolveZoneId(timezone);
+        AssignmentSubmissionDTO assignmentSubmission = assignmentSubmissionService.selectById(id,zone);
         logResponse("selectById", assignmentSubmission.toString());
         return Result.success(assignmentSubmission);
     }
@@ -119,9 +122,11 @@ public class AssignmentSubmissionController {
      * Query all assignmentSubmissions
      */
     @GetMapping("/selectAll")
-    public Result selectAll(AssignmentSubmission assignmentSubmission) {
+    public Result selectAll(AssignmentSubmission assignmentSubmission,
+                            @RequestHeader(value = "X-Timezone", required = false) String timezone){
         logRequest("selectAll", assignmentSubmission != null ? assignmentSubmission.toString() : "null");
-        List<AssignmentSubmission> list = assignmentSubmissionService.selectAll(assignmentSubmission);
+        ZoneId zone=TimeZoneUtils.resolveZoneId(timezone);
+        List<AssignmentSubmission> list = assignmentSubmissionService.selectAll(assignmentSubmission,zone);
         logResponse("selectAll", null);
         return Result.success(list);
     }

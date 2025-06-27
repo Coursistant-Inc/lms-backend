@@ -42,8 +42,6 @@ public class AdminService {
     @Resource(name = "adminAllRedisTemplate")
     private RedisTemplate<String, Object> adminAllRedisTemplate;
 
-    @Resource(name = "adminPageRedisTemplate")
-    private RedisTemplate<String, Object> adminPageRedisTemplate;
 
     // 缓存过期时间（秒） // Cache expiration time (seconds)
     private static final long CACHE_EXPIRE_TIME = 300;
@@ -56,13 +54,7 @@ public class AdminService {
         System.out.println("Cleared all data from adminAll database.");
     }
 
-    /**
-     * 清空 adminPage 数据库 // Clear the adminPage database
-     */
-    public void clearAdminPageCache() {
-        Objects.requireNonNull(adminPageRedisTemplate.getConnectionFactory()).getConnection().flushDb();
-        System.out.println("Cleared all data from adminPage database.");
-    }
+
 
     /**
      * 新增 // Add a new admin
@@ -82,7 +74,7 @@ public class AdminService {
         adminMapper.insert(admin);
         // 清理相关缓存 // Clear related caches
         clearAdminAllCache();
-        clearAdminPageCache();
+
     }
 
     /**
@@ -92,7 +84,7 @@ public class AdminService {
         adminMapper.deleteById(id);
         // 清理相关缓存 // Clear related caches
         clearAdminAllCache();
-        clearAdminPageCache();
+
         generalRedisTemplate.delete("admin:" + id);
     }
 
@@ -107,7 +99,7 @@ public class AdminService {
         }
         // 清理相关缓存 // Clear related caches
         clearAdminAllCache();
-        clearAdminPageCache();
+
     }
 
     /**
@@ -117,7 +109,7 @@ public class AdminService {
         adminMapper.updateById(admin);
         // 清理相关缓存 // Clear related caches
         clearAdminAllCache();
-        clearAdminPageCache();
+
         generalRedisTemplate.delete("admin:" + admin.getId());
         generalRedisTemplate.delete("admin:email:" + admin.getEmail());
     }
@@ -171,35 +163,7 @@ public class AdminService {
         return admins;
     }
 
-    /**
-     * 分页查询 // Paginated query
-     */
-    public PageInfo<Admin> selectPage(Admin admin, Integer pageNum, Integer pageSize) {
-        // 构造缓存键，包括分页参数和筛选条件 // Construct cache key, including pagination parameters and filters
-        String cacheKey = "admin:page:" + pageNum + ":" + pageSize;
-        if (admin != null) {
-            cacheKey += ":" + admin.toString();
-        }
 
-        // 从 Redis 获取缓存 // Get from Redis cache
-        PageInfo<Admin> pageInfo = (PageInfo<Admin>) adminPageRedisTemplate.opsForValue().get(cacheKey);
-        if (pageInfo != null) {
-            System.out.println("from cache: " + cacheKey);
-            return pageInfo; // 返回缓存数据 // Return cached data
-        }
-
-        // 如果缓存不存在，从数据库查询 // If cache does not exist, query from the database
-        PageHelper.startPage(pageNum, pageSize);
-        List<Admin> list = adminMapper.selectAll(admin);
-        pageInfo = PageInfo.of(list);
-
-        if (!list.isEmpty()) {
-            // 将结果存入 Redis，并设置过期时间 // Store result in Redis with expiration time
-            adminPageRedisTemplate.opsForValue().set(cacheKey, pageInfo, CACHE_EXPIRE_TIME, TimeUnit.SECONDS);
-        }
-
-        return pageInfo;
-    }
 
     /**
      * 登录 // Admin login
@@ -276,7 +240,7 @@ public class AdminService {
         BeanUtils.copyProperties(account, admin);
         add(admin);
         clearAdminAllCache();
-        clearAdminPageCache();
+
     }
 
     /**

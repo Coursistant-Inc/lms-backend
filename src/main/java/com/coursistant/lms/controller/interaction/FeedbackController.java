@@ -3,9 +3,11 @@ package com.coursistant.lms.controller.interaction;
 import com.coursistant.lms.common.Result;
 import com.coursistant.lms.entity.Feedback;
 import com.coursistant.lms.service.interaction.FeedbackService;
+import com.coursistant.lms.utils.TimeZoneUtils;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
+import java.time.ZoneId;
 import java.util.List;
 
 
@@ -66,8 +68,10 @@ public class FeedbackController {
      * Query feedback by ID
      */
     @GetMapping("/selectById/{id}")
-    public Result selectById(@PathVariable Integer id) {
-        Feedback feedback = feedbackService.selectById(id);
+    public Result selectById(@PathVariable Integer id,
+                             @RequestHeader(value = "X-Timezone", required = false) String timezone) {
+        ZoneId zone= TimeZoneUtils.resolveZoneId(timezone);
+        Feedback feedback = feedbackService.selectById(id,zone);
         return Result.success(feedback);
     }
 
@@ -76,8 +80,10 @@ public class FeedbackController {
      * Query all feedback
      */
     @GetMapping("/selectAll")
-    public Result selectAll() {
-        List<Feedback> list = feedbackService.selectAll();
+    public Result selectAll(Feedback feedback,
+                            @RequestHeader(value = "X-Timezone", required = false) String timezone) {
+        ZoneId zone= TimeZoneUtils.resolveZoneId(timezone);
+        List<Feedback> list = feedbackService.selectAll(feedback,zone);
         return Result.success(list);
     }
 
@@ -86,8 +92,10 @@ public class FeedbackController {
      * Query all feedback from a specific user
      */
     @GetMapping("/selectByUserId/{userId}")
-    public Result selectByUserId(@PathVariable Integer userId) {
-        List<Feedback> list = feedbackService.selectByUserId(userId);
+    public Result selectByUserId(@PathVariable Integer userId,
+                                 @RequestHeader(value = "X-Timezone", required = false) String timezone) {
+        ZoneId zone= TimeZoneUtils.resolveZoneId(timezone);
+        List<Feedback> list = feedbackService.selectByUserId(userId,zone);
         return Result.success(list);
     }
 }

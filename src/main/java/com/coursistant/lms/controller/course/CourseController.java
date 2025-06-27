@@ -104,16 +104,15 @@ public class CourseController {
     }
 
     /**
-     * 分页查询
-     * Paginated query for courses
+     * 查询所有
+     * Query all courses by userId
      */
-    @GetMapping("/selectPage")
-    public Result selectPage(Course course,
-                             @RequestParam(defaultValue = "1") Integer pageNum,
-                             @RequestParam(defaultValue = "10") Integer pageSize) {
-        logRequest("selectPage", String.format("course=%s, pageNum=%d, pageSize=%d", course, pageNum, pageSize));
-        PageInfo<Course> page = courseService.selectPage(course, pageNum, pageSize);
-        logResponse("selectPage", null);
-        return Result.success(page);
+    @GetMapping("/selectByUserId/{id}")
+    public Result selectByUserId(@PathVariable Integer id) {
+        logRequest("selectById", id.toString());
+        List<Course> list = courseService.selectByUserId(id);
+        logResponse("selectById", null);
+        return Result.success(list);
     }
+
 }

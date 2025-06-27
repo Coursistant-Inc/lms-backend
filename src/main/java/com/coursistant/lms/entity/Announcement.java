@@ -1,6 +1,8 @@
 package com.coursistant.lms.entity;
 
 import java.io.Serializable;
+import java.time.LocalDateTime;
+import java.util.Date;
 
 /**
  * 公告实体类
@@ -29,10 +31,11 @@ public class Announcement implements Serializable {
      */
     private String content;
 
-    /** 公告日期
-     * Announcement date
-     */
-    private String date;
+    // 创建时间
+    private LocalDateTime createdAt;
+
+    // 更新时间
+    private LocalDateTime updatedAt;
 
     /** 公告标题
      * Announcement title
@@ -96,12 +99,20 @@ public class Announcement implements Serializable {
         this.content = content;
     }
 
-    public String getDate() {
-        return date;
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
     }
 
-    public void setDate(String date) {
-        this.date = date;
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
     }
 
     public String getTitle() {

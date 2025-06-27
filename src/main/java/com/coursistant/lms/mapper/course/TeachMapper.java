@@ -1,6 +1,9 @@
 package com.coursistant.lms.mapper.course;
 
+import com.coursistant.lms.entity.Learn;
 import com.coursistant.lms.entity.Teach;
+import org.apache.ibatis.annotations.Delete;
+import org.apache.ibatis.annotations.Select;
 
 import java.util.List;
 
@@ -39,4 +42,15 @@ public interface TeachMapper {
      * Query all Teach records
      */
     List<Teach> selectAll(Teach teach);
+
+    @Select("select * from Teach where user_id = #{userId}")
+    List<Teach> selectByUserId(Integer userId);
+
+    /**
+     * 根据课程 ID 删除记录
+     * Delete Teach records by course ID
+     */
+    @Delete("DELETE FROM Teach WHERE course_id = #{courseId}")
+    int deleteByCourseId(Integer courseId);
+
 }

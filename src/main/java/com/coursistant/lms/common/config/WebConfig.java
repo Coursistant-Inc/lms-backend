@@ -29,12 +29,14 @@ public class WebConfig implements WebMvcConfigurer {
                 .excludePathPatterns("/doc.html")   // 允许 Swagger UI (某些 UI 组件可能用这个) / Allow Swagger UI (some UI components may use this)
                 .excludePathPatterns("/login/oauth2/**") // Allow third party verification path
                 .excludePathPatterns("/thirdParty/**") //Allow third party login path
-                .excludePathPatterns("/sendEmailVerification") // 允许发送邮件验证 / Allow sending email verification
+                .excludePathPatterns("/sendRegisterEmailVerification") // 允许发送邮件验证 / Allow sending email verification
                 .excludePathPatterns("/sendResetEmailVerification") // 允许发送邮件验证 / Allow sending email verification
                 .excludePathPatterns("/refresh-token")
+                .excludePathPatterns("/validateRegisterEmailVerification")
                 .excludePathPatterns("/resetPasswordValidation"); // 允许发送邮件验证 / Allow sending email verification
-    
-            }
+
+
+    }
 
     @Bean
     public FilterRegistrationBean<CharacterEncodingFilter> characterEncodingFilter() {

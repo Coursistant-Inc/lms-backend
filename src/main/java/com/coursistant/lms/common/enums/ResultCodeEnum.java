@@ -16,6 +16,7 @@ public enum ResultCodeEnum {
     PARAM_STATUS_ERROR("4003", "Please Select Review Status"),
     FILE_CATEGORY_MISMATCH("4004", "File and Category Count Mismatch"),
     INVALID_TIMEZONE("4005", "Invalid or Missing Timezone Header"),
+
     /**
      * Authentication and authorization errors (401X)
      */
@@ -60,7 +61,9 @@ public enum ResultCodeEnum {
     ASSIGNMENT_NOT_EXIST_ERROR("4045", "Assignment Not Exist"),
     SUBMISSION_NOT_EXIST_ERROR("4046", "Submission Not Exist"),
     SUBMISSION_NOT_VALID_ERROR("4047", "Submission Not Valid"),
-    GROUP_NOT_EXIST_ERROR("4048", "Group Not Exist"),
+    EVENT_NOT_EXIST_ERROR("4048", "Event Not Exist"),
+    COURSE_SCHEDULE_NOT_EXIST_ERROR("4049", "Course Schedule Not Exist"),
+    GROUP_NOT_EXIST_ERROR("4050", "Group Not Exist"),
 
     /**
      * Invalid operation related errors (405X)

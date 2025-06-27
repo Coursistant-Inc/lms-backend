@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.jsontype.impl.LaissezFaireSubTypeValidator;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
@@ -21,9 +22,12 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 public class RedisConfig {
 
     private static final String REDIS_HOST = "labserver101.ddns.net";
-    private static final int REDIS_PORT = 6381;
-    private static final String REDIS_USERNAME = "default";
-    private static final String REDIS_PASSWORD = "p@ssWord";
+    private static final int REDIS_PORT = 6382;
+    @Value("${REDIS_DEFAULT_USERNAME}")
+    private String redisUsername;
+
+    @Value("${REDIS_DEFAULT_PASSWORD}")
+    private String redisPassword;
 
     /**
      * 通用 RedisTemplate（数据库 0）
@@ -31,7 +35,7 @@ public class RedisConfig {
      */
     @Bean(name = "generalRedisTemplate")
     public RedisTemplate<String, Object> generalRedisTemplate() {
-        return createRedisTemplate(createLettuceConnectionFactory(2));
+        return createRedisTemplate(createLettuceConnectionFactory(0));
     }
 
     /**
@@ -40,93 +44,53 @@ public class RedisConfig {
      */
     @Bean(name = "adminAllRedisTemplate")
     public RedisTemplate<String, Object> adminAllRedisTemplate() {
-        return createRedisTemplate(createLettuceConnectionFactory(3));
+        return createRedisTemplate(createLettuceConnectionFactory(1));
     }
 
-    /**
-     * 管理员页面数据的 RedisTemplate（数据库 2）
-     * Admin Page RedisTemplate (db2)
-     */
-    @Bean(name = "adminPageRedisTemplate")
-    public RedisTemplate<String, Object> adminPageRedisTemplate() {
-        return createRedisTemplate(createLettuceConnectionFactory(4));
-    }
 
     /**
-     * 用户所有数据的 RedisTemplate（数据库 3）
-     * User All RedisTemplate (db3)
+     * 用户所有数据的 RedisTemplate（数据库 2）
+     * User All RedisTemplate (db2)
      */
     @Bean(name = "userAllRedisTemplate")
     public RedisTemplate<String, Object> userAllRedisTemplate() {
-        return createRedisTemplate(createLettuceConnectionFactory(5));
+        return createRedisTemplate(createLettuceConnectionFactory(2));
     }
 
-    /**
-     * 用户页面数据的 RedisTemplate（数据库 4）
-     * User Page RedisTemplate (db4)
-     */
-    @Bean(name = "userPageRedisTemplate")
-    public RedisTemplate<String, Object> userPageRedisTemplate() {
-        return createRedisTemplate(createLettuceConnectionFactory(6));
-    }
 
     /**
-     * 课程所有数据的 RedisTemplate（数据库 5）
-     * Course All RedisTemplate (db5)
+     * 课程所有数据的 RedisTemplate（数据库 3）
+     * Course All RedisTemplate (db3)
      */
     @Bean(name = "courseAllRedisTemplate")
     public RedisTemplate<String, Object> courseAllRedisTemplate() {
-        return createRedisTemplate(createLettuceConnectionFactory(7));
+        return createRedisTemplate(createLettuceConnectionFactory(3));
     }
 
-    /**
-     * 课程页面数据的 RedisTemplate（数据库 6）
-     * Course Page RedisTemplate (db6)
-     */
-    @Bean(name = "coursePageRedisTemplate")
-    public RedisTemplate<String, Object> coursePageRedisTemplate() {
-        return createRedisTemplate(createLettuceConnectionFactory(8));
-    }
 
     /**
-     * 教学所有数据的 RedisTemplate（数据库 7）
-     * Teach All RedisTemplate (db7)
+     * 教学所有数据的 RedisTemplate（数据库 4）
+     * Teach All RedisTemplate (db4)
      */
     @Bean(name = "teachAllRedisTemplate")
     public RedisTemplate<String, Object> teachAllRedisTemplate() {
-        return createRedisTemplate(createLettuceConnectionFactory(9));
+        return createRedisTemplate(createLettuceConnectionFactory(4));
     }
 
-    /**
-     * 教学页面数据的 RedisTemplate（数据库 8）
-     * Teach Page RedisTemplate (db8)
-     */
-    @Bean(name = "teachPageRedisTemplate")
-    public RedisTemplate<String, Object> teachPageRedisTemplate() {
-        return createRedisTemplate(createLettuceConnectionFactory(10));
-    }
 
     /**
-     * 学习所有数据的 RedisTemplate（数据库 9）
-     * Learn All RedisTemplate (db9)
+     * 学习所有数据的 RedisTemplate（数据库 5）
+     * Learn All RedisTemplate (db5)
      */
     @Bean(name = "learnAllRedisTemplate")
     public RedisTemplate<String, Object> learnAllRedisTemplate() {
-        return createRedisTemplate(createLettuceConnectionFactory(11));
+        return createRedisTemplate(createLettuceConnectionFactory(5));
     }
 
-    /**
-     * 学习页面数据的 RedisTemplate（数据库 10）
-     * Learn Page RedisTemplate (db10)
-     */
-    @Bean(name = "learnPageRedisTemplate")
-    public RedisTemplate<String, Object> learnPageRedisTemplate() {
-        return createRedisTemplate(createLettuceConnectionFactory(12));
-    }
 
     @Bean(name = "refreshTokenRedisTemplate")
     public RedisTemplate<String, Object> refreshTokenRedisTemplate() {
-        return createRedisTemplate(createLettuceConnectionFactory(13));
+        return createRedisTemplate(createLettuceConnectionFactory(6));
     }
 
     /**
@@ -138,8 +102,8 @@ public class RedisConfig {
         redisConfig.setHostName(REDIS_HOST);
         redisConfig.setPort(REDIS_PORT);
         redisConfig.setDatabase(database);
-        redisConfig.setUsername(REDIS_USERNAME); // 设置用户名 / Set username
-        redisConfig.setPassword(REDIS_PASSWORD); // 设置密码 / Set password
+        redisConfig.setUsername(redisUsername); // 设置用户名 / Set username
+        redisConfig.setPassword(redisPassword); // 设置密码 / Set password
 
         LettuceConnectionFactory factory = new LettuceConnectionFactory(redisConfig);
         factory.afterPropertiesSet();

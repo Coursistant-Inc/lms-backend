@@ -4,10 +4,12 @@ import com.coursistant.lms.service.assignment.AssignmentService;
 import com.coursistant.lms.common.Result;
 import com.coursistant.lms.entity.Assignment;
 import com.coursistant.lms.entity.DTO.AssignmentDTO;
+import com.coursistant.lms.utils.TimeZoneUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.logging.Logger;
 
@@ -38,9 +40,11 @@ public class AssignmentController {
      */
     @PostMapping("/add")
     public Result add(@ModelAttribute Assignment assignment,
-                      @RequestPart(value = "files", required = false) List<MultipartFile> files) {
+                      @RequestPart(value = "files", required = false) List<MultipartFile> files,
+                      @RequestHeader(value = "X-Timezone", required = false) String timezone) {
         logRequest("add", assignment.toString());
-        assignmentService.add(assignment,files);
+        ZoneId zone=TimeZoneUtils.resolveZoneId(timezone);
+        assignmentService.add(assignment,files,zone);
         logResponse("add", "Success");
         return Result.success();
     }
@@ -52,6 +56,7 @@ public class AssignmentController {
     @DeleteMapping("/delete/{id}")
     public Result deleteById(@PathVariable Integer id) {
         logRequest("deleteById", id.toString());
+
         assignmentService.deleteById(id);
         logResponse("deleteById", "Success");
         return Result.success();
@@ -74,9 +79,11 @@ public class AssignmentController {
      * Update a assignment
      */
     @PutMapping("/update")
-    public Result updateById(@RequestBody Assignment assignment) {
+    public Result updateById(@RequestBody Assignment assignment,
+                             @RequestHeader(value = "X-Timezone", required = false) String timezone) {
         logRequest("updateById", assignment.toString());
-        assignmentService.updateById(assignment);
+        ZoneId zone=TimeZoneUtils.resolveZoneId(timezone);
+        assignmentService.updateById(assignment,zone);
         logResponse("updateById", "Success");
         return Result.success();
     }
@@ -86,21 +93,43 @@ public class AssignmentController {
      * Query a assignment by ID
      */
     @GetMapping("/selectById/{id}")
-    public Result selectById(@PathVariable Integer id) {
+    public Result selectById(@PathVariable Integer id,
+                             @RequestHeader(value = "X-Timezone", required = false) String timezone) {
         logRequest("selectById", id.toString());
-        AssignmentDTO assignment = assignmentService.selectById(id);
+        ZoneId zone=TimeZoneUtils.resolveZoneId(timezone);
+        AssignmentDTO assignment = assignmentService.selectById(id,zone);
         logResponse("selectById", assignment.toString());
         return Result.success(assignment);
     }
+
+    /**
+     * 根据课程 ID 查询该课程下的所有作业（
+     * Query all assignments by course ID with timezone conversion
+     */
+    @GetMapping("/selectByCourseId/{id}")
+    public Result selectByCourseId(@PathVariable Integer id,
+                                   @RequestHeader(value = "X-Timezone", required = false) String timezone) {
+        logRequest("selectByCourseId", id.toString());
+
+        ZoneId zone = TimeZoneUtils.resolveZoneId(timezone);
+
+        List<Assignment> assignments = assignmentService.selectByCourseId(id, zone);
+
+        logResponse("selectByCourseId", "Total: " + assignments.size());
+        return Result.success(assignments);
+    }
+
 
     /**
      * 查询所有书签
      * Query all assignments
      */
     @GetMapping("/selectAll")
-    public Result selectAll(Assignment assignment) {
+    public Result selectAll(Assignment assignment,
+                            @RequestHeader(value = "X-Timezone", required = false) String timezone) {
         logRequest("selectAll", assignment != null ? assignment.toString() : "null");
-        List<Assignment> list = assignmentService.selectAll(assignment);
+        ZoneId zone=TimeZoneUtils.resolveZoneId(timezone);
+        List<Assignment> list = assignmentService.selectAll(assignment,zone);
         logResponse("selectAll", null);
         return Result.success(list);
     }

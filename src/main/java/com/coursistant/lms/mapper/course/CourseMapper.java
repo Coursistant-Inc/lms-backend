@@ -1,6 +1,7 @@
 package com.coursistant.lms.mapper.course;
 
 import com.coursistant.lms.entity.Course;
+import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
 import java.util.List;
@@ -47,4 +48,10 @@ public interface CourseMapper {
      */
     @Select("select * from Course where coursename = #{coursename}")
     Course selectByCoursename(String coursename);
+
+    List<Course> selectByUserIdFromTeach(@Param("userId") Integer userId);
+
+    List<Course> selectByUserIdFromLearn(@Param("userId") Integer userId);
+
+
 }

@@ -103,17 +103,5 @@ public class TeachController {
         return Result.success(list);
     }
 
-    /**
-     * 分页查询
-     * Paginated query for teaching records
-     */
-    @GetMapping("/selectPage")
-    public Result selectPage(Teach teach,
-                             @RequestParam(defaultValue = "1") Integer pageNum,
-                             @RequestParam(defaultValue = "10") Integer pageSize) {
-        logRequest("selectPage", String.format("teach=%s, pageNum=%d, pageSize=%d", teach, pageNum, pageSize));
-        PageInfo<Teach> page = teachService.selectPage(teach, pageNum, pageSize);
-        logResponse("selectPage", null);
-        return Result.success(page);
-    }
+
 }

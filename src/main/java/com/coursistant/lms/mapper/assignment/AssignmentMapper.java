@@ -1,10 +1,13 @@
 package com.coursistant.lms.mapper.assignment;
 
-import com.coursistant.lms.entity.Assignment;
+import java.time.LocalDateTime;
+import java.util.List;
+
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
-import java.util.List;
+import com.coursistant.lms.entity.Assignment;
 
 
 /**
@@ -58,4 +61,26 @@ public interface AssignmentMapper {
     List<Assignment> selectByUserId(Integer userId);
 
     List<Assignment> selectAssignmentsByUserId(Integer userId);
+
+    /**
+     * 根据 course_id 查询 Assignment
+     * Query Assignments by course_id
+     */
+    @Select("SELECT * FROM Assignment WHERE course_id = #{courseId}")
+    List<Assignment> selectByCourseId(Integer courseId);
+
+    /**
+     * 查询某学生在指定时间范围内所有课程的作业（用于日历展示）
+     */
+    List<Assignment> selectAssignmentsByUserAndTimeRange(@Param("userId") Integer userId,
+                                                         @Param("start") LocalDateTime start,
+                                                         @Param("end") LocalDateTime end);
+
+
+
+
+
+
+
+
 }

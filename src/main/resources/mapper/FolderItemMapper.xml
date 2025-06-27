@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.coursistant.lms.mapper.file.FolderItemMapper">
+
+    <sql id="Base_Column_List">
+        id, folder_id, title, type, file_id, content, uploaded_by, create_time
+    </sql>
+
+    <select id="selectAll" resultType="com.coursistant.lms.entity.FolderItem">
+        select
+        <include refid="Base_Column_List"/>
+        from FolderItem
+        <where>
+            <if test="id != null">and id = #{id}</if>
+            <if test="folderId != null">and folder_id = #{folderId}</if>
+            <if test="type != null">and type = #{type}</if>
+            <if test="fileId != null">and file_id = #{fileId}</if>
+        </where>
+    </select>
+
+    <select id="selectById" resultType="com.coursistant.lms.entity.FolderItem">
+        select
+        <include refid="Base_Column_List"/>
+        from FolderItem
+        where id = #{id}
+    </select>
+
+    <insert id="insert" parameterType="com.coursistant.lms.entity.FolderItem" useGeneratedKeys="true" keyProperty="id">
+        insert into FolderItem
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="folderId != null">folder_id,</if>
+            <if test="title != null">title,</if>
+            <if test="type != null">type,</if>
+            <if test="fileId != null">file_id,</if>
+            <if test="content != null">content,</if>
+            <if test="uploadedBy != null">uploaded_by,</if>
+            <if test="createTime != null">create_time,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="folderId != null">#{folderId},</if>
+            <if test="title != null">#{title},</if>
+            <if test="type != null">#{type},</if>
+            <if test="fileId != null">#{fileId},</if>
+            <if test="content != null">#{content},</if>
+            <if test="uploadedBy != null">#{uploadedBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+        </trim>
+    </insert>
+
+    <update id="updateById" parameterType="com.coursistant.lms.entity.FolderItem">
+        update FolderItem
+        <set>
+            <if test="folderId != null">folder_id = #{folderId},</if>
+            <if test="title != null">title = #{title},</if>
+            <if test="type != null">type = #{type},</if>
+            <if test="fileId != null">file_id = #{fileId},</if>
+            <if test="content != null">content = #{content},</if>
+            <if test="uploadedBy != null">uploaded_by = #{uploadedBy},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+        </set>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        delete from FolderItem where id = #{id}
+    </delete>
+
+    <delete id="deleteByFolderId" parameterType="int">
+        delete from FolderItem where folder_id = #{folderId}
+    </delete>
+
+
+</mapper>
