@@ -2,7 +2,6 @@ package com.coursistant.lms.controller.system;
 
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.StrUtil;
-import com.coursistant.lms.service.system.LinkedInAuthService;
 import com.coursistant.lms.service.system.RefreshTokenService;
 import com.coursistant.lms.common.Result;
 import com.coursistant.lms.common.enums.ResultCodeEnum;
@@ -43,8 +42,6 @@ public class WebController {
     private CoursistanceService coursistanceService;
     @Resource
     private HadoopService hadoopService;
-    @Resource
-    private LinkedInAuthService linkedInAuthService;
     @Resource
     private RefreshTokenService refreshTokenService;
 
@@ -124,11 +121,11 @@ public class WebController {
     }
 
 
-    @PostMapping("/loginWithLinkedIn")
-    public Result loginWithLinkedIn() {
-        String link= linkedInAuthService.returnUrl();
-        return Result.success(link);
-    }
+    // @PostMapping("/loginWithLinkedIn")
+    // public Result loginWithLinkedIn() {
+    //     String link= linkedInAuthService.returnUrl();
+    //     return Result.success(link);
+    // }
 
     /**
      * 注册 // Register

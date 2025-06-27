@@ -16,20 +16,19 @@ spring:
             google:
               client-id: ${GOOGLE_CLIENT_ID}
               client-secret: ${GOOGLE_CLIENT_SECRET}
-              redirect-uri: http://localhost:5173/login/oauth2/code/google
+              redirect-uri: https://lmstest.coursistant.com/login/oauth2/code/google
             microsoft:
               client-id: ${MICROSOFT_CLIENT_ID}
               client-secret: ${MICROSOFT_CLIENT_SECRET}
               authorization-grant-type: authorization_code
               scope: openid, profile, email
-              redirect-uri: "https://dash.coursistant.com/login/oauth2/code/microsoft"
+              redirect-uri: https://lmstest.coursistant.com/login/oauth2/code/microsoft
               client-name: Microsoft
               provider: microsoft
-
             facebook:
               client-id: ${FACEBOOK_CLIENT_ID}
               client-secret: ${FACEBOOK_CLIENT_SECRET}
-              redirect-uri:  http://localhost:5173/login/oauth2/code/facebook
+              redirect-uri:  https://lmstest.coursistant.com/login/oauth2/code/facebook
               
           provider:
             google:
@@ -42,11 +41,28 @@ spring:
               user-name-attribute: sub
               jwk-set-uri: https://login.microsoftonline.com/common/discovery/v2.0/keys
     
+  linkedin:
+    client-id: ${LINKEDIN_CLIENT_ID}
+    client-secret: ${LINKEDIN_CLIENT_SECRET}
+    redirect-uri: https://lmstest.coursistant.com/login/oauth2/code/linkedin
+    token-url: https://www.linkedin.com/oauth/v2/accessToken
+    auth-url: https://www.linkedin.com/oauth/v2/authorization
+    scope: openid profile email
+    
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     username: ${DB_USERNAME}  #数据库用户名
     password: ${DB_PASSWORD} #数据库密码
     url: jdbc:mysql://labserver101.ddns.net:3306/lms?useUnicode=true&characterEncoding=utf-8&allowMultiQueries=true&useSSL=false&serverTimezone=GMT%2b8&allowPublicKeyRetrieval=true
+
+    hikari:
+      maximum-pool-size: 32
+      minimum-idle: 8
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      connection-timeout: 10000
+      leak-detection-threshold: 30000
+      
   servlet:
     multipart:
       max-file-size: 100MB
@@ -71,14 +87,6 @@ spring:
           auth: true
           starttls:
             enable: true
-
-  linkedin:
-    client-id: ${LINKEDIN_CLIENT_ID}
-    client-secret: ${LINKEDIN_CLIENT_SECRET}
-    redirect-uri: https://dash.coursistant.com/re
-    token-url: https://www.linkedin.com/oauth/v2/accessToken
-    auth-url: https://www.linkedin.com/oauth/v2/authorization
-    scope: openid profile email
 
 
   redis:
