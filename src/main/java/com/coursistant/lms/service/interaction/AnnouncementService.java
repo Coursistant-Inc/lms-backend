@@ -1,7 +1,6 @@
 package com.coursistant.lms.service.interaction;
 
 import com.coursistant.lms.entity.Announcement;
-import com.coursistant.lms.entity.Course;
 import com.coursistant.lms.mapper.interaction.AnnouncementMapper;
 import com.coursistant.lms.utils.TimeZoneUtils;
 import org.springframework.stereotype.Service;
@@ -104,10 +103,5 @@ public class AnnouncementService {
         }
         return announcements;
 
-    }
-
-    public List<Announcement> selectLatestAnnouncementByCourseId(List<Course> courseList)
-    {
-        return announcementMapper.selectLatestAnnouncementByCourseId(courseList);
     }
 }

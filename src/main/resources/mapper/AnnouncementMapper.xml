@@ -89,26 +89,5 @@
         where id = #{id}
     </update>
 
-    <select id="selectLatestAnnouncementByCourseId" resultType="com.coursistant.lms.entity.DTO.AnnouncementDTO">
-        SELECT c.name AS courseName, u.name AS userName,a1.title ,a1.content,a1.updated_at,af.path
-        FROM  Course c
-        INNER JOIN Announcement a1
-        ON c.id = a1.course_id
-        INNER JOIN User u
-        ON a1.user_id = u.id
-        LEFT JOIN AnnouncementFile af
-        ON af.announcement_id = a1.id
-        WHERE c.id IN
-        <foreach item="courseList" index="index" collection="list"
-            open="(" separator="," close=")">
-                #{courseList.id}
-        </foreach>
-        AND GREATEST(a1.created_at,a1.updated_at) = (
-        SELECT MAX(GREATEST(a2.created_at,a2.updated_at))
-        FROM Announcement a2
-        WHERE a2.course_id = a1.course_id);
-
-    </select>
-
 
 </mapper>

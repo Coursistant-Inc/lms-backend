@@ -1,12 +1,9 @@
 package com.coursistant.lms.mapper.interaction;
 
-import java.util.List;
-
+import com.coursistant.lms.entity.Announcement;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
-
-import com.coursistant.lms.entity.Announcement;
-import com.coursistant.lms.entity.Course;
+import java.util.List;
 
 
 /**
@@ -59,7 +56,5 @@ public interface AnnouncementMapper {
      */
     @Select("SELECT * FROM Announcement WHERE course_id = #{courseId}")
     List<Announcement> selectByCourseId(Integer courseId);
-
-    List<Announcement> selectLatestAnnouncementByCourseId(List<Course> courseList);
 
 }
