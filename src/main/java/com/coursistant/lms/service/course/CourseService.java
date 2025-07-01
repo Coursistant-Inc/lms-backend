@@ -1,26 +1,26 @@
 package com.coursistant.lms.service.course;
 
 
-import cn.hutool.core.util.ObjectUtil;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.TimeUnit;
+
+import javax.annotation.Resource;
+
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.stereotype.Service;
+
 import com.coursistant.lms.common.enums.ResultCodeEnum;
 import com.coursistant.lms.entity.Course;
-import com.coursistant.lms.entity.Learn;
+import com.coursistant.lms.entity.DTO.CourseDTO;
 import com.coursistant.lms.entity.Teach;
 import com.coursistant.lms.entity.User;
 import com.coursistant.lms.exception.CustomException;
 import com.coursistant.lms.mapper.course.CourseMapper;
 import com.coursistant.lms.service.user.UserService;
-import com.github.pagehelper.PageHelper;
-import com.github.pagehelper.PageInfo;
-import org.apache.poi.ss.formula.functions.T;
-import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.stereotype.Service;
 
-import javax.annotation.Resource;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.concurrent.TimeUnit;
+import cn.hutool.core.util.ObjectUtil;
 
 
 @Service
@@ -186,6 +186,12 @@ public class CourseService {
             courseAllRedisTemplate.opsForValue().set(cacheKey, courses, CACHE_EXPIRE_TIME, TimeUnit.SECONDS);
         }
         return courses;
+    }
+
+    public List<CourseDTO> getCourseDetailsByUserId(Integer userId, List<Course> courseList)
+    {
+        List<CourseDTO> courseDetails = courseMapper.selectCourseDetailsByUserId(userId,courseList);
+        return courseDetails;
     }
 
 
