@@ -62,4 +62,7 @@ public interface AnnouncementMapper {
 
     List<Announcement> selectLatestAnnouncementByCourseId(List<Course> courseList);
 
+    void readAnnouncement(Integer userId, Integer announcementId, Integer courseId);
+
+    Integer isAnnouncementRead(Integer userId, Integer announcementId, Integer courseId);
 }

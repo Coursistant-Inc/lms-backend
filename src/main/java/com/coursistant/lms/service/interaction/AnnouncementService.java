@@ -1,15 +1,16 @@
 package com.coursistant.lms.service.interaction;
 
+import java.time.ZoneId;
+import java.util.List;
+
+import javax.annotation.Resource;
+
+import org.springframework.stereotype.Service;
+
 import com.coursistant.lms.entity.Announcement;
 import com.coursistant.lms.entity.Course;
 import com.coursistant.lms.mapper.interaction.AnnouncementMapper;
 import com.coursistant.lms.utils.TimeZoneUtils;
-import org.springframework.stereotype.Service;
-import javax.annotation.Resource;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
-import java.util.List;
 
 @Service
 public class AnnouncementService {
@@ -106,8 +107,19 @@ public class AnnouncementService {
 
     }
 
+    public void readAnnouncement(Integer userId, Integer announcementId, Integer courseId)
+    {
+        announcementMapper.readAnnouncement(userId, announcementId, courseId);
+    }
+
+    public Integer isAnnouncementRead(Integer userId, Integer announcementId, Integer courseId)
+    {
+        return announcementMapper.isAnnouncementRead(userId, announcementId, courseId);
+    }
+
     public List<Announcement> selectLatestAnnouncementByCourseId(List<Course> courseList)
     {
         return announcementMapper.selectLatestAnnouncementByCourseId(courseList);
     }
+
 }

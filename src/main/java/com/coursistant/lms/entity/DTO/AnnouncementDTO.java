@@ -11,6 +11,7 @@ public class AnnouncementDTO
     private String title;
     private String name;
     private String attachment;
+    private Integer count;
 
 
 
@@ -94,6 +95,16 @@ public class AnnouncementDTO
     {
         this.attachment = attachment;
     }
+
+    public Integer getCount() {
+        return count;
+    }
+
+    public void setCount(Integer count) {
+        this.count = count;
+    }
+
+    
 
 
 

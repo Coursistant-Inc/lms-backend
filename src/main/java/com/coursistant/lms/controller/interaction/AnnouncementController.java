@@ -1,17 +1,28 @@
 package com.coursistant.lms.controller.interaction;
 
-import com.coursistant.lms.common.Result;
-import com.coursistant.lms.common.enums.ResultCodeEnum;
-import com.coursistant.lms.entity.Announcement;
-import com.coursistant.lms.exception.CustomException;
-import com.coursistant.lms.service.interaction.AnnouncementService;
-import com.coursistant.lms.utils.TimeZoneUtils;
-import org.springframework.web.bind.annotation.*;
-
-import javax.annotation.Resource;
-import java.time.DateTimeException;
 import java.time.ZoneId;
 import java.util.List;
+
+import javax.annotation.Resource;
+
+import org.springframework.util.ObjectUtils;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.coursistant.lms.common.Result;
+import com.coursistant.lms.entity.Announcement;
+import com.coursistant.lms.entity.User;
+import com.coursistant.lms.service.interaction.AnnouncementService;
+import com.coursistant.lms.service.user.UserService;
+import com.coursistant.lms.utils.TimeZoneUtils;
 
 /**
  * Announcement 公告前端操作接口
@@ -23,6 +34,9 @@ public class AnnouncementController {
 
     @Resource
     private AnnouncementService announcementService;
+
+    @Resource
+    private UserService userService;
 
     /**
      * 新增公告
@@ -102,6 +116,30 @@ public class AnnouncementController {
         return Result.success(list);
     }
 
+    // Mark the reading of an announcement by a student
+
+    @PostMapping("/readAnnouncement")
+    public Result readAnnouncement(@RequestParam("userId") Integer userId, @RequestParam("announcementId") Integer announcementId,
+    @RequestParam("courseId") Integer courseId)
+    {
+        Integer isRead = announcementService.isAnnouncementRead(userId, announcementId, courseId);
+
+        if(ObjectUtils.isEmpty(isRead))
+        {
+            User user = userService.selectById(userId);
+
+            String role = user.getLevel();
+
+            if(role.equals("STUDENT"))
+            {
+                announcementService.readAnnouncement(userId, announcementId, courseId);
+            }
+
+        }
+
+        return Result.success();
+    }
+
     /**
      * 查询某课程的所有公告
      * Query all announcements of a specific course
@@ -114,5 +152,7 @@ public class AnnouncementController {
         List<Announcement> list = announcementService.selectByCourseId(courseId, zone);
         return Result.success(list);
     }
+
+
 
 }

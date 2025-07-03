@@ -90,7 +90,9 @@
     </update>
 
     <select id="selectLatestAnnouncementByCourseId" resultType="com.coursistant.lms.entity.DTO.AnnouncementDTO">
-        SELECT c.name AS courseName, u.name AS userName,a1.title ,a1.content,a1.updated_at,af.path
+        SELECT c.name AS courseName, u.name AS userName,a1.title ,a1.content,a1.created_at,a1.updated_at,af.path,(SELECT COUNT(*)
+        FROM AnnouncementRead
+        WHERE announcement_id = a1.id AND course_id = c.id) AS count
         FROM  Course c
         INNER JOIN Announcement a1
         ON c.id = a1.course_id
@@ -108,6 +110,17 @@
         FROM Announcement a2
         WHERE a2.course_id = a1.course_id);
 
+    </select>
+
+    <insert id="readAnnouncement" parameterType="Integer">
+        INSERT INTO AnnouncementRead (student_id, announcement_id, course_id)
+        VALUES (#{userId},#{announcementId}, #{courseId})
+    </insert>
+
+    <select id="isAnnouncementRead" parameterType="Integer" resultType="Integer">
+        SELECT 1
+        FROM AnnouncementRead
+        WHERE student_id = #{userId} AND announcement_id = #{announcementId} AND course_id = #{courseId}
     </select>
 
 
