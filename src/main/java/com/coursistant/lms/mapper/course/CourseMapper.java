@@ -57,5 +57,7 @@ public interface CourseMapper {
 
     List<CourseDTO> selectCourseDetailsByUserId(Integer userId, List<Course> courseList);
 
+    void updateLastSelectedCourse(Integer userId, Integer courseId);
+
 
 }

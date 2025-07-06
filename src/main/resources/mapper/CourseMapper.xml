@@ -89,7 +89,7 @@
                  JOIN Course c ON t.course_id = c.id
                  LEFT JOIN User u ON c.teacher_id = u.id
         WHERE t.user_id = #{userId}
-        ORDER BY c.id DESC
+        ORDER BY c.id   
     </select>
 
     <!-- 查询某用户通过 Learn 表学习的所有课程（含老师信息） -->
@@ -103,12 +103,7 @@
     </select>
 
     <select id="selectCourseDetailsByUserId" resultType="com.coursistant.lms.entity.DTO.CourseDTO">
-        SELECT u.name, p.avatar, c.name as title,c.units,(SELECT ROUND((SELECT COUNT(folder_id)
-        FROM FolderAccess
-        WHERE course_id = c.id AND student_id = #{userId})/
-        (SELECT COUNT(id)
-        FROM Folder
-        WHERE course_id = c.id) *100,1)) AS progress
+        SELECT u.name, p.avatar, c.name as title
         FROM User u
         INNER JOIN Profile p ON u.id = p.user_id
         INNER JOIN Teach t ON u.id = t.user_id
@@ -119,6 +114,12 @@
                 #{course.id}
         </foreach>
     </select>
+
+    <insert id="updateLastSelectedCourse">
+        INSERT INTO LastSelectedCourse(student_id,course_id)
+        VALUES(#{userId},#{courseId})
+        ON DUPLICATE KEY UPDATE course_id = #{courseId}
+    </insert>
 
 
 

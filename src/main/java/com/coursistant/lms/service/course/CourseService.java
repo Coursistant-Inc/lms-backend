@@ -194,5 +194,10 @@ public class CourseService {
         return courseDetails;
     }
 
+    public void updateLastSelectedCourse(Integer userId, Integer courseId)
+    {
+        courseMapper.updateLastSelectedCourse(userId,courseId);
+    }
+
 
 }
