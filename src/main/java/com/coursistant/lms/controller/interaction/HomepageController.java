@@ -7,12 +7,13 @@ import javax.annotation.Resource;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.coursistant.lms.common.Result;
 import com.coursistant.lms.entity.Announcement;
-import com.coursistant.lms.entity.Assignment;
 import com.coursistant.lms.entity.Course;
+import com.coursistant.lms.entity.DTO.AssignmentDTO;
 import com.coursistant.lms.entity.DTO.CourseDTO;
 import com.coursistant.lms.service.assignment.AssignmentService;
 import com.coursistant.lms.service.course.CourseService;
@@ -31,13 +32,15 @@ public class HomepageController {
     @Resource
     private AnnouncementService announcementService;
 
+
     
 
-    @GetMapping("/assignmentDetails/{userId}")
-    public Result getAssignmentDetails(@PathVariable Integer userId)
+    @GetMapping("/courseAssignmentDetails/{userId}")
+    public Result getAssignmentDetails(@PathVariable Integer userId, @RequestParam Integer courseId)
     {
-        List<Assignment> assignmentDetails = assignmentService.selectAssignmentsByUserId(userId);
-        
+        List<AssignmentDTO> assignmentDetails = assignmentService.selectAssignmentsByCourseAndUserId(userId,courseId);
+        courseService.updateLastSelectedCourse(userId,courseId);
+
         return Result.success(assignmentDetails);
     }
 
@@ -57,6 +60,9 @@ public class HomepageController {
         List<CourseDTO> courseDetails = courseService.getCourseDetailsByUserId(userId, courseList);
         return Result.success(courseDetails);
     }
+
+    // @GetMapping("/courseAssignmentDetails/{userId}")
+    // public getCourseAssignmenttDetails(@PathVariable Inte)
 
 
 }

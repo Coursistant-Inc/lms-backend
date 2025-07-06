@@ -167,9 +167,9 @@ public class AssignmentService {
         return assignments;
     }
 
-    public List<Assignment> selectAssignmentsByUserId(Integer userId)
+    public List<AssignmentDTO> selectAssignmentsByCourseAndUserId(Integer userId, Integer courseId)
     {
-        List<Assignment> assignmentDetails = assignmentMapper.selectAssignmentsByUserId(userId);
+        List<AssignmentDTO> assignmentDetails = assignmentMapper.selectAssignmentsByCourseAndUserId(userId,courseId);
         
         return assignmentDetails;
     }

@@ -71,5 +71,10 @@
         delete from FolderItem where folder_id = #{folderId}
     </delete>
 
+    <select id="selectByFolderId" parameterType="Integer" resultType="com.coursistant.lms.entity.FolderItem">
+        SELECT * FROM FolderItem
+        WHERE folder_id = #{folderId}
+    </select>
+
 
 </mapper>

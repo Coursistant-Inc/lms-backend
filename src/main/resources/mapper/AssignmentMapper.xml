@@ -131,25 +131,36 @@
         where id = #{id}
     </update>
 
-    <select id="selectAssignmentsByUserId" resultType="com.coursistant.lms.entity.DTO.AssignmentDetailsDTO">
-        SELECT a.title,c.name,a.due,
-        CASE
-            WHEN EXISTS (
-                SELECT 1
-                FROM AssignmentSubmission
-                WHERE assignment_id = a.id AND student_id = #{userId}
-            ) THEN 'completed'
-            WHEN a.due &lt; NOW() THEN 'overdue'
-            ELSE 'pending'
-        END AS status,
-        CASE
-            WHEN asgmt_sub.grade IS NOT NULL THEN asgmt_sub.grade
-            ELSE "Not graded"
-        END AS grade
-        FROM Assignment a
-        JOIN Course c ON a.course_id = c.id
-        LEFT JOIN AssignmentSubmission asgmt_sub
-        ON asgmt_sub.assignment_id = a.id AND asgmt_sub.student_id = #{userId};
+    <select id="selectAssignmentsByCourseAndUserId" resultType="com.coursistant.lms.entity.DTO.AssignmentDetailsDTO">
+
+        SELECT sub.title, sub.description, sub.status
+        FROM (
+            SELECT a.id, a.title, a.description,
+            CASE
+                WHEN EXISTS (
+                    SELECT 1
+                    FROM AssignmentSubmission
+                    WHERE assignment_id = a.id AND student_id = #{userId}
+                ) THEN (SELECT IFNULL(
+                (SELECT as_sub.grade FROM AssignmentSubmission as_sub WHERE as_sub.assignment_id = a.id AND as_sub.student_id = #{userId}),
+                (SELECT "Not graded" )))
+                WHEN a.due &lt; NOW() THEN 'Overdue'
+                ELSE (SELECT a2.due FROM Assignment a2 WHERE a2.id = a.id)
+            END AS status
+            FROM Assignment a
+            LEFT JOIN AssignmentSubmission asgmt_sub
+            ON asgmt_sub.assignment_id = a.id AND asgmt_sub.student_id = #{userId}
+            WHERE a.course_id = #{courseId}
+        ) sub
+        ORDER BY
+            CASE
+                WHEN sub.status = 'Overdue' THEN 1
+                WHEN sub.status NOT IN ('Overdue','Not graded') AND sub.status NOT REGEXP '^[0-9]+$' THEN 2
+                WHEN sub.status = 'Not graded' THEN 3
+                ELSE 4
+            END
+        LIMIT 5;
+
     </select>
 
     <select id="selectAssignmentsByUserAndTimeRange" resultType="com.coursistant.lms.entity.Assignment">

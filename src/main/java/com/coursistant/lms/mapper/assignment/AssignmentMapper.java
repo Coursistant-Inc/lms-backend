@@ -8,6 +8,7 @@ import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
 import com.coursistant.lms.entity.Assignment;
+import com.coursistant.lms.entity.DTO.AssignmentDTO;
 
 
 /**
@@ -60,7 +61,7 @@ public interface AssignmentMapper {
     @Select("SELECT * FROM Assignment WHERE user_id = #{userId}")
     List<Assignment> selectByUserId(Integer userId);
 
-    List<Assignment> selectAssignmentsByUserId(Integer userId);
+    List<AssignmentDTO> selectAssignmentsByCourseAndUserId(Integer userId,Integer courseId);
 
     /**
      * 根据 course_id 查询 Assignment
@@ -75,6 +76,8 @@ public interface AssignmentMapper {
     List<Assignment> selectAssignmentsByUserAndTimeRange(@Param("userId") Integer userId,
                                                          @Param("start") LocalDateTime start,
                                                          @Param("end") LocalDateTime end);
+
+    void updateLastSelectedCourse(Integer userId,Integer courseId);
 
 
 
