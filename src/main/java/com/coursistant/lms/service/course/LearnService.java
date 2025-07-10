@@ -37,8 +37,6 @@ public class LearnService {
     @Resource(name = "learnAllRedisTemplate")
     private RedisTemplate<String, Object> learnAllRedisTemplate;
 
-    @Resource(name = "learnPageRedisTemplate")
-    private RedisTemplate<String, Object> learnPageRedisTemplate;
 
     @Resource
     private UserMapper userMapper;
@@ -56,15 +54,7 @@ public class LearnService {
         System.out.println("Cleared all data from learnAll database.");
     }
 
-    /**
-     * 清空 learnPage 数据库 // Clear the learnPage database
-     */
-    public void clearLearnPageCache() {
-        Objects.requireNonNull(learnPageRedisTemplate.getConnectionFactory())
-                .getConnection()
-                .flushDb();
-        System.out.println("Cleared all data from learnPage database.");
-    }
+
 
     /**
      * 新增 // Add new record
@@ -73,7 +63,7 @@ public class LearnService {
         learnMapper.insert(learn);
         // 清理相关缓存 // Clear relevant caches
         clearLearnAllCache();
-        clearLearnPageCache();
+
     }
 
     /**
@@ -105,7 +95,7 @@ public class LearnService {
         }
         // 清理相关缓存 // Clear relevant caches
         clearLearnAllCache();
-        clearLearnPageCache();
+
     }
 
     /**
@@ -115,7 +105,7 @@ public class LearnService {
         learnMapper.deleteById(id);
         // 清理相关缓存 // Clear relevant caches
         clearLearnAllCache();
-        clearLearnPageCache();
+
         generalRedisTemplate.delete("learn:" + id);
     }
 
@@ -128,7 +118,7 @@ public class LearnService {
             generalRedisTemplate.delete("learn:" + id);
         }
         clearLearnAllCache();
-        clearLearnPageCache();
+
     }
 
     /**
@@ -138,7 +128,7 @@ public class LearnService {
         learnMapper.updateById(learn);
         // 清理相关缓存 // Clear relevant caches
         clearLearnAllCache();
-        clearLearnPageCache();
+
         generalRedisTemplate.delete("learn:" + learn.getId());
     }
 
@@ -166,6 +156,17 @@ public class LearnService {
         return learn;
     }
 
+    public List<Learn> selectByStudentId(Integer id) {
+
+        List<Learn> learns = learnMapper.selectByUserId(id);
+        if (learns == null) {
+            throw new CustomException(ResultCodeEnum.LEARN_NOT_EXIST_ERROR);
+        }
+
+
+        return learns;
+    }
+
     /**
      * 查询所有 // Select all records
      */
@@ -190,32 +191,7 @@ public class LearnService {
         return learns;
     }
 
-    /**
-     * 分页查询 // Select records with pagination
-     */
-    public PageInfo<Learn> selectPage(Learn learn, Integer pageNum, Integer pageSize) {
-        String cacheKey = "learn:page:" + pageNum + ":" + pageSize;
-        if (learn != null) {
-            cacheKey += ":" + learn.toString();
-        }
 
-        // 从 Redis 获取缓存 // Get cache from Redis
-        PageInfo<Learn> pageInfo = (PageInfo<Learn>) learnPageRedisTemplate.opsForValue().get(cacheKey);
-        if (pageInfo != null) {
-            System.out.println("from cache: " + cacheKey);
-            return pageInfo;
-        }
-
-        // 如果缓存不存在，从数据库查询 // If cache does not exist, query from database
-        PageHelper.startPage(pageNum, pageSize);
-        List<Learn> list = learnMapper.selectAll(learn);
-        pageInfo = PageInfo.of(list);
-
-        if (!list.isEmpty()) {
-            learnPageRedisTemplate.opsForValue().set(cacheKey, pageInfo, CACHE_EXPIRE_TIME, TimeUnit.SECONDS);
-        }
-        return pageInfo;
-    }
 
     /**
      * 读取 Excel 文件，提取用户名列表 // Read Excel file and extract username list
@@ -244,4 +220,5 @@ public class LearnService {
         }
         return emails;
     }
+
 }

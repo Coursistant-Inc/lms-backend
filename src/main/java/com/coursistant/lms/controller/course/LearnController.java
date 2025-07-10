@@ -123,17 +123,5 @@ public class LearnController {
         return Result.success(list);
     }
 
-    /**
-     * 分页查询
-     * Paginated query for learning records
-     */
-    @GetMapping("/selectPage")
-    public Result selectPage(Learn learn,
-                             @RequestParam(defaultValue = "1") Integer pageNum,
-                             @RequestParam(defaultValue = "10") Integer pageSize) {
-        logRequest("selectPage", String.format("learn=%s, pageNum=%d, pageSize=%d", learn, pageNum, pageSize));
-        PageInfo<Learn> page = learnService.selectPage(learn, pageNum, pageSize);
-        logResponse("selectPage", null);
-        return Result.success(page);
-    }
+
 }

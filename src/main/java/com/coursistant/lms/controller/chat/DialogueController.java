@@ -3,9 +3,12 @@ package com.coursistant.lms.controller.chat;
 import com.coursistant.lms.common.Result;
 import com.coursistant.lms.entity.Dialogue;
 import com.coursistant.lms.service.chat.DialogueService;
+import com.coursistant.lms.utils.TimeZoneUtils;
+
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.logging.Logger;
 
@@ -35,9 +38,11 @@ public class DialogueController {
      * Add a new dialogue
      */
     @PostMapping("/add")
-    public Result add(@RequestBody Dialogue dialogue) {
+    public Result add(@RequestBody Dialogue dialogue,
+                      @RequestHeader(value = "X-Timezone", required = true) String timezone) {
         logRequest("add", dialogue.toString());
-        dialogueService.add(dialogue);
+        ZoneId zone = TimeZoneUtils.resolveZoneId(timezone);
+        dialogueService.add(dialogue, zone);
         logResponse("add", "Success");
         return Result.success();
     }
@@ -83,9 +88,11 @@ public class DialogueController {
      * Update a dialogue
      */
     @PutMapping("/update")
-    public Result updateById(@RequestBody Dialogue dialogue) {
+    public Result updateById(@RequestBody Dialogue dialogue,
+                             @RequestHeader(value = "X-Timezone", required = false) String timezone) {
         logRequest("updateById", dialogue.toString());
-        dialogueService.updateById(dialogue);
+        ZoneId zone = TimeZoneUtils.resolveZoneId(timezone);
+        dialogueService.updateById(dialogue, zone);
         logResponse("updateById", "Success");
         return Result.success();
     }
@@ -95,9 +102,11 @@ public class DialogueController {
      * Query a dialogue by ID
      */
     @GetMapping("/selectById/{id}")
-    public Result selectById(@PathVariable Integer id) {
+    public Result selectById(@PathVariable Integer id,
+                             @RequestHeader(value = "X-Timezone", required = false) String timezone) {
         logRequest("selectById", id.toString());
-        Dialogue dialogue = dialogueService.selectById(id);
+        ZoneId zone = TimeZoneUtils.resolveZoneId(timezone);
+        Dialogue dialogue = dialogueService.selectById(id,zone);
         logResponse("selectById", dialogue.toString());
         return Result.success(dialogue);
     }
@@ -107,9 +116,11 @@ public class DialogueController {
      * Query dialogues by user ID
      */
     @GetMapping("/selectByUserId/{id}")
-    public Result selectByUserId(@PathVariable Integer id) {
+    public Result selectByUserId(@PathVariable Integer id,
+                                 @RequestHeader(value = "X-Timezone", required = false) String timezone) {
         logRequest("selectByUserId", id.toString());
-        List<Dialogue> list = dialogueService.selectByUserId(id);
+        ZoneId zone = TimeZoneUtils.resolveZoneId(timezone);
+        List<Dialogue> list = dialogueService.selectByUserId(id,zone);
         logResponse("selectByUserId", null);
         return Result.success(list);
     }
@@ -120,9 +131,11 @@ public class DialogueController {
      */
     @GetMapping("/selectByUserIdAndKeyword")
     public Result selectByUserIdAndKeyword(@RequestParam("userId") Integer userId,
-                                           @RequestParam(value = "keyword") String keyword) {
+                                           @RequestParam(value = "keyword") String keyword,
+                                           @RequestHeader(value = "X-Timezone", required = false) String timezone) {
         logRequest("selectByUserIdAndKeyword", "userId=" + userId + ", keyword=" + keyword);
-        List<Dialogue> list = dialogueService.selectByUserIdAndKeyword(userId, keyword);
+        ZoneId zone = TimeZoneUtils.resolveZoneId(timezone);
+        List<Dialogue> list = dialogueService.selectByUserIdAndKeyword(userId, keyword,zone);
         logResponse("selectByUserIdAndKeyword", null);
         return Result.success(list);
     }
@@ -132,9 +145,11 @@ public class DialogueController {
      * Query all dialogues
      */
     @GetMapping("/selectAll")
-    public Result selectAll(Dialogue dialogue) {
+    public Result selectAll(Dialogue dialogue,
+                            @RequestHeader(value = "X-Timezone", required = false) String timezone) {
         logRequest("selectAll", dialogue != null ? dialogue.toString() : "null");
-        List<Dialogue> list = dialogueService.selectAll(dialogue);
+        ZoneId zone = TimeZoneUtils.resolveZoneId(timezone);
+        List<Dialogue> list = dialogueService.selectAll(dialogue,zone);
         logResponse("selectAll", null);
         return Result.success(list);
     }

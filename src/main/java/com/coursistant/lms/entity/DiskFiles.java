@@ -24,7 +24,7 @@ public class DiskFiles implements Serializable {
 
     private Integer userId;
 
-    private String courseName;
+    private Integer courseId;
 
     private String type;
 
@@ -54,7 +54,7 @@ public class DiskFiles implements Serializable {
         if (name != null) sb.append("\"name\":\"").append(name).append("\",");
         if (path != null) sb.append("\"path\":\"").append(path).append("\",");
         if (userId != null) sb.append("\"userId\":").append(userId).append(",");
-        if (courseName != null) sb.append("\"courseName\":\"").append(courseName).append("\",");
+        if (courseId != null) sb.append("\"courseId\":\"").append(courseId).append("\",");
         if (type != null) sb.append("\"type\":\"").append(type).append("\",");
         if (size != null) sb.append("\"size\":").append(size).append(",");
         if (createTime != null) sb.append("\"createTime\":\"").append(createTime).append("\",");
@@ -137,12 +137,12 @@ public class DiskFiles implements Serializable {
         this.userId = userId;
     }
 
-    public String getCourseName() {
-        return courseName;
+    public Integer getCourseId() {
+        return courseId;
     }
 
-    public void setCourseName(String courseName) {
-        this.courseName = courseName;
+    public void setCourseId(Integer courseId) {
+        this.courseId = courseId;
     }
 
     public String getType() {

@@ -2,6 +2,7 @@ package com.coursistant.lms.mapper.assignment;
 
 import com.coursistant.lms.entity.AssignmentSubmission;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
 import java.util.List;
@@ -50,4 +51,16 @@ public interface AssignmentSubmissionMapper {
      */
     @Select("SELECT * FROM AssignmentSubmission WHERE user_id = #{userId}")
     List<AssignmentSubmission> selectByUserId(Integer userId);
+
+    /**
+     * 清除该学生该作业的所有 is_final = true 标记
+     * Clear all is_final flags for a student's submissions on a specific assignment
+     */
+    void clearFinalFlag(@Param("assignmentId") int assignmentId,
+                        @Param("studentId") int studentId);
+
+
+    List<AssignmentSubmission> selectFinalGradedByAssignmentId(@Param("assignmentId") Integer assignmentId);
+
+
 }

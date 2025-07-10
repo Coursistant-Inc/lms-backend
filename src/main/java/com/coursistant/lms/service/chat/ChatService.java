@@ -5,10 +5,12 @@ import com.coursistant.lms.exception.CustomException;
 import com.coursistant.lms.common.enums.ResultCodeEnum;
 import com.coursistant.lms.entity.Chat;
 import com.coursistant.lms.mapper.chat.ChatMapper;
+import com.coursistant.lms.utils.TimeZoneUtils;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
@@ -20,7 +22,13 @@ public class ChatService {
     private ChatMapper chatMapper;
 
 
-    public void add(Chat chat) {
+    public void add(Chat chat, ZoneId timezone) {
+        if (chat.getTime() != null) {
+            chat.setTime(TimeZoneUtils.toUtcLocalDateTime(chat.getTime(), timezone));
+        }
+        if (chat.getDeleteTime() != null) {
+            chat.setDeleteTime(TimeZoneUtils.toUtcLocalDateTime(chat.getDeleteTime(), timezone));
+        }
         chatMapper.insert(chat);
     }
 
@@ -33,8 +41,7 @@ public class ChatService {
         }
         // 修改 / Modify
         chat.setDelete(true);
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-        chat.setDeleteTime(LocalDateTime.now().format(formatter));
+        chat.setDeleteTime(TimeZoneUtils.toUtcLocalDateTime(LocalDateTime.now(), ZoneId.systemDefault()));
         // 更新 / Update
         chatMapper.updateById(chat);
     }
@@ -62,7 +69,13 @@ public class ChatService {
      * 修改
      * Update a chat by ID
      */
-    public void updateById(Chat chat) {
+    public void updateById(Chat chat, ZoneId timezone) {
+        if (chat.getTime() != null) {
+            chat.setTime(TimeZoneUtils.toUtcLocalDateTime(chat.getTime(), timezone));
+        }
+        if (chat.getDeleteTime() != null) {
+            chat.setDeleteTime(TimeZoneUtils.toUtcLocalDateTime(chat.getDeleteTime(), timezone));
+        }
         chatMapper.updateById(chat);
     }
 
@@ -70,13 +83,18 @@ public class ChatService {
      * 根据ID查询
      * Query a chat by ID
      */
-    public Chat selectById(Integer id) {
+    public Chat selectById(Integer id, ZoneId timezone) {
 
         Chat chat = chatMapper.selectById(id);
         if (chat == null) {
             throw new CustomException(ResultCodeEnum.CHAT_NOT_EXIST_ERROR);
         }
-
+        if (chat.getTime() != null) {
+            chat.setTime(TimeZoneUtils.fromUtcLocalDateTime(chat.getTime(), timezone));
+        }
+        if (chat.getDeleteTime() != null) {
+            chat.setDeleteTime(TimeZoneUtils.fromUtcLocalDateTime(chat.getDeleteTime(), timezone));
+        }
         return chat;
     }
 
@@ -84,10 +102,17 @@ public class ChatService {
      * 查询所有
      * Query all chats
      */
-    public List<Chat> selectAll(Chat chat) {
+    public List<Chat> selectAll(Chat chat, ZoneId timezone) {
 
         List<Chat> chats = chatMapper.selectAll(chat);
-
+        for (Chat singleChat : chats) {
+            if (singleChat.getTime() != null) {
+                singleChat.setTime(TimeZoneUtils.fromUtcLocalDateTime(singleChat.getTime(), timezone));
+            }
+            if (singleChat.getDeleteTime() != null) {
+                singleChat.setDeleteTime(TimeZoneUtils.fromUtcLocalDateTime(singleChat.getDeleteTime(), timezone));
+            }
+        }
         return chats;
     }
 
@@ -108,7 +133,7 @@ public class ChatService {
      */
     public void updateSoftDeleteByDialogueId(Integer dialogueId) {
         int rowsUpdated = chatMapper.updateSoftDeleteByDialogueId(dialogueId, 1,
-                LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+                TimeZoneUtils.toUtcLocalDateTime(LocalDateTime.now(), ZoneId.systemDefault()));
     }
 
     //return last 5 chat

@@ -3,12 +3,13 @@ package com.coursistant.lms.controller.chat;
 import com.coursistant.lms.common.Result;
 import com.coursistant.lms.entity.Chat;
 import com.coursistant.lms.service.chat.ChatService;
+import com.coursistant.lms.utils.TimeZoneUtils;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
 import java.util.List;
 import java.util.logging.Logger;
-
+import java.time.ZoneId;
 /**
  * 部门信息表前端操作接口
  * Chat frontend operation API
@@ -35,9 +36,11 @@ public class ChatController {
      * Add a new chat record
      */
     @PostMapping("/add")
-    public Result add(@RequestBody Chat chat) {
+    public Result add(@RequestBody Chat chat,
+                      @RequestHeader(value = "X-Timezone", required = false) String timezone) {
         logRequest("add", chat.toString());
-        chatService.add(chat);
+        ZoneId zone = TimeZoneUtils.resolveZoneId(timezone);
+        chatService.add(chat, zone);
         logResponse("add", "Success");
         return Result.success();
     }
@@ -83,9 +86,11 @@ public class ChatController {
      * Update a chat record
      */
     @PutMapping("/update")
-    public Result updateById(@RequestBody Chat chat) {
+    public Result updateById(@RequestBody Chat chat,
+                             @RequestHeader(value = "X-Timezone", required = false) String timezone) {
         logRequest("updateById", chat.toString());
-        chatService.updateById(chat);
+        ZoneId zone = TimeZoneUtils.resolveZoneId(timezone);
+        chatService.updateById(chat, zone);
         logResponse("updateById", "Success");
         return Result.success();
     }
@@ -95,9 +100,11 @@ public class ChatController {
      * Query a chat record by ID
      */
     @GetMapping("/selectById/{id}")
-    public Result selectById(@PathVariable Integer id) {
+    public Result selectById(@PathVariable Integer id,
+                             @RequestHeader(value = "X-Timezone", required = false) String timezone) {
         logRequest("selectById", id.toString());
-        Chat chat = chatService.selectById(id);
+        ZoneId zone = TimeZoneUtils.resolveZoneId(timezone);
+        Chat chat = chatService.selectById(id,zone);
         logResponse("selectById", chat.toString());
         return Result.success(chat);
     }
@@ -107,9 +114,11 @@ public class ChatController {
      * Query all chat records
      */
     @GetMapping("/selectAll")
-    public Result selectAll(Chat chat) {
+    public Result selectAll(Chat chat,
+                            @RequestHeader(value = "X-Timezone", required = false) String timezone) {
         logRequest("selectAll", chat != null ? chat.toString() : "null");
-        List<Chat> list = chatService.selectAll(chat);
+        ZoneId zone = TimeZoneUtils.resolveZoneId(timezone);
+        List<Chat> list = chatService.selectAll(chat, zone);
         logResponse("selectAll", null);
         return Result.success(list);
     }

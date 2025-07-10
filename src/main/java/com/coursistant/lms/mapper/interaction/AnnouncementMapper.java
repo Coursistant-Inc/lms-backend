@@ -49,4 +49,12 @@ public interface AnnouncementMapper {
      */
     @Select("SELECT * FROM Announcement WHERE user_id = #{userId}")
     List<Announcement> selectByUserId(Integer userId);
+
+    /**
+     * 根据 course_id 查询 Announcement
+     * Query Announcements by course_id
+     */
+    @Select("SELECT * FROM Announcement WHERE course_id = #{courseId}")
+    List<Announcement> selectByCourseId(Integer courseId);
+
 }

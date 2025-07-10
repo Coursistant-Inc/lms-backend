@@ -45,8 +45,6 @@ public class UserService {
     @Resource(name = "userAllRedisTemplate")
     private RedisTemplate<String, Object> userAllRedisTemplate;
 
-    @Resource(name = "userPageRedisTemplate")
-    private RedisTemplate<String, Object> userPageRedisTemplate;
 
     @Resource
     private EmailUtil emailUtil; // 注入 EmailUtil // Inject EmailUtil
@@ -61,12 +59,7 @@ public class UserService {
         Objects.requireNonNull(userAllRedisTemplate.getConnectionFactory()).getConnection().flushDb();
     }
 
-    /**
-     * 清空 userPage 数据库 // Clear the userPage database
-     */
-    public void clearUserPageCache() {
-        Objects.requireNonNull(userPageRedisTemplate.getConnectionFactory()).getConnection().flushDb();
-    }
+
 
     /**
      * 新增 // Add a new user
@@ -93,7 +86,6 @@ public class UserService {
 
         // 清理相关缓存 // Clear related caches
         clearUserAllCache();
-        clearUserPageCache();
     }
 
     /**
@@ -104,7 +96,6 @@ public class UserService {
 
         // 清理相关缓存 // Clear related caches
         clearUserAllCache();
-        clearUserPageCache();
         generalRedisTemplate.delete("user:" + id);
     }
 
@@ -117,7 +108,6 @@ public class UserService {
             generalRedisTemplate.delete("user:" + id);
         }
         clearUserAllCache();
-        clearUserPageCache();
     }
 
     /**
@@ -128,7 +118,6 @@ public class UserService {
 
         // 清理相关缓存 // Clear related caches
         clearUserAllCache();
-        clearUserPageCache();
         generalRedisTemplate.delete("user:" + user.getId());
         generalRedisTemplate.delete("user:email:" + user.getEmail());
     }
@@ -180,32 +169,7 @@ public class UserService {
         return users;
     }
 
-    /**
-     * 分页查询 // Paginated query
-     */
-    public PageInfo<User> selectPage(User user, Integer pageNum, Integer pageSize) {
-        String cacheKey = "user:page:" + pageNum + ":" + pageSize;
-        if (user != null) {
-            cacheKey += ":" + user.toString();
-        }
 
-        // 从 Redis 获取缓存 // Get from Redis cache
-        PageInfo<User> pageInfo = (PageInfo<User>) userPageRedisTemplate.opsForValue().get(cacheKey);
-        if (pageInfo != null) {
-            System.out.println("from cache: " + cacheKey);
-            return pageInfo;
-        }
-
-        // 如果缓存不存在，从数据库查询 // If cache does not exist, query from the database
-        PageHelper.startPage(pageNum, pageSize);
-        List<User> list = userMapper.selectAll(user);
-        pageInfo = PageInfo.of(list);
-
-        if (list != null && !list.isEmpty()) {
-            userPageRedisTemplate.opsForValue().set(cacheKey, pageInfo, CACHE_EXPIRE_TIME, TimeUnit.SECONDS);
-        }
-        return pageInfo;
-    }
 
     /**
      * 登录 // User login
@@ -269,33 +233,39 @@ public class UserService {
         User user = new User();
         BeanUtils.copyProperties(account, user);
 
-        //check email
-        String redisKey = "email:verification:" + "register"+":"+account.getEmail();
-        String cachedCode = (String) generalRedisTemplate.opsForValue().get(redisKey);
 
-        if (ObjectUtil.isEmpty(cachedCode) || !cachedCode.equals(account.getVerification())) {
-            throw new CustomException(ResultCodeEnum.VERIFICATION_CODE_ERROR);
-        }
-
-        //check
+        // check invitation code
         String invitation = user.getInvitation();
         if ("PZMWXN4UUO".equals(invitation)) {
-            user.setInvitation("Local Student"); // 本土学生
+            user.setInvitation("Local Student");
         } else if ("YK0AU47BZ1".equals(invitation)) {
-            user.setInvitation("International Student"); // 留学生
+            user.setInvitation("International Student");
         } else if ("OPH31E5TOK".equals(invitation)) {
-            user.setInvitation("Developer"); // 开发人员
+            user.setInvitation("Developer");
         } else if ("Z4G2MZ1XO1".equals(invitation)) {
-            user.setInvitation("Teaching Class"); // 教学班级
+            user.setInvitation("Teaching Class");
         } else {
             throw new CustomException(ResultCodeEnum.INVITATION_NOT_EXIST_ERROR);
         }
 
         add(user);
         clearUserAllCache();
-        clearUserPageCache();
-        generalRedisTemplate.delete(redisKey);
+        generalRedisTemplate.delete("email:verification:register:" + account.getEmail());
     }
+
+    /**
+     * VERIFICATION_CODE
+     */
+    public void validateEmailVerificationCode(String email, String verificationCode) {
+        String redisKey = "email:verification:register:" + email;
+        String cachedCode = (String) generalRedisTemplate.opsForValue().get(redisKey);
+
+        if (ObjectUtil.isEmpty(cachedCode) || !cachedCode.equals(verificationCode)) {
+            throw new CustomException(ResultCodeEnum.VERIFICATION_CODE_ERROR);
+        }
+    }
+
+
 
     /**
      * 修改密码 Change Password

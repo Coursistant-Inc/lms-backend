@@ -14,6 +14,7 @@ import com.coursistant.lms.service.system.AdminService;
 import com.coursistant.lms.service.system.HadoopService;
 import com.coursistant.lms.service.user.UserService;
 import com.coursistant.lms.utils.TokenUtils;
+import com.coursistant.lms.utils.TimeZoneUtils;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -27,6 +28,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 import java.util.logging.Logger;
+import java.time.ZoneId;
 
 /**
  * 基础前端接口 // Basic frontend API
@@ -164,6 +166,17 @@ public class WebController {
         return Result.success();
     }
 
+    /**
+     * 校验邮箱验证码 // Validate email verification code
+     */
+    @PostMapping("/validateRegisterEmailVerification")
+    public Result validateRegisterEmailVerification(@RequestParam("email") String email,
+                                                    @RequestParam("code") String code) {
+        userService.validateEmailVerificationCode(email, code);
+        return Result.success();
+    }
+
+
 
     @PostMapping("/sendResetEmailVerification")
     public Result sendResetEmailVerification(String email) {
@@ -219,7 +232,8 @@ public class WebController {
                         @RequestParam("courseId") Integer courseId,
                         @RequestParam("query") String query,
                         @RequestParam("dialogueId") Integer dialogueId,
-                        @RequestParam("userId") Integer userId){
+                        @RequestParam("userId") Integer userId,
+                        @RequestHeader(value = "X-Timezone", required = false) String timezone){
 
         String savedFilePath = "N/A";
 
@@ -255,11 +269,12 @@ public class WebController {
                 savedFilePath, courseId, query, dialogueId));
         Query re_query = new Query();
         System.out.println(query);
+        ZoneId zone = TimeZoneUtils.resolveZoneId(timezone);
         if (file != null && !file.isEmpty()) {
-            re_query = coursistanceService.query(new File(savedFilePath), courseId, query, dialogueId, userId);
+            re_query = coursistanceService.query(new File(savedFilePath), courseId, query, dialogueId, userId,zone);
         }
         else {
-            re_query = coursistanceService.query(null, courseId, query, dialogueId, userId);
+            re_query = coursistanceService.query(null, courseId, query, dialogueId, userId, zone);
         }
         logResponse("query", re_query.toString());
         return Result.success(re_query);

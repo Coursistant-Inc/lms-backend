@@ -29,7 +29,7 @@ public class AsyncFileUploadService {
      * 方法签名从 (String courseName, MultipartFile file) 改为 (String courseName, String fullpath)
      */
     @Async
-    public void asyncUploadFile(String courseName, String fullpath) {
+    public void asyncUploadFile(Integer courseId, String fullpath) {
         // 1. 检查本地文件是否存在
         File localFile = new File(fullpath);
         if (!localFile.exists() || !localFile.isFile()) {
@@ -44,7 +44,7 @@ public class AsyncFileUploadService {
             MultipartEntityBuilder builder = MultipartEntityBuilder.create();
 
             // 添加文本参数 course_id
-            builder.addTextBody("course_id", courseName, ContentType.TEXT_PLAIN);
+            builder.addTextBody("course_id", courseId.toString(), ContentType.TEXT_PLAIN);
 
             // 添加文件参数 file（直接传 File 对象）
             builder.addBinaryBody("file", localFile, ContentType.MULTIPART_FORM_DATA, localFile.getName());

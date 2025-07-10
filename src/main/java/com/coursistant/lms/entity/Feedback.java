@@ -1,6 +1,7 @@
 package com.coursistant.lms.entity;
 
 import java.io.Serializable;
+import java.time.LocalDateTime;
 
 /**
  * Feedback Entity
@@ -13,7 +14,7 @@ public class Feedback implements Serializable {
     private Integer courseId;
     private String content;
 
-    private String date;
+    private LocalDateTime date;
 
     private String level;
     private String currentUrl;
@@ -85,16 +86,17 @@ public class Feedback implements Serializable {
         return currentUrl;
     }
 
-     public String getDate() {
-        return date;
-    }
+
 
     public void setCurrentUrl(String currentUrl) {
         this.currentUrl = currentUrl;
     }
 
+    public LocalDateTime getDate() {
+        return date;
+    }
 
-    public void setDate(String date) {
+    public void setDate(LocalDateTime date) {
         this.date = date;
     }
 }

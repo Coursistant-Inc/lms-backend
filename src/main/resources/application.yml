@@ -51,8 +51,8 @@ spring:
     
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    username: ${DB_USERNAME}  #数据库用户名
-    password: ${DB_PASSWORD} #数据库密码
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
     url: jdbc:mysql://labserver101.ddns.net:3306/lms?useUnicode=true&characterEncoding=utf-8&allowMultiQueries=true&useSSL=false&serverTimezone=GMT%2b8&allowPublicKeyRetrieval=true
 
     hikari:
@@ -62,6 +62,7 @@ spring:
       max-lifetime: 1800000
       connection-timeout: 10000
       leak-detection-threshold: 30000
+      
       
   servlet:
     multipart:
@@ -87,164 +88,6 @@ spring:
           auth: true
           starttls:
             enable: true
-
-
-  redis:
-    general:
-      host: labserver101.ddns.net
-      port: 6381
-      username: ${REDIS_DEFAULT_USERNAME}
-      password: ${REDIS_DEFAULT_PASSWORD}
-      database: 2
-      timeout: 5000ms
-      lettuce:
-        pool:
-          max-active: 10
-          max-idle: 8
-          min-idle: 2
-
-    adminAll:
-      host: labserver101.ddns.net
-      port: 6381
-      username: ${REDIS_DEFAULT_USERNAME}
-      password: ${REDIS_DEFAULT_PASSWORD}
-      database: 3
-      timeout: 5000ms
-      lettuce:
-        pool:
-          max-active: 10
-          max-idle: 8
-          min-idle: 2
-
-    adminPage:
-      host: labserver101.ddns.net
-      port: 6381
-      username: ${REDIS_DEFAULT_USERNAME}
-      password: ${REDIS_DEFAULT_PASSWORD}
-      database: 4
-      timeout: 5000ms
-      lettuce:
-        pool:
-          max-active: 10
-          max-idle: 8
-          min-idle: 2
-
-    userAll:
-      host: labserver101.ddns.net
-      port: 6381
-      username: ${REDIS_DEFAULT_USERNAME}
-      password: ${REDIS_DEFAULT_PASSWORD}
-      database: 5
-      timeout: 5000ms
-      lettuce:
-        pool:
-          max-active: 10
-          max-idle: 8
-          min-idle: 2
-
-    userPage:
-      host: labserver101.ddns.net
-      port: 6381
-      username: ${REDIS_DEFAULT_USERNAME}
-      password: ${REDIS_DEFAULT_PASSWORD}
-      database: 6
-      timeout: 5000ms
-      lettuce:
-        pool:
-          max-active: 10
-          max-idle: 8
-          min-idle: 2
-
-    courseAll:
-      host: labserver101.ddns.net
-      port: 6381
-      username: ${REDIS_DEFAULT_USERNAME}
-      password: ${REDIS_DEFAULT_PASSWORD}
-      database: 7
-      timeout: 5000ms
-      lettuce:
-        pool:
-          max-active: 10
-          max-idle: 8
-          min-idle: 2
-
-    coursePage:
-      host: labserver101.ddns.net
-      port: 6381
-      username: ${REDIS_DEFAULT_USERNAME}
-      password: ${REDIS_DEFAULT_PASSWORD}
-      database: 8
-      timeout: 5000ms
-      lettuce:
-        pool:
-          max-active: 10
-          max-idle: 8
-          min-idle: 2
-
-    teachAll:
-      host: labserver101.ddns.net
-      port: 6381
-      username: ${REDIS_DEFAULT_USERNAME}
-      password: ${REDIS_DEFAULT_PASSWORD}
-      database: 9
-      timeout: 5000ms
-      lettuce:
-        pool:
-          max-active: 10
-          max-idle: 8
-          min-idle: 2
-
-    teachPage:
-      host: labserver101.ddns.net
-      port: 6381
-      username: ${REDIS_DEFAULT_USERNAME}
-      password: ${REDIS_DEFAULT_PASSWORD}
-      database: 10
-      timeout: 5000ms
-      lettuce:
-        pool:
-          max-active: 10
-          max-idle: 8
-          min-idle: 2
-
-    learnAll:
-      host: labserver101.ddns.net
-      port: 6381
-      username: ${REDIS_DEFAULT_USERNAME}
-      password: ${REDIS_DEFAULT_PASSWORD}
-      database: 11
-      timeout: 5000ms
-      lettuce:
-        pool:
-          max-active: 10
-          max-idle: 8
-          min-idle: 2
-
-    learnPage:
-      host: labserver101.ddns.net
-      port: 6381
-      username: ${REDIS_DEFAULT_USERNAME}
-      password: ${REDIS_DEFAULT_PASSWORD}
-      database: 12
-      timeout: 5000ms
-      lettuce:
-        pool:
-          max-active: 10
-          max-idle: 8
-          min-idle: 2
-
-    refreshToken:
-      host: labserver101.ddns.net
-      port: 6381
-      username: ${REDIS_DEFAULT_USERNAME}
-      password: ${REDIS_DEFAULT_PASSWORD}
-      database: 13
-      timeout: 5000ms
-      lettuce:
-        pool:
-          max-active: 10
-          max-idle: 8
-          min-idle: 2
 
 
 # 配置mybatis实体和xml映射

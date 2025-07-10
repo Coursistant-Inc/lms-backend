@@ -1,11 +1,11 @@
 package com.coursistant.lms.entity;
 
-import java.io.Serializable;
-import java.time.LocalDateTime;
-
+import com.fasterxml.jackson.annotation.JsonFormat;
 import org.springframework.format.annotation.DateTimeFormat;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
+import java.io.Serializable;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 /**
  * 公告实体类
@@ -45,7 +45,6 @@ public class Assignment implements Serializable {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "UTC")
     private LocalDateTime start;
 
-    private String timezone;
 
     private String description;
 
@@ -58,13 +57,13 @@ public class Assignment implements Serializable {
     private Integer allowedSubmissionTimes;
 
     /** 最高分 */
-    private Integer highestGrade;
+    private BigDecimal highestGrade;
 
     /** 最低分 */
-    private Integer lowestGrade;
+    private BigDecimal lowestGrade;
 
     /** 平均分 */
-    private Integer averageGrade;
+    private BigDecimal averageGrade;
 
     /** 是否发布成绩（0-未发布，1-已发布） */
     private Boolean gradePublish;
@@ -72,7 +71,6 @@ public class Assignment implements Serializable {
     private String groupMode;
 
     private Integer groupSize;
-
 
 
 
@@ -156,13 +154,7 @@ public class Assignment implements Serializable {
         this.start = start;
     }
 
-    public String getTimezone() {
-        return timezone;
-    }
 
-    public void setTimezone(String timezone) {
-        this.timezone = timezone;
-    }
 
     public String getDescription() {
         return description;
@@ -171,6 +163,8 @@ public class Assignment implements Serializable {
     public void setDescription(String description) {
         this.description = description;
     }
+
+
 
     public String getCriteria() {
         return criteria;
@@ -196,27 +190,27 @@ public class Assignment implements Serializable {
         this.allowedSubmissionTimes = allowedSubmissionTimes;
     }
 
-    public Integer getHighestGrade() {
+    public BigDecimal getHighestGrade() {
         return highestGrade;
     }
 
-    public void setHighestGrade(Integer highestGrade) {
+    public void setHighestGrade(BigDecimal highestGrade) {
         this.highestGrade = highestGrade;
     }
 
-    public Integer getLowestGrade() {
+    public BigDecimal getLowestGrade() {
         return lowestGrade;
     }
 
-    public void setLowestGrade(Integer lowestGrade) {
+    public void setLowestGrade(BigDecimal lowestGrade) {
         this.lowestGrade = lowestGrade;
     }
 
-    public Integer getAverageGrade() {
+    public BigDecimal getAverageGrade() {
         return averageGrade;
     }
 
-    public void setAverageGrade(Integer averageGrade) {
+    public void setAverageGrade(BigDecimal averageGrade) {
         this.averageGrade = averageGrade;
     }
 

@@ -41,7 +41,7 @@ public class DiskFilesController {
      */
     @PostMapping("/add")
     public Result add(@RequestParam("files") MultipartFile[] files,
-                   @RequestParam("courseName") String courseName,
+                   @RequestParam("courseId") Integer courseId,
                    @RequestParam("userId") Integer userId,
                    @RequestParam("categories") String[] categories,
                    @RequestParam("analysis") Integer analysis) {
@@ -51,8 +51,8 @@ public class DiskFilesController {
         }
         if (files.length==1){
             logRequest("add", String.format("fileName=%s, courseName=%s, userId=%d, category=%s, analysis=%d",
-                files[0].getOriginalFilename(), courseName, userId, categories[0],analysis));
-            FileSummary summary=diskFilesService.add(files[0], courseName, userId, categories[0],analysis);
+                files[0].getOriginalFilename(), courseId, userId, categories[0],analysis));
+            FileSummary summary=diskFilesService.add(files[0], courseId, userId, categories[0],analysis);
 
             logResponse("add", "Success");
         
@@ -64,9 +64,9 @@ public class DiskFilesController {
                 String category = categories[i];
                        
                 logRequest("add", String.format("fileName=%s, courseName=%s, userId=%d, category=%s, analysis=%d",
-                        file.getOriginalFilename(), courseName, userId, category, analysis));
+                        file.getOriginalFilename(), courseId, userId, category, analysis));
         
-                diskFilesService.add(file, courseName, userId, category, 0);
+                diskFilesService.add(file, courseId, userId, category, 0);
 
                 logResponse("add", "Success");
             }
@@ -80,10 +80,10 @@ public class DiskFilesController {
      * Overwrite an existing file
      */
     @PostMapping("/overwrite")
-    public Result overwrite(MultipartFile file, String courseName, Integer userId) {
+    public Result overwrite(MultipartFile file, Integer courseId, Integer userId) {
         logRequest("overwrite", String.format("fileName=%s, courseName=%s, userId=%d",
-                file.getOriginalFilename(), courseName, userId));
-        diskFilesService.overwrite(file, courseName, userId);
+                file.getOriginalFilename(), courseId, userId));
+        diskFilesService.overwrite(file, courseId, userId);
         logResponse("overwrite", "Success");
         return Result.success();
     }

@@ -18,8 +18,6 @@ public class Course implements Serializable {
 
     private Integer teacherId;
 
-    private String instructorName;
-
     private String school;
 
     private String semester;
@@ -110,14 +108,6 @@ public class Course implements Serializable {
 
     public void setSemester(String semester) {
         this.semester = semester;
-    }
-
-    public String getInstructorName() {
-        return instructorName;
-    }
-
-    public void setInstructorName(String instructorName) {
-        this.instructorName = instructorName;
     }
 
     public String getSchool() {
