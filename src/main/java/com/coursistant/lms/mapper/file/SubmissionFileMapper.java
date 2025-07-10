@@ -48,6 +48,6 @@ public interface SubmissionFileMapper {
      * 根据 user_id 查询 SubmissionFile
      * Query SubmissionFiles by assignment_id
      */
-    @Select("SELECT * FROM SubmissionFile WHERE submission_id = #{submissionId}")
+    @Select("SELECT * FROM AssignmentSubmissionFile WHERE submission_id = #{submissionId}")
     List<SubmissionFile> selectBySubmissionId(Integer submissionId);
 }
