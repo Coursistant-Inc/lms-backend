@@ -4,10 +4,13 @@ import java.io.IOException;
 import java.util.logging.Logger;
 
 import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import com.coursistant.lms.entity.Account;
 import com.coursistant.lms.service.system.OAuthService;
+
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -31,6 +34,12 @@ public class ThirdPartyController {
     @Resource
     private OAuthService oAuthService;
 
+    @Value("${server.port}")
+    private String serverPort;
+    @Value("${api.base.url}")
+    private String url;
+
+
     private static final Logger logger = Logger.getLogger(ThirdPartyController.class.getName());
 
     private void logRequest(String methodName, String requestBody) {
@@ -39,6 +48,16 @@ public class ThirdPartyController {
 
     private void logResponse(String methodName, String response) {
         logger.info(() -> String.format("End %s: %s", methodName, response));
+    }
+
+    private String getBaseUrl(){
+        String baseUrl = url + ":";
+        if (serverPort.charAt(0) == '1'){
+            baseUrl = baseUrl + serverPort.substring(1);
+        }else {
+            baseUrl = baseUrl + serverPort;
+        }
+        return baseUrl;
     }
 
     /**
@@ -77,9 +96,10 @@ public class ThirdPartyController {
     }
 
     @GetMapping("/google")
-    public RedirectView googleLogin() {
+    public RedirectView googleLogin(HttpServletRequest request) {
         // Custom logic for initiating Google login, can be extended as needed
-        return new RedirectView("/api/oauth2/authorization/google"); // This redirects to the default Google OAuth2 flow
+        String baseUrl = getBaseUrl();
+        return new RedirectView(baseUrl + "/api/oauth2/authorization/google"); // This redirects to the default Google OAuth2 flow
     }
 
     @PostMapping("/google/continue")
@@ -93,7 +113,8 @@ public class ThirdPartyController {
     @GetMapping("/facebook")
     public void facebookLogin(HttpServletResponse response) throws IOException
     {
-        response.sendRedirect("/api/oauth2/authorization/facebook");
+        String baseUrl = getBaseUrl();
+        response.sendRedirect(baseUrl + "/api/oauth2/authorization/facebook");
     }
 
     @PostMapping("/facebook/continue")
@@ -107,7 +128,8 @@ public class ThirdPartyController {
     @GetMapping("/microsoft")
     public RedirectView microsoftLogin() {
         // Custom logic for initiating Google login, can be extended as needed
-        return new RedirectView("/api/oauth2/authorization/microsoft"); // This redirects to the default Google OAuth2 flow
+        String baseUrl = getBaseUrl();
+        return new RedirectView(baseUrl + "/api/oauth2/authorization/microsoft"); // This redirects to the default Google OAuth2 flow
     }
 
     @PostMapping("/microsoft/continue")
