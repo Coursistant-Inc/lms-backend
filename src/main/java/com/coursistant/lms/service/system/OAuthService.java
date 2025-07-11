@@ -1,9 +1,10 @@
 package com.coursistant.lms.service.system;
 
-import java.util.Map;
+import java.util.*;
 
 import javax.annotation.Resource;
 
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
@@ -13,9 +14,12 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.FormHttpMessageConverter;
+import org.springframework.http.converter.StringHttpMessageConverter;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.interfaces.DecodedJWT;
@@ -23,7 +27,12 @@ import com.coursistant.lms.common.Result;
 import com.coursistant.lms.common.enums.ResultCodeEnum;
 import com.coursistant.lms.common.enums.RoleEnum;
 import com.coursistant.lms.entity.Account;
+import com.coursistant.lms.entity.LinkedInUserInfo;
+import com.coursistant.lms.entity.User;
+import com.coursistant.lms.entity.DTO.LinkedInDTO;
+import com.coursistant.lms.exception.CustomException;
 import com.coursistant.lms.mapper.user.UserMapper;
+import com.coursistant.lms.service.user.UserService;
 import com.coursistant.lms.utils.TokenUtils;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -34,19 +43,19 @@ import cn.hutool.core.util.ObjectUtil;
 public class OAuthService {
 
     @Value("${spring.security.oauth2.client.registration.google.client-id}")
-    private String clientId;
+    private String googleClientId;
 
     @Value("${spring.security.oauth2.client.registration.google.client-secret}")
-    private String clientSecret;
+    private String googleClientSecret;
 
     @Value("${spring.security.oauth2.client.registration.google.redirect-uri}")
-    private String redirectUri;
+    private String googleRedirectUri;
 
     @Value("${spring.security.oauth2.client.provider.google.token-uri}")
-    private String tokenUri;
+    private String googleTokenUri;
 
     @Value("${spring.security.oauth2.client.provider.google.user-info-uri}")
-    private String userInfoUri;
+    private String googleUserInfoUri;
 
     @Value("${spring.security.oauth2.client.registration.facebook.client-id}")
     private String facebookClientId;
@@ -72,11 +81,61 @@ public class OAuthService {
     @Value("${spring.security.oauth2.client.registration.microsoft.scope}")
     private String microsoftScope;
 
+    @Value("${spring.linkedin.client-id}")
+    private String linkdeInClientId;
+
+    @Value("${spring.linkedin.client-secret}")
+    private String linkedInClientSecret;
+
+    @Value("${spring.linkedin.redirect-uri}")
+    private String linkedInRedirectUri;
+
+    @Value("${spring.linkedin.token-url}")
+    private String linkedInTokenUrl;
+
+    @Value("${spring.linkedin.auth-url}")
+    private String linkedInAuthUrl;
+
+    @Value("${spring.linkedin.scope}")
+    private String linkedInScope;
+
+
     @Resource
     private UserMapper userMapper;
+    
+    @Resource
+    private UserService userService;
 
     @Resource(name = "generalRedisTemplate")
     private RedisTemplate<String, Object> generalRedisTemplate;
+
+    private final RestTemplate restTemplate = new RestTemplate();
+
+    /**
+     * 注册 register
+     */
+    public void register(Account account) {
+
+        User user = new User();
+        BeanUtils.copyProperties(account, user);
+
+        //check
+        String invitation = user.getInvitation();
+        if ("PZMWXN4UUO".equals(invitation)) {
+            user.setInvitation("Local Student"); // 本土学生
+        } else if ("YK0AU47BZ1".equals(invitation)) {
+            user.setInvitation("International Student"); // 留学生
+        } else if ("OPH31E5TOK".equals(invitation)) {
+            user.setInvitation("Developer"); // 开发人员
+        } else if ("Z4G2MZ1XO1".equals(invitation)) {
+            user.setInvitation("Teaching Class"); // 教学班级
+        } else {
+            throw new CustomException(ResultCodeEnum.INVITATION_NOT_EXIST_ERROR);
+        }
+
+        userService.add(user);
+
+    }
 
     public Result getEmailFromAuthCodeGoogle(String authorizationCode) {
         // Step 1: Exchange the authorization code for an access token
@@ -88,12 +147,11 @@ public class OAuthService {
     }
 
     private String exchangeAuthCodeForToken(String authorizationCode) {
-        RestTemplate restTemplate = new RestTemplate();
-        String url = UriComponentsBuilder.fromHttpUrl(tokenUri)
+        String url = UriComponentsBuilder.fromHttpUrl(googleTokenUri)
                 .queryParam("code", authorizationCode)
-                .queryParam("client_id", clientId)
-                .queryParam("client_secret", clientSecret)
-                .queryParam("redirect_uri", redirectUri) // Make sure this matches the one you set in Google Developer Console
+                .queryParam("client_id", googleClientId)
+                .queryParam("client_secret", googleClientSecret)
+                .queryParam("redirect_uri", googleRedirectUri) // Make sure this matches the one you set in Google Developer Console
                 .queryParam("grant_type", "authorization_code")
                 .toUriString();
 
@@ -106,8 +164,7 @@ public class OAuthService {
     }
 
     private Result getUserInfoGoogle(String accessToken) {
-        RestTemplate restTemplate = new RestTemplate();
-        String userInfoResponse = restTemplate.getForObject(userInfoUri + "?access_token=" + accessToken, String.class);
+        String userInfoResponse = restTemplate.getForObject(googleUserInfoUri + "?access_token=" + accessToken, String.class);
 
         JsonObject jsonObject = JsonParser.parseString(userInfoResponse).getAsJsonObject();
         String email = jsonObject.get("email").getAsString();
@@ -116,12 +173,11 @@ public class OAuthService {
         return getUserInfo(email, name);
     }
 
-    public Result getFacebookUserAccessToken(String code){
-        RestTemplate restTemplate = new RestTemplate();
+    public Result getEmailFromAuthCodeFacebook(String code){
         String url = UriComponentsBuilder.fromHttpUrl("https://graph.facebook.com/v18.0/oauth/access_token")
             .queryParam("client_id", facebookClientId)
             .queryParam("redirect_uri", facebookRedirectUri)
-            .queryParam("client_secret", facebookClientSecret) // Make sure this matches the one you set in Google Developer Console
+            .queryParam("client_secret", facebookClientSecret)
             .queryParam("code", code)
             .toUriString();
 
@@ -136,7 +192,6 @@ public class OAuthService {
     private Result getFacebookUserInfo(String accessToken){
         String userInfoUrl = "https://graph.facebook.com/me?fields=id,name,email&access_token="+accessToken;
 
-        RestTemplate restTemplate = new RestTemplate();
         String userInfoResponse = restTemplate.getForObject(userInfoUrl, String.class);
 
         JsonObject jsonObject = JsonParser.parseString(userInfoResponse).getAsJsonObject();
@@ -152,7 +207,6 @@ public class OAuthService {
 
     public Result getEmailFromAuthCodeMicrosoft(String authorizationCode) {
         // Step 1: Exchange the authorization code for an access token
-        RestTemplate restTemplate = new RestTemplate();
         String tokenUrl = microsoftTokenUri; // Replace {tenant} with 'common', a specific tenant ID, or 'organizations'
 
         HttpHeaders headers = new HttpHeaders();
@@ -184,6 +238,89 @@ public class OAuthService {
         // Step 2: Use the access token to retrieve the user's info (email)
         return getUserInfo(email, name);
         //return new Result();
+    }
+
+    /**
+     * 生成授权链接，引导用户登录
+     */
+    public String returnLinkedInUrl(){
+        String authorizationUrl = linkedInAuthUrl + "?response_type=code" +
+                "&client_id=" + linkdeInClientId +
+                "&redirect_uri=" + linkedInRedirectUri +
+                "&scope=" + linkedInScope +
+                "&state=" + UUID.randomUUID().toString();
+        return authorizationUrl;
+    }
+
+    /**
+     * 通过授权码获取 Access Token
+     * @param authorizationCode LinkedIn 返回的授权码
+     * @return access_token
+     */
+    public String getLinkedInAccessToken(String authorizationCode) {
+        // 1. 创建请求体，使用 LinkedMultiValueMap
+        LinkedMultiValueMap<String, String> requestBody = new LinkedMultiValueMap<>();
+        requestBody.add("grant_type", "authorization_code");
+        requestBody.add("code", authorizationCode);
+        requestBody.add("redirect_uri", linkedInRedirectUri);
+        requestBody.add("client_id", linkdeInClientId);
+        requestBody.add("client_secret", linkedInClientSecret);
+
+        // 2. 设置请求头
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+
+        // 3. 创建 HttpEntity
+        HttpEntity<LinkedMultiValueMap<String, String>> request = new HttpEntity<>(requestBody, headers);
+
+        // 4. 确保 RestTemplate 具有合适的转换器
+        RestTemplate restTemplate = new RestTemplate();
+        restTemplate.getMessageConverters().add(new FormHttpMessageConverter());
+        restTemplate.getMessageConverters().add(new StringHttpMessageConverter());
+
+        // 5. 发送 POST 请求
+        ResponseEntity<Map> response = restTemplate.postForEntity(linkedInTokenUrl, request, Map.class);
+
+        if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+            return response.getBody().get("access_token").toString();
+        } else {
+            throw new RuntimeException("获取 access_token 失败：" + response.getStatusCode());
+        }
+    }
+
+
+    /**
+     * 使用 access_token 获取 LinkedIn 用户信息
+     */
+    public LinkedInUserInfo getLinkedInUserInfo(String accessToken) {
+        String userInfoUrl = "https://api.linkedin.com/v2/userinfo";
+
+        // 设置 Authorization 头部
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Authorization", "Bearer " + accessToken);
+        headers.setAccept(java.util.Collections.singletonList(MediaType.APPLICATION_JSON));
+
+        HttpEntity<String> entity = new HttpEntity<>(headers);
+
+        // 发送 GET 请求
+        ResponseEntity<LinkedInUserInfo> response = restTemplate.exchange(
+                userInfoUrl, HttpMethod.GET, entity, LinkedInUserInfo.class);
+
+        // 返回解析后的用户信息
+        return response.getBody();
+    }
+
+    public Result getEmailFromAuthCodeLinkedIn(String authorizationCode) {
+
+        String linkedIn_token=getLinkedInAccessToken(authorizationCode);
+        LinkedInUserInfo userInfo=getLinkedInUserInfo(linkedIn_token);
+        String name = userInfo.getName();
+        String email = userInfo.getEmail();
+
+    
+        // Step 2: Use the access token to retrieve the user's info (email)
+        return getUserInfo(email, name);
+
     }
 
     private Result getUserInfo(String email, String name) {
