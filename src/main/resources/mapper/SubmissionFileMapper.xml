@@ -12,7 +12,7 @@
     <select id="selectAll" resultType="com.coursistant.lms.entity.SubmissionFile">
         select
         <include refid="Base_Column_List" />
-        from SubmissionFile
+        from AssignmentSubmissionFile
         <where>
             <if test="id != null"> and id = #{id}</if>
             <if test="submissionId != null"> and submission_id = #{submissionId}</if>
@@ -26,13 +26,13 @@
     <select id="selectById" resultType="com.coursistant.lms.entity.SubmissionFile">
         select
         <include refid="Base_Column_List" />
-        from SubmissionFile
+        from AssignmentSubmissionFile
         where id = #{id}
     </select>
 
     <!-- 通过 ID 删除 SubmissionFile // Delete SubmissionFile by ID -->
     <delete id="deleteById">
-        delete from SubmissionFile
+        delete from AssignmentSubmissionFile
         where id = #{id}
     </delete>
 
@@ -56,7 +56,7 @@
 
     <!-- 更新 SubmissionFile // Update SubmissionFile -->
     <update id="updateById" parameterType="com.coursistant.lms.entity.SubmissionFile">
-        update SubmissionFile
+        update AssignmentSubmissionFile
         <set>
             <if test="submissionId != null">
                 submission_id = #{submissionId},

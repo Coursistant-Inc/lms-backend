@@ -29,7 +29,7 @@ public class SecurityConfig {
                 oauth2
                     //.loginPage("/api/oauth2/authorization/google") //Configure google login path
                     .authorizationEndpoint(authorization -> authorization
-                        .baseUri("/api/oauth2/authorization") // <-- override default /oauth2/authorization
+                        .baseUri("/oauth2/authorization") // <-- override default /oauth2/authorization
                     )
                     .redirectionEndpoint(redirection -> redirection
 			            .baseUri("/thirdParty")

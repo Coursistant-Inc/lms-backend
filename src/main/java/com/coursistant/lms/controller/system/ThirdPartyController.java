@@ -4,13 +4,14 @@ import java.io.IOException;
 import java.util.logging.Logger;
 
 import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import com.coursistant.lms.entity.Account;
-import com.coursistant.lms.service.system.LinkedInAuthService;
 import com.coursistant.lms.service.system.OAuthService;
+
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -19,7 +20,6 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.view.RedirectView;
 
 import com.coursistant.lms.common.Result;
-import com.coursistant.lms.entity.DTO.LinkedInDTO;
 import com.fasterxml.jackson.core.JsonProcessingException;
 
 
@@ -32,10 +32,13 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 public class ThirdPartyController {
 
     @Resource
-    private LinkedInAuthService linkedInAuthService;
-
-    @Resource
     private OAuthService oAuthService;
+
+    @Value("${server.port}")
+    private String serverPort;
+    @Value("${api.base.url}")
+    private String url;
+
 
     private static final Logger logger = Logger.getLogger(ThirdPartyController.class.getName());
 
@@ -47,45 +50,56 @@ public class ThirdPartyController {
         logger.info(() -> String.format("End %s: %s", methodName, response));
     }
 
-    /**
-     * login url
-     */
-    @PostMapping("/linkedIn/loginUrl")
-    public Result linkedInLoginUrl() {
-        logRequest("linkedIn/loginUrl", null);
-        String url= linkedInAuthService.returnUrl();
-        logResponse("linkedIn/loginUrl", "Success");
-        return Result.success(url);
+    private String getBaseUrl(){
+        String baseUrl = url + ":";
+        if (serverPort.charAt(0) == '1'){
+            baseUrl = baseUrl + serverPort.substring(1);
+        }else {
+            baseUrl = baseUrl + serverPort;
+        }
+        return baseUrl;
     }
 
     /**
      *
      * continue
      */
-    @PostMapping("/linkedIn/continue/{authorizationCode}")
-    public Result continueWithLinkedIn(@PathVariable String authorizationCode) {
-        logRequest("continueWithLinkedIn", authorizationCode);
-        LinkedInDTO dto= linkedInAuthService.continueWithLinkedIn(authorizationCode);
-        logResponse("continueWithLinkedIn", "Success");
-        return Result.success(dto);
-    }
-
-    /**
-     *
-     * continue
-     */
-    @PostMapping("/linkedIn/register")
-    public Result registerWithLinkedIn(@RequestBody Account account) {
-        logRequest("registerWithLinkedIn", null);
-        linkedInAuthService.register(account);
-        logResponse("registerWithLinkedIn", "Success");
+    @PostMapping("/register")
+    public Result registerWithThirdParty(@RequestBody Account account) {
+        logRequest("registerWithThirdParty", null);
+        oAuthService.register(account);
+        logResponse("registerWithThirdParty", "Success");
         return Result.success();
     }
 
+    /**
+     * login url
+     */
+    @GetMapping("/linkedin")
+    public RedirectView linkedInLogin() {
+        logRequest("linkedIn", null);
+        String url= oAuthService.returnLinkedInUrl();
+        logResponse("linkedIn", "Success");
+         return new RedirectView(url);
+    }
+
+    /**
+     *
+     * continue
+     */
+    @PostMapping("/linkedin/continue")
+    public Result continueWithLinkedIn(@RequestParam String authorizationCode) {
+        logRequest("continueWithLinkedIn", authorizationCode);
+        Result userInfo = oAuthService.getEmailFromAuthCodeLinkedIn(authorizationCode);
+        logResponse("continueWithLinkedIn", "Success");
+        return userInfo;
+    }
+
     @GetMapping("/google")
-    public RedirectView googleLogin() {
+    public RedirectView googleLogin(HttpServletRequest request) {
         // Custom logic for initiating Google login, can be extended as needed
-        return new RedirectView("/api/oauth2/authorization/google"); // This redirects to the default Google OAuth2 flow
+        String baseUrl = getBaseUrl();
+        return new RedirectView(baseUrl + "/api/oauth2/authorization/google"); // This redirects to the default Google OAuth2 flow
     }
 
     @PostMapping("/google/continue")
@@ -99,21 +113,23 @@ public class ThirdPartyController {
     @GetMapping("/facebook")
     public void facebookLogin(HttpServletResponse response) throws IOException
     {
-        response.sendRedirect("/api/oauth2/authorization/facebook");
+        String baseUrl = getBaseUrl();
+        response.sendRedirect(baseUrl + "/api/oauth2/authorization/facebook");
     }
 
     @PostMapping("/facebook/continue")
     public Result facebookRedirect(@RequestParam String authorizationCode)
     {
         // logRequest("facebookRedirect",code);
-        Result userInfo = oAuthService.getFacebookUserAccessToken(authorizationCode);
+        Result userInfo = oAuthService.getEmailFromAuthCodeFacebook(authorizationCode);
         return userInfo;  
     }
 
     @GetMapping("/microsoft")
     public RedirectView microsoftLogin() {
         // Custom logic for initiating Google login, can be extended as needed
-        return new RedirectView("/api/oauth2/authorization/microsoft"); // This redirects to the default Google OAuth2 flow
+        String baseUrl = getBaseUrl();
+        return new RedirectView(baseUrl + "/api/oauth2/authorization/microsoft"); // This redirects to the default Google OAuth2 flow
     }
 
     @PostMapping("/microsoft/continue")

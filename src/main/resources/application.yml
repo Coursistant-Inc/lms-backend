@@ -16,20 +16,19 @@ spring:
             google:
               client-id: ${GOOGLE_CLIENT_ID}
               client-secret: ${GOOGLE_CLIENT_SECRET}
-              redirect-uri: https://dash.coursistant.com/login/oauth2/code/google
+              redirect-uri: https://dev.xlearnedu.com/login/oauth2/code/google
             microsoft:
               client-id: ${MICROSOFT_CLIENT_ID}
               client-secret: ${MICROSOFT_CLIENT_SECRET}
               authorization-grant-type: authorization_code
               scope: openid, profile, email
-              redirect-uri: "https://dash.coursistant.com/login/oauth2/code/microsoft"
+              redirect-uri: https://dev.xlearnedu.com/login/oauth2/code/microsoft
               client-name: Microsoft
               provider: microsoft
-
             facebook:
               client-id: ${FACEBOOK_CLIENT_ID}
               client-secret: ${FACEBOOK_CLIENT_SECRET}
-              redirect-uri:  https://dash.coursistant.com/login/oauth2/code/facebook
+              redirect-uri:  https://dev.xlearnedu.com/login/oauth2/code/facebook
               
           provider:
             google:
@@ -41,6 +40,14 @@ spring:
               user-info-uri: https://graph.microsoft.com/oidc/userinfo
               user-name-attribute: sub
               jwk-set-uri: https://login.microsoftonline.com/common/discovery/v2.0/keys
+    
+  linkedin:
+    client-id: ${LINKEDIN_CLIENT_ID}
+    client-secret: ${LINKEDIN_CLIENT_SECRET}
+    redirect-uri: https://dev.xlearnedu.com/login/oauth2/code/linkedin
+    token-url: https://www.linkedin.com/oauth/v2/accessToken
+    auth-url: https://www.linkedin.com/oauth/v2/authorization
+    scope: openid profile email
     
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -55,7 +62,8 @@ spring:
       max-lifetime: 1800000
       connection-timeout: 10000
       leak-detection-threshold: 30000
-
+      
+      
   servlet:
     multipart:
       max-file-size: 100MB
@@ -81,14 +89,6 @@ spring:
           starttls:
             enable: true
 
-  linkedin:
-    client-id: ${LINKEDIN_CLIENT_ID}
-    client-secret: ${LINKEDIN_CLIENT_SECRET}
-    redirect-uri: https://dash.coursistant.com/re
-    token-url: https://www.linkedin.com/oauth/v2/accessToken
-    auth-url: https://www.linkedin.com/oauth/v2/authorization
-    scope: openid profile email
-
 
 # 配置mybatis实体和xml映射
 mybatis:
@@ -106,3 +106,7 @@ pagehelper:
   params: count=countSql
 
 ip: localhost
+
+api:
+  base:
+    url: http://localhost
