@@ -38,7 +38,7 @@
 
     <!-- 插入新的 SubmissionFile // Insert a new SubmissionFile -->
     <insert id="insert" parameterType="com.coursistant.lms.entity.SubmissionFile" useGeneratedKeys="true">
-        insert into SubmissionFile
+        insert into AssignmentSubmissionFile
         <trim prefix="(" suffix=")" suffixOverrides=",">
             <if test="id != null">id,</if>
             <if test="submissionId != null">submission_id,</if>
@@ -48,8 +48,8 @@
         <trim prefix="values (" suffix=")" suffixOverrides=",">
             <if test="id != null">#{id},</if>
             <if test="submissionId != null">#{submissionId},</if>
-            <if test="name != null">name,</if>
-            <if test="path != null">path,</if>
+            <if test="name != null">#{name},</if>
+            <if test="path != null">#{path},</if>
         </trim>
     </insert>
 
