@@ -27,6 +27,13 @@
         where id = #{id}
     </select>
 
+    <select id="selectByFolderId" resultType="com.coursistant.lms.entity.FolderItem">
+        select
+        <include refid="Base_Column_List"/>
+        from FolderItem
+        where folder_id = #{folderId}
+    </select>
+
     <insert id="insert" parameterType="com.coursistant.lms.entity.FolderItem" useGeneratedKeys="true" keyProperty="id">
         insert into FolderItem
         <trim prefix="(" suffix=")" suffixOverrides=",">

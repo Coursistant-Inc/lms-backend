@@ -1,10 +1,10 @@
-package com.coursistant.lms.controller.file;
+package com.coursistant.lms.controller.course;
 
 import com.coursistant.lms.common.Result;
 import com.coursistant.lms.entity.Announcement;
 import com.coursistant.lms.entity.DTO.FolderDTO;
 import com.coursistant.lms.entity.Folder;
-import com.coursistant.lms.service.file.FolderService;
+import com.coursistant.lms.service.course.CourseContentService;
 import com.coursistant.lms.service.interaction.AnnouncementService;
 import com.coursistant.lms.utils.TimeZoneUtils;
 import org.springframework.web.bind.annotation.*;
@@ -19,13 +19,13 @@ import java.util.logging.Logger;
  * Folder frontend operation API
  */
 @RestController
-@RequestMapping("/folder")
-public class FolderController {
+@RequestMapping("/courseContent")
+public class CourseContentController {
 
     @Resource
-    private FolderService folderService;
+    private CourseContentService courseContentService;
 
-    private static final Logger logger = Logger.getLogger(FolderController.class.getName());
+    private static final Logger logger = Logger.getLogger(CourseContentController.class.getName());
 
     private void logRequest(String methodName, String requestBody) {
         logger.info(() -> String.format("Start %s: %s", methodName, requestBody));
@@ -38,7 +38,7 @@ public class FolderController {
     @PostMapping("/add")
     public Result add(@RequestBody Folder folder) {
         logRequest("add", folder.toString());
-        folderService.add(folder);
+        courseContentService.add(folder);
         logResponse("add", "Success");
         return Result.success();
     }
@@ -46,7 +46,7 @@ public class FolderController {
     @DeleteMapping("/delete/{id}")
     public Result deleteById(@PathVariable Integer id) {
         logRequest("deleteById", id.toString());
-        folderService.deleteById(id);
+        courseContentService.deleteById(id);
         logResponse("deleteById", "Success");
         return Result.success();
     }
@@ -54,7 +54,7 @@ public class FolderController {
     @DeleteMapping("/delete/batch")
     public Result deleteBatch(@RequestBody List<Integer> ids) {
         logRequest("deleteBatch", ids.toString());
-        folderService.deleteBatch(ids);
+        courseContentService.deleteBatch(ids);
         logResponse("deleteBatch", "Success");
         return Result.success();
     }
@@ -62,7 +62,7 @@ public class FolderController {
     @PutMapping("/update")
     public Result update(@RequestBody Folder folder) {
         logRequest("update", folder.toString());
-        folderService.updateById(folder);
+        courseContentService.updateById(folder);
         logResponse("update", "Success");
         return Result.success();
     }
@@ -70,7 +70,7 @@ public class FolderController {
     @GetMapping("/selectById/{id}")
     public Result selectById(@PathVariable Integer id) {
         logRequest("selectById", id.toString());
-        Folder folder = folderService.selectById(id);
+        Folder folder = courseContentService.selectById(id);
         logResponse("selectById", folder.toString());
         return Result.success(folder);
     }
@@ -78,7 +78,7 @@ public class FolderController {
     @GetMapping("/selectAll")
     public Result selectAll(Folder folder) {
         logRequest("selectAll", folder != null ? folder.toString() : "null");
-        List<Folder> list = folderService.selectAll(folder);
+        List<Folder> list = courseContentService.selectAll(folder);
         logResponse("selectAll", null);
         return Result.success(list);
     }
@@ -86,7 +86,7 @@ public class FolderController {
     @GetMapping("/selectByCourseIdWithItems/{courseId}")
     public Result selectByCourseIdWithItems(@PathVariable Integer courseId) {
         logRequest("selectByCourseIdWithItems", courseId.toString());
-        List<FolderDTO> list = folderService.getFoldersWithItemsByCourseId(courseId);
+        List<FolderDTO> list = courseContentService.getFoldersWithItemsByCourseId(courseId);
         logResponse("selectByCourseIdWithItems", null);
         return Result.success(list);
     }

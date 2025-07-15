@@ -1,4 +1,4 @@
-package com.coursistant.lms.service.file;
+package com.coursistant.lms.service.course;
 
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.io.FileUtil;
@@ -39,7 +39,7 @@ import java.util.stream.Collectors;
 
 
 @Service
-public class FolderService {
+public class CourseContentService {
 
     @Resource
     private FolderMapper folderMapper;

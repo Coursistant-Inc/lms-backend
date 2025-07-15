@@ -1,4 +1,4 @@
-package com.coursistant.lms.service.file;
+package com.coursistant.lms.service.course;
 
 
 import com.coursistant.lms.entity.FolderItem;
@@ -11,7 +11,7 @@ import java.util.List;
 
 
 @Service
-public class FolderItemService {
+public class CourseContentItemService {
 
     @Resource
     private FolderItemMapper folderItemMapper;
