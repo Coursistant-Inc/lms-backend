@@ -1,4 +1,4 @@
-package com.coursistant.lms.service.file;
+package com.coursistant.lms.service.course;
 
 
 import com.coursistant.lms.entity.FolderItem;
