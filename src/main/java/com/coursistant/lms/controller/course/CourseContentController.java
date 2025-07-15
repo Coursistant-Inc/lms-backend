@@ -19,7 +19,7 @@ import java.util.logging.Logger;
  * Folder frontend operation API
  */
 @RestController
-@RequestMapping("/folder")
+@RequestMapping("/courseContent")
 public class FolderController {
 
     @Resource
