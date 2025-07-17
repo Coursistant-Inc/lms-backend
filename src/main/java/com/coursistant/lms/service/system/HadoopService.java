@@ -26,7 +26,7 @@ import java.util.List;
 @Service
 public class HadoopService {
 
-    @Value("${hadoop.fs.defaultFS:hdfs://labserver101.ddns.net:9666}")
+    @Value("${hadoop.fs.defaultFS:hdfs://dev.xlearnedu.com:9666}")
     private String defaultFs;
 
     @Value("${hadoop.fs.user:admin}")

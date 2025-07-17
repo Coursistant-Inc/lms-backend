@@ -106,7 +106,7 @@ public class DiskFilesService {
             // Perform file analysis
             if (analysis != 0) {
                 try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
-                    HttpPost analyzePost = new HttpPost("http://labserver101.ddns.net:5004/analyze");
+                    HttpPost analyzePost = new HttpPost("http://dev.xlearnedu.com:5004/analyze");
                     MultipartEntityBuilder builder = MultipartEntityBuilder.create();
                     builder.addBinaryBody("file", bytes, ContentType.MULTIPART_FORM_DATA, filename);
                     builder.addTextBody("category", category, ContentType.TEXT_PLAIN);

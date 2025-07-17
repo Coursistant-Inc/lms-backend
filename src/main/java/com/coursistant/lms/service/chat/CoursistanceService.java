@@ -153,9 +153,9 @@ public class CoursistanceService {
 
 
         // 定义两个 API 地址 / Define two API endpoints
-        String queryApiUrl = "http://labserver101.ddns.net:5000/chat";
-        String analyzeImageUrl = "http://labserver101.ddns.net:5001/analyze-image";
-        String analyzeFileUrl   = "http://labserver101.ddns.net:5005/analyze-file";
+        String queryApiUrl = "http://dev.xlearnedu.com:5000/chat";
+        String analyzeImageUrl = "http://dev.xlearnedu.com:5001/analyze-image";
+        String analyzeFileUrl   = "http://dev.xlearnedu.com:5005/analyze-file";
         try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
             String analyzedResult = null;
 

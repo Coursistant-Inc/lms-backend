@@ -40,7 +40,7 @@ public class AsyncFileUploadService {
         // 2. 使用 HttpClient 进行文件上传
         try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
             // 构造请求
-            HttpPost httpPost = new HttpPost("http://labserver101.ddns.net:5100/file");
+            HttpPost httpPost = new HttpPost("http://dev.xlearnedu.com:5100/file");
             MultipartEntityBuilder builder = MultipartEntityBuilder.create();
 
             // 添加文本参数 course_id
