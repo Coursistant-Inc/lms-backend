@@ -13,6 +13,8 @@ import javax.annotation.Resource;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.logging.Logger;
+import java.util.Map;
+import java.util.HashMap;
 
 /**
  * Folder 前端操作接口
@@ -38,9 +40,11 @@ public class CourseContentController {
     @PostMapping("/add")
     public Result add(@RequestBody Folder folder) {
         logRequest("add", folder.toString());
-        courseContentService.add(folder);
+        Integer courseContentId = courseContentService.add(folder);
         logResponse("add", "Success");
-        return Result.success();
+        Map<String, Object> data = new HashMap<>();
+        data.put("courseContentId", courseContentId);
+        return Result.success(data);
     }
 
     @DeleteMapping("/delete/{id}")

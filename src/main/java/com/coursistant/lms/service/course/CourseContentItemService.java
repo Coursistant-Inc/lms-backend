@@ -20,8 +20,9 @@ public class CourseContentItemService {
      * 新增
      * Add new folder item
      */
-    public void add(FolderItem folderItem) {
+    public Integer add(FolderItem folderItem) {
         folderItemMapper.insert(folderItem);
+        return folderItem.getId();
     }
 
     /**
