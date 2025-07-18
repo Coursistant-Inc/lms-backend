@@ -51,7 +51,7 @@ public class CourseContentService {
      * 新增
      * Add new folder with auto-incremented order index
      */
-    public void add(Folder folder) {
+    public Integer add(Folder folder) {
         if (ObjectUtil.isNull(folder.getOrderIndex())){
             List<Folder> existing = folderMapper.selectByCourseId(folder.getCourseId());
             int nextIndex = existing.stream()
@@ -62,6 +62,7 @@ public class CourseContentService {
             folder.setOrderIndex(nextIndex);
         }
         folderMapper.insert(folder);
+        return folder.getId();
     }
 
     /**

@@ -14,6 +14,8 @@ import org.springframework.web.multipart.MultipartFile;
 import javax.annotation.Resource;
 import java.util.List;
 import java.util.logging.Logger;
+import java.util.Map;
+import java.util.HashMap;
 
 /**
  * FolderItem 前端操作接口
@@ -42,9 +44,11 @@ public class CourseContentItemController {
     @PostMapping("/add")
     public Result add(@RequestBody FolderItem folderItem) {
         logRequest("add", folderItem.toString());
-        courseContentItemService.add(folderItem);
+        Integer courseContentItemId= courseContentItemService.add(folderItem);
         logResponse("add", "Success");
-        return Result.success();
+        Map<String, Object> data = new HashMap<>();
+        data.put("courseContentItemId", courseContentItemId);
+        return Result.success(data);
     }
 
     @DeleteMapping("/delete/{id}")
@@ -127,9 +131,11 @@ public class CourseContentItemController {
         item.setFileId(fileId);
         item.setUploadedBy(userId);
 
-        courseContentItemService.add(item);
+        Integer courseContentItemId= courseContentItemService.add(item);
         logResponse("addWithFile", "Success");
-        return Result.success();
+        Map<String, Object> data = new HashMap<>();
+        data.put("courseContentItemId", courseContentItemId);
+        return Result.success(data);
     }
 
 }
