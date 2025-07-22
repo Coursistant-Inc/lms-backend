@@ -1,10 +1,7 @@
 package com.coursistant.lms.controller.assignment;
 
 import com.coursistant.lms.common.Result;
-import com.coursistant.lms.common.enums.ResultCodeEnum;
-import com.coursistant.lms.entity.Assignment;
 import com.coursistant.lms.entity.AssignmentSubmission;
-import com.coursistant.lms.entity.DTO.AssignmentDTO;
 import com.coursistant.lms.entity.DTO.AssignmentSubmissionDTO;
 import com.coursistant.lms.service.assignment.AssignmentService;
 import com.coursistant.lms.service.assignment.AssignmentSubmissionService;

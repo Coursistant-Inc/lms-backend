@@ -75,17 +75,6 @@
             <version>2.2.1</version>
         </dependency> <!-- MyBatis 持久层框架 -->
 
-        <dependency>
-            <groupId>com.github.pagehelper</groupId>
-            <artifactId>pagehelper-spring-boot-starter</artifactId>
-            <version>1.4.6</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.mybatis</groupId>
-                    <artifactId>mybatis</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency> <!-- MyBatis 分页插件 PageHelper -->
 
         <!-- ======================== 3. Redis 相关 ======================== -->
         <dependency>

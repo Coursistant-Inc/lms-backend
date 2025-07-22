@@ -5,7 +5,6 @@ import com.coursistant.lms.common.Result;
 import com.coursistant.lms.common.enums.ResultCodeEnum;
 import com.coursistant.lms.entity.Learn;
 import com.coursistant.lms.service.course.LearnService;
-import com.github.pagehelper.PageInfo;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 

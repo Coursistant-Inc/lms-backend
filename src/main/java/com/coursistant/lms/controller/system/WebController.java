@@ -11,7 +11,6 @@ import com.coursistant.lms.entity.DTO.PasswordDTO;
 import com.coursistant.lms.entity.Query;
 import com.coursistant.lms.service.chat.CoursistanceService;
 import com.coursistant.lms.service.system.AdminService;
-import com.coursistant.lms.service.system.HadoopService;
 import com.coursistant.lms.service.user.UserService;
 import com.coursistant.lms.utils.TokenUtils;
 import com.coursistant.lms.utils.TimeZoneUtils;
@@ -42,8 +41,6 @@ public class WebController {
     private UserService userService;
     @Resource
     private CoursistanceService coursistanceService;
-    @Resource
-    private HadoopService hadoopService;
     @Resource
     private RefreshTokenService refreshTokenService;
 
@@ -280,31 +277,5 @@ public class WebController {
         return Result.success(re_query);
     }
 
-    /**
-     * 处理 Hadoop 查询 // Handle Hadoop query
-     */
-    @PostMapping("/hadoop")
-    public Result hadoop(String path, String fileName, int page) {
-        try {
-            // 调用服务层方法获取 PDF 页的 Base64 图片 // Call service layer method to get Base64 image of a PDF page
-            String stringFile = hadoopService.openFile(path, fileName);
-            return Result.success(stringFile);
-        } catch (Exception e) {
-            // 捕获异常并返回失败结果 // Catch exception and return failure result
-            e.printStackTrace();
-            return Result.success("Error processing request: " + e.getMessage());
-        }
-    }
-
-    /**
-     * 获取 Hadoop 目录下的文件列表 // Get file list under a Hadoop directory
-     */
-    @PostMapping("/hadooplist")
-    public Result listFiles(String path) throws Exception {
-
-        List<String> fileList = hadoopService.listFiles(path);
-        return Result.success(fileList);
-
-    }
 
 }

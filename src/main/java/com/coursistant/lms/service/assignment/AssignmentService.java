@@ -4,7 +4,7 @@ package com.coursistant.lms.service.assignment;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.ObjectUtil;
 import com.coursistant.lms.entity.CalendarDisplayEvent;
-import com.coursistant.lms.entity.Learn;
+
 import com.coursistant.lms.service.course.LearnService;
 import com.coursistant.lms.service.file.AssignmentFileService;
 import com.coursistant.lms.common.enums.ResultCodeEnum;
@@ -18,7 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
-import java.sql.Time;
+
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;

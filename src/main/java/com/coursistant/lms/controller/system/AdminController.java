@@ -3,7 +3,6 @@ package com.coursistant.lms.controller.system;
 import com.coursistant.lms.common.Result;
 import com.coursistant.lms.entity.Admin;
 import com.coursistant.lms.service.system.AdminService;
-import com.github.pagehelper.PageInfo;
 import org.springframework.web.bind.annotation.*;
 import javax.annotation.Resource;
 import java.util.List;

@@ -7,7 +7,7 @@ import cn.hutool.core.util.ObjectUtil;
 import com.coursistant.lms.common.enums.ResultCodeEnum;
 import com.coursistant.lms.entity.Assignment;
 import com.coursistant.lms.entity.AssignmentSubmission;
-import com.coursistant.lms.entity.DTO.AssignmentDTO;
+
 import com.coursistant.lms.entity.DTO.AssignmentSubmissionDTO;
 import com.coursistant.lms.entity.SubmissionFile;
 import com.coursistant.lms.exception.CustomException;

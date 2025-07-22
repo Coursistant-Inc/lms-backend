@@ -4,15 +4,11 @@ package com.coursistant.lms.service.course;
 import cn.hutool.core.util.ObjectUtil;
 import com.coursistant.lms.common.enums.ResultCodeEnum;
 import com.coursistant.lms.entity.Course;
-import com.coursistant.lms.entity.Learn;
 import com.coursistant.lms.entity.Teach;
 import com.coursistant.lms.entity.User;
 import com.coursistant.lms.exception.CustomException;
 import com.coursistant.lms.mapper.course.CourseMapper;
 import com.coursistant.lms.service.user.UserService;
-import com.github.pagehelper.PageHelper;
-import com.github.pagehelper.PageInfo;
-import org.apache.poi.ss.formula.functions.T;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 

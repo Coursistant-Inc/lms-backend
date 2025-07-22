@@ -1,16 +1,12 @@
 package com.coursistant.lms.controller.course;
 
 import com.coursistant.lms.common.Result;
-import com.coursistant.lms.entity.Announcement;
 import com.coursistant.lms.entity.DTO.FolderDTO;
 import com.coursistant.lms.entity.Folder;
 import com.coursistant.lms.service.course.CourseContentService;
-import com.coursistant.lms.service.interaction.AnnouncementService;
-import com.coursistant.lms.utils.TimeZoneUtils;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
-import java.time.ZoneId;
 import java.util.List;
 import java.util.logging.Logger;
 import java.util.Map;

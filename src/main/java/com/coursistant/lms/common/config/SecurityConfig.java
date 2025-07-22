@@ -1,6 +1,5 @@
 package com.coursistant.lms.common.config;
 
-import com.coursistant.lms.mapper.user.UserMapper;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -13,8 +12,6 @@ import org.springframework.data.redis.core.RedisTemplate;
 
 @Configuration
 public class SecurityConfig {
-    @Resource
-    private UserMapper userMapper;
     @Resource(name = "generalRedisTemplate")
     private RedisTemplate<String, Object> generalRedisTemplate;
 

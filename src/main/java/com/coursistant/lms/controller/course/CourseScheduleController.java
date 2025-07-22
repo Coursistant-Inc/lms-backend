@@ -1,10 +1,8 @@
 package com.coursistant.lms.controller.course;
 
 import com.coursistant.lms.common.Result;
-import com.coursistant.lms.entity.CalendarEvent;
 import com.coursistant.lms.entity.CourseSchedule;
 import com.coursistant.lms.service.course.CourseScheduleService;
-import com.coursistant.lms.service.system.CalendarEventService;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;

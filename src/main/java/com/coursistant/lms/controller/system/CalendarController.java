@@ -3,8 +3,6 @@ package com.coursistant.lms.controller.system;
 import com.coursistant.lms.common.Result;
 import com.coursistant.lms.common.enums.ResultCodeEnum;
 import com.coursistant.lms.entity.CalendarDisplayEvent;
-import com.coursistant.lms.entity.CalendarEvent;
-import com.coursistant.lms.entity.CourseSchedule;
 import com.coursistant.lms.exception.CustomException;
 import com.coursistant.lms.service.assignment.AssignmentService;
 import com.coursistant.lms.service.course.CourseScheduleService;
@@ -15,13 +13,11 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
 import java.time.DateTimeException;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
 
 /**
  * 日历事件前端操作接口

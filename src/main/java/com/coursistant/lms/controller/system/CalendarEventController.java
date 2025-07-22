@@ -2,14 +2,10 @@ package com.coursistant.lms.controller.system;
 
 import com.coursistant.lms.common.Result;
 import com.coursistant.lms.common.enums.ResultCodeEnum;
-import com.coursistant.lms.entity.Assignment;
 import com.coursistant.lms.entity.CalendarEvent;
-import com.coursistant.lms.entity.DTO.AssignmentDTO;
 import com.coursistant.lms.exception.CustomException;
-import com.coursistant.lms.service.assignment.AssignmentService;
 import com.coursistant.lms.service.system.CalendarEventService;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
 import java.time.DateTimeException;

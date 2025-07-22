@@ -5,8 +5,6 @@ import com.coursistant.lms.exception.CustomException;
 import com.coursistant.lms.entity.DiskFiles;
 import com.coursistant.lms.entity.FileSummary;
 import com.coursistant.lms.mapper.file.DiskFilesMapper;
-import com.github.pagehelper.PageHelper;
-import com.github.pagehelper.PageInfo;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.ContentType;
@@ -290,13 +288,5 @@ public class DiskFilesService {
         return diskFilesMapper.selectAll(diskFiles);
     }
 
-    /**
-     * 分页查询文件
-     * Select files by pagination
-     */
-    public PageInfo<DiskFiles> selectPage(DiskFiles diskFiles, Integer pageNum, Integer pageSize) {
-        PageHelper.startPage(pageNum, pageSize);
-        List<DiskFiles> list = diskFilesMapper.selectAll(diskFiles);
-        return PageInfo.of(list);
-    }
+
 }

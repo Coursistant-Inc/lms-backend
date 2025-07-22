@@ -1,13 +1,12 @@
 package com.coursistant.lms.service.course;
 
 
-import com.coursistant.lms.entity.Learn;
+
 import com.coursistant.lms.exception.CustomException;
 import com.coursistant.lms.common.enums.ResultCodeEnum;
 import com.coursistant.lms.entity.Teach;
 import com.coursistant.lms.mapper.course.TeachMapper;
-import com.github.pagehelper.PageHelper;
-import com.github.pagehelper.PageInfo;
+
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 

@@ -1,39 +1,14 @@
 package com.coursistant.lms.service.course;
 
-import cn.hutool.core.date.DateUtil;
-import cn.hutool.core.io.FileUtil;
+
 import cn.hutool.core.util.ObjectUtil;
-import com.coursistant.lms.common.enums.ResultCodeEnum;
 import com.coursistant.lms.entity.DTO.FolderDTO;
-import com.coursistant.lms.entity.DiskFiles;
-import com.coursistant.lms.entity.FileSummary;
 import com.coursistant.lms.entity.Folder;
 import com.coursistant.lms.entity.FolderItem;
-import com.coursistant.lms.exception.CustomException;
-import com.coursistant.lms.mapper.file.DiskFilesMapper;
 import com.coursistant.lms.mapper.file.FolderItemMapper;
 import com.coursistant.lms.mapper.file.FolderMapper;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.github.pagehelper.PageHelper;
-import com.github.pagehelper.PageInfo;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.ContentType;
-import org.apache.http.entity.mime.MultipartEntityBuilder;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.util.EntityUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
-
 import javax.annotation.Resource;
-import java.io.File;
-import java.io.IOException;
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.*;
 import java.util.stream.Collectors;
 

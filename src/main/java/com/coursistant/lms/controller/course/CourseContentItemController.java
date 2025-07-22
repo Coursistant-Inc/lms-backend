@@ -1,13 +1,10 @@
 package com.coursistant.lms.controller.course;
 
 import com.coursistant.lms.common.Result;
-import com.coursistant.lms.entity.DTO.FolderDTO;
 import com.coursistant.lms.entity.FileSummary;
-import com.coursistant.lms.entity.Folder;
 import com.coursistant.lms.entity.FolderItem;
 import com.coursistant.lms.service.file.DiskFilesService;
 import com.coursistant.lms.service.course.CourseContentItemService;
-import com.coursistant.lms.service.course.CourseContentService;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
