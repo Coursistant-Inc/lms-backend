@@ -13,12 +13,16 @@ public class Profile implements Serializable {
     private Integer id;
     private Integer userId;
 
+    private String privacy;
+    private String completedCourses;
+
     // Educational Background
     private String schoolName;
     private String graduationYear;
     private String major;
     private String interest;
     private String profile;
+
 
 
     @Override
@@ -133,4 +137,24 @@ public class Profile implements Serializable {
     public void setProfile(String profile) {
         this.profile = profile;
     }
+
+    public String getPrivacy() {
+        return privacy;
+    }
+
+    public void setPrivacy(String privacy) {
+        this.privacy = privacy;
+    }
+
+    public String getCompletedCourses() {
+        return completedCourses;
+    }
+
+    public void setCompletedCourses(String completedCourses) {
+        this.completedCourses = completedCourses;
+    }
+
+    
+
+    
 }

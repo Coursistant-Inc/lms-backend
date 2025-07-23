@@ -1,10 +1,15 @@
 package com.coursistant.lms.service.user;
 
-import com.coursistant.lms.entity.Profile;
-import com.coursistant.lms.mapper.user.ProfileMapper;
+import java.util.List;
+import java.util.Map;
+
 import org.springframework.stereotype.Service;
 
-import java.util.List;
+import com.coursistant.lms.common.enums.LevelEnum;
+import com.coursistant.lms.common.enums.ResultCodeEnum;
+import com.coursistant.lms.entity.Profile;
+import com.coursistant.lms.exception.CustomException;
+import com.coursistant.lms.mapper.user.ProfileMapper;
 
 /**
  * 用户个人资料业务处理 // User profile service processing
@@ -49,7 +54,8 @@ public class ProfileService {
             profileMapper.updateById(profile);
         } else {
             // 个人资料不存在，创建新记录 // Profile does not exist, create a new one
-            profileMapper.insert(profile);
+            // profileMapper.insert(profile);
+            // return "Profile not found!";
         }
     }
 
@@ -58,5 +64,49 @@ public class ProfileService {
      */
     public void deleteProfile(Integer id) {
         profileMapper.deleteById(id);
+    }
+
+    public void updateUserPrivacy(String privacy, Integer userId)
+    {
+        if(privacy.equals(LevelEnum.SELF.level)||privacy.equals(LevelEnum.TEACHER.level)||privacy.equals(LevelEnum.STUDENT.level))
+        {
+            profileMapper.updateUserPrivacyById(privacy, userId);
+        }
+
+        else
+        {
+            throw new CustomException(ResultCodeEnum.PARAM_ERROR);
+        }
+    }
+
+    public String selectUserPrivacy(Integer userId)
+    {
+        String privacy = profileMapper.selectUserPrivacyById(userId);
+        return privacy;
+    }
+
+    public List<Map<String,Object>> selectGradesById(Integer userId)
+    {
+        return profileMapper.selectGradesById(userId);
+    }
+
+    public List<Map<String,Object>> selectCourseGradesById(Integer userId, Integer courseId)
+    {
+        return profileMapper.selectCourseGradesById(userId, courseId);
+    }
+
+    public String selectAvatarPathById(Integer userId)
+    {
+        return profileMapper.selectAvatarPathById(userId);
+    }
+
+    public void updateAvatarPathById(Integer userId, String avatarPath)
+    {
+        profileMapper.updateAvatarPathById(userId, avatarPath);
+    }
+
+    public void deleteAvatatById(Integer userId)
+    {
+        profileMapper.deleteAvatarById(userId);
     }
 }

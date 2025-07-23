@@ -41,6 +41,10 @@ public class Learn implements Serializable {
 
     private String semester;
 
+    private String courseStatus;
+
+    private String grade;
+
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder("{");
@@ -158,4 +162,26 @@ public class Learn implements Serializable {
     public void setSemester(String semester) {
         this.semester = semester;
     }
+
+
+    public String getCourseStatus() {
+        return courseStatus;
+    }
+
+
+    public void setCourseStatus(String courseStatus) {
+        this.courseStatus = courseStatus;
+    }
+
+
+    public String getGrade() {
+        return grade;
+    }
+
+
+    public void setGrade(String grade) {
+        this.grade = grade;
+    }
+
+    
 }

@@ -3,6 +3,7 @@ package com.coursistant.lms.common.enums;
 public enum LevelEnum {
     TEACHER("TEACHER"),
     STUDENT("STUDENT"),
+    SELF("SELF") // Adding a new level here to configure privacy settings to "self" (no one else can see the user's profile)
 
     ;
 

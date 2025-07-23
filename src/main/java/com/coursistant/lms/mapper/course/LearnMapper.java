@@ -1,9 +1,10 @@
 package com.coursistant.lms.mapper.course;
 
-import com.coursistant.lms.entity.Learn;
+import java.util.List;
+
 import org.apache.ibatis.annotations.Select;
 
-import java.util.List;
+import com.coursistant.lms.entity.Learn;
 
 /**
  * 操作 learn 相关数据接口
@@ -50,5 +51,17 @@ public interface LearnMapper {
 
     @Select("select * from Learn where user_id = #{userId}")
     List<Learn> selectByUserId(Integer userId);
+
+    void updateLearnStatusById(Integer userId, Integer courseId, String courseStatus);
+
+    String selectLearnStatusById(Integer userId, Integer courseId);
+
+    void updateGradeById(Integer userId, Integer courseId, String grade);
+
+    String selectGradeById(Integer userId, Integer courseId);
+
+
+
+    
 
 }

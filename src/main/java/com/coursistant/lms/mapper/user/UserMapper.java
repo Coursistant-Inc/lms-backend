@@ -1,9 +1,10 @@
 package com.coursistant.lms.mapper.user;
 
-import com.coursistant.lms.entity.User;
+import java.util.List;
+
 import org.apache.ibatis.annotations.Select;
 
-import java.util.List;
+import com.coursistant.lms.entity.User;
 
 /**
  * 操作 user 相关数据接口
@@ -66,4 +67,11 @@ public interface UserMapper {
      * Query all students by course ID
      */
     List<User> selectStudentsByCourseId(Integer courseId);
+
+    // @Select("SELECT level FROM User WHERE id = #{id}")
+    String selectUserLevelById(Integer id);
+
+    void addNameChangeRequest(String currentName, String newName, Integer userId);
+
+    void reviewNameChangeRequest(String decision, Integer userId, Integer adminId);
 }
