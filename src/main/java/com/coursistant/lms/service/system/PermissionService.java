@@ -7,7 +7,7 @@ import com.coursistant.lms.mapper.system.PermissionMapper; // Updated import to 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional; // For transaction management
 
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 import java.util.List;
 import java.util.logging.Logger;
 

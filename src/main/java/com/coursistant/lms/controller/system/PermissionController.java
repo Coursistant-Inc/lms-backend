@@ -6,7 +6,7 @@ import com.coursistant.lms.entity.UserPermission;
 import com.coursistant.lms.service.system.PermissionService;
 import org.springframework.web.bind.annotation.*;
 
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 import java.util.List;
 import java.util.logging.Logger;
 
@@ -100,7 +100,7 @@ public class PermissionController {
     @GetMapping("/effectivePermissions/{userId}")
     public Result getEffectiveUserPermissions(@PathVariable Integer userId) {
         logRequest("getEffectiveUserPermissions", String.valueOf(userId));
-        List<PermissionResponse> permissions = permissionService.getEffectiveUserPermissions(userId);
+        List<UserPermission> permissions = permissionService.getEffectiveUserPermissions(userId);
         logResponse("getEffectiveUserPermissions", permissions.toString());
         return Result.success(permissions);
     }
