@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.coursistant.lms.mapper.system.PermissionMapper">
+
+    <sql id="Permission_Column_List">
+        permission_id, permission_name, description
+    </sql>
+
+    <sql id="RolePermission_Column_List">
+        role_name, permission_id
+    </sql>
+
+    <sql id="UserPermission_Column_List">
+        user_permission_id, user_id, permission_id, has_permission
+    </sql>
+
+    <!-- Method: selectPermissionByName -->
+    <select id="selectPermissionByName" resultType="com.coursistant.lms.entity.Permission">
+        SELECT
+        <include refid="Permission_Column_List"/>
+        FROM Permissions
+        WHERE permission_name = #{permissionName}
+    </select>
+
+    <!-- Method: insertRolePermission -->
+    <insert id="insertRolePermission" parameterType="com.coursistant.lms.entity.RolePermission">
+        INSERT INTO RolePermissions (role_name, permission_id)
+        VALUES (#{roleName}, #{permissionId})
+    </insert>
+
+    <!-- Method: deleteRolePermission -->
+    <delete id="deleteRolePermission" parameterType="com.coursistant.lms.entity.RolePermission">
+        DELETE FROM RolePermissions
+        WHERE role_name = #{roleName} AND permission_id = #{permissionId}
+    </delete>
+
+    <!-- Method: selectRolePermission -->
+    <select id="selectRolePermission" resultType="com.coursistant.lms.entity.RolePermission">
+        SELECT
+        <include refid="RolePermission_Column_List"/>
+        FROM RolePermissions
+        WHERE role_name = #{roleName} AND permission_id = #{permissionId}
+    </select>
+
+    <!-- Method: insertUserPermission -->
+    <insert id="insertUserPermission" parameterType="com.coursistant.lms.entity.UserPermission" useGeneratedKeys="true" keyProperty="userPermissionId">
+        INSERT INTO UserPermissions (user_id, permission_id, has_permission)
+        VALUES (#{userId}, #{permissionId}, #{hasPermission})
+    </insert>
+
+    <!-- Method: updateUserPermission -->
+    <update id="updateUserPermission" parameterType="com.coursistant.lms.entity.UserPermission">
+        UPDATE UserPermissions
+        SET has_permission = #{hasPermission}
+        WHERE user_id = #{userId} AND permission_id = #{permissionId}
+    </update>
+
+    <!-- Method: deleteUserPermission -->
+    <delete id="deleteUserPermission">
+        DELETE FROM UserPermissions
+        WHERE user_id = #{userId} AND permission_id = #{permissionId}
+    </delete>
+
+    <!-- Method: selectUserPermission -->
+    <select id="selectUserPermission" resultType="com.coursistant.lms.entity.UserPermission">
+        SELECT
+        <include refid="UserPermission_Column_List"/>
+        FROM UserPermissions
+        WHERE user_id = #{userId} AND permission_id = #{permissionId}
+    </select>
+
+    <!-- Method: checkUserEffectivePermission -->
+    <!-- This queries the UserEffectivePermissions view to check if a user has a specific permission. -->
+    <select id="checkUserEffectivePermission" resultType="java.lang.Boolean">
+        SELECT EXISTS (
+            SELECT 1
+            FROM UserEffectivePermissions
+            WHERE user_id = #{userId} AND permission_name = #{permissionName}
+        )
+    </select>
+
+    <!-- Method: getEffectivePermissionsByUserId -->
+    <!-- This queries the UserEffectivePermissions view to get all permissions for a user. -->
+    <select id="getEffectivePermissionsByUserId" resultType="com.coursistant.lms.entity.UserPermission">
+        SELECT
+            permission_id,
+            permission_name
+        FROM UserEffectivePermissions
+        WHERE user_id = #{userId}
+    </select>
+
+</mapper>
