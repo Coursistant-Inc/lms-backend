@@ -4,7 +4,7 @@ import com.coursistant.lms.utils.TimeZoneUtils;
 import org.springframework.stereotype.Service;
 import com.coursistant.lms.mapper.interaction.FeedbackMapper;
 
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 import java.time.ZoneId;
 import java.util.List;
 

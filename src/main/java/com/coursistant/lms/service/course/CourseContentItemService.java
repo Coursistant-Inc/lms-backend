@@ -5,7 +5,7 @@ import com.coursistant.lms.entity.FolderItem;
 import com.coursistant.lms.mapper.file.FolderItemMapper;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 
 import java.util.List;
 

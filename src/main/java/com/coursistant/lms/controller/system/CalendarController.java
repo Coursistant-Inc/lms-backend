@@ -11,7 +11,7 @@ import com.coursistant.lms.utils.TimeZoneUtils;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 import java.time.DateTimeException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;

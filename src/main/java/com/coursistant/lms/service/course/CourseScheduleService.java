@@ -9,7 +9,7 @@ import com.coursistant.lms.mapper.course.CourseScheduleMapper;
 
 import org.springframework.stereotype.Service;
 
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;

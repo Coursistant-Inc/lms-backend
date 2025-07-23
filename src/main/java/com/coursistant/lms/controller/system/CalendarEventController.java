@@ -7,7 +7,7 @@ import com.coursistant.lms.exception.CustomException;
 import com.coursistant.lms.service.system.CalendarEventService;
 import org.springframework.web.bind.annotation.*;
 
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 import java.time.DateTimeException;
 import java.time.ZoneId;
 import java.util.List;

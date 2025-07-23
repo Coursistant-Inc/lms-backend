@@ -7,7 +7,7 @@ import com.coursistant.lms.entity.Status;
 import com.coursistant.lms.mapper.user.StatusMapper;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 import java.util.List;
 
 

@@ -18,17 +18,17 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import org.apache.http.HttpEntity;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.ContentType;
-import org.apache.http.entity.mime.MultipartEntityBuilder;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.util.EntityUtils;
+import org.apache.hc.core5.http.HttpEntity;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
+import org.apache.hc.client5.http.classic.methods.HttpPost;
+import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.client5.http.entity.mime.MultipartEntityBuilder;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -183,7 +183,7 @@ public class CoursistanceService {
                 post.setEntity(mb.build());
 
                 try (CloseableHttpResponse resp = httpClient.execute(post)) {
-                    int code = resp.getStatusLine().getStatusCode();
+                    int code = resp.getCode();
                     if (code == 200) {
                         String analyzeResponseJson = EntityUtils.toString(resp.getEntity());
 
@@ -236,7 +236,7 @@ public class CoursistanceService {
 
             // 发送 query 请求并接收响应 / Send query request and receive response
             try (CloseableHttpResponse queryResponse = httpClient.execute(queryPost)) {
-                if (queryResponse.getStatusLine().getStatusCode() == 200) {
+                if (queryResponse.getCode() == 200) {
                     String queryResponseJson = EntityUtils.toString(queryResponse.getEntity());
 
                     // 解析 JSON 响应 / Parse JSON response
@@ -289,7 +289,7 @@ public class CoursistanceService {
                     }
                 } else {
                     throw new IOException("Failed to query API. HTTP Status: " +
-                            queryResponse.getStatusLine().getStatusCode());
+                            queryResponse.getCode());
                 }
             }
         } catch (Exception e) {

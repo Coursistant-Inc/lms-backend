@@ -9,7 +9,7 @@ import com.coursistant.lms.mapper.chat.DialogueMapper;
 import com.coursistant.lms.utils.TimeZoneUtils;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 import java.time.LocalDateTime;
 
 import java.util.List;

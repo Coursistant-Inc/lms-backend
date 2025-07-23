@@ -6,7 +6,7 @@ import com.coursistant.lms.entity.Folder;
 import com.coursistant.lms.service.course.CourseContentService;
 import org.springframework.web.bind.annotation.*;
 
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 import java.util.List;
 import java.util.logging.Logger;
 import java.util.Map;

@@ -7,7 +7,7 @@ import com.coursistant.lms.common.enums.ResultCodeEnum;
 import com.coursistant.lms.entity.Bookmark;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 import java.util.List;
 
 
