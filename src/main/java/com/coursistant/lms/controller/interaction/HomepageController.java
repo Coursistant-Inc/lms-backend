@@ -2,8 +2,6 @@ package com.coursistant.lms.controller.interaction;
 
 import java.util.List;
 
-import javax.annotation.Resource;
-
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -18,6 +16,8 @@ import com.coursistant.lms.entity.DTO.CourseDTO;
 import com.coursistant.lms.service.assignment.AssignmentService;
 import com.coursistant.lms.service.course.CourseService;
 import com.coursistant.lms.service.interaction.AnnouncementService;
+
+import jakarta.annotation.Resource;
 
 @RestController
 @RequestMapping("/home")

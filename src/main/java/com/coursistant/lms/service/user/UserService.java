@@ -5,7 +5,7 @@ import java.util.Objects;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.redis.core.RedisTemplate;

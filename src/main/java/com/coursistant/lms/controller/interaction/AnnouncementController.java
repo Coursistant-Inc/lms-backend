@@ -3,8 +3,6 @@ package com.coursistant.lms.controller.interaction;
 import java.time.ZoneId;
 import java.util.List;
 
-import javax.annotation.Resource;
-
 import org.springframework.util.ObjectUtils;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,6 +21,8 @@ import com.coursistant.lms.entity.User;
 import com.coursistant.lms.service.interaction.AnnouncementService;
 import com.coursistant.lms.service.user.UserService;
 import com.coursistant.lms.utils.TimeZoneUtils;
+
+import jakarta.annotation.Resource;
 
 /**
  * Announcement 公告前端操作接口
