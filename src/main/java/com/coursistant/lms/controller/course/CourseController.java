@@ -3,11 +3,12 @@ package com.coursistant.lms.controller.course;
 import com.coursistant.lms.common.Result;
 import com.coursistant.lms.entity.Course;
 import com.coursistant.lms.service.course.CourseService;
-import com.github.pagehelper.PageInfo;
 import org.springframework.web.bind.annotation.*;
 
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.logging.Logger;
 
 /**
@@ -38,9 +39,11 @@ public class CourseController {
     @PostMapping("/add")
     public Result add(@RequestBody Course course) {
         logRequest("add", course.toString());
-        courseService.add(course);
+        Integer courseId = courseService.add(course);
         logResponse("add", course.toString());
-        return Result.success();
+        Map<String, Object> data = new HashMap<>();
+        data.put("courseId", courseId);
+        return Result.success(data);
     }
 
     /**

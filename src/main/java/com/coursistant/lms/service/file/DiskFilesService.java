@@ -5,15 +5,13 @@ import com.coursistant.lms.exception.CustomException;
 import com.coursistant.lms.entity.DiskFiles;
 import com.coursistant.lms.entity.FileSummary;
 import com.coursistant.lms.mapper.file.DiskFilesMapper;
-import com.github.pagehelper.PageHelper;
-import com.github.pagehelper.PageInfo;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.ContentType;
-import org.apache.http.entity.mime.MultipartEntityBuilder;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.util.EntityUtils;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
+import org.apache.hc.client5.http.classic.methods.HttpPost;
+import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.client5.http.entity.mime.MultipartEntityBuilder;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.springframework.stereotype.Service;
 
 import cn.hutool.core.date.DateUtil;
@@ -24,7 +22,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.multipart.MultipartFile;
 
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 import java.io.File;
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -113,14 +111,14 @@ public class DiskFilesService {
                     analyzePost.setEntity(builder.build());
 
                     try (CloseableHttpResponse analyzeResponse = httpClient.execute(analyzePost)) {
-                        if (analyzeResponse.getStatusLine().getStatusCode() == 200) {
+                        if (analyzeResponse.getCode() == 200) {
                             String analyzeResponseJson = EntityUtils.toString(analyzeResponse.getEntity());
                             ObjectMapper objectMapper = new ObjectMapper();
                             JsonNode analyzeRootNode = objectMapper.readTree(analyzeResponseJson);
                             String result = analyzeRootNode.path("result").asText();
                             summary.setSummary(result);
                         } else {
-                            throw new IOException("Failed to call analyze API. HTTP Status: " + analyzeResponse.getStatusLine().getStatusCode());
+                            throw new IOException("Failed to call analyze API. HTTP Status: " + analyzeResponse.getCode());
                         }
                     }
                 }
@@ -290,13 +288,5 @@ public class DiskFilesService {
         return diskFilesMapper.selectAll(diskFiles);
     }
 
-    /**
-     * 分页查询文件
-     * Select files by pagination
-     */
-    public PageInfo<DiskFiles> selectPage(DiskFiles diskFiles, Integer pageNum, Integer pageSize) {
-        PageHelper.startPage(pageNum, pageSize);
-        List<DiskFiles> list = diskFilesMapper.selectAll(diskFiles);
-        return PageInfo.of(list);
-    }
+
 }

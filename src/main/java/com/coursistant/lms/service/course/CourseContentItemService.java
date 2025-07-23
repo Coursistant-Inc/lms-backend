@@ -5,7 +5,7 @@ import com.coursistant.lms.entity.FolderItem;
 import com.coursistant.lms.mapper.file.FolderItemMapper;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 
 import java.util.List;
 
@@ -20,8 +20,9 @@ public class CourseContentItemService {
      * 新增
      * Add new folder item
      */
-    public void add(FolderItem folderItem) {
+    public Integer add(FolderItem folderItem) {
         folderItemMapper.insert(folderItem);
+        return folderItem.getId();
     }
 
     /**

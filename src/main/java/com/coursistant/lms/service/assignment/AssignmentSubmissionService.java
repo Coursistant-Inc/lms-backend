@@ -7,7 +7,7 @@ import cn.hutool.core.util.ObjectUtil;
 import com.coursistant.lms.common.enums.ResultCodeEnum;
 import com.coursistant.lms.entity.Assignment;
 import com.coursistant.lms.entity.AssignmentSubmission;
-import com.coursistant.lms.entity.DTO.AssignmentDTO;
+
 import com.coursistant.lms.entity.DTO.AssignmentSubmissionDTO;
 import com.coursistant.lms.entity.SubmissionFile;
 import com.coursistant.lms.exception.CustomException;
@@ -17,7 +17,7 @@ import com.coursistant.lms.utils.TimeZoneUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.ZoneId;

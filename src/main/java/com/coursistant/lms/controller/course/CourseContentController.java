@@ -1,18 +1,16 @@
 package com.coursistant.lms.controller.course;
 
 import com.coursistant.lms.common.Result;
-import com.coursistant.lms.entity.Announcement;
 import com.coursistant.lms.entity.DTO.FolderDTO;
 import com.coursistant.lms.entity.Folder;
 import com.coursistant.lms.service.course.CourseContentService;
-import com.coursistant.lms.service.interaction.AnnouncementService;
-import com.coursistant.lms.utils.TimeZoneUtils;
 import org.springframework.web.bind.annotation.*;
 
-import javax.annotation.Resource;
-import java.time.ZoneId;
+import jakarta.annotation.Resource;
 import java.util.List;
 import java.util.logging.Logger;
+import java.util.Map;
+import java.util.HashMap;
 
 /**
  * Folder 前端操作接口
@@ -38,9 +36,11 @@ public class CourseContentController {
     @PostMapping("/add")
     public Result add(@RequestBody Folder folder) {
         logRequest("add", folder.toString());
-        courseContentService.add(folder);
+        Integer courseContentId = courseContentService.add(folder);
         logResponse("add", "Success");
-        return Result.success();
+        Map<String, Object> data = new HashMap<>();
+        data.put("courseContentId", courseContentId);
+        return Result.success(data);
     }
 
     @DeleteMapping("/delete/{id}")

@@ -1,15 +1,12 @@
 package com.coursistant.lms.controller.interaction;
 
 import com.coursistant.lms.common.Result;
-import com.coursistant.lms.common.enums.ResultCodeEnum;
 import com.coursistant.lms.entity.Announcement;
-import com.coursistant.lms.exception.CustomException;
 import com.coursistant.lms.service.interaction.AnnouncementService;
 import com.coursistant.lms.utils.TimeZoneUtils;
 import org.springframework.web.bind.annotation.*;
 
-import javax.annotation.Resource;
-import java.time.DateTimeException;
+import jakarta.annotation.Resource;
 import java.time.ZoneId;
 import java.util.List;
 

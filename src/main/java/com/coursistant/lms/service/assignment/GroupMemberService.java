@@ -9,7 +9,7 @@ import cn.hutool.core.util.ObjectUtil;
 
 import org.springframework.stereotype.Service;
 
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 import java.util.List;
 import com.coursistant.lms.entity.AssignmentGroup;
 import com.coursistant.lms.common.enums.ResultCodeEnum;

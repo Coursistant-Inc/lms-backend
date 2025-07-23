@@ -5,14 +5,15 @@ package com.coursistant.lms.service.file;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.entity.mime.MultipartEntityBuilder;
-import org.apache.http.entity.ContentType;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.HttpEntity;
-import org.apache.http.util.EntityUtils;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
+import org.apache.hc.client5.http.entity.mime.MultipartEntityBuilder;
+import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.client5.http.classic.methods.HttpPost;
+import org.apache.hc.core5.http.HttpEntity;
+import org.apache.hc.core5.http.io.entity.EntityUtils;
+import org.apache.hc.core5.http.ParseException;
 
 import java.io.File;
 import java.io.IOException;
@@ -55,7 +56,7 @@ public class AsyncFileUploadService {
 
             // 执行请求
             try (CloseableHttpResponse response = httpClient.execute(httpPost)) {
-                int statusCode = response.getStatusLine().getStatusCode();
+                int statusCode = response.getCode();
                 if (statusCode == 200) {
                     String result = EntityUtils.toString(response.getEntity());
                     logger.info("异步上传成功，返回结果: {}" + result);
@@ -63,7 +64,7 @@ public class AsyncFileUploadService {
                     logger.info("异步上传失败，HTTP Status: {}" + statusCode);
                 }
             }
-        } catch (IOException e) {
+        } catch (IOException | ParseException e) {
             logger.info("异步上传出现异常: " + e);
         }
     }
