@@ -64,7 +64,7 @@ public class CourseService {
      * 新增
      * Add a new course
      */
-    public void add(Course course) {
+    public Integer add(Course course) {
         courseMapper.insert(course);
         Teach teach=new Teach();
         teach.setCourseId(course.getId());
@@ -72,7 +72,7 @@ public class CourseService {
         teachService.add(teach);
         // 清理相关缓存 / Clear related cache
         clearCourseAllCache();
-
+        return course.getId();
     }
 
     /**

@@ -7,7 +7,7 @@ import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.web.filter.CharacterEncodingFilter;
 
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
@@ -23,10 +23,8 @@ public class WebConfig implements WebMvcConfigurer {
                 .excludePathPatterns("/register")  // 允许注册 / Allow registration
                 .excludePathPatterns("/files/**")  // 允许访问静态资源 / Allow access to static resources
                 .excludePathPatterns("/swagger-ui/**")  // 允许 Swagger UI / Allow Swagger UI
-                .excludePathPatterns("/swagger-resources/**")  // 允许 Swagger 资源 / Allow Swagger resources
+                .excludePathPatterns("/swagger-ui.html")  // 允许 Swagger UI / Allow Swagger UI
                 .excludePathPatterns("/v3/api-docs/**")  // 允许 API 文档 / Allow API documentation
-                .excludePathPatterns("/webjars/**")  // 允许 Swagger 相关静态资源 / Allow Swagger-related static resources
-                .excludePathPatterns("/doc.html")   // 允许 Swagger UI (某些 UI 组件可能用这个) / Allow Swagger UI (some UI components may use this)
                 .excludePathPatterns("/login/oauth2/**") // Allow third party verification path
                 .excludePathPatterns("/thirdParty/**") //Allow third party login path
                 .excludePathPatterns("/sendRegisterEmailVerification") // 允许发送邮件验证 / Allow sending email verification

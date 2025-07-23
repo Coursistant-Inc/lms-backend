@@ -70,7 +70,7 @@ spring:
       max-request-size: 100MB
   hadoop:
     fs:
-      defaultFS: dev.xlearnedu.com:9666 # HDFS 的地址 (替换为你的 Hadoop 集群地址)
+      defaultFS: hdfs://dev.xlearnedu.com:9666 # HDFS 的地址 (替换为你的 Hadoop 集群地址)
       user: admir  # 访问 HDFS 的用户
 
   mvc:      

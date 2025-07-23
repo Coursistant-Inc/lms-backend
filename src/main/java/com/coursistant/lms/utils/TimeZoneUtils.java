@@ -2,15 +2,9 @@ package com.coursistant.lms.utils;
 
 import com.coursistant.lms.common.enums.ResultCodeEnum;
 import com.coursistant.lms.exception.CustomException;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Component;
-
-import javax.annotation.Resource;
-import javax.mail.MessagingException;
-import javax.mail.internet.MimeMessage;
 import java.time.*;
-import java.time.format.DateTimeFormatter;
+
 
 @Component
 public class TimeZoneUtils {

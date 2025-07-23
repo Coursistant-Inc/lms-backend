@@ -1,18 +1,18 @@
 package com.coursistant.lms.service.system;
 
 
-import cn.hutool.core.util.ObjectUtil;
+
 import com.coursistant.lms.common.enums.ResultCodeEnum;
 import com.coursistant.lms.entity.CalendarDisplayEvent;
 import com.coursistant.lms.entity.CalendarEvent;
 import com.coursistant.lms.exception.CustomException;
 import com.coursistant.lms.mapper.system.CalendarEventMapper;
-import com.coursistant.lms.mapper.system.AdminMapper;
+
 
 import com.coursistant.lms.utils.TimeZoneUtils;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;

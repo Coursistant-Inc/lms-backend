@@ -11,12 +11,11 @@ import com.coursistant.lms.entity.Account;
 import com.coursistant.lms.entity.Admin;
 import com.coursistant.lms.utils.PasswordEncoderUtil;
 import com.coursistant.lms.utils.TokenUtils;
-import com.github.pagehelper.PageHelper;
-import com.github.pagehelper.PageInfo;
+
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 import java.util.List;
 
 import org.springframework.data.redis.core.RedisTemplate;

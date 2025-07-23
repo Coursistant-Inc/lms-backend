@@ -6,11 +6,10 @@ import com.coursistant.lms.entity.DiskFiles;
 import com.coursistant.lms.entity.FileSummary;
 import com.coursistant.lms.exception.CustomException;
 import com.coursistant.lms.service.file.DiskFilesService;
-import com.github.pagehelper.PageInfo;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 import java.util.List;
 import java.util.logging.Logger;
 
@@ -184,18 +183,4 @@ public class DiskFilesController {
         return Result.success(list);
     }
 
-    /**
-     * 分页查询文件
-     * Paginated query for files
-     */
-    @GetMapping("/selectPage")
-    public Result selectPage(DiskFiles diskFiles,
-                             @RequestParam(defaultValue = "1") Integer pageNum,
-                             @RequestParam(defaultValue = "10") Integer pageSize) {
-        logRequest("selectPage", String.format("diskFiles=%s, pageNum=%d, pageSize=%d",
-                diskFiles, pageNum, pageSize));
-        PageInfo<DiskFiles> page = diskFilesService.selectPage(diskFiles, pageNum, pageSize);
-        logResponse("selectPage", null);
-        return Result.success(page);
-    }
 }

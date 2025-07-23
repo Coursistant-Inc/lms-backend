@@ -11,10 +11,9 @@ import com.coursistant.lms.entity.GroupMember;
 import com.coursistant.lms.entity.User;
 import com.coursistant.lms.exception.CustomException;
 
-import org.apache.poi.hssf.record.ObjRecord;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 import java.util.List;
 
 @Service

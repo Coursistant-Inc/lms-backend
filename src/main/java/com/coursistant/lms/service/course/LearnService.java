@@ -25,8 +25,7 @@ import com.coursistant.lms.entity.User;
 import com.coursistant.lms.exception.CustomException;
 import com.coursistant.lms.mapper.course.LearnMapper;
 import com.coursistant.lms.mapper.user.UserMapper;
-import com.github.pagehelper.PageHelper;
-import com.github.pagehelper.PageInfo;
+
 
 import cn.hutool.core.util.ObjectUtil;
 

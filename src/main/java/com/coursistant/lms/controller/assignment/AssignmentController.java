@@ -8,7 +8,7 @@ import com.coursistant.lms.utils.TimeZoneUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.logging.Logger;
@@ -39,7 +39,7 @@ public class AssignmentController {
      * Add a new assignment
      */
     @PostMapping("/add")
-    public Result add(@ModelAttribute Assignment assignment,
+    public Result add(@RequestBody Assignment assignment,
                       @RequestPart(value = "files", required = false) List<MultipartFile> files,
                       @RequestHeader(value = "X-Timezone", required = false) String timezone) {
         logRequest("add", assignment.toString());

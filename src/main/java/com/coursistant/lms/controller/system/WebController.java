@@ -11,7 +11,6 @@ import com.coursistant.lms.entity.DTO.PasswordDTO;
 import com.coursistant.lms.entity.Query;
 import com.coursistant.lms.service.chat.CoursistanceService;
 import com.coursistant.lms.service.system.AdminService;
-import com.coursistant.lms.service.system.HadoopService;
 import com.coursistant.lms.service.user.UserService;
 import com.coursistant.lms.utils.TokenUtils;
 import com.coursistant.lms.utils.TimeZoneUtils;
@@ -19,10 +18,10 @@ import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import javax.annotation.Resource;
-import javax.servlet.http.Cookie;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.annotation.Resource;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -42,8 +41,6 @@ public class WebController {
     private UserService userService;
     @Resource
     private CoursistanceService coursistanceService;
-    @Resource
-    private HadoopService hadoopService;
     @Resource
     private RefreshTokenService refreshTokenService;
 
@@ -241,8 +238,8 @@ public class WebController {
             if (file != null && !file.isEmpty()) {
                 // 1️⃣ 生成日期目录 // Generate date-based directory
                 String datePath = new SimpleDateFormat("yyyy/MM/dd").format(new Date());
-                String baseDir = "/home/admir/SpringBoot/saved_images/query_images"; // 设定存储路径 // Set storage path
-                //String baseDir = "C:\\Users\\Charlottejas\\Desktop\\Jerry\\项目脚手架\\manager\\"; // 设定存储路径
+                //String baseDir = "/home/admir/SpringBoot/saved_images/query_images"; // 设定存储路径 // Set storage path
+                String baseDir = "C:\\Users\\Charlottejas\\Desktop\\Jerry\\项目脚手架\\manager\\"; // 设定存储路径
                 String uploadDir = baseDir + datePath + "/";
                 File dir = new File(uploadDir);
                 if (!dir.exists() && !dir.mkdirs()) {
@@ -280,31 +277,5 @@ public class WebController {
         return Result.success(re_query);
     }
 
-    /**
-     * 处理 Hadoop 查询 // Handle Hadoop query
-     */
-    @PostMapping("/hadoop")
-    public Result hadoop(String path, String fileName, int page) {
-        try {
-            // 调用服务层方法获取 PDF 页的 Base64 图片 // Call service layer method to get Base64 image of a PDF page
-            String stringFile = hadoopService.openFile(path, fileName);
-            return Result.success(stringFile);
-        } catch (Exception e) {
-            // 捕获异常并返回失败结果 // Catch exception and return failure result
-            e.printStackTrace();
-            return Result.success("Error processing request: " + e.getMessage());
-        }
-    }
-
-    /**
-     * 获取 Hadoop 目录下的文件列表 // Get file list under a Hadoop directory
-     */
-    @PostMapping("/hadooplist")
-    public Result listFiles(String path) throws Exception {
-
-        List<String> fileList = hadoopService.listFiles(path);
-        return Result.success(fileList);
-
-    }
 
 }

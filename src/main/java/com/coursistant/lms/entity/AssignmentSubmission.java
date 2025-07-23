@@ -37,9 +37,12 @@ public class AssignmentSubmission implements Serializable {
     /** 提交日期
      * Submission date
      */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "UTC")
     private LocalDateTime date;
+
+
+
 
 
     /** 状态
