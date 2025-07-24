@@ -120,6 +120,12 @@
             <version>3.2.2</version>
         </dependency> <!-- Apache POI 解析 Excel 需要 commons-collections 支持 -->
 
+        <dependency>
+            <groupId>io.minio</groupId>
+            <artifactId>minio</artifactId>
+            <version>8.5.17</version>
+        </dependency> <!-- MinIO dependency -->
+
         <!-- ======================== 7. API 相关 ======================== -->
         <dependency>
             <groupId>org.springdoc</groupId>
