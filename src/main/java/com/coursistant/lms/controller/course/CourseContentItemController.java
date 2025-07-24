@@ -122,7 +122,8 @@ public class CourseContentItemController {
                               @RequestParam("courseId") Integer courseId,
                               @RequestParam("userId") Integer userId,
                               @RequestParam("analysis") Integer analysis,
-                              @RequestParam("isCourseInfo") Integer isCourseInfo) {
+                              @RequestParam("isCourseInfo") Integer isCourseInfo,
+                              @RequestParam("orderIndex") Integer orderIndex) {
         logRequest("addWithFile", file.getOriginalFilename());
 
         FileSummary summary = diskFilesService.add(file, courseId, userId, category, analysis);
@@ -135,6 +136,7 @@ public class CourseContentItemController {
         item.setFileId(fileId);
         item.setUploadedBy(userId);
         item.setIsCourseInfo(isCourseInfo);
+        item.setOrderIndex(orderIndex);
 
         Integer courseContentItemId= courseContentItemService.add(item);
         logResponse("addWithFile", "Success");

@@ -116,6 +116,7 @@ public class CourseContentService {
             dto.setName(folder.getName());
             dto.setDescription(folder.getDescription());
             dto.setOrderIndex(folder.getOrderIndex());
+            dto.setTitle(folder.getTitle());
             dto.setItems(folderItemMap.getOrDefault(folder.getId(), new ArrayList<>()));
             result.add(dto);
         }

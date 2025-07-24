@@ -14,7 +14,7 @@
         from FolderItem
         <where>
             <if test="id != null">and id = #{id}</if>
-            <if test="courseId != null">and courseId = #{courseId}</if>
+            <if test="courseId != null">and course_Id = #{courseId}</if>
             <if test="folderId != null">and folder_id = #{folderId}</if>
             <if test="type != null">and type = #{type}</if>
             <if test="fileId != null">and file_id = #{fileId}</if>

@@ -28,6 +28,8 @@ public class Course implements Serializable {
 
     private String teacherEmail;
 
+    private String title;
+
 
 
 
@@ -116,5 +118,13 @@ public class Course implements Serializable {
 
     public void setSchool(String school) {
         this.school = school;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
     }
 }
