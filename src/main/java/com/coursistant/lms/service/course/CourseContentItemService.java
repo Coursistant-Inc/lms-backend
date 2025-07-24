@@ -1,12 +1,12 @@
 package com.coursistant.lms.service.course;
 
-
+import cn.hutool.core.util.ObjectUtil;
 import com.coursistant.lms.entity.FolderItem;
 import com.coursistant.lms.mapper.file.FolderItemMapper;
 import org.springframework.stereotype.Service;
 
 import jakarta.annotation.Resource;
-
+import java.util.*;
 import java.util.List;
 
 
@@ -21,6 +21,21 @@ public class CourseContentItemService {
      * Add new folder item
      */
     public Integer add(FolderItem folderItem) {
+        if (ObjectUtil.isNull(folderItem.getOrderIndex())){
+            List<FolderItem> existing = null;
+            if(folderItem.getFolderId() != null){
+                existing = folderItemMapper.selectByFolderId(folderItem.getFolderId());
+            }else{
+                existing = folderItemMapper.selectCourseInfo(folderItem.getCourseId());
+            }
+
+            int nextIndex = existing.stream()
+                    .map(FolderItem::getOrderIndex)
+                    .filter(Objects::nonNull)
+                    .max(Integer::compareTo)
+                    .orElse(-1) + 1;
+            folderItem.setOrderIndex(nextIndex);
+        }
         folderItemMapper.insert(folderItem);
         return folderItem.getId();
     }
@@ -83,4 +98,10 @@ public class CourseContentItemService {
     public List<FolderItem> selectByFolderId(Integer folderId) {
         return folderItemMapper.selectByFolderId(folderId);
     }
+
+    /**
+     * 查询课程信息
+     * Select folder items by course ID whose is_course_info is 1
+     */
+    public List<FolderItem> selectCourseInfo(Integer courseId) { return folderItemMapper.selectCourseInfo(courseId); }
 }

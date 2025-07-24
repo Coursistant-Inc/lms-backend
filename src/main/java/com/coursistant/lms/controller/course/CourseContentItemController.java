@@ -104,29 +104,39 @@ public class CourseContentItemController {
         return Result.success();
     }
 
+    @GetMapping("/selectCourseInfo/{courseId}")
+    public Result selectCourseInfo(@PathVariable Integer courseId) {
+        logRequest("selectCourseInfo", courseId.toString());
+        List<FolderItem> list = courseContentItemService.selectCourseInfo(courseId);
+        logResponse("selectCourseInfo", null);
+        return Result.success(list);
+    }
 
     /**
      * Upload a file and create a FolderItem entry (type = file)
      */
     @PostMapping("/addWithFile")
     public Result addWithFile(@RequestParam("file") MultipartFile file,
-                              @RequestParam("folderId") Integer folderId,
-                              @RequestParam("title") String title,
+                              @RequestParam(value = "folderId", required = false) Integer folderId,
                               @RequestParam("category") String category,
                               @RequestParam("courseId") Integer courseId,
                               @RequestParam("userId") Integer userId,
-                              @RequestParam("analysis") Integer analysis) {
+                              @RequestParam("analysis") Integer analysis,
+                              @RequestParam("isCourseInfo") Integer isCourseInfo,
+                              @RequestParam("orderIndex") Integer orderIndex) {
         logRequest("addWithFile", file.getOriginalFilename());
 
         FileSummary summary = diskFilesService.add(file, courseId, userId, category, analysis);
         Integer fileId = summary.getId();
 
         FolderItem item = new FolderItem();
+        item.setCourseId(courseId);
         item.setFolderId(folderId);
-        item.setTitle(title != null && !title.isEmpty() ? title : file.getOriginalFilename());
         item.setType("file");
         item.setFileId(fileId);
         item.setUploadedBy(userId);
+        item.setIsCourseInfo(isCourseInfo);
+        item.setOrderIndex(orderIndex);
 
         Integer courseContentItemId= courseContentItemService.add(item);
         logResponse("addWithFile", "Success");

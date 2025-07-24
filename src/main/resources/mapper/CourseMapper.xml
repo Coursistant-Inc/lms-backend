@@ -5,11 +5,11 @@
 <mapper namespace="com.coursistant.lms.mapper.course.CourseMapper">
 
     <sql id="Base_Column_List">
-        id,name,course_code,teacher_id,semester,school
+        id,name,course_code,teacher_id,semester,school, title
     </sql>
 
     <sql id="Base_Column_List_WithPrefix">
-        c.id, c.name, c.course_code, c.teacher_id, c.semester, c.school
+        c.id, c.name, c.course_code, c.teacher_id, c.semester, c.school, c.title
     </sql>
 
     <select id="selectAll" resultType="com.coursistant.lms.entity.Course">
@@ -49,6 +49,7 @@
             <if test="teacherId != null">teacher_id,</if>
             <if test="semester != null">semester,</if>
             <if test="school != null">school,</if>
+            <if test="title != null">title,</if>
         </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
             <if test="id != null">#{id},</if>
@@ -57,6 +58,7 @@
             <if test="teacherId != null">#{teacherId},</if>
             <if test="semester != null">#{semester},</if>
             <if test="school != null">#{school},</if>
+            <if test="title != null">#{title},</if>
         </trim>
     </insert>
 
@@ -77,6 +79,9 @@
             </if>
             <if test="school != null">
                 school = #{school},
+            </if>
+            <if test="title != null">
+                title = #{title},
             </if>
         </set>
         where id = #{id}
