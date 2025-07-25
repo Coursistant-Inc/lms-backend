@@ -2,6 +2,7 @@ package com.coursistant.lms.utils;
 
 import com.coursistant.lms.exception.CustomException;
 import com.coursistant.lms.common.enums.ResultCodeEnum;
+import com.coursistant.lms.entity.SalesRequest;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Component;
@@ -16,6 +17,8 @@ public class EmailUtil {
     private JavaMailSender mailSender;
 
     private static final String FROM_EMAIL = "do.not.reply@coursistant.com";
+    private final String salesRequestEmail = "shreyanshbardia6@gmail.com";
+    private final String salesSubject = "You have received a new sales enquiry via the website form.";
     // 替换为你的邮箱 // Replace with your email
 
     /**
@@ -34,4 +37,27 @@ public class EmailUtil {
             throw new CustomException(ResultCodeEnum.EMAIL_NOT_SEND_ERROR);
         }
     }
+
+    public void sendSalesRequest(SalesRequest salesRequest)
+    {
+        try
+        {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message,true);
+            helper.setFrom(FROM_EMAIL);
+            helper.setTo(salesRequestEmail);
+            helper.setSubject(salesSubject);
+            helper.setText(salesRequest.toString());
+            mailSender.send(message);
+        }
+
+        catch (MessagingException e)
+        {
+            throw new CustomException(ResultCodeEnum.EMAIL_NOT_SEND_ERROR);
+        }
+    }
+
 }
+    
+
+
