@@ -107,8 +107,8 @@ pagehelper:
 
 minio:
   url: http://localhost:9000
-  access-key: minioadmin
-  secret-key: minioadmin
+  access-key: lmsadmin
+  secret-key: LmsMinIO2025!SecureProd
 
 ip: localhost
 

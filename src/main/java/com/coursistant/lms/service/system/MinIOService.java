@@ -3,6 +3,7 @@ package com.coursistant.lms.service.system;
 import java.io.IOException;
 import java.io.InputStream;
 
+import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import io.minio.BucketExistsArgs;
@@ -11,11 +12,10 @@ import io.minio.MakeBucketArgs;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
 import io.minio.RemoveObjectArgs;
-import io.minio.UploadObjectArgs;
 import io.minio.errors.MinioException;
 
+@Service
 public class MinIOService {
-
 
     private final MinioClient minioClient;
 
@@ -24,7 +24,7 @@ public class MinIOService {
     }
 
     // CREATE
-    public void uploadFile(String fileName, MultipartFile file, String bucket) throws Exception {
+    public void uploadFile(String fileDest, MultipartFile file, String bucket) throws Exception {
         boolean found = minioClient.bucketExists(BucketExistsArgs.builder().bucket(bucket).build());
         if (!found) {
             minioClient.makeBucket(MakeBucketArgs.builder().bucket(bucket).build());
@@ -33,7 +33,7 @@ public class MinIOService {
         minioClient.putObject(
                 PutObjectArgs.builder()
                         .bucket(bucket)
-                        .object(fileName)
+                        .object(fileDest)
                         .stream(file.getInputStream(), file.getSize(), -1)
                         .contentType(file.getContentType())
                         .build()
@@ -41,27 +41,27 @@ public class MinIOService {
     }
 
     // READ
-    public InputStream downloadFile(String fileName, String bucket) throws Exception {
+    public InputStream downloadFile(String fileDest, String bucket) throws Exception {
         return minioClient.getObject(
                 GetObjectArgs.builder()
                         .bucket(bucket)
-                        .object(fileName)
+                        .object(fileDest)
                         .build()
         );
     }
 
     // UPDATE
-    public void updateFile(String fileName, MultipartFile file, String bucket) throws Exception {
-        deleteFile(fileName, bucket); // optional
-        uploadFile(fileName, file, bucket);
+    public void updateFile(String fileDest, MultipartFile file, String bucket) throws Exception {
+        deleteFile(fileDest, bucket); // optional
+        uploadFile(fileDest, file, bucket);
     }
 
     // DELETE
-    public void deleteFile(String fileName, String bucket) throws Exception {
+    public void deleteFile(String fileDest, String bucket) throws Exception {
         minioClient.removeObject(
                 RemoveObjectArgs.builder()
                         .bucket(bucket)
-                        .object(fileName)
+                        .object(fileDest)
                         .build()
         );
     }
