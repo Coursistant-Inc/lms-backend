@@ -19,23 +19,27 @@ public class PermissionService {
     @Resource
     private PermissionMapper permissionManagementMapper; // Inject the single mapper
 
+
+    public void addPermission(Permission permission) { // Changed input to entity
+        permissionManagementMapper.insertPermission(permission);
+    }
+
     /**
      * Adds a default permission to a role.
      * Ensures the permission exists before adding.
      * @param rolePermission RolePermission entity containing roleName and permissionId.
      * @return true if added successfully, false otherwise.
      */
-    public boolean addRolePermission(RolePermission rolePermission) { // Changed input to entity
+    public void addRolePermission(RolePermission rolePermission) { // Changed input to entity
         logger.info("Attempting to add role permission: " + rolePermission.getRoleName() + " - " + rolePermission.getPermissionId());
 
         RolePermission existing = permissionManagementMapper.selectRolePermission(rolePermission.getRoleName(), rolePermission.getPermissionId());
         if (existing != null) {
             logger.warning("Role permission already exists: " + rolePermission.getRoleName() + " - " + rolePermission.getPermissionId());
-            return true; // Already exists, consider it successful
+            return;
         }
 
-        int rowsAffected = permissionManagementMapper.insertRolePermission(rolePermission);
-        return rowsAffected > 0;
+        permissionManagementMapper.insertRolePermission(rolePermission);
     }
 
     /**
@@ -44,10 +48,9 @@ public class PermissionService {
      * @param rolePermission RolePermission entity containing roleName and permissionId.
      * @return true if deleted successfully, false otherwise.
      */
-    public boolean deleteRolePermission(RolePermission rolePermission) { // Changed input to entity
+    public void deleteRolePermission(RolePermission rolePermission) { // Changed input to entity
         logger.info("Attempting to delete role permission: " + rolePermission.getRoleName() + " - " + rolePermission.getPermissionId());
-        int rowsAffected = permissionManagementMapper.deleteRolePermission(rolePermission);
-        return rowsAffected > 0;
+        permissionManagementMapper.deleteRolePermission(rolePermission);
     }
 
     /**
@@ -57,7 +60,7 @@ public class PermissionService {
      * @param userPermission UserPermission entity containing userId, permissionId, and hasPermission.
      * @return true if added/updated successfully, false otherwise.
      */
-    public boolean addUserPermission(UserPermission userPermission) { // Changed input to entity
+    public void addUserPermission(UserPermission userPermission) { // Changed input to entity
         logger.info("Attempting to add/update user permission: " + userPermission.getUserId() + " - " + userPermission.getPermissionId() + " - " + userPermission.getHasPermission());
         // No need to get permission by name here, as permissionId is directly available in the entity.
 
@@ -65,12 +68,11 @@ public class PermissionService {
         int rowsAffected;
         if (existingOverride != null) {
                 // Update existing override
-            rowsAffected = permissionManagementMapper.updateUserPermission(userPermission);
+            permissionManagementMapper.updateUserPermission(userPermission);
         } else {
             // Insert new override
-            rowsAffected = permissionManagementMapper.insertUserPermission(userPermission);
+            permissionManagementMapper.insertUserPermission(userPermission);
         }
-        return rowsAffected > 0;
     }
 
     /**
@@ -78,10 +80,9 @@ public class PermissionService {
      * @param userPermission UserPermission entity containing userId and permissionId.
      * @return true if deleted successfully, false otherwise.
      */
-    public boolean deleteUserPermission(UserPermission userPermission) { // Changed input to entity
+    public void deleteUserPermission(UserPermission userPermission) { // Changed input to entity
         logger.info("Attempting to delete user permission: " + userPermission.getUserId() + " - " + userPermission.getPermissionId());
-        int rowsAffected = permissionManagementMapper.deleteUserPermission(userPermission.getUserId(), userPermission.getPermissionId());
-        return rowsAffected > 0;
+        permissionManagementMapper.deleteUserPermission(userPermission.getUserId(), userPermission.getPermissionId());
     }
 
     /**
@@ -102,9 +103,9 @@ public class PermissionService {
      * @param userId The ID of the user.
      * @return A list of PermissionResponse objects.
      */
-    public List<UserPermission> getEffectiveUserPermissions(Integer userId) {
+    public List<Permission> getEffectiveUserPermissions(Integer userId) {
         logger.info("Retrieving effective permissions for userId: " + userId);
-        List<UserPermission> permissions = permissionManagementMapper.getEffectivePermissionsByUserId(userId);
+        List<Permission> permissions = permissionManagementMapper.getEffectivePermissionsByUserId(userId);
         return permissions;
     }
 }

@@ -37,5 +37,5 @@ public interface PermissionMapper {
 
     Boolean checkUserEffectivePermission(Integer userId, String permissionName);
 
-    List<UserPermission> getEffectivePermissionsByUserId(Integer userId);
+    List<Permission> getEffectivePermissionsByUserId(Integer userId);
 }

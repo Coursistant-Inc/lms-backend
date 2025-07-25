@@ -24,6 +24,11 @@
         WHERE permission_name = #{permissionName}
     </select>
 
+    <insert id="insertPermission" parameterType="com.coursistant.lms.entity.Permission">
+        INSERT INTO Permissions (permission_id, permission_name, description)
+        VALUES (#{permissionId}, #{permissionName}, #{description})
+    </insert>
+
     <!-- Method: insertRolePermission -->
     <insert id="insertRolePermission" parameterType="com.coursistant.lms.entity.RolePermission">
         INSERT INTO RolePermissions (role_name, permission_id)
@@ -77,18 +82,20 @@
         SELECT EXISTS (
             SELECT 1
             FROM UserEffectivePermissions
-            WHERE user_id = #{userId} AND permission_name = #{permissionName}
+            WHERE id = #{userId} AND permission_name = #{permissionName}
         )
     </select>
 
     <!-- Method: getEffectivePermissionsByUserId -->
     <!-- This queries the UserEffectivePermissions view to get all permissions for a user. -->
-    <select id="getEffectivePermissionsByUserId" resultType="com.coursistant.lms.entity.UserPermission">
+    <select id="getEffectivePermissionsByUserId" resultType="com.coursistant.lms.entity.Permission">
         SELECT
-            permission_id,
-            permission_name
-        FROM UserEffectivePermissions
-        WHERE user_id = #{userId}
+            p.permission_id,
+            p.permission_name,
+            p.description
+        FROM UserEffectivePermissions uep
+                 JOIN Permissions p ON uep.permission_id = p.permission_id
+        WHERE uep.id = #{userId}
     </select>
 
 </mapper>

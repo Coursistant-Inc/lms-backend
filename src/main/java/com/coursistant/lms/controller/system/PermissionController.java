@@ -1,6 +1,7 @@
 package com.coursistant.lms.controller.system;
 
 import com.coursistant.lms.common.Result;
+import com.coursistant.lms.entity.Permission;
 import com.coursistant.lms.entity.RolePermission;
 import com.coursistant.lms.entity.UserPermission;
 import com.coursistant.lms.service.system.PermissionService;
@@ -34,10 +35,21 @@ public class PermissionController {
     /**
      * Adds a default permission to a role.
      */
+    @PostMapping("/add")
+    public Result addPermission(@RequestBody Permission permission) {
+        logRequest("addPermission", permission.toString());
+        permissionService.addPermission(permission);
+        logResponse("addPermission", permission.toString());
+        return Result.success();
+    }
+
+    /**
+     * Adds a default permission to a role.
+     */
     @PostMapping("/role/add")
     public Result addRolePermission(@RequestBody RolePermission rolePermission) {
         logRequest("addRolePermission", rolePermission.toString());
-        boolean success = permissionService.addRolePermission(rolePermission);
+        permissionService.addRolePermission(rolePermission);
         logResponse("addRolePermission", rolePermission.toString());
         return Result.success();
     }
@@ -50,7 +62,7 @@ public class PermissionController {
     @DeleteMapping("/role/delete")
     public Result deleteRolePermission(@RequestBody RolePermission rolePermission) {
         logRequest("deleteRolePermission", rolePermission.toString());
-        boolean success = permissionService.deleteRolePermission(rolePermission);
+        permissionService.deleteRolePermission(rolePermission);
         logResponse("deleteRolePermission", rolePermission.toString());
         return Result.success();
     }
@@ -63,7 +75,7 @@ public class PermissionController {
     @PostMapping("/user/add")
     public Result addUserPermission(@RequestBody UserPermission userPermission) {
         logRequest("addUserPermission", userPermission.toString());
-        boolean success = permissionService.addUserPermission(userPermission);
+        permissionService.addUserPermission(userPermission);
         logResponse("addUserPermission", userPermission.toString());
         return Result.success();
     }
@@ -76,7 +88,7 @@ public class PermissionController {
     @DeleteMapping("/user/delete")
     public Result deleteUserPermission(@RequestBody UserPermission userPermission) {
         logRequest("deleteUserPermission", userPermission.toString());
-        boolean success = permissionService.deleteUserPermission(userPermission);
+        permissionService.deleteUserPermission(userPermission);
         logResponse("deleteUserPermission", userPermission.toString());
         return Result.success();
     }
@@ -100,7 +112,7 @@ public class PermissionController {
     @GetMapping("/effectivePermissions/{userId}")
     public Result getEffectiveUserPermissions(@PathVariable Integer userId) {
         logRequest("getEffectiveUserPermissions", String.valueOf(userId));
-        List<UserPermission> permissions = permissionService.getEffectiveUserPermissions(userId);
+        List<Permission> permissions = permissionService.getEffectiveUserPermissions(userId);
         logResponse("getEffectiveUserPermissions", permissions.toString());
         return Result.success(permissions);
     }
