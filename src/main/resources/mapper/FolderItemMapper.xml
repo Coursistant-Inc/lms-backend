@@ -72,7 +72,7 @@
     <update id="updateById" parameterType="com.coursistant.lms.entity.FolderItem">
         update FolderItem
         <set>
-            <if test="courseId != null">courseId = #{courseId},</if>
+            <if test="courseId != null">course_Id = #{courseId},</if>
             <if test="folderId != null">folder_id = #{folderId},</if>
             <if test="type != null">type = #{type},</if>
             <if test="fileId != null">file_id = #{fileId},</if>
