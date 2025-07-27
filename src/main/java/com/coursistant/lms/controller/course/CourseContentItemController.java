@@ -44,7 +44,7 @@ public class CourseContentItemController {
         Integer courseContentItemId= courseContentItemService.add(folderItem);
         logResponse("add", "Success");
         Map<String, Object> data = new HashMap<>();
-        data.put("assignmentContentItemId", courseContentItemId);
+        data.put("courseContentItemId", courseContentItemId);
         return Result.success(data);
     }
 
@@ -141,7 +141,7 @@ public class CourseContentItemController {
         Integer courseContentItemId= courseContentItemService.add(item);
         logResponse("addWithFile", "Success");
         Map<String, Object> data = new HashMap<>();
-        data.put("AssignmentContentItemId", courseContentItemId);
+        data.put("courseContentItemId", courseContentItemId);
         return Result.success(data);
     }
 

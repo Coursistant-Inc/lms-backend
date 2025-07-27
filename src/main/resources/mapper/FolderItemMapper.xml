@@ -26,6 +26,7 @@
         <include refid="Base_Column_List"/>
         FROM FolderItem
         WHERE course_id = #{courseId}
+        AND is_course_info = 1
     </select>
 
     <select id="selectById" resultType="com.coursistant.lms.entity.FolderItem">
