@@ -2,94 +2,91 @@
 <!DOCTYPE mapper
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.coursistant.lms.mapper.file.FolderItemMapper">
+<mapper namespace="com.coursistant.lms.mapper.file.AssignmentItemMapper">
 
     <sql id="Base_Column_List">
-        id, course_id,folder_id, type, file_id, content, uploaded_by, create_time, order_index, is_course_info
+        id, assignment_id, type, file_id, content, uploaded_by, create_time, order_index,file_path
     </sql>
 
-    <select id="selectAll" resultType="com.coursistant.lms.entity.FolderItem">
+    <select id="selectAll" resultType="com.coursistant.lms.entity.AssignmentItem">
         select
         <include refid="Base_Column_List"/>
-        from FolderItem
+        from AssignmentItem
         <where>
             <if test="id != null">and id = #{id}</if>
-            <if test="courseId != null">and course_Id = #{courseId}</if>
-            <if test="folderId != null">and folder_id = #{folderId}</if>
+            
+            <if test="assignmentId != null">and assignment_id = #{assignmentId}</if>
             <if test="type != null">and type = #{type}</if>
             <if test="fileId != null">and file_id = #{fileId}</if>
         </where>
     </select>
 
-    <select id="selectCourseInfo" resultType="com.coursistant.lms.entity.FolderItem">
+    <select id="selectAssignmentInfo" resultType="com.coursistant.lms.entity.AssignmentItem">
         SELECT
         <include refid="Base_Column_List"/>
-        FROM FolderItem
-        WHERE course_id = #{courseId}
+        FROM AssignmentItem
+        WHERE assignment_id = #{assignmentId}
     </select>
 
-    <select id="selectById" resultType="com.coursistant.lms.entity.FolderItem">
+    <select id="selectById" resultType="com.coursistant.lms.entity.AssignmentItem">
         select
         <include refid="Base_Column_List"/>
-        from FolderItem
+        from AssignmentItem
         where id = #{id}
     </select>
 
-    <select id="selectByFolderId" resultType="com.coursistant.lms.entity.FolderItem">
+    <select id="selectByAssignmentId" resultType="com.coursistant.lms.entity.AssignmentItem">
         select
         <include refid="Base_Column_List"/>
-        from FolderItem
-        where folder_id = #{folderId}
+        from AssignmentItem
+        where assignment_id = #{assignmentId}
     </select>
 
-    <insert id="insert" parameterType="com.coursistant.lms.entity.FolderItem" useGeneratedKeys="true" keyProperty="id">
-        insert into FolderItem
+    <insert id="insert" parameterType="com.coursistant.lms.entity.AssignmentItem" useGeneratedKeys="true" keyProperty="id">
+        insert into AssignmentItem
         <trim prefix="(" suffix=")" suffixOverrides=",">
-            <if test="courseId != null">course_id,</if>
-            <if test="folderId != null">folder_id,</if>
+            <if test="assignmentId != null">assignment_id,</if>
             <if test="type != null">type,</if>
             <if test="fileId != null">file_id,</if>
+            <if test="filePath != null">file_path,</if>
             <if test="content != null">content,</if>
             <if test="uploadedBy != null">uploaded_by,</if>
             <if test="createTime != null">create_time,</if>
             <if test="orderIndex != null">order_index,</if>
-            <if test="isCourseInfo != null">is_course_info,</if>
         </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
-            <if test="courseId != null">#{courseId},</if>
-            <if test="folderId != null">#{folderId},</if>
+            <if test="assignmentId != null">#{assignmentId},</if>
             <if test="type != null">#{type},</if>
             <if test="fileId != null">#{fileId},</if>
+            <if test="filePath != null">#{filePath},</if>
             <if test="content != null">#{content},</if>
             <if test="uploadedBy != null">#{uploadedBy},</if>
             <if test="createTime != null">#{createTime},</if>
             <if test="orderIndex != null">#{orderIndex},</if>
-            <if test="isCourseInfo != null">#{isCourseInfo},</if>
         </trim>
     </insert>
 
-    <update id="updateById" parameterType="com.coursistant.lms.entity.FolderItem">
-        update FolderItem
+    <update id="updateById" parameterType="com.coursistant.lms.entity.AssignmentItem">
+        update AssignmentItem
         <set>
-            <if test="courseId != null">course_Id = #{courseId},</if>
-            <if test="folderId != null">folder_id = #{folderId},</if>
+            <if test="assignmentId != null">assignment_id = #{assignmentId},</if>
             <if test="type != null">type = #{type},</if>
             <if test="fileId != null">file_id = #{fileId},</if>
+            <if test="filePath != null">file_path = #{filePath},</if>
             <if test="content != null">content = #{content},</if>
             <if test="uploadedBy != null">uploaded_by = #{uploadedBy},</if>
             <if test="createTime != null">create_time = #{createTime},</if>
             <if test="orderIndex != null">order_index = #{orderIndex},</if>
-            <if test="isCourseInfo != null">is_course_info = #{isCourseInfo},</if>
         </set>
         where id = #{id}
     </update>
 
     <delete id="deleteById">
-        delete from FolderItem where id = #{id}
+        delete from AssignmentItem where id = #{id}
     </delete>
 
-    <delete id="deleteByFolderId" parameterType="int">
-        delete from FolderItem where folder_id = #{folderId}
+    <delete id="deleteByAssignmentId" parameterType="int">
+        delete from AssignmentItem where assignment_id = #{assignmentId}
     </delete>
 
 </mapper>
