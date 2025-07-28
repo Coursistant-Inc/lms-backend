@@ -50,4 +50,5 @@ public interface FolderItemMapper {
      */
     int deleteByFolderId(@Param("folderId") Integer folderId);
 
+    List<FolderItem> selectCourseInfo(@Param("courseId") Integer courseId);
 }

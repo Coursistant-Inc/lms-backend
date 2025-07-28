@@ -7,41 +7,36 @@ import java.time.LocalDateTime;
  * Folder 实体类
  * 表示课程中的 Lecture 文件夹
  */
-public class FolderItem implements Serializable {
+public class AssignmentItem implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    /** 主键 ID */
+    /** 主键 ID / Primary key */
     private Integer id;
 
-    /** 所属课程 ID */
-    private Integer courseId;
+    /** 所属 Assignment ID / Belongs to assignment */
+    private Integer assignmentId;
 
-    /** 所属文件夹 ID */
-    private Integer folderId;
-
-    /** 资源类型：file=文件，link=链接，text=文本 */
+    /** 资源类型：file=上传文件，link=外部链接，text=文字内容 / Resource type */
     private String type;
 
-    /** 文件 ID，仅 type=file 时使用，关联 Diskfiles 表 */
+    /** 关联 Diskfiles 表的文件 ID（仅 type=file 时有值） / Linked file ID (only if type=file) */
     private Integer fileId;
 
-    /** 资源内容，如果是 link/text 类型则存放链接或文本内容 */
+    /** 链接 URL 或文本内容（link/text 类型使用） / Link URL or text content */
     private String content;
 
-    /** 上传用户 ID */
+    /** 上传用户 ID / Uploader user ID */
     private Integer uploadedBy;
 
-    /** 创建时间 */
+    /** 创建时间 / Creation time */
     private LocalDateTime createTime;
 
-    /** 排序字段，值越小越靠前 */
+    /** 排序字段，值越小越靠前 / Display order, lower means higher priority */
     private Integer orderIndex;
 
-    /** 是否是课程信息 */
-    private Integer isCourseInfo;
+    private String filePath;
 
-    public FolderItem() {
-    }
+    // ===== Getter & Setter =====
 
     public Integer getId() {
         return id;
@@ -51,20 +46,12 @@ public class FolderItem implements Serializable {
         this.id = id;
     }
 
-    public Integer getCourseId() {
-        return courseId;
+    public Integer getAssignmentId() {
+        return assignmentId;
     }
 
-    public void setCourseId(Integer courseId) {
-        this.courseId = courseId;
-    }
-
-    public Integer getFolderId() {
-        return folderId;
-    }
-
-    public void setFolderId(Integer folderId) {
-        this.folderId = folderId;
+    public void setAssignmentId(Integer assignmentId) {
+        this.assignmentId = assignmentId;
     }
 
     public String getType() {
@@ -115,25 +102,26 @@ public class FolderItem implements Serializable {
         this.orderIndex = orderIndex;
     }
 
-    public Integer getIsCourseInfo() {
-        return isCourseInfo;}
-
-    public void setIsCourseInfo(Integer isCourseInfo) {
-        this.isCourseInfo = isCourseInfo;
+    public String getFilePath() {
+        return filePath;
     }
 
-
+    public void setFilePath(String filePath) {
+        this.filePath = filePath;
+    }
 
     @Override
     public String toString() {
-        return "FolderItem{" +
+        return "AssignmentItem{" +
                 "id=" + id +
-                ", folderId=" + folderId +
+                ", assignmentId=" + assignmentId +
                 ", type='" + type + '\'' +
                 ", fileId=" + fileId +
+                ", filePath=" + filePath +
                 ", content='" + content + '\'' +
                 ", uploadedBy=" + uploadedBy +
                 ", createTime=" + createTime +
+                ", orderIndex=" + orderIndex +
                 '}';
     }
 }
