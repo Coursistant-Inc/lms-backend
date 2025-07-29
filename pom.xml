@@ -234,13 +234,16 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.11.0</version> <!-- ✅ 推荐显式指定 -->
                 <configuration>
                     <source>17</source>
                     <target>17</target>
+                    <release>17</release> <!-- ✅ 添加 release 更稳定 -->
                 </configuration>
             </plugin>
         </plugins>
     </build>
+
 
     <repositories>
         <repository>

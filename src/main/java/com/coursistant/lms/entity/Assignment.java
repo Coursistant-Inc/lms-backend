@@ -72,6 +72,8 @@ public class Assignment implements Serializable {
 
     private Integer groupSize;
 
+    private Integer courseContentId;
+
 
 
 
@@ -236,5 +238,13 @@ public class Assignment implements Serializable {
 
     public void setGroupSize(Integer groupSize) {
         this.groupSize = groupSize;
+    }
+
+    public Integer getCourseContentId() {
+        return courseContentId;
+    }
+
+    public void setCourseContentId(Integer courseContentId) {
+        this.courseContentId = courseContentId;
     }
 }

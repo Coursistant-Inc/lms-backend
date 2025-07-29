@@ -1,5 +1,6 @@
 package com.coursistant.lms.controller.assignment;
 
+import com.coursistant.lms.entity.DTO.AssignmentGroupDTO;
 import com.coursistant.lms.service.assignment.AssignmentService;
 import com.coursistant.lms.common.Result;
 import com.coursistant.lms.entity.Assignment;
@@ -10,7 +11,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 import jakarta.annotation.Resource;
 import java.time.ZoneId;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Logger;
 
 /**
@@ -40,13 +43,14 @@ public class AssignmentController {
      */
     @PostMapping("/add")
     public Result add(@RequestBody Assignment assignment,
-                      @RequestPart(value = "files", required = false) List<MultipartFile> files,
                       @RequestHeader(value = "X-Timezone", required = false) String timezone) {
         logRequest("add", assignment.toString());
         ZoneId zone=TimeZoneUtils.resolveZoneId(timezone);
-        assignmentService.add(assignment,files,zone);
+        int assignment_id=assignmentService.add(assignment,zone);
         logResponse("add", "Success");
-        return Result.success();
+        Map<String, Object> data = new HashMap<>();
+        data.put("assignmentId", assignment_id);
+        return Result.success(data);
     }
 
     /**
@@ -113,7 +117,7 @@ public class AssignmentController {
 
         ZoneId zone = TimeZoneUtils.resolveZoneId(timezone);
 
-        List<Assignment> assignments = assignmentService.selectByCourseId(id, zone);
+        List<AssignmentGroupDTO> assignments = assignmentService.selectByCourseId(id, zone);
 
         logResponse("selectByCourseId", "Total: " + assignments.size());
         return Result.success(assignments);
