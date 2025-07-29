@@ -21,7 +21,7 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 @Configuration
 public class RedisConfig {
 
-    private static final String REDIS_HOST = "dev.xlearnedu.com";
+    private static final String REDIS_HOST = "localhost";
     private static final int REDIS_PORT = 6382;
     @Value("${REDIS_DEFAULT_USERNAME}")
     private String redisUsername;
