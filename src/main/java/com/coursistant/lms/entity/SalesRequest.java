@@ -1,19 +1,24 @@
 package com.coursistant.lms.entity;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class SalesRequest {
 
     private String firstName;
     private String lastName;
     private String email;
     private String phone = null;
+    private String additionalInfo = null;
+
+    private String receivedFrom;
+    private String messageType = "Sales Enquiry";
     private String entity = null;
     private String company = null;
     private Integer companySize = null;
     private String role = null;
     private String department = null;
-    private String additionalInfo = null;
-    private String receivedFrom;
-    private String messageType = "Sales Enquiry";
+
 
     
     public String getFirstName() {
@@ -117,32 +122,17 @@ public class SalesRequest {
 
     @Override
     public String toString() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("firstName: ").append(firstName);
-        sb.append("\n");
-        sb.append(", lastName: ").append(lastName);
-        sb.append("\n");
-        sb.append(", entity: ").append(entity);
-        sb.append("\n");
-        sb.append(", email: ").append(email);
-        sb.append("\n");
-        sb.append(", phone: ").append(phone);
-        sb.append("\n");
-        sb.append(", company: ").append(company);
-        sb.append("\n");
-        sb.append(", companySize: ").append(companySize);
-        sb.append("\n");
-        sb.append(", role: ").append(role);
-        sb.append("\n");
-        sb.append(", department: ").append(department);
-        sb.append("\n");
-        sb.append(", additionalInfo: ").append(additionalInfo);
-        sb.append("\n");
-        sb.append(", receivedFrom: ").append(receivedFrom);
-        sb.append("\n");
-        sb.append(", messageType: ").append(messageType);
-        sb.append("\n");
-        return sb.toString();
-    }
+
+        try{
+            ObjectMapper objectMapper = new ObjectMapper();
+            objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
+            return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(this);
+        }
+
+        catch(Exception e)
+        {
+            return super.toString();
+        }
+     }
 
 }
