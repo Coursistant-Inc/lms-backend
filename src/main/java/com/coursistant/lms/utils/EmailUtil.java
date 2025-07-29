@@ -20,7 +20,7 @@ public class EmailUtil {
 
     private static final String FROM_EMAIL = "do.not.reply@coursistant.com";
     private final String salesRequestEmail = "info@coursistant.com";
-    private final String salesSubject = "You have received a new sales enquiry via the website form.";
+    private final String salesSubject = "You have received a new sales enquiry via the website form from ";
     // 替换为你的邮箱 // Replace with your email
 
     /**
@@ -48,8 +48,9 @@ public class EmailUtil {
             MimeMessageHelper helper = new MimeMessageHelper(message,true);
             helper.setFrom(FROM_EMAIL);
             helper.setTo(salesRequestEmail);
-            helper.setSubject(salesSubject);
+            helper.setSubject(salesSubject+salesRequest.getFirstName() + " " + salesRequest.getLastName());
             helper.setText(salesRequest.toString());
+            message.setHeader("Message-ID",uniqueMessageId());
             mailSender.send(message);
         }
 
@@ -59,7 +60,10 @@ public class EmailUtil {
         }
     }
 
+    private String uniqueMessageId()
+    {
+        return "<" + System.currentTimeMillis()+"." + Thread.currentThread().getId() + "@coursistant.com";
+    } 
+
 }
     
-
-
