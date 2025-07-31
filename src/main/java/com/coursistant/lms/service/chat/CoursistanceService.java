@@ -265,7 +265,7 @@ public class CoursistanceService {
                     chat.setAnswerText(answer);
                     if (!"null".equals(imageValue)) {
                         String datePath = new SimpleDateFormat("yyyy/MM/dd").format(new Date());
-                        String baseDir = "/home/admir/SpringBoot/saved_images/answer_images"; // 设定存储路径 / Set storage path
+                        String baseDir = "/home/ubuntu/SpringBoot/saved_images/answer_images"; // 设定存储路径 / Set storage path
                         //String baseDir = "C:\\Users\\Charlottejas\\Desktop\\Jerry\\项目脚手架\\manager\\"; // 设定存储路径
                         String uploadDir = baseDir + datePath + "/";
                         File dir = new File(uploadDir);
