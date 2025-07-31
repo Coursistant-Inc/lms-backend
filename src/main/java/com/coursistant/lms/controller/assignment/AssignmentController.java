@@ -6,6 +6,7 @@ import com.coursistant.lms.common.Result;
 import com.coursistant.lms.entity.Assignment;
 import com.coursistant.lms.entity.DTO.AssignmentDTO;
 import com.coursistant.lms.utils.TimeZoneUtils;
+import com.coursistant.lms.annotation.RequiresPermission;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -41,6 +42,7 @@ public class AssignmentController {
      * 新增书签
      * Add a new assignment
      */
+    @RequiresPermission("assignment:manage")
     @PostMapping("/add")
     public Result add(@RequestBody Assignment assignment,
                       @RequestHeader(value = "X-Timezone", required = false) String timezone) {
@@ -57,6 +59,7 @@ public class AssignmentController {
      * 根据 ID 删除书签
      * Delete a assignment by ID
      */
+    @RequiresPermission("assignment:manage")
     @DeleteMapping("/delete/{id}")
     public Result deleteById(@PathVariable Integer id) {
         logRequest("deleteById", id.toString());
@@ -70,6 +73,7 @@ public class AssignmentController {
      * 批量删除书签
      * Batch delete assignments
      */
+    @RequiresPermission("assignment:manage")
     @DeleteMapping("/delete/batch")
     public Result deleteBatch(@RequestBody List<Integer> ids) {
         logRequest("deleteBatch", ids.toString());
@@ -82,6 +86,7 @@ public class AssignmentController {
      * 更新书签
      * Update a assignment
      */
+    @RequiresPermission("assignment:manage")
     @PutMapping("/update")
     public Result updateById(@RequestBody Assignment assignment,
                              @RequestHeader(value = "X-Timezone", required = false) String timezone) {
@@ -96,6 +101,7 @@ public class AssignmentController {
      * 根据 ID 查询书签
      * Query a assignment by ID
      */
+    @RequiresPermission("assignment:view")
     @GetMapping("/selectById/{id}")
     public Result selectById(@PathVariable Integer id,
                              @RequestHeader(value = "X-Timezone", required = false) String timezone) {
@@ -110,6 +116,7 @@ public class AssignmentController {
      * 根据课程 ID 查询该课程下的所有作业（
      * Query all assignments by course ID with timezone conversion
      */
+    @RequiresPermission("assignment:view")
     @GetMapping("/selectByCourseId/{id}")
     public Result selectByCourseId(@PathVariable Integer id,
                                    @RequestHeader(value = "X-Timezone", required = false) String timezone) {
@@ -128,6 +135,7 @@ public class AssignmentController {
      * 查询所有书签
      * Query all assignments
      */
+    @RequiresPermission("assignment:view")
     @GetMapping("/selectAll")
     public Result selectAll(Assignment assignment,
                             @RequestHeader(value = "X-Timezone", required = false) String timezone) {

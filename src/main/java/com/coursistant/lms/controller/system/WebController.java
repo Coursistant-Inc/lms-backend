@@ -14,6 +14,7 @@ import com.coursistant.lms.service.system.AdminService;
 import com.coursistant.lms.service.user.UserService;
 import com.coursistant.lms.utils.TokenUtils;
 import com.coursistant.lms.utils.TimeZoneUtils;
+import com.coursistant.lms.annotation.RequiresPermission;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -224,6 +225,7 @@ public class WebController {
     /**
      * 处理查询请求 // Handle query request
      */
+    @RequiresPermission("chatbot:interact")
     @PostMapping(value = "/query", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public Result query(@RequestParam(value = "file", required = false) MultipartFile file,
                         @RequestParam("courseId") Integer courseId,

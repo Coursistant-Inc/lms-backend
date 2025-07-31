@@ -16,18 +16,28 @@
         user_permission_id, user_id, permission_id, has_permission
     </sql>
 
-    <!-- Method: selectPermissionByName -->
-    <select id="selectPermissionByName" resultType="com.coursistant.lms.entity.Permission">
-        SELECT
-        <include refid="Permission_Column_List"/>
-        FROM Permissions
-        WHERE permission_name = #{permissionName}
+    <select id="selectAllPermission" resultType="com.coursistant.lms.entity.Permission">
+        select Permissions.*
+        from Permissions
+        <where>
+            <if test="permissionId != null"> and permission_id= #{permissionId}</if>
+        </where>
     </select>
+
 
     <insert id="insertPermission" parameterType="com.coursistant.lms.entity.Permission">
         INSERT INTO Permissions (permission_id, permission_name, description)
         VALUES (#{permissionId}, #{permissionName}, #{description})
     </insert>
+
+    <select id="selectAllRolePermission" resultType="com.coursistant.lms.entity.RolePermission">
+        select RolePermissions.*
+        from RolePermissions
+        <where>
+            <if test="permissionId != null"> and permission_id = #{permissionId}</if>
+            <if test="roleName != null"> and roleName = #{role_name}</if>
+        </where>
+    </select>
 
     <!-- Method: insertRolePermission -->
     <insert id="insertRolePermission" parameterType="com.coursistant.lms.entity.RolePermission">
@@ -47,6 +57,14 @@
         <include refid="RolePermission_Column_List"/>
         FROM RolePermissions
         WHERE role_name = #{roleName} AND permission_id = #{permissionId}
+    </select>
+
+    <select id="selectAllUserPermission" resultType="com.coursistant.lms.entity.UserPermission">
+        select UserPermissions.*
+        from UserPermissions
+        <where>
+            <if test="userPermissionId != null"> and user_permission_id = #{userPermissionId}</if>
+        </where>
     </select>
 
     <!-- Method: insertUserPermission -->

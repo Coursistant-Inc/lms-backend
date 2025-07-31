@@ -15,6 +15,8 @@ public interface PermissionMapper {
 
     int insertPermission(Permission permission);
 
+    List<Permission> selectAllPermission(Permission permission);
+
     // --- Methods for 'RolePermissions' table ---
     int insertRolePermission(RolePermission rolePermission);
 
@@ -22,6 +24,7 @@ public interface PermissionMapper {
 
     RolePermission selectRolePermission(String roleName, Integer permissionId);
 
+    List<RolePermission> selectAllRolePermission(RolePermission rolePermission);
 
     // --- Methods for 'UserPermissions' table ---
     int insertUserPermission(UserPermission userPermission);
@@ -32,10 +35,11 @@ public interface PermissionMapper {
 
     UserPermission selectUserPermission(Integer userId, Integer permissionId);
 
-
+    List<UserPermission> selectAllUserPermission(UserPermission userPermission);
     // --- Methods for 'UserEffectivePermissions' view ---
 
     Boolean checkUserEffectivePermission(Integer userId, String permissionName);
 
     List<Permission> getEffectivePermissionsByUserId(Integer userId);
+
 }
