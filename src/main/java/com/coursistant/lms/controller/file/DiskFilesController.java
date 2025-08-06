@@ -6,6 +6,7 @@ import com.coursistant.lms.entity.DiskFiles;
 import com.coursistant.lms.entity.FileSummary;
 import com.coursistant.lms.exception.CustomException;
 import com.coursistant.lms.service.file.DiskFilesService;
+import com.coursistant.lms.annotation.RequiresPermission;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -38,6 +39,7 @@ public class DiskFilesController {
      * 上传文件
      * Upload a file
      */
+    @RequiresPermission("file:upload")
     @PostMapping("/add")
     public Result add(@RequestParam("files") MultipartFile[] files,
                    @RequestParam("courseId") Integer courseId,
@@ -78,6 +80,7 @@ public class DiskFilesController {
      * 覆盖上传文件
      * Overwrite an existing file
      */
+    @RequiresPermission("file:upload")
     @PostMapping("/overwrite")
     public Result overwrite(MultipartFile file, Integer courseId, Integer userId) {
         logRequest("overwrite", String.format("fileName=%s, courseName=%s, userId=%d",
@@ -91,6 +94,7 @@ public class DiskFilesController {
      * Hadoop 处理文件
      * Process a file with Hadoop
      */
+    @RequiresPermission("file:upload")
     @PostMapping("/hadooped")
     public Result hadooped(String path, String hadoopPath, String time) {
         logRequest("hadooped", String.format("path=%s, hadoopPath=%s, time=%s", path, hadoopPath, time));
@@ -103,6 +107,7 @@ public class DiskFilesController {
      * Qdrant 处理文件
      * Process a file with Qdrant
      */
+    @RequiresPermission("file:upload")
     @PostMapping("/qdranted")
     public Result qdranted(String path, String time) {
         logRequest("qdranted", String.format("path=%s, time=%s", path, time));
@@ -115,6 +120,7 @@ public class DiskFilesController {
      * 根据 ID 删除文件
      * Delete a file by ID
      */
+    @RequiresPermission("file:upload")
     @DeleteMapping("/delete/{id}")
     public Result deleteById(@PathVariable Integer id) {
         logRequest("deleteById", id.toString());
@@ -127,6 +133,7 @@ public class DiskFilesController {
      * 根据 ID 深度删除文件
      * Deep delete a file by ID
      */
+    @RequiresPermission("file:upload")
     @DeleteMapping("/deepDelete/{id}")
     public Result deepDelete(@PathVariable Integer id) {
         logRequest("deepDelete", id.toString());
@@ -139,6 +146,7 @@ public class DiskFilesController {
      * 批量删除文件
      * Batch delete files
      */
+    @RequiresPermission("file:upload")
     @DeleteMapping("/delete/batch")
     public Result deleteBatch(@RequestBody List<Integer> ids) {
         logRequest("deleteBatch", ids.toString());
@@ -151,6 +159,7 @@ public class DiskFilesController {
      * 更新文件信息
      * Update file information
      */
+    @RequiresPermission("file:upload")
     @PutMapping("/update")
     public Result updateById(@RequestBody DiskFiles diskFiles) {
         logRequest("updateById", diskFiles.toString());
@@ -163,6 +172,7 @@ public class DiskFilesController {
      * 根据 ID 查询文件
      * Query a file by ID
      */
+    @RequiresPermission("file:upload")
     @GetMapping("/selectById/{id}")
     public Result selectById(@PathVariable Integer id) {
         logRequest("selectById", id.toString());
@@ -175,6 +185,7 @@ public class DiskFilesController {
      * 查询所有文件
      * Query all files
      */
+    @RequiresPermission("file:upload")
     @GetMapping("/selectAll")
     public Result selectAll(DiskFiles diskFiles) {
         logRequest("selectAll", diskFiles != null ? diskFiles.toString() : "null");

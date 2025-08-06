@@ -7,6 +7,7 @@ import com.coursistant.lms.entity.AssignmentItem;
 import com.coursistant.lms.service.assignment.AssignmentContentItemService;
 import com.coursistant.lms.service.course.CourseContentItemService;
 import com.coursistant.lms.service.file.DiskFilesService;
+import com.coursistant.lms.annotation.RequiresPermission;
 import jakarta.annotation.Resource;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -40,6 +41,7 @@ public class AssignmentContentItemController {
         logger.info(() -> String.format("End %s: %s", methodName, response));
     }
 
+    @RequiresPermission("assignment:manage")
     @PostMapping("/add")
     public Result add(@RequestBody AssignmentItem assignmentItem) {
         logRequest("add", assignmentItem.toString());
@@ -50,6 +52,7 @@ public class AssignmentContentItemController {
         return Result.success(data);
     }
 
+    @RequiresPermission("assignment:manage")
     @DeleteMapping("/delete/{id}")
     public Result deleteById(@PathVariable Integer id) {
         logRequest("deleteById", id.toString());
@@ -58,6 +61,7 @@ public class AssignmentContentItemController {
         return Result.success();
     }
 
+    @RequiresPermission("assignment:manage")
     @DeleteMapping("/delete/batch")
     public Result deleteBatch(@RequestBody List<Integer> ids) {
         logRequest("deleteBatch", ids.toString());
@@ -66,6 +70,7 @@ public class AssignmentContentItemController {
         return Result.success();
     }
 
+    @RequiresPermission("assignment:manage")
     @PutMapping("/update")
     public Result update(@RequestBody AssignmentItem assignmentItem) {
         logRequest("update", assignmentItem.toString());
@@ -74,6 +79,7 @@ public class AssignmentContentItemController {
         return Result.success();
     }
 
+    @RequiresPermission("assignment:view")
     @GetMapping("/selectById/{id}")
     public Result selectById(@PathVariable Integer id) {
         logRequest("selectById", id.toString());
@@ -82,6 +88,7 @@ public class AssignmentContentItemController {
         return Result.success(assignmentItem);
     }
 
+    @RequiresPermission("assignment:view")
     @GetMapping("/selectAll")
     public Result selectAll(AssignmentItem assignmentItem) {
         logRequest("selectAll", assignmentItem != null ? assignmentItem.toString() : "null");
@@ -90,6 +97,7 @@ public class AssignmentContentItemController {
         return Result.success(list);
     }
 
+    @RequiresPermission("assignment:view")
     @GetMapping("/selectByAssignmentId/{assignmentId}")
     public Result selectByAssignmentId(@PathVariable Integer assignmentId) {
         logRequest("selectByAssignmentId", assignmentId.toString());
@@ -98,6 +106,7 @@ public class AssignmentContentItemController {
         return Result.success(list);
     }
 
+    @RequiresPermission("assignment:manage")
     @DeleteMapping("/deleteByAssignmentId/{assignmentId}")
     public Result deleteByAssignmentId(@PathVariable Integer assignmentId) {
         logRequest("deleteByAssignmentId", assignmentId.toString());
@@ -106,6 +115,7 @@ public class AssignmentContentItemController {
         return Result.success();
     }
 
+    @RequiresPermission("assignment:view")
     @GetMapping("/selectCourseInfo/{courseId}")
     public Result selectCourseInfo(@PathVariable Integer courseId) {
         logRequest("selectCourseInfo", courseId.toString());
@@ -117,6 +127,7 @@ public class AssignmentContentItemController {
     /**
      * Upload a file and create a AssignmentItem entry (type = file)
      */
+    @RequiresPermission("assignment:manage")
     @PostMapping("/addWithFile")
     public Result addWithFile(@RequestParam("file") MultipartFile file,
                               @RequestParam(value = "assignmentId", required = false) Integer assignmentId,

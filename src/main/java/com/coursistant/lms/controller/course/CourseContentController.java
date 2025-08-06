@@ -4,6 +4,7 @@ import com.coursistant.lms.common.Result;
 import com.coursistant.lms.entity.DTO.FolderDTO;
 import com.coursistant.lms.entity.Folder;
 import com.coursistant.lms.service.course.CourseContentService;
+import com.coursistant.lms.annotation.RequiresPermission;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.annotation.Resource;
@@ -33,6 +34,7 @@ public class CourseContentController {
         logger.info(() -> String.format("End %s: %s", methodName, response));
     }
 
+    @RequiresPermission("course:manage")
     @PostMapping("/add")
     public Result add(@RequestBody Folder folder) {
         logRequest("add", folder.toString());
@@ -43,6 +45,7 @@ public class CourseContentController {
         return Result.success(data);
     }
 
+    @RequiresPermission("course:manage")
     @DeleteMapping("/delete/{id}")
     public Result deleteById(@PathVariable Integer id) {
         logRequest("deleteById", id.toString());
@@ -51,6 +54,7 @@ public class CourseContentController {
         return Result.success();
     }
 
+    @RequiresPermission("course:manage")
     @DeleteMapping("/delete/batch")
     public Result deleteBatch(@RequestBody List<Integer> ids) {
         logRequest("deleteBatch", ids.toString());
@@ -59,6 +63,7 @@ public class CourseContentController {
         return Result.success();
     }
 
+    @RequiresPermission("course:manage")
     @PutMapping("/update")
     public Result update(@RequestBody Folder folder) {
         logRequest("update", folder.toString());
@@ -67,6 +72,7 @@ public class CourseContentController {
         return Result.success();
     }
 
+    @RequiresPermission("course:view")
     @GetMapping("/selectById/{id}")
     public Result selectById(@PathVariable Integer id) {
         logRequest("selectById", id.toString());
@@ -75,6 +81,7 @@ public class CourseContentController {
         return Result.success(folder);
     }
 
+    @RequiresPermission("course:view")
     @GetMapping("/selectAll")
     public Result selectAll(Folder folder) {
         logRequest("selectAll", folder != null ? folder.toString() : "null");
@@ -83,6 +90,7 @@ public class CourseContentController {
         return Result.success(list);
     }
 
+    @RequiresPermission("course:view")
     @GetMapping("/selectByCourseIdWithItems/{courseId}")
     public Result selectByCourseIdWithItems(@PathVariable Integer courseId) {
         logRequest("selectByCourseIdWithItems", courseId.toString());

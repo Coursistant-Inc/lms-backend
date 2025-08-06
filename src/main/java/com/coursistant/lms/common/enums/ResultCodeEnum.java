@@ -34,7 +34,7 @@ public enum ResultCodeEnum {
      */
     USER_EXIST_ERROR("4020", "Username Already Exists"),
     USER_NOT_EXIST_ERROR("4021", "User Does Not Exist"),
-
+    USER_NO_PMERMISSION("4022", "User Does Not Have Permission"),
     /**
      * File-related errors (403X)
      */

@@ -5,6 +5,7 @@ import com.coursistant.lms.entity.FileSummary;
 import com.coursistant.lms.entity.FolderItem;
 import com.coursistant.lms.service.file.DiskFilesService;
 import com.coursistant.lms.service.course.CourseContentItemService;
+import com.coursistant.lms.annotation.RequiresPermission;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -38,6 +39,7 @@ public class CourseContentItemController {
         logger.info(() -> String.format("End %s: %s", methodName, response));
     }
 
+    @RequiresPermission("course:manage")
     @PostMapping("/add")
     public Result add(@RequestBody FolderItem folderItem) {
         logRequest("add", folderItem.toString());
@@ -48,6 +50,7 @@ public class CourseContentItemController {
         return Result.success(data);
     }
 
+    @RequiresPermission("course:manage")
     @DeleteMapping("/delete/{id}")
     public Result deleteById(@PathVariable Integer id) {
         logRequest("deleteById", id.toString());
@@ -56,6 +59,7 @@ public class CourseContentItemController {
         return Result.success();
     }
 
+    @RequiresPermission("course:manage")
     @DeleteMapping("/delete/batch")
     public Result deleteBatch(@RequestBody List<Integer> ids) {
         logRequest("deleteBatch", ids.toString());
@@ -64,6 +68,7 @@ public class CourseContentItemController {
         return Result.success();
     }
 
+    @RequiresPermission("course:manage")
     @PutMapping("/update")
     public Result update(@RequestBody FolderItem folderItem) {
         logRequest("update", folderItem.toString());
@@ -72,6 +77,7 @@ public class CourseContentItemController {
         return Result.success();
     }
 
+    @RequiresPermission("course:view")
     @GetMapping("/selectById/{id}")
     public Result selectById(@PathVariable Integer id) {
         logRequest("selectById", id.toString());
@@ -80,6 +86,7 @@ public class CourseContentItemController {
         return Result.success(folderItem);
     }
 
+    @RequiresPermission("course:view")
     @GetMapping("/selectAll")
     public Result selectAll(FolderItem folderItem) {
         logRequest("selectAll", folderItem != null ? folderItem.toString() : "null");
@@ -88,6 +95,7 @@ public class CourseContentItemController {
         return Result.success(list);
     }
 
+    @RequiresPermission("course:view")
     @GetMapping("/selectByFolderId/{folderId}")
     public Result selectByFolderId(@PathVariable Integer folderId) {
         logRequest("selectByFolderId", folderId.toString());
@@ -96,6 +104,7 @@ public class CourseContentItemController {
         return Result.success(list);
     }
 
+    @RequiresPermission("course:manage")
     @DeleteMapping("/deleteByFolderId/{folderId}")
     public Result deleteByFolderId(@PathVariable Integer folderId) {
         logRequest("deleteByFolderId", folderId.toString());
@@ -104,6 +113,7 @@ public class CourseContentItemController {
         return Result.success();
     }
 
+    @RequiresPermission("course:view")
     @GetMapping("/selectCourseInfo/{courseId}")
     public Result selectCourseInfo(@PathVariable Integer courseId) {
         logRequest("selectCourseInfo", courseId.toString());
@@ -115,6 +125,7 @@ public class CourseContentItemController {
     /**
      * Upload a file and create a FolderItem entry (type = file)
      */
+    @RequiresPermission("course:manage")
     @PostMapping("/addWithFile")
     public Result addWithFile(@RequestParam("file") MultipartFile file,
                               @RequestParam(value = "folderId", required = false) Integer folderId,
