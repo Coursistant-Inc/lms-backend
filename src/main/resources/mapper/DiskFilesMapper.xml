@@ -5,7 +5,7 @@
 <mapper namespace="com.coursistant.lms.mapper.file.DiskFilesMapper">
 
     <sql id="Base_Column_List">
-        id,name,path,user_id,course_id,type,size,create_time,hadooped_time,qdranted_time,`delete`,hadooped,qdranted,hadoop_path,category,summary
+        id,name,path,user_id,course_id,type,size,create_time,`delete`,category,summary
     </sql>
 
 
@@ -31,23 +31,8 @@
             <if test="createTime != null">
                 AND create_time = #{createTime}
             </if>
-            <if test="hadoopedTime != null">
-                AND hadooped_time = #{hadoopedTime}
-            </if>
-            <if test="qdrantedTime != null">
-                AND qdranted_time = #{qdrantedTime}
-            </if>
             <if test="delete != null">
                 AND `delete` = #{delete}
-            </if>
-            <if test="hadooped != null">
-                AND hadooped = #{hadooped}
-            </if>
-            <if test="qdranted != null">
-                AND qdranted = #{qdranted}
-            </if>
-            <if test="hadoopPath != null">
-                AND hadoop_path = #{hadoopPath}
             </if>
             <if test="category != null">
                 AND category = #{category}
@@ -81,7 +66,6 @@
             <if test="id != null">id,</if>
             <if test="name != null">name,</if>
             <if test="path != null">path,</if>
-            <if test="hadoopPath != null">hadoop_path,</if>
             <if test="userId != null">user_id,</if>
             <if test="type != null">type,</if>
             <if test="size != null">size,</if>
@@ -94,7 +78,6 @@
             <if test="id != null">#{id},</if>
             <if test="name != null">#{name},</if>
             <if test="path != null">#{path},</if>
-            <if test="hadoopPath != null">hadoopPath,</if>
             <if test="userId != null">#{userId},</if>
             <if test="type != null">#{type},</if>
             <if test="size != null">#{size},</if>
@@ -126,26 +109,11 @@
             <if test="createTime != null">
                 create_time = #{createTime},
             </if>
-            <if test="hadoopedTime != null">
-                hadooped_time = #{hadoopedTime},
-            </if>
-            <if test="qdrantedTime != null">
-                qdranted_time = #{qdrantedTime},
-            </if>
             <if test="courseId != null">
                 course_id = #{courseId},
             </if>
             <if test="delete != null">
                 `delete` = #{delete},
-            </if>
-            <if test="hadooped != null">
-                `hadooped` = #{hadooped},
-            </if>
-            <if test="qdranted != null">
-                `qdranted` = #{qdranted},
-            </if>
-            <if test="hadoopPath != null">
-                hadoop_path = #{hadoopPath},
             </if>
             <if test="category != null">
                 category = #{category},

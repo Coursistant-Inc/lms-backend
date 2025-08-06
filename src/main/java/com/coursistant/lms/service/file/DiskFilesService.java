@@ -5,6 +5,7 @@ import com.coursistant.lms.exception.CustomException;
 import com.coursistant.lms.entity.DiskFiles;
 import com.coursistant.lms.entity.FileSummary;
 import com.coursistant.lms.mapper.file.DiskFilesMapper;
+import com.coursistant.lms.service.system.MinIOService;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.core5.http.ContentType;
@@ -46,7 +47,11 @@ public class DiskFilesService {
     @Resource
     private AsyncFileUploadService asyncFileUploadService;
 
-    private static final String filePath = System.getProperty("user.dir") + "/disk/";
+    @Resource
+    private MinIOService minIOService;
+
+    private static final String filePath = "disk/";
+    private static final String bucket = "lms-uploads";
 
     private static final Logger log = LoggerFactory.getLogger(DiskFilesService.class);
 
@@ -60,15 +65,12 @@ public class DiskFilesService {
         // 创建文件存储路径
         // Create file storage path
         String path = filePath + courseId + "/";
-        if (!FileUtil.exist(path)) {
-            FileUtil.mkdir(path);
-        }
 
         // 获取文件信息
         // Get file information
         String filename = file.getOriginalFilename();
         String extName = FileUtil.extName(filename);
-        String fullpath = path + filename;
+        String fileDest = path + filename;
 
         // 检查文件是否已存在 duplicate?
         // Check if the file already exists
@@ -87,7 +89,7 @@ public class DiskFilesService {
         diskFiles.setName(filename);
         diskFiles.setType(extName);
         diskFiles.setCourseId(courseId);
-        diskFiles.setPath(fullpath);
+        diskFiles.setPath(fileDest);
         diskFiles.setUserId(userId);
         diskFiles.setCategory(category);
 
@@ -98,7 +100,7 @@ public class DiskFilesService {
 
             // 文件上传
             // File upload
-            file.transferTo(new File(fullpath));
+            minIOService.uploadFile(fileDest, file, bucket);
 
             // 进行文件分析
             // Perform file analysis
@@ -127,12 +129,13 @@ public class DiskFilesService {
             diskFilesMapper.insert(diskFiles);
             summary.setId(diskFiles.getId());
         } catch (Exception e) {
-            log.error("upload failed", e);
+            e.printStackTrace();
+            throw new CustomException(ResultCodeEnum.FILE_UPLOAD_ERROR);
         }
 
         // ============ 异步调用部分 ==============
         // 在这里触发异步上传到 5100/file 的逻辑，不阻塞 add 的返回
-        asyncFileUploadService.asyncUploadFile(courseId, fullpath);
+        asyncFileUploadService.asyncUploadFile(courseId, file);
 
         return summary;
     }
@@ -192,47 +195,7 @@ public class DiskFilesService {
     /**
      * 新增
      */
-    public void hadooped(String path, String hadoopPath, String time) {
 
-        //find file by path
-        DiskFiles oldone=diskFilesMapper.selectByPath(path);
-        if (ObjectUtil.isNull(oldone)){
-            throw new CustomException(ResultCodeEnum.FILE_NOT_FOUND);
-        }
-        oldone.setHadoopPath(hadoopPath);
-        oldone.setHadooped(true);
-        oldone.setHadoopedTime(time);
-        if (oldone.getHadooped()&&oldone.getQdranted()){
-            oldone.setDelete(true);
-
-            //delete
-            FileUtil.del(path);
-        }
-
-
-        diskFilesMapper.updateById(oldone);
-
-    }
-
-    public void qdranted(String path, String time) {
-
-        //find file by path
-        DiskFiles oldone=diskFilesMapper.selectByPath(path);
-        if (ObjectUtil.isNull(oldone)){
-            throw new CustomException(ResultCodeEnum.FILE_NOT_FOUND);
-        }
-        oldone.setQdranted(true);
-        oldone.setQdrantedTime(time);
-        if (oldone.getHadooped()&&oldone.getQdranted()){
-            oldone.setDelete(true);
-
-            //delete
-            FileUtil.del(path);
-        }
-
-        diskFilesMapper.updateById(oldone);
-
-    }
 
 
     /**

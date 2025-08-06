@@ -31,14 +31,10 @@ public class DiskFiles implements Serializable {
     private Double size;
 
     private String createTime;
-    private String hadoopedTime;
-    private String qdrantedTime;
+
 
     private Boolean delete;
 
-    private Boolean hadooped;
-    private Boolean qdranted;
-    private String hadoopPath;
 
     private String category;
 
@@ -58,12 +54,7 @@ public class DiskFiles implements Serializable {
         if (type != null) sb.append("\"type\":\"").append(type).append("\",");
         if (size != null) sb.append("\"size\":").append(size).append(",");
         if (createTime != null) sb.append("\"createTime\":\"").append(createTime).append("\",");
-        if (hadoopedTime != null) sb.append("\"hadoopedTime\":\"").append(hadoopedTime).append("\",");
-        if (qdrantedTime != null) sb.append("\"qdrantedTime\":\"").append(qdrantedTime).append("\",");
         if (delete != null) sb.append("\"delete\":").append(delete).append(",");
-        if (hadooped != null) sb.append("\"hadooped\":").append(hadooped).append(",");
-        if (qdranted != null) sb.append("\"qdranted\":").append(qdranted).append(",");
-        if (hadoopPath != null) sb.append("\"hadoopPath\":\"").append(hadoopPath).append("\",");
         if (category != null) sb.append("\"category\":\"").append(category).append("\",");
         if (sb.charAt(sb.length() - 1) == ',') sb.deleteCharAt(sb.length() - 1); // 删除最后的逗号
         sb.append("}");
@@ -75,37 +66,6 @@ public class DiskFiles implements Serializable {
         return id;
     }
 
-    public Boolean getHadooped() {
-        return hadooped;
-    }
-
-    public void setHadooped(Boolean hadooped) {
-        this.hadooped = hadooped;
-    }
-
-    public String getHadoopedTime() {
-        return hadoopedTime;
-    }
-
-    public void setHadoopedTime(String hadoopedTime) {
-        this.hadoopedTime = hadoopedTime;
-    }
-
-    public String getQdrantedTime() {
-        return qdrantedTime;
-    }
-
-    public void setQdrantedTime(String qdrantedTime) {
-        this.qdrantedTime = qdrantedTime;
-    }
-
-    public Boolean getQdranted() {
-        return qdranted;
-    }
-
-    public void setQdranted(Boolean qdranted) {
-        this.qdranted = qdranted;
-    }
 
 
 
@@ -177,13 +137,6 @@ public class DiskFiles implements Serializable {
         this.delete = delete;
     }
 
-    public String getHadoopPath() {
-        return hadoopPath;
-    }
-
-    public void setHadoopPath(String hadoopPath) {
-        this.hadoopPath = hadoopPath;
-    }
 
     public String getCategory() {
         return category;
