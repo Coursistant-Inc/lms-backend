@@ -36,6 +36,12 @@ public interface LearnMapper {
     Learn selectById(Integer id);
 
     /**
+     * 根据 Course ID 查询
+     * Query all Learn records associated with a course id
+     */
+    List<Learn> selectByCourseId(Integer courseId);
+
+    /**
      * 查询所有
      * Query all Learn records
      */

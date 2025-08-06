@@ -7,6 +7,7 @@ import com.coursistant.lms.entity.Learn;
 import com.coursistant.lms.entity.User;
 import com.coursistant.lms.mapper.course.LearnMapper;
 import com.coursistant.lms.mapper.user.UserMapper;
+import com.coursistant.lms.service.user.UserService;
 
 
 import org.springframework.data.redis.core.RedisTemplate;
@@ -23,6 +24,7 @@ import org.apache.poi.ss.usermodel.*;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.stream.Collectors;
 
 @Service
 public class LearnService {
@@ -36,6 +38,8 @@ public class LearnService {
     @Resource(name = "learnAllRedisTemplate")
     private RedisTemplate<String, Object> learnAllRedisTemplate;
 
+    @Resource
+    private UserService userService;
 
     @Resource
     private UserMapper userMapper;
@@ -153,6 +157,50 @@ public class LearnService {
         // 将结果存入 Redis，并设置过期时间 // Store result in Redis with expiration time
         generalRedisTemplate.opsForValue().set(cacheKey, learn, CACHE_EXPIRE_TIME, TimeUnit.SECONDS);
         return learn;
+    }
+
+
+    public List<Learn> selectByCourseId(Integer courseId) {
+        String cacheKey = "learn:course:" + courseId;
+
+        // 从 Redis 获取缓存 // Get cache from Redis
+        List<Learn> learnList = (List<Learn>) generalRedisTemplate.opsForValue().get(cacheKey);
+        if (learnList != null) {
+            System.out.println("from cache: " + cacheKey);
+            return learnList;
+        }
+
+        // 如果缓存不存在，从数据库查询 // If cache does not exist, query from database
+        learnList = learnMapper.selectByCourseId(courseId);
+        if (learnList == null || learnList.isEmpty()) {
+            return new ArrayList<>();
+            // 或者抛出异常:
+            // Or throw exception:
+            // throw new CustomException(ResultCodeEnum.NO_STUDENTS_IN_COURSE_ERROR);
+        }
+
+        // 将结果存入 Redis，并设置过期时间
+        // Store result in Redis with expiration time
+        generalRedisTemplate.opsForValue().set(cacheKey, learnList, CACHE_EXPIRE_TIME, TimeUnit.SECONDS);
+        return learnList;
+    }
+
+    public List<User> getStudentsByCourseId(Integer courseId) {
+        List<Learn> learnList = selectByCourseId(courseId);
+
+        // 提取用户ID列表并查询用户信息
+        // Extract user ID list and query user information
+        List<Integer> userIds = learnList.stream()
+                .map(Learn::getUserId)
+                .collect(Collectors.toList());
+
+        if (userIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        // 假设你有 userService 来批量查询用户
+        // Assuming you have userService to batch query users
+        return userService.selectUsersByIds(userIds);
     }
 
     public List<Learn> selectByStudentId(Integer id) {

@@ -30,6 +30,12 @@
         where id = #{id}
     </select>
 
+    <select id="selectByCourseId" resultType="com.coursistant.lms.entity.Learn">
+        SELECT * FROM Learn
+        WHERE course_id = #{courseId}
+        AND (course_status IS NULL OR course_status = 'ACTIVE')
+    </select>
+
     <delete id="deleteById">
         delete from Learn
         where id = #{id}
