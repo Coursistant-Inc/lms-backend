@@ -84,7 +84,7 @@ public class AssignmentSubmissionController {
      * 更新书签
      * Update a assignmentSubmission
      */
-    @RequiresPermission("assignment:submit")
+    @RequiresPermission("assignment:update")
     @PutMapping("/update")
     public Result updateById(@RequestBody AssignmentSubmission assignmentSubmission) {
         logRequest("updateById", assignmentSubmission.toString());
@@ -97,7 +97,7 @@ public class AssignmentSubmissionController {
      * 更新
      * Update grade
      */
-    @RequiresPermission("assignment:submit")
+    @RequiresPermission("assignment:update")
     @PutMapping("/updateGrade")
     public Result updateGradeById(@RequestBody AssignmentSubmission assignmentSubmission) {
         logRequest("updateById", assignmentSubmission.toString());
