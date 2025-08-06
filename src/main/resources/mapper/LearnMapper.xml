@@ -8,6 +8,13 @@
         id, user_id, course_id
     </sql>
 
+    <select id="selectByUserIdAndCourseId" resultType="com.coursistant.lms.entity.Learn">
+        SELECT *
+        FROM Learn
+        WHERE user_id = #{userId}
+        AND course_id = #{courseId}
+        LIMIT 1
+    </select>
 
     <select id="selectAll" resultType="com.coursistant.lms.entity.Learn">
         select Learn.*, Course.name as courseName, Course.course_code as courseCode,Course.instructor_name as instructorName, Course.school as school, Course.semester as semester,

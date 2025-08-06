@@ -48,7 +48,7 @@ public class LearnService {
     private static final long CACHE_EXPIRE_TIME = 300;
 
     /**
-     * 清空 learnAll 数据库 // Clear the learnAll database
+     * Clear learnAll database (for selectAll queries)
      */
     public void clearLearnAllCache() {
         Objects.requireNonNull(learnAllRedisTemplate.getConnectionFactory())
@@ -57,15 +57,38 @@ public class LearnService {
         System.out.println("Cleared all data from learnAll database.");
     }
 
+    /**
+     * Clear specific course cache from generalRedisTemplate
+     */
+    private void clearCourseCache(Integer courseId) {
+        if (courseId != null) {
+            String cacheKey = "learn:course:" + courseId;
+            generalRedisTemplate.delete(cacheKey);
+            System.out.println("Cleared cache: " + cacheKey);
+        }
+    }
+
+    /**
+     * Clear all learn-related caches from both templates
+     */
+    private void clearAllLearnCaches(Integer courseId) {
+        clearLearnAllCache();        // Clear learnAllRedisTemplate
+        clearCourseCache(courseId);   // Clear generalRedisTemplate learn:* keys
+    }
+
 
 
     /**
      * 新增 // Add new record
      */
     public void add(Learn learn) {
+        Learn existingLearn = learnMapper.selectByUserIdAndCourseId(learn.getUserId(), learn.getCourseId());
+        if (existingLearn != null) {
+            throw new CustomException(ResultCodeEnum.DUPLICATED_LEARN_RELATION_ERROR); // You may need to create this enum
+        }
         learnMapper.insert(learn);
         // 清理相关缓存 // Clear relevant caches
-        clearLearnAllCache();
+        clearAllLearnCaches(learn.getCourseId());
 
     }
 
@@ -212,6 +235,34 @@ public class LearnService {
 
 
         return learns;
+    }
+
+
+    public Learn selectByUserIdAndCourseId(Integer userId, Integer courseId) {
+        if (userId == null || courseId == null) {
+            return null;
+        }
+
+        String cacheKey = "learn:user:" + userId + ":course:" + courseId;
+
+        Learn learn = (Learn) learnAllRedisTemplate.opsForValue().get(cacheKey);
+        if (learn != null) {
+            System.out.println("from cache: " + cacheKey);
+            return learn;
+        }
+
+        // Query from database
+        learn = learnMapper.selectByUserIdAndCourseId(userId, courseId);
+
+        // Cache the result (including null results to avoid repeated DB queries)
+        if (learn != null) {
+            learnAllRedisTemplate.opsForValue().set(cacheKey, learn, CACHE_EXPIRE_TIME, TimeUnit.SECONDS);
+        } else {
+            // Cache null result for shorter time to avoid repeated queries for non-existent records
+            learnAllRedisTemplate.opsForValue().set(cacheKey, "NULL", 60, TimeUnit.SECONDS);
+        }
+
+        return learn;
     }
 
     /**

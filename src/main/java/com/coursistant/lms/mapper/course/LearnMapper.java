@@ -57,4 +57,6 @@ public interface LearnMapper {
     @Select("select * from Learn where user_id = #{userId}")
     List<Learn> selectByUserId(Integer userId);
 
+    Learn selectByUserIdAndCourseId(Integer userId, Integer courseId);
+
 }
