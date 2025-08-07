@@ -4,6 +4,7 @@ import com.coursistant.lms.service.file.AssignmentFileService;
 import com.coursistant.lms.common.Result;
 import com.coursistant.lms.entity.AssignmentFile;
 import org.springframework.web.bind.annotation.*;
+import com.coursistant.lms.annotation.RequiresPermission;
 import org.springframework.web.multipart.MultipartFile;
 
 import jakarta.annotation.Resource;
@@ -35,6 +36,8 @@ public class AssignmentFileController {
      * 新增书签
      * Add a new assignmentFile
      */
+
+    @RequiresPermission("assignment:submit")
     @PostMapping("/add")
     public Result add(MultipartFile file,Integer assignmentId) {
         logRequest("add", assignmentId.toString());
@@ -47,6 +50,7 @@ public class AssignmentFileController {
      * 根据 ID 删除书签
      * Delete a assignmentFile by ID
      */
+    @RequiresPermission("assignment:submit")
     @DeleteMapping("/delete/{id}")
     public Result deleteById(@PathVariable Integer id) {
         logRequest("deleteById", id.toString());
@@ -59,6 +63,7 @@ public class AssignmentFileController {
      * 批量删除书签
      * Batch delete assignmentFiles
      */
+    @RequiresPermission("assignment:submit")
     @DeleteMapping("/delete/batch")
     public Result deleteBatch(@RequestBody List<Integer> ids) {
         logRequest("deleteBatch", ids.toString());
@@ -71,6 +76,7 @@ public class AssignmentFileController {
      * 更新书签
      * Update a assignmentFile
      */
+    @RequiresPermission("assignment:submit")
     @PutMapping("/update")
     public Result updateById(@RequestBody AssignmentFile assignmentFile) {
         logRequest("updateById", assignmentFile.toString());
@@ -83,6 +89,7 @@ public class AssignmentFileController {
      * 根据 ID 查询书签
      * Query a assignmentFile by ID
      */
+    @RequiresPermission("assignment:submit")
     @GetMapping("/selectById/{id}")
     public Result selectById(@PathVariable Integer id) {
         logRequest("selectById", id.toString());
@@ -95,6 +102,7 @@ public class AssignmentFileController {
      * 查询所有书签
      * Query all assignmentFiles
      */
+    @RequiresPermission("assignment:submit")
     @GetMapping("/selectAll")
     public Result selectAll(AssignmentFile assignmentFile) {
         logRequest("selectAll", assignmentFile != null ? assignmentFile.toString() : "null");

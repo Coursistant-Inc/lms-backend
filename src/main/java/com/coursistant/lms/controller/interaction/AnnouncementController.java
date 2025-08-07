@@ -4,6 +4,7 @@ import com.coursistant.lms.common.Result;
 import com.coursistant.lms.entity.Announcement;
 import com.coursistant.lms.service.interaction.AnnouncementService;
 import com.coursistant.lms.utils.TimeZoneUtils;
+import com.coursistant.lms.annotation.RequiresPermission;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.annotation.Resource;
@@ -25,6 +26,7 @@ public class AnnouncementController {
      * 新增公告
      * Add a new announcement
      */
+    @RequiresPermission("announcement:manage")
     @PostMapping("/add")
     public Result add(@RequestBody Announcement announcement) {
         announcementService.addAnnouncement(announcement);
@@ -35,6 +37,7 @@ public class AnnouncementController {
      * 根据 ID 删除公告
      * Delete an announcement by ID
      */
+    @RequiresPermission("announcement:manage")
     @DeleteMapping("/delete/{id}")
     public Result deleteById(@PathVariable Integer id) {
         announcementService.deleteById(id);
@@ -45,6 +48,7 @@ public class AnnouncementController {
      * 批量删除公告
      * Batch delete announcements
      */
+    @RequiresPermission("announcement:manage")
     @DeleteMapping("/delete/batch")
     public Result deleteBatch(@RequestBody List<Integer> ids) {
         announcementService.deleteBatch(ids);
@@ -55,6 +59,7 @@ public class AnnouncementController {
      * 更新公告
      * Update an announcement
      */
+    @RequiresPermission("announcement:manage")
     @PutMapping("/update")
     public Result updateById(@RequestBody Announcement announcement){
         announcementService.updateById(announcement);
@@ -65,6 +70,7 @@ public class AnnouncementController {
      * 根据 ID 查询公告
      * Query an announcement by ID
      */
+    @RequiresPermission("announcement:view")
     @GetMapping("/selectById/{id}")
     public Result selectById(@PathVariable Integer id,
                              @RequestHeader(value = "X-Timezone", required = false)
@@ -78,6 +84,7 @@ public class AnnouncementController {
      * 查询所有公告
      * Query all announcements
      */
+    @RequiresPermission("announcement:view")
     @GetMapping("/selectAll")
     public Result selectAll(@RequestHeader(value = "X-Timezone", required = false)
                                         String timezone) {
@@ -90,6 +97,7 @@ public class AnnouncementController {
      * 查询某个用户的所有公告
      * Query all announcements of a specific user
      */
+    @RequiresPermission("announcement:view")
     @GetMapping("/selectByUserId/{userId}")
     public Result selectByUserId(@PathVariable Integer userId,
                                  @RequestHeader(value = "X-Timezone", required = false)
@@ -103,6 +111,7 @@ public class AnnouncementController {
      * 查询某课程的所有公告
      * Query all announcements of a specific course
      */
+    @RequiresPermission("announcement:view")
     @GetMapping("/selectByCourseId/{courseId}")
     public Result selectByCourseId(@PathVariable Integer courseId,
                                    @RequestHeader(value = "X-Timezone", required = false)
