@@ -22,6 +22,8 @@ import java.util.Random;
 
 import jakarta.annotation.Resource;
 import java.util.List;
+import java.util.ArrayList;
+import java.util.stream.Collectors;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
@@ -164,6 +166,41 @@ public class UserService {
         if (users != null && !users.isEmpty()) {
             userAllRedisTemplate.opsForValue().set(cacheKey, users, CACHE_EXPIRE_TIME, TimeUnit.SECONDS);
         }
+        return users;
+    }
+
+    /**
+     * 批量查询用户 // Batch select users by IDs
+     */
+    public List<User> selectUsersByIds(List<Integer> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        // 创建缓存键 // Create cache key
+        String cacheKey = "users:batch:" + userIds.stream()
+                .sorted()
+                .map(String::valueOf)
+                .collect(Collectors.joining(","));
+
+        // 从 Redis 获取缓存 // Get from Redis cache
+        List<User> users = (List<User>) generalRedisTemplate.opsForValue().get(cacheKey);
+        if (users != null) {
+            System.out.println("from cache: " + cacheKey);
+            return users;
+        }
+
+        // 如果缓存不存在，从数据库查询 // If cache does not exist, query from database
+        users = userMapper.selectUsersByIds(userIds);
+        if (users == null) {
+            users = new ArrayList<>();
+        }
+
+        // 将结果存入 Redis，并设置过期时间 // Store result in Redis with expiration time
+        if (!users.isEmpty()) {
+            generalRedisTemplate.opsForValue().set(cacheKey, users, CACHE_EXPIRE_TIME, TimeUnit.SECONDS);
+        }
+
         return users;
     }
 

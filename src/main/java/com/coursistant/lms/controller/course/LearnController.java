@@ -4,6 +4,7 @@ import cn.hutool.core.util.ObjectUtil;
 import com.coursistant.lms.common.Result;
 import com.coursistant.lms.common.enums.ResultCodeEnum;
 import com.coursistant.lms.entity.Learn;
+import com.coursistant.lms.entity.User;
 import com.coursistant.lms.service.course.LearnService;
 import com.coursistant.lms.annotation.RequiresPermission;
 import org.springframework.web.bind.annotation.*;
@@ -128,6 +129,14 @@ public class LearnController {
         List<Learn> list = learnService.selectAll(learn);
         logResponse("selectAll", null);
         return Result.success(list);
+    }
+
+    @GetMapping("/selectByCourseId/{id}")
+    public Result selectByCourseId(@PathVariable Integer id) {
+        logRequest("selectByCourseId", id.toString());
+        List<User> students = learnService.getStudentsByCourseId(id);
+        logResponse("selectByCourseId", null);
+        return Result.success(students);
     }
 
 

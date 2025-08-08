@@ -70,6 +70,7 @@ public enum ResultCodeEnum {
      */
     GROUP_JOIN_INVALID_ERROR("4050", "Group Is Full/Not Open for Join"),
     DUPLICATED_GROUP_MEMBER_ERROR("4051", "User Already In Group"),
+    DUPLICATED_LEARN_RELATION_ERROR("4052", "User Already In This Course"),
 
     /**
      * External service errors (600X)

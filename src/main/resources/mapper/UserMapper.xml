@@ -43,6 +43,14 @@
         )
     </select>
 
+    <select id="selectUsersByIds" resultType="com.coursistant.lms.entity.User">
+        SELECT * FROM User
+        WHERE id IN
+        <foreach item="id" collection="userIds" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </select>
+
     <delete id="deleteById">
         delete from User
         where  id = #{id}
