@@ -69,7 +69,6 @@ public class CoursistanceService {
     public Query query(File file, Integer courseId, String query, Integer dialogueId, Integer userId, ZoneId timezone) {
         Query returnQuery = new Query();
 
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
         // 检查对话是否存在 / Check if dialogue exists
         Dialogue dialogue= dialogueMapper.selectById(dialogueId);
         Boolean initial=false;

@@ -34,7 +34,7 @@ public class ReadFileController {
     @GetMapping("/readFile")
     public ResponseEntity<byte[]> readFile(@RequestParam String filePath) {
 
-        String baseUrl = "http://dev.xlearnedu.com:6201/read_file/";
+        String baseUrl = "http://ec2.dev.xlearnedu.com:6201/read_file/";
         String url = baseUrl + "?file_path=" + filePath;
         HttpHeaders headers = new HttpHeaders();
         headers.setAccept(java.util.Collections.singletonList(MediaType.APPLICATION_OCTET_STREAM));

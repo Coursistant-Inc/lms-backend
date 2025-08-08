@@ -7,6 +7,7 @@ import com.coursistant.lms.common.enums.ResultCodeEnum;
 import com.coursistant.lms.entity.SubmissionFile;
 import com.coursistant.lms.exception.CustomException;
 import com.coursistant.lms.mapper.file.SubmissionFileMapper;
+import com.coursistant.lms.service.system.MinIOService;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -22,32 +23,33 @@ public class SubmissionFileService {
     @Resource
     private SubmissionFileMapper submissionFileMapper;
 
-    private static final String filePath = System.getProperty("user.dir") + "/disk/submission/";
+    @Resource
+    private MinIOService minIOService;
+
+    private static final String filePath = "submission/";
+    private static final String bucket = "lms-uploads";
 
     public void add(MultipartFile file, Integer submissionId) {
         SubmissionFile submissionFile=new SubmissionFile();
         // 创建文件存储路径
         // Create file storage path
         String path = filePath + submissionId+ "/";
-        if (!FileUtil.exist(path)) {
-            FileUtil.mkdir(path);
-        }
-
         // 获取文件信息
         // Get file information
         String filename = file.getOriginalFilename();
-        String fullpath = path + filename;
+        String fileDest = path + filename;
 
 
         try {
-            file.transferTo(new File(fullpath));
-        } catch (IOException e) {
+            minIOService.uploadFile(fileDest, file, bucket);
+        } catch (Exception e) {
+            e.printStackTrace();
             throw new CustomException(ResultCodeEnum.FILE_UPLOAD_ERROR);
         }
 
         submissionFile.setSubmissionId(submissionId);
         submissionFile.setName(filename);
-        submissionFile.setPath(fullpath);
+        submissionFile.setPath(fileDest);
         submissionFileMapper.insert(submissionFile);
     }
 
@@ -60,20 +62,18 @@ public class SubmissionFileService {
         if (ObjectUtil.isNull(submissionFile)){
             throw new CustomException(ResultCodeEnum.FILE_NOT_FOUND);
         }
-        String filepath=submissionFile.getPath();
+        String fileDest=submissionFile.getPath();
 
-        submissionFileMapper.deleteById(id);
 
-        File file = new File(filepath);
-        if (file.exists()) {
-            boolean deleted = file.delete();
-            if (!deleted) {
-                throw new CustomException(ResultCodeEnum.FILE_DELETION_ERROR);
-            }
-        } else {
-            throw new CustomException(ResultCodeEnum.FILE_NOT_FOUND);
+
+        try {
+            minIOService.deleteFile(fileDest, bucket);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new CustomException(ResultCodeEnum.FILE_DELETION_ERROR);
         }
 
+        submissionFileMapper.deleteById(id);
     }
 
     /**

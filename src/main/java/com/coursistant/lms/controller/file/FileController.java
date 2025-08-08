@@ -1,14 +1,23 @@
 package com.coursistant.lms.controller.file;
 
 import cn.hutool.core.io.FileUtil;
+import org.springframework.core.io.InputStreamResource;
 import cn.hutool.core.thread.ThreadUtil;
 import cn.hutool.core.util.StrUtil;
 import com.coursistant.lms.common.Result;
+import com.coursistant.lms.service.system.MinIOService;
+
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletResponse;
+
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URLEncoder;
 
@@ -29,6 +38,9 @@ public class FileController {
 
     @Value("${ip:localhost}")
     private String ip;
+
+    @Resource
+    private MinIOService minIOService;
 
     /**
      * 文件上传
@@ -93,5 +105,29 @@ public class FileController {
     public void delFile(@PathVariable String flag) {
         FileUtil.del(filePath + flag);
         System.out.println("删除文件 " + flag + " 成功 / File " + flag + " deleted successfully");
+    }
+
+    /* 
+     * Download a file from MinIO bucket storage
+     */
+    @GetMapping("/downloadFileMinIO")
+    public ResponseEntity<InputStreamResource> download(
+            @RequestParam String bucket,
+            @RequestParam String fileDest
+    ) {
+        try {
+            InputStream stream = minIOService.downloadFile(fileDest, bucket);
+
+            String outputFilename = fileDest.substring(fileDest.lastIndexOf("/") + 1);
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + outputFilename + "\"")
+                    .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                    .body(new InputStreamResource(stream));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError()
+                    .body(null); // or return an error message instead
+        }
     }
 }

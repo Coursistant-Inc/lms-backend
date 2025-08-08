@@ -31,7 +31,8 @@ public class WebConfig implements WebMvcConfigurer {
                 .excludePathPatterns("/sendResetEmailVerification") // 允许发送邮件验证 / Allow sending email verification
                 .excludePathPatterns("/refresh-token")
                 .excludePathPatterns("/validateRegisterEmailVerification")
-                .excludePathPatterns("/resetPasswordValidation"); // 允许发送邮件验证 / Allow sending email verification
+                .excludePathPatterns("/resetPasswordValidation") // 允许发送邮件验证 / Allow sending email verification
+                .excludePathPatterns("/sales");
 
 
     }

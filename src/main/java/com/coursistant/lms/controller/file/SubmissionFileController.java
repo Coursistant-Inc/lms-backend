@@ -3,6 +3,7 @@ package com.coursistant.lms.controller.file;
 import com.coursistant.lms.service.file.SubmissionFileService;
 import com.coursistant.lms.common.Result;
 import com.coursistant.lms.entity.SubmissionFile;
+import com.coursistant.lms.annotation.RequiresPermission;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -35,6 +36,7 @@ public class SubmissionFileController {
      * 新增书签
      * Add a new submissionFile
      */
+    @RequiresPermission("assignment:submit")
     @PostMapping("/add")
     public Result add(MultipartFile file, Integer submissionId) {
         logRequest("add", submissionId.toString());
@@ -47,6 +49,7 @@ public class SubmissionFileController {
      * 根据 ID 删除书签
      * Delete a submissionFile by ID
      */
+    @RequiresPermission("assignment:submit")
     @DeleteMapping("/delete/{id}")
     public Result deleteById(@PathVariable Integer id) {
         logRequest("deleteById", id.toString());
@@ -59,6 +62,7 @@ public class SubmissionFileController {
      * 批量删除书签
      * Batch delete submissionFiles
      */
+    @RequiresPermission("assignment:submit")
     @DeleteMapping("/delete/batch")
     public Result deleteBatch(@RequestBody List<Integer> ids) {
         logRequest("deleteBatch", ids.toString());
@@ -71,6 +75,7 @@ public class SubmissionFileController {
      * 更新书签
      * Update a submissionFile
      */
+    @RequiresPermission("assignment:submit")
     @PutMapping("/update")
     public Result updateById(@RequestBody SubmissionFile submissionFile) {
         logRequest("updateById", submissionFile.toString());
@@ -83,6 +88,7 @@ public class SubmissionFileController {
      * 根据 ID 查询书签
      * Query a submissionFile by ID
      */
+    @RequiresPermission("assignment:submit")
     @GetMapping("/selectById/{id}")
     public Result selectById(@PathVariable Integer id) {
         logRequest("selectById", id.toString());
@@ -95,6 +101,7 @@ public class SubmissionFileController {
      * 查询所有书签
      * Query all submissionFiles
      */
+    @RequiresPermission("assignment:submit")
     @GetMapping("/selectAll")
     public Result selectAll(SubmissionFile submissionFile) {
         logRequest("selectAll", submissionFile != null ? submissionFile.toString() : "null");

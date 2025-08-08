@@ -3,6 +3,7 @@ package com.coursistant.lms.controller.course;
 import com.coursistant.lms.common.Result;
 import com.coursistant.lms.entity.Course;
 import com.coursistant.lms.service.course.CourseService;
+import com.coursistant.lms.annotation.RequiresPermission;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.annotation.Resource;
@@ -36,6 +37,7 @@ public class CourseController {
      * 新增
      * Add a new course
      */
+    @RequiresPermission("course:manage")
     @PostMapping("/add")
     public Result add(@RequestBody Course course) {
         logRequest("add", course.toString());
@@ -50,6 +52,7 @@ public class CourseController {
      * 删除
      * Delete a course by ID
      */
+    @RequiresPermission("course:manage")
     @DeleteMapping("/delete/{id}")
     public Result deleteById(@PathVariable Integer id) {
         logRequest("deleteById", id.toString());
@@ -62,6 +65,7 @@ public class CourseController {
      * 批量删除
      * Batch delete courses
      */
+    @RequiresPermission("course:manage")
     @DeleteMapping("/delete/batch")
     public Result deleteBatch(@RequestBody List<Integer> ids) {
         logRequest("deleteBatch", ids.toString());
@@ -74,6 +78,7 @@ public class CourseController {
      * 修改
      * Update a course
      */
+    @RequiresPermission("course:manage")
     @PutMapping("/update")
     public Result updateById(@RequestBody Course course) {
         logRequest("updateById", course.toString());
@@ -86,6 +91,7 @@ public class CourseController {
      * 根据ID查询
      * Query a course by ID
      */
+    @RequiresPermission("course:view")
     @GetMapping("/selectById/{id}")
     public Result selectById(@PathVariable Integer id) {
         logRequest("selectById", id.toString());
@@ -98,6 +104,7 @@ public class CourseController {
      * 查询所有
      * Query all courses
      */
+    @RequiresPermission("course:view")
     @GetMapping("/selectAll")
     public Result selectAll(Course course) {
         logRequest("selectAll", course != null ? course.toString() : "null");
@@ -110,6 +117,7 @@ public class CourseController {
      * 查询所有
      * Query all courses by userId
      */
+    @RequiresPermission("course:view")
     @GetMapping("/selectByUserId/{id}")
     public Result selectByUserId(@PathVariable Integer id) {
         logRequest("selectById", id.toString());
