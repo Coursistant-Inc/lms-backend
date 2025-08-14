@@ -30,7 +30,7 @@ public class Course implements Serializable {
 
     private String title;
 
-
+    private Integer courseUnitCount;
 
 
 
@@ -126,5 +126,13 @@ public class Course implements Serializable {
 
     public void setTitle(String title) {
         this.title = title;
+    }
+
+    public Integer getCourseUnitCount() {
+        return this.courseUnitCount;
+    }
+
+    public void setCourseUnitCount(Integer courseUnitCount) {
+        this.courseUnitCount = courseUnitCount;
     }
 }
