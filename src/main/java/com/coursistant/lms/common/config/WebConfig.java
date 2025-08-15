@@ -32,7 +32,10 @@ public class WebConfig implements WebMvcConfigurer {
                 .excludePathPatterns("/refresh-token")
                 .excludePathPatterns("/validateRegisterEmailVerification")
                 .excludePathPatterns("/resetPasswordValidation") // 允许发送邮件验证 / Allow sending email verification
-                .excludePathPatterns("/sales");
+                .excludePathPatterns("/sales")
+                .excludePathPatterns("/login/oauth2/**")        // ✅ OAuth 回调（Google 重定向回来）
+                .excludePathPatterns("/oauth2/authorization/**")
+        ;
 
 
     }
