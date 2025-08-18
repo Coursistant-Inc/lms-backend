@@ -28,10 +28,16 @@
     </select>
 
     <select id="selectById" resultType="com.coursistant.lms.entity.Course">
-        select
-        <include refid="Base_Column_List" />
-        from Course
-        where id = #{id}
+        SELECT
+            c.*,
+            COALESCE(f.unit_count, 0) AS courseUnitCount
+        FROM Course c
+                 LEFT JOIN (
+            SELECT course_id, COUNT(*) AS unit_count
+            FROM Folder
+            GROUP BY course_id
+        ) f ON f.course_id = c.id
+        WHERE c.id = #{id}
     </select>
 
     <delete id="deleteById">
