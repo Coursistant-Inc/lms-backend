@@ -72,7 +72,6 @@ public class TeachService {
      */
     public void deleteByCourseId(Integer courseId) {
         teachMapper.deleteByCourseId(courseId);
-        // 清理相关缓存 // Clear related cache
         clearTeachAllCache();
 
     }
@@ -159,6 +158,8 @@ public class TeachService {
 
         return teachs;
     }
+
+
 
 
 }

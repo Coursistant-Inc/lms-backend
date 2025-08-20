@@ -77,8 +77,8 @@ spring:
       
   servlet:
     multipart:
-      max-file-size: 100MB
-      max-request-size: 100MB
+      max-file-size: 1000MB
+      max-request-size: 1000MB
   hadoop:
     fs:
       defaultFS: hdfs://dev.xlearnedu.com:9666 # HDFS 的地址 (替换为你的 Hadoop 集群地址)
