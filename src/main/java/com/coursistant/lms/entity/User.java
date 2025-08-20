@@ -63,6 +63,8 @@ public class User extends Account implements Serializable {
 
     private String type;
 
+    private Boolean mustChangePassword;
+
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder("{");
@@ -194,5 +196,12 @@ public class User extends Account implements Serializable {
         this.type = type;
     }
 
+    public Boolean getMustChangePassword() {
+        return mustChangePassword;
+    }
+
+    public void setMustChangePassword(Boolean mustChangePassword) {
+        this.mustChangePassword = mustChangePassword;
+    }
     
 }

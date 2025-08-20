@@ -121,4 +121,10 @@
         where id = #{id}
     </update>
 
+    <update id="updateMustChangePassword" parameterType="com.coursistant.lms.entity.User">
+        UPDATE User
+        SET must_change_password = #{mustChangePassword}
+        WHERE id = #{id}
+    </update>
+
 </mapper>

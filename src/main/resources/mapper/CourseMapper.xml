@@ -38,7 +38,7 @@
             GROUP BY course_id
         ) f ON f.course_id = c.id
         WHERE c.id = #{id}
-    </select>
+    </select>   
 
     <delete id="deleteById">
         delete from Course

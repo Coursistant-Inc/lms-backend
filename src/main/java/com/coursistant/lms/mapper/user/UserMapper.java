@@ -68,4 +68,6 @@ public interface UserMapper {
     List<User> selectStudentsByCourseId(Integer courseId);
 
     List<User> selectUsersByIds(List<Integer> userIds);
+
+    void updateMustChangePassword( Integer id, boolean mustChangePassword);
 }
