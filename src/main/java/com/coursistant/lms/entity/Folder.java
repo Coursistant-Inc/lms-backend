@@ -25,6 +25,8 @@ public class Folder implements Serializable {
     /** 排序字段，值越小越靠前 */
     private Integer orderIndex;
 
+    private String title;
+
     public Folder() {
     }
 
@@ -66,6 +68,14 @@ public class Folder implements Serializable {
 
     public void setOrderIndex(Integer orderIndex) {
         this.orderIndex = orderIndex;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
     }
 
     @Override

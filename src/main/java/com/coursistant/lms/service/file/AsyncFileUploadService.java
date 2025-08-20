@@ -14,6 +14,7 @@ import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.core5.http.HttpEntity;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.hc.core5.http.ParseException;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.IOException;
@@ -30,42 +31,46 @@ public class AsyncFileUploadService {
      * 方法签名从 (String courseName, MultipartFile file) 改为 (String courseName, String fullpath)
      */
     @Async
-    public void asyncUploadFile(Integer courseId, String fullpath) {
-        // 1. 检查本地文件是否存在
-        File localFile = new File(fullpath);
-        if (!localFile.exists() || !localFile.isFile()) {
-            logger.info("本地文件不存在或不是文件: " + fullpath);
-            return;
-        }
+    public void asyncUploadFile(Integer courseId, MultipartFile file) {
+        try {
+            // 1. 将 MultipartFile 保存为临时文件
+            File tempFile = File.createTempFile("upload_", "_" + file.getOriginalFilename());
+            file.transferTo(tempFile);
 
-        // 2. 使用 HttpClient 进行文件上传
-        try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
-            // 构造请求
-            HttpPost httpPost = new HttpPost("http://dev.xlearnedu.com:5100/file");
-            MultipartEntityBuilder builder = MultipartEntityBuilder.create();
+            // 2. 使用 HttpClient 进行文件上传
+            try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
+                HttpPost httpPost = new HttpPost("http://dev.xlearnedu.com:5100/file");
+                MultipartEntityBuilder builder = MultipartEntityBuilder.create();
 
-            // 添加文本参数 course_id
-            builder.addTextBody("course_id", courseId.toString(), ContentType.TEXT_PLAIN);
+                // 添加文本参数 course_id
+                builder.addTextBody("course_id", courseId.toString(), ContentType.TEXT_PLAIN);
 
-            // 添加文件参数 file（直接传 File 对象）
-            builder.addBinaryBody("file", localFile, ContentType.MULTIPART_FORM_DATA, localFile.getName());
+                // 添加文件参数 file
+                builder.addBinaryBody("file", tempFile, ContentType.MULTIPART_FORM_DATA, tempFile.getName());
 
-            // 拼装请求体
-            HttpEntity multipart = builder.build();
-            httpPost.setEntity(multipart);
+                HttpEntity multipart = builder.build();
+                httpPost.setEntity(multipart);
 
-            // 执行请求
-            try (CloseableHttpResponse response = httpClient.execute(httpPost)) {
-                int statusCode = response.getCode();
-                if (statusCode == 200) {
-                    String result = EntityUtils.toString(response.getEntity());
-                    logger.info("异步上传成功，返回结果: {}" + result);
-                } else {
-                    logger.info("异步上传失败，HTTP Status: {}" + statusCode);
+                try (CloseableHttpResponse response = httpClient.execute(httpPost)) {
+                    int statusCode = response.getCode();
+                    if (statusCode == 200) {
+                        String result = EntityUtils.toString(response.getEntity());
+                        logger.info("异步上传成功，返回结果: {}" + result);
+                    } else {
+                        logger.info("异步上传失败，HTTP Status: {}" + statusCode);
+                    }
+                }
+            } catch (IOException | ParseException e) {
+                logger.info("异步上传出现异常: " + e);
+            } finally {
+                // 删除临时文件
+                if (tempFile.exists()) {
+                    tempFile.delete();
                 }
             }
-        } catch (IOException | ParseException e) {
-            logger.info("异步上传出现异常: " + e);
+        } catch (IOException e) {
+            logger.info("保存 MultipartFile 到临时文件失败: " + e);
         }
     }
+
 }

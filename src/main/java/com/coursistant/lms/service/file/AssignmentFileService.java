@@ -7,6 +7,8 @@ import com.coursistant.lms.common.enums.ResultCodeEnum;
 import com.coursistant.lms.entity.AssignmentFile;
 import com.coursistant.lms.exception.CustomException;
 import com.coursistant.lms.mapper.file.AssignmentFileMapper;
+import com.coursistant.lms.service.system.MinIOService;
+
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -22,32 +24,42 @@ public class AssignmentFileService {
     @Resource
     private AssignmentFileMapper assignmentFileMapper;
 
-    private static final String filePath = System.getProperty("user.dir") + "/disk/assignment/";
+    @Resource
+    private MinIOService minIOService;
+
+    private static final String filePath = "assignment/";
+    private static final String bucket = "lms-uploads";
 
     public void add(MultipartFile file, Integer assignmentId) {
         AssignmentFile assignmentFile=new AssignmentFile();
         // 创建文件存储路径
         // Create file storage path
         String path = filePath + assignmentId+ "/";
-        if (!FileUtil.exist(path)) {
-            FileUtil.mkdir(path);
-        }
+        // if (!FileUtil.exist(path)) {
+        //     FileUtil.mkdir(path);
+        // }
 
         // 获取文件信息
         // Get file information
         String filename = file.getOriginalFilename();
-        String fullpath = path + filename;
+        String fileDest = path + filename;
 
 
+        // try {
+        //     file.transferTo(new File(fullpath));
+        // } catch (IOException e) {
+        //     throw new CustomException(ResultCodeEnum.FILE_UPLOAD_ERROR);
+        // }
         try {
-            file.transferTo(new File(fullpath));
-        } catch (IOException e) {
+            minIOService.uploadFile(fileDest, file, bucket);
+        } catch (Exception e) {
+            e.printStackTrace();
             throw new CustomException(ResultCodeEnum.FILE_UPLOAD_ERROR);
         }
 
         assignmentFile.setAssignmentId(assignmentId);
         assignmentFile.setName(filename);
-        assignmentFile.setPath(fullpath);
+        assignmentFile.setPath(fileDest);
         assignmentFileMapper.insert(assignmentFile);
     }
 
@@ -60,19 +72,26 @@ public class AssignmentFileService {
         if (ObjectUtil.isNull(assignmentFile)){
             throw new CustomException(ResultCodeEnum.FILE_NOT_FOUND);
         }
-        String filepath=assignmentFile.getPath();
+        String fileDest=assignmentFile.getPath();
+
+
+        // File file = new File(filepath);
+        // if (file.exists()) {
+        //     boolean deleted = file.delete();
+        //     if (!deleted) {
+        //         throw new CustomException(ResultCodeEnum.FILE_DELETION_ERROR);
+        //     }
+        // } else {
+        //     throw new CustomException(ResultCodeEnum.FILE_NOT_FOUND);
+        // }
+        try {
+            minIOService.deleteFile(fileDest, bucket);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new CustomException(ResultCodeEnum.FILE_DELETION_ERROR);
+        }
 
         assignmentFileMapper.deleteById(id);
-
-        File file = new File(filepath);
-        if (file.exists()) {
-            boolean deleted = file.delete();
-            if (!deleted) {
-                throw new CustomException(ResultCodeEnum.FILE_DELETION_ERROR);
-            }
-        } else {
-            throw new CustomException(ResultCodeEnum.FILE_NOT_FOUND);
-        }
 
     }
 

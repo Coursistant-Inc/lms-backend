@@ -23,8 +23,8 @@ public class RedisConfig {
 
     private static final String REDIS_HOST = "localhost";
     private static final int REDIS_PORT = 6382;
-    @Value("${REDIS_DEFAULT_USERNAME}")
-    private String redisUsername;
+    //@Value("${REDIS_DEFAULT_USERNAME}")
+    //private String redisUsername;
 
     @Value("${REDIS_DEFAULT_PASSWORD}")
     private String redisPassword;
@@ -102,7 +102,7 @@ public class RedisConfig {
         redisConfig.setHostName(REDIS_HOST);
         redisConfig.setPort(REDIS_PORT);
         redisConfig.setDatabase(database);
-        redisConfig.setUsername(redisUsername); // 设置用户名 / Set username
+        //redisConfig.setUsername(redisUsername); // 设置用户名 / Set username
         redisConfig.setPassword(redisPassword); // 设置密码 / Set password
 
         LettuceConnectionFactory factory = new LettuceConnectionFactory(redisConfig);

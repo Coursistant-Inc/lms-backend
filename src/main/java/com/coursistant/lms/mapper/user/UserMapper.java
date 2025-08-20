@@ -66,4 +66,6 @@ public interface UserMapper {
      * Query all students by course ID
      */
     List<User> selectStudentsByCourseId(Integer courseId);
+
+    List<User> selectUsersByIds(List<Integer> userIds);
 }

@@ -17,6 +17,15 @@ spring:
               client-id: ${GOOGLE_CLIENT_ID}
               client-secret: ${GOOGLE_CLIENT_SECRET}
               redirect-uri: https://ec2.dev.xlearnedu.com/login/oauth2/code/google
+            google-drive: # 新增：专门给 Drive 授权
+              client-id: ${GOOGLE_CLIENT_ID}
+              client-secret: ${GOOGLE_CLIENT_SECRET}
+              authorization-grant-type: authorization_code
+              scope:
+                - https://www.googleapis.com/auth/drive.readonly
+              redirect-uri: http://localhost:9090/api/login/oauth2/code/google-drive
+              client-name: Google Drive
+              provider: google
             microsoft:
               client-id: ${MICROSOFT_CLIENT_ID}
               client-secret: ${MICROSOFT_CLIENT_SECRET}
@@ -32,8 +41,10 @@ spring:
               
           provider:
             google:
+              authorization-uri: https://accounts.google.com/o/oauth2/v2/auth
               token-uri: https://oauth2.googleapis.com/token
               user-info-uri: https://www.googleapis.com/oauth2/v3/userinfo
+              user-name-attribute: sub
             microsoft:
               authorization-uri: https://login.microsoftonline.com/common/oauth2/v2.0/authorize
               token-uri: https://login.microsoftonline.com/common/oauth2/v2.0/token
@@ -53,7 +64,7 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
-    url: jdbc:mysql://dev.xlearnedu.com:3306/lms?useUnicode=true&characterEncoding=utf-8&allowMultiQueries=true&useSSL=false&serverTimezone=GMT%2b8&allowPublicKeyRetrieval=true
+    url: jdbc:mysql://54.201.68.249:3306/lms?useUnicode=true&characterEncoding=utf-8&allowMultiQueries=true&useSSL=false&serverTimezone=GMT%2b8&allowPublicKeyRetrieval=true
 
     hikari:
       maximum-pool-size: 32
@@ -66,8 +77,8 @@ spring:
       
   servlet:
     multipart:
-      max-file-size: 100MB
-      max-request-size: 100MB
+      max-file-size: 1000MB
+      max-request-size: 1000MB
   hadoop:
     fs:
       defaultFS: hdfs://dev.xlearnedu.com:9666 # HDFS 的地址 (替换为你的 Hadoop 集群地址)
@@ -104,6 +115,11 @@ pagehelper:
   reasonable: true
   support-methods-arguments: true
   params: count=countSql
+
+minio:
+  url: http://localhost:9000
+  access-key: lmsadmin
+  secret-key: LmsMinIO2025!SecureProd
 
 ip: localhost
 
