@@ -1,5 +1,7 @@
 package com.coursistant.lms.controller.file;
 
+import com.coursistant.lms.entity.FileSummary;
+import com.coursistant.lms.service.file.DiskFilesService;
 import com.coursistant.lms.service.file.SubmissionFileService;
 import com.coursistant.lms.common.Result;
 import com.coursistant.lms.entity.SubmissionFile;
@@ -8,19 +10,25 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import jakarta.annotation.Resource;
+
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Logger;
 
 /**
- * 部门信息表前端操作接口
+ * SubmissionFile 前端操作接口
  * SubmissionFile frontend operation API
- **/
+ */
 @RestController
-@RequestMapping("/submissionFile")
+@RequestMapping("/submissionContentItem")
 public class SubmissionFileController {
 
     @Resource
     private SubmissionFileService submissionFileService;
+
+    @Resource
+    private DiskFilesService diskFilesService;
 
     private static final Logger logger = Logger.getLogger(SubmissionFileController.class.getName());
 
@@ -32,23 +40,17 @@ public class SubmissionFileController {
         logger.info(() -> String.format("End %s: %s", methodName, response));
     }
 
-    /**
-     * 新增书签
-     * Add a new submissionFile
-     */
     @RequiresPermission("assignment:submit")
     @PostMapping("/add")
-    public Result add(MultipartFile file, Integer submissionId) {
-        logRequest("add", submissionId.toString());
-        submissionFileService.add(file,submissionId);
+    public Result add(@RequestBody SubmissionFile submissionFile) {
+        logRequest("add", submissionFile.toString());
+        Integer submissionFileId = submissionFileService.add(submissionFile);
         logResponse("add", "Success");
-        return Result.success();
+        Map<String, Object> data = new HashMap<>();
+        data.put("submissionFileId", submissionFileId);
+        return Result.success(data);
     }
 
-    /**
-     * 根据 ID 删除书签
-     * Delete a submissionFile by ID
-     */
     @RequiresPermission("assignment:submit")
     @DeleteMapping("/delete/{id}")
     public Result deleteById(@PathVariable Integer id) {
@@ -58,10 +60,6 @@ public class SubmissionFileController {
         return Result.success();
     }
 
-    /**
-     * 批量删除书签
-     * Batch delete submissionFiles
-     */
     @RequiresPermission("assignment:submit")
     @DeleteMapping("/delete/batch")
     public Result deleteBatch(@RequestBody List<Integer> ids) {
@@ -71,24 +69,16 @@ public class SubmissionFileController {
         return Result.success();
     }
 
-    /**
-     * 更新书签
-     * Update a submissionFile
-     */
     @RequiresPermission("assignment:submit")
     @PutMapping("/update")
-    public Result updateById(@RequestBody SubmissionFile submissionFile) {
-        logRequest("updateById", submissionFile.toString());
+    public Result update(@RequestBody SubmissionFile submissionFile) {
+        logRequest("update", submissionFile.toString());
         submissionFileService.updateById(submissionFile);
-        logResponse("updateById", "Success");
+        logResponse("update", "Success");
         return Result.success();
     }
 
-    /**
-     * 根据 ID 查询书签
-     * Query a submissionFile by ID
-     */
-    @RequiresPermission("assignment:submit")
+    @RequiresPermission("submission:view")
     @GetMapping("/selectById/{id}")
     public Result selectById(@PathVariable Integer id) {
         logRequest("selectById", id.toString());
@@ -97,11 +87,7 @@ public class SubmissionFileController {
         return Result.success(submissionFile);
     }
 
-    /**
-     * 查询所有书签
-     * Query all submissionFiles
-     */
-    @RequiresPermission("assignment:submit")
+    @RequiresPermission("submission:view")
     @GetMapping("/selectAll")
     public Result selectAll(SubmissionFile submissionFile) {
         logRequest("selectAll", submissionFile != null ? submissionFile.toString() : "null");
@@ -110,4 +96,51 @@ public class SubmissionFileController {
         return Result.success(list);
     }
 
+    @RequiresPermission("submission:view")
+    @GetMapping("/selectBySubmissionId/{submissionId}")
+    public Result selectBySubmissionId(@PathVariable Integer submissionId) {
+        logRequest("selectBySubmissionId", submissionId.toString());
+        List<SubmissionFile> list = submissionFileService.selectBySubmissionId(submissionId);
+        logResponse("selectBySubmissionId", null);
+        return Result.success(list);
+    }
+
+    @RequiresPermission("assignment:submit")
+    @DeleteMapping("/deleteBySubmissionId/{submissionId}")
+    public Result deleteBySubmissionId(@PathVariable Integer submissionId) {
+        logRequest("deleteBySubmissionId", submissionId.toString());
+        submissionFileService.deleteBySubmissionId(submissionId);
+        logResponse("deleteBySubmissionId", "Success");
+        return Result.success();
+    }
+
+    /**
+     * Upload a file and create a SubmissionFile entry (type = file)
+     */
+    @RequiresPermission("assignment:submit")
+    @PostMapping("/addWithFile")
+    public Result addWithFile(@RequestParam("file") MultipartFile file,
+                              @RequestParam(value = "submissionId", required = false) Integer submissionId,
+                              @RequestParam("category") String category,
+                              @RequestParam("courseId") Integer courseId,
+                              @RequestParam("userId") Integer userId,
+                              @RequestParam("orderIndex") Integer orderIndex) {
+        logRequest("addWithFile", file.getOriginalFilename());
+
+        FileSummary summary = diskFilesService.add(file, courseId, userId, category, 0);
+        Integer fileId = summary.getId();
+
+        SubmissionFile item = new SubmissionFile();
+        item.setSubmissionId(submissionId);
+        item.setType("file");
+        item.setFileId(fileId);
+        item.setUploadedBy(userId);
+        item.setOrderIndex(orderIndex);
+
+        Integer submissionFileId = submissionFileService.add(item);
+        logResponse("addWithFile", "Success");
+        Map<String, Object> data = new HashMap<>();
+        data.put("submissionFileId", submissionFileId);
+        return Result.success(data);
+    }
 }

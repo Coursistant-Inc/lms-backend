@@ -12,7 +12,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 import jakarta.annotation.Resource;
 import java.time.ZoneId;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Logger;
 
 /**
@@ -44,14 +46,16 @@ public class AssignmentSubmissionController {
      */
     @RequiresPermission("assignment:submit")
     @PostMapping("/add")
-    public Result add(@ModelAttribute AssignmentSubmission assignmentSubmission,
-                      @RequestPart(value = "files", required = false) List<MultipartFile> files,
+    public Result add(@RequestBody AssignmentSubmission assignmentSubmission,
+
                       @RequestHeader(value = "X-Timezone", required = false) String timezone) {
         logRequest("add", assignmentSubmission.toString());
 
-        assignmentSubmissionService.add(assignmentSubmission,files);
+        Integer submissionId= assignmentSubmissionService.add(assignmentSubmission);
         logResponse("add", "Success");
-        return Result.success();
+        Map<String, Object> data = new HashMap<>();
+        data.put("submissionId", submissionId);
+        return Result.success(data);
     }
 
     /**

@@ -2,6 +2,7 @@ package com.coursistant.lms.controller.course;
 
 import com.coursistant.lms.common.Result;
 import com.coursistant.lms.entity.Course;
+import com.coursistant.lms.entity.DTO.CourseDTO;
 import com.coursistant.lms.service.course.CourseService;
 import com.coursistant.lms.annotation.RequiresPermission;
 import org.springframework.web.bind.annotation.*;
@@ -121,7 +122,7 @@ public class CourseController {
     @GetMapping("/selectByUserId/{id}")
     public Result selectByUserId(@PathVariable Integer id) {
         logRequest("selectById", id.toString());
-        List<Course> list = courseService.selectByUserId(id);
+        List<CourseDTO> list = courseService.selectByUserId(id);
         logResponse("selectById", null);
         return Result.success(list);
     }

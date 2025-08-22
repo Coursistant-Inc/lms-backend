@@ -74,14 +74,31 @@ public class DiskFilesService {
 
         // 检查文件是否已存在 duplicate?
         // Check if the file already exists
-        List<DiskFiles> exist=diskFilesMapper.selectByCourseName(courseId);
-        if (ObjectUtil.isNotNull(exist)){
-            for (int i=0;i<exist.size();i++){
-                if (exist.get(i).getName().equals(filename)){
-                    throw new CustomException(ResultCodeEnum.FILE_DUPLICATE_ERROR);
+        List<DiskFiles> exist = diskFilesMapper.selectByCourseName(courseId);
+        if (ObjectUtil.isNotEmpty(exist)) {
+            // 获取不包含扩展名的文件名
+            String baseName = filename.substring(0, filename.lastIndexOf("."));
+            String extension = extName.isEmpty() ? "" : "." + extName;
+
+            int counter = 1;
+            boolean duplicateFound = true;
+
+            while (duplicateFound) {
+                duplicateFound = false;
+                for (DiskFiles df : exist) {
+                    if (df.getName().equals(filename)) {
+                        // 发现重复 -> 改名
+                        filename = baseName + "_" + counter + extension;
+                        counter++;
+                        duplicateFound = true;
+                        break;
+                    }
                 }
             }
         }
+
+// 重新构建最终路径
+        fileDest = path + filename;
 
         DiskFiles diskFiles = new DiskFiles();
         String now = DateUtil.now();

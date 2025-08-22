@@ -16,6 +16,7 @@ public enum ResultCodeEnum {
     PARAM_STATUS_ERROR("4003", "Please Select Review Status"),
     FILE_CATEGORY_MISMATCH("4004", "File and Category Count Mismatch"),
     INVALID_TIMEZONE("4005", "Invalid or Missing Timezone Header"),
+    GOOGLE_DRIVE_NOT_AUTHORIZED("4006", "GOOGLE_DRIVE_NOT_AUTHORIZED"),
 
     /**
      * Authentication and authorization errors (401X)
@@ -60,7 +61,10 @@ public enum ResultCodeEnum {
     INVITATION_NOT_EXIST_ERROR("4044", "Invitation Not Exist"),
     ASSIGNMENT_NOT_EXIST_ERROR("4045", "Assignment Not Exist"),
     SUBMISSION_NOT_EXIST_ERROR("4046", "Submission Not Exist"),
-    SUBMISSION_NOT_VALID_ERROR("4047", "Submission Not Valid"),
+
+    SUBMISSION_DUE_EXPIRED_ERROR("4047", "Submission Due Date Expired"),
+    SUBMISSION_ATTEMPT_EXCEEDED_ERROR("4051", "Submission Attempts Exceeded"),
+
     EVENT_NOT_EXIST_ERROR("4048", "Event Not Exist"),
     COURSE_SCHEDULE_NOT_EXIST_ERROR("4049", "Course Schedule Not Exist"),
     GROUP_NOT_EXIST_ERROR("4050", "Group Not Exist"),
