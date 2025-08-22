@@ -78,7 +78,7 @@ public class SubmissionFileController {
         return Result.success();
     }
 
-    @RequiresPermission("submission:view")
+    @RequiresPermission("assignment:submit")
     @GetMapping("/selectById/{id}")
     public Result selectById(@PathVariable Integer id) {
         logRequest("selectById", id.toString());
@@ -87,7 +87,7 @@ public class SubmissionFileController {
         return Result.success(submissionFile);
     }
 
-    @RequiresPermission("submission:view")
+    @RequiresPermission("assignment:submit")
     @GetMapping("/selectAll")
     public Result selectAll(SubmissionFile submissionFile) {
         logRequest("selectAll", submissionFile != null ? submissionFile.toString() : "null");
@@ -96,7 +96,7 @@ public class SubmissionFileController {
         return Result.success(list);
     }
 
-    @RequiresPermission("submission:view")
+    @RequiresPermission("assignment:submit")
     @GetMapping("/selectBySubmissionId/{submissionId}")
     public Result selectBySubmissionId(@PathVariable Integer submissionId) {
         logRequest("selectBySubmissionId", submissionId.toString());
