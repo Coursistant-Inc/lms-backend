@@ -4,60 +4,77 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.coursistant.lms.mapper.user.UserMapper">
 
+    <!-- Always alias snake_case -> camelCase to avoid relying on global underscoreToCamelCase -->
     <sql id="Base_Column_List">
-        id,username,password,name,phone,email,avatar,role,level,invitation
+        id,
+        username,
+        password,
+        name,
+        phone,
+        email,
+        avatar,
+        role,
+        level,
+        invitation,
+        must_change_password AS mustChangePassword
     </sql>
 
+    <!-- ====== SELECTS ====== -->
     <select id="selectAll" resultType="com.coursistant.lms.entity.User">
-        select
-        <include refid="Base_Column_List" />
-        from User
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM User
         <where>
-            <if test="id != null"> and id= #{id}</if>
-            <if test="username != null"> and username = #{username}</if>
-            <if test="password != null"> and password= #{password}</if>
-            <if test="name != null"> and name= #{name}</if>
-            <if test="phone != null"> and phone= #{phone}</if>
-            <if test="email != null"> and email= #{email}</if>
-            <if test="avatar != null"> and avatar= #{avatar}</if>
-            <if test="role != null"> and role= #{role}</if>
-            <if test="level != null"> and level= #{level}</if>
-            <if test="invitation != null"> and invitation = #{invitation}</if>
-
+            <if test="id != null">AND id = #{id}</if>
+            <if test="username != null">AND username = #{username}</if>
+            <if test="password != null">AND password = #{password}</if>
+            <if test="name != null">AND name = #{name}</if>
+            <if test="phone != null">AND phone = #{phone}</if>
+            <if test="email != null">AND email = #{email}</if>
+            <if test="avatar != null">AND avatar = #{avatar}</if>
+            <if test="role != null">AND role = #{role}</if>
+            <if test="level != null">AND level = #{level}</if>
+            <if test="invitation != null">AND invitation = #{invitation}</if>
+            <if test="mustChangePassword != null">AND must_change_password = #{mustChangePassword, jdbcType=TINYINT}</if>
         </where>
     </select>
 
     <select id="selectById" resultType="com.coursistant.lms.entity.User">
-        select
-        <include refid="Base_Column_List" />
-        from User
-        where id = #{id}
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM User
+        WHERE id = #{id}
     </select>
 
+
     <select id="selectStudentsByCourseId" resultType="com.coursistant.lms.entity.User">
-        select
-        <include refid="Base_Column_List" />
-        from User
-        where id in (
-            select user_id from Learn where course_id = #{courseId}
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM User
+        WHERE id IN (
+        SELECT user_id FROM Learn WHERE course_id = #{courseId}
         )
     </select>
 
     <select id="selectUsersByIds" resultType="com.coursistant.lms.entity.User">
-        SELECT * FROM User
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM User
         WHERE id IN
         <foreach item="id" collection="userIds" open="(" separator="," close=")">
             #{id}
         </foreach>
     </select>
 
+    <!-- ====== DML ====== -->
+
     <delete id="deleteById">
-        delete from User
-        where  id = #{id}
+        DELETE FROM User
+        WHERE id = #{id}
     </delete>
 
-    <insert id="insert" parameterType="com.coursistant.lms.entity.User" useGeneratedKeys="true">
-        insert into User
+    <insert id="insert" parameterType="com.coursistant.lms.entity.User" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO User
         <trim prefix="(" suffix=")" suffixOverrides=",">
             <if test="id != null">id,</if>
             <if test="username != null">username,</if>
@@ -69,9 +86,9 @@
             <if test="role != null">role,</if>
             <if test="level != null">level,</if>
             <if test="invitation != null">invitation,</if>
-
+            <if test="mustChangePassword != null">must_change_password,</if>
         </trim>
-        <trim prefix="values (" suffix=")" suffixOverrides=",">
+        <trim prefix="VALUES (" suffix=")" suffixOverrides=",">
             <if test="id != null">#{id},</if>
             <if test="username != null">#{username},</if>
             <if test="password != null">#{password},</if>
@@ -82,43 +99,33 @@
             <if test="role != null">#{role},</if>
             <if test="level != null">#{level},</if>
             <if test="invitation != null">#{invitation},</if>
-
+            <if test="mustChangePassword != null">#{mustChangePassword, jdbcType=TINYINT},</if>
         </trim>
     </insert>
 
     <update id="updateById" parameterType="com.coursistant.lms.entity.User">
-        update User
+        UPDATE User
         <set>
-            <if test="username != null">
-                username = #{username},
+            <if test="username != null">username = #{username},</if>
+            <if test="password != null">password = #{password},</if>
+            <if test="name != null">name = #{name},</if>
+            <if test="phone != null">phone = #{phone},</if>
+            <if test="email != null">email = #{email},</if>
+            <if test="avatar != null">avatar = #{avatar},</if>
+            <if test="role != null">role = #{role},</if>
+            <if test="level != null">level = #{level},</if>
+            <if test="invitation != null">invitation = #{invitation},</if>
+            <if test="mustChangePassword != null">
+                must_change_password = #{mustChangePassword, jdbcType=TINYINT},
             </if>
-            <if test="password != null">
-                password = #{password},
-            </if>
-            <if test="name != null">
-                name = #{name},
-            </if>
-            <if test="phone != null">
-                phone = #{phone},
-            </if>
-            <if test="email != null">
-                email = #{email},
-            </if>
-            <if test="avatar != null">
-                avatar = #{avatar},
-            </if>
-            <if test="role != null">
-                role = #{role},
-            </if>
-            <if test="level != null">
-                level = #{level},
-            </if>
-            <if test="invitation != null">
-                invitation = #{invitation},
-            </if>
-
         </set>
-        where id = #{id}
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateMustChangePassword">
+        UPDATE User
+        SET must_change_password = #{mustChangePassword, jdbcType=TINYINT}
+        WHERE id = #{id}
     </update>
 
 </mapper>

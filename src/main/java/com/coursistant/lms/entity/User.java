@@ -63,6 +63,8 @@ public class User extends Account implements Serializable {
 
     private String type;
 
+    private Boolean mustChangePassword;
+
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder("{");
@@ -75,6 +77,7 @@ public class User extends Account implements Serializable {
         if (level != null) sb.append("\"level\":\"").append(level).append("\",");
         if (phone != null) sb.append("\"phone\":\"").append(phone).append("\",");
         if (email != null) sb.append("\"email\":\"").append(email).append("\",");
+        if (mustChangePassword != null) sb.append("\"mustChangePassword\":\"").append(mustChangePassword).append("\",");
         if (sb.charAt(sb.length() - 1) == ',') sb.deleteCharAt(sb.length() - 1); // 删除最后的逗号 / Remove trailing comma
         sb.append("}");
         return sb.toString();
@@ -194,5 +197,12 @@ public class User extends Account implements Serializable {
         this.type = type;
     }
 
+    public Boolean getMustChangePassword() {
+        return mustChangePassword;
+    }
+
+    public void setMustChangePassword(Boolean mustChangePassword) {
+        this.mustChangePassword = mustChangePassword;
+    }
     
 }

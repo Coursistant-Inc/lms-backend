@@ -319,6 +319,7 @@ public class UserService {
 
         String encryptedNewPassword = PasswordEncoderUtil.encodePassword(account.getNewPassword());
         dbUser.setPassword(encryptedNewPassword);
+        dbUser.setMustChangePassword(false);
         userMapper.updateById(dbUser);
 
         generalRedisTemplate.delete("user:email:" + account.getEmail());
@@ -412,5 +413,9 @@ public class UserService {
 
         // 发送邮件
         emailUtil.sendEmail(email, subject, content);
+    }
+
+    public void markPasswordChanged(Integer id) {
+        userMapper.updateMustChangePassword(id, false);
     }
 }
