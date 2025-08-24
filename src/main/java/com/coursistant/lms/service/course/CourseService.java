@@ -13,7 +13,7 @@ import org.springframework.stereotype.Service;
 
 import com.coursistant.lms.common.enums.ResultCodeEnum;
 import com.coursistant.lms.entity.Course;
-import com.coursistant.lms.entity.DTO.CourseDTO;
+import com.coursistant.lms.entity.DTO.CourseDetailsDTO;
 import com.coursistant.lms.entity.Teach;
 import com.coursistant.lms.entity.User;
 import com.coursistant.lms.exception.CustomException;
@@ -147,6 +147,25 @@ public class CourseService {
      * 根据User ID查询
      * Query a course by user ID
      */
+
+
+
+    public List<Course>selectCoursesByUserId(Integer id) {
+        User user=userService.selectById(id);
+        List<Course> courses=new ArrayList();
+        if (ObjectUtil.isNull(user)){
+            throw new CustomException(ResultCodeEnum.USER_NOT_EXIST_ERROR);
+        }else{
+            if ("TEACHER".equals(user.getLevel())){
+                courses=courseMapper.selectByUserIdFromTeach(user.getId());
+            }
+            if ("STUDENT".equals(user.getLevel())){
+                courses=courseMapper.selectByUserIdFromLearn(user.getId());
+            }
+        }
+        return courses;
+    }
+    
     public List<Course>selectByUserId(Integer id) {
         User user=userService.selectById(id);
         List<Course> courses=new ArrayList();
@@ -188,9 +207,9 @@ public class CourseService {
         return courses;
     }
 
-    public List<CourseDTO> getCourseDetailsByUserId(Integer userId, List<Course> courseList)
+    public List<CourseDetailsDTO> getCourseDetailsByUserId(Integer userId, List<Course> courseList)
     {
-        List<CourseDTO> courseDetails = courseMapper.selectCourseDetailsByUserId(userId,courseList);
+        List<CourseDetailsDTO> courseDetails = courseMapper.selectCourseDetailsByUserId(userId,courseList);
         return courseDetails;
     }
 

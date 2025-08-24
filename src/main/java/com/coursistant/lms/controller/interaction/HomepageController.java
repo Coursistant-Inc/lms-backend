@@ -12,7 +12,7 @@ import com.coursistant.lms.common.Result;
 import com.coursistant.lms.entity.Announcement;
 import com.coursistant.lms.entity.Course;
 import com.coursistant.lms.entity.DTO.AssignmentDTO;
-import com.coursistant.lms.entity.DTO.CourseDTO;
+import com.coursistant.lms.entity.DTO.CourseDetailsDTO;
 import com.coursistant.lms.service.assignment.AssignmentService;
 import com.coursistant.lms.service.course.CourseService;
 import com.coursistant.lms.service.interaction.AnnouncementService;
@@ -47,7 +47,7 @@ public class HomepageController {
     @GetMapping("/announcement/{userId}")
     public Result getAnnouncements(@PathVariable Integer userId)
     {
-        List<Course> courseList = courseService.selectByUserId(userId);
+        List<Course> courseList = courseService.selectCoursesByUserId(userId);
         List<Announcement> announcementList = announcementService.selectLatestAnnouncementByCourseId(courseList);
         return Result.success(announcementList);
 
@@ -57,7 +57,7 @@ public class HomepageController {
     public Result getCourseDetails(@PathVariable Integer userId)
     {
         List<Course> courseList = courseService.selectByUserId(userId);
-        List<CourseDTO> courseDetails = courseService.getCourseDetailsByUserId(userId, courseList);
+        List<CourseDetailsDTO> courseDetails = courseService.getCourseDetailsByUserId(userId, courseList);
         return Result.success(courseDetails);
     }
 

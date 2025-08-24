@@ -1,6 +1,6 @@
 package com.coursistant.lms.entity.DTO;
 
-public class CourseDTO {
+public class CourseDetailsDTO {
 
     private String name;
     private String avatar;
