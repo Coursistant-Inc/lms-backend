@@ -37,6 +37,12 @@ public interface LearnMapper {
     Learn selectById(Integer id);
 
     /**
+     * 根据 Course ID 查询
+     * Query all Learn records associated with a course id
+     */
+    List<Learn> selectByCourseId(Integer courseId);
+
+    /**
      * 查询所有
      * Query all Learn records
      */
@@ -51,6 +57,8 @@ public interface LearnMapper {
 
     @Select("select * from Learn where user_id = #{userId}")
     List<Learn> selectByUserId(Integer userId);
+
+    Learn selectByUserIdAndCourseId(Integer userId, Integer courseId);
 
     void updateLearnStatusById(Integer userId, Integer courseId, String courseStatus);
 

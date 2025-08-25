@@ -14,6 +14,7 @@ import com.coursistant.lms.service.system.AdminService;
 import com.coursistant.lms.service.user.UserService;
 import com.coursistant.lms.utils.TokenUtils;
 import com.coursistant.lms.utils.TimeZoneUtils;
+import com.coursistant.lms.annotation.RequiresPermission;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -224,6 +225,7 @@ public class WebController {
     /**
      * 处理查询请求 // Handle query request
      */
+    @RequiresPermission("chatbot:interact")
     @PostMapping(value = "/query", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public Result query(@RequestParam(value = "file", required = false) MultipartFile file,
                         @RequestParam("courseId") Integer courseId,
@@ -238,8 +240,8 @@ public class WebController {
             if (file != null && !file.isEmpty()) {
                 // 1️⃣ 生成日期目录 // Generate date-based directory
                 String datePath = new SimpleDateFormat("yyyy/MM/dd").format(new Date());
-                //String baseDir = "/home/admir/SpringBoot/saved_images/query_images"; // 设定存储路径 // Set storage path
-                String baseDir = "C:\\Users\\Charlottejas\\Desktop\\Jerry\\项目脚手架\\manager\\"; // 设定存储路径
+                String baseDir = "/home/ubuntu/SpringBoot/saved_images/query_images"; // 设定存储路径 // Set storage path
+                //String baseDir = "C:\\Users\\Charlottejas\\Desktop\\Jerry\\项目脚手架\\manager\\"; // 设定存储路径
                 String uploadDir = baseDir + datePath + "/";
                 File dir = new File(uploadDir);
                 if (!dir.exists() && !dir.mkdirs()) {

@@ -5,7 +5,7 @@
 <mapper namespace="com.coursistant.lms.mapper.file.FolderMapper">
 
     <sql id="Base_Column_List">
-        id, course_id, name, description, order_index
+        id, course_id, name, description, order_index, title
     </sql>
 
     <select id="selectAll" resultType="com.coursistant.lms.entity.Folder">
@@ -33,12 +33,14 @@
             <if test="name != null">name,</if>
             <if test="description != null">description,</if>
             <if test="orderIndex != null">order_index,</if>
+            <if test="title != null">title,</if>
         </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
             <if test="courseId != null">#{courseId},</if>
             <if test="name != null">#{name},</if>
             <if test="description != null">#{description},</if>
             <if test="orderIndex != null">#{orderIndex},</if>
+            <if test="title != null">#{title},</if>
         </trim>
     </insert>
 
@@ -49,6 +51,7 @@
             <if test="name != null">name = #{name},</if>
             <if test="description != null">description = #{description},</if>
             <if test="orderIndex != null">order_index = #{orderIndex},</if>
+            <if test="title != null">title = #{title},</if>
         </set>
         where id = #{id}
     </update>

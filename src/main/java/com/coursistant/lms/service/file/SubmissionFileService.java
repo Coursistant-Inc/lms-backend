@@ -4,16 +4,20 @@ package com.coursistant.lms.service.file;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.ObjectUtil;
 import com.coursistant.lms.common.enums.ResultCodeEnum;
+import com.coursistant.lms.entity.AssignmentItem;
 import com.coursistant.lms.entity.SubmissionFile;
 import com.coursistant.lms.exception.CustomException;
 import com.coursistant.lms.mapper.file.SubmissionFileMapper;
+import com.coursistant.lms.service.system.MinIOService;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import jakarta.annotation.Resource;
 import java.io.File;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 
 @Service
@@ -22,113 +26,101 @@ public class SubmissionFileService {
     @Resource
     private SubmissionFileMapper submissionFileMapper;
 
+    // 如需使用，可根据项目结构调整存储路径
     private static final String filePath = System.getProperty("user.dir") + "/disk/submission/";
 
-    public void add(MultipartFile file, Integer submissionId) {
-        SubmissionFile submissionFile=new SubmissionFile();
-        // 创建文件存储路径
-        // Create file storage path
-        String path = filePath + submissionId+ "/";
-        if (!FileUtil.exist(path)) {
-            FileUtil.mkdir(path);
+    /**
+     * 新增
+     * Add new submission file
+     */
+    public Integer add(SubmissionFile submissionFile) {
+        // 自动分配顺序：按 submission_id 下已有项的最大 order_index + 1
+        if (ObjectUtil.isNull(submissionFile.getOrderIndex())) {
+            List<SubmissionFile> existing;
+            if (submissionFile.getSubmissionId() != null) {
+                existing = submissionFileMapper.selectBySubmissionId(submissionFile.getSubmissionId());
+            } else {
+                // 没有 submissionId 时无法分组计算，给空集合（结果 nextIndex = 0）
+                existing = Collections.emptyList();
+            }
+
+            int nextIndex = existing.stream()
+                    .map(SubmissionFile::getOrderIndex)
+                    .filter(Objects::nonNull)
+                    .max(Integer::compareTo)
+                    .orElse(-1) + 1;
+
+            submissionFile.setOrderIndex(nextIndex);
         }
 
-        // 获取文件信息
-        // Get file information
-        String filename = file.getOriginalFilename();
-        String fullpath = path + filename;
-
-
-        try {
-            file.transferTo(new File(fullpath));
-        } catch (IOException e) {
-            throw new CustomException(ResultCodeEnum.FILE_UPLOAD_ERROR);
-        }
-
-        submissionFile.setSubmissionId(submissionId);
-        submissionFile.setName(filename);
-        submissionFile.setPath(fullpath);
         submissionFileMapper.insert(submissionFile);
+        return submissionFile.getId();
     }
 
     /**
      * 删除
-     * Delete a submissionFile by ID
+     * Delete by ID
      */
     public void deleteById(Integer id) {
-        SubmissionFile submissionFile=submissionFileMapper.selectById(id);
-        if (ObjectUtil.isNull(submissionFile)){
-            throw new CustomException(ResultCodeEnum.FILE_NOT_FOUND);
-        }
-        String filepath=submissionFile.getPath();
-
         submissionFileMapper.deleteById(id);
-
-        File file = new File(filepath);
-        if (file.exists()) {
-            boolean deleted = file.delete();
-            if (!deleted) {
-                throw new CustomException(ResultCodeEnum.FILE_DELETION_ERROR);
-            }
-        } else {
-            throw new CustomException(ResultCodeEnum.FILE_NOT_FOUND);
-        }
-
     }
 
     /**
      * 批量删除
-     * Delete multiple submissionFiles by IDs
+     * Delete multiple submission files by IDs
      */
     public void deleteBatch(List<Integer> ids) {
         for (Integer id : ids) {
-            deleteById(id);
+            submissionFileMapper.deleteById(id);
         }
     }
 
     /**
      * 修改
-     * Update a submissionFile by ID
+     * Update submission file
      */
     public void updateById(SubmissionFile submissionFile) {
         submissionFileMapper.updateById(submissionFile);
-
     }
 
     /**
-     * 根据ID查询
-     * Query a submissionFile by ID
+     * 根据 ID 查询
+     * Select by ID
      */
     public SubmissionFile selectById(Integer id) {
-        
-        SubmissionFile submissionFile = submissionFileMapper.selectById(id);
-        if (submissionFile == null) {
-            throw new CustomException(ResultCodeEnum.FILE_NOT_FOUND);
-        }
-
-        return submissionFile;
+        return submissionFileMapper.selectById(id);
     }
 
-
-    public List<SubmissionFile> selectBySubmissionId(Integer id) {
-        
-        List<SubmissionFile> submissionFiles = submissionFileMapper.selectBySubmissionId(id);
-        if (submissionFiles == null) {
-            throw new CustomException(ResultCodeEnum.FILE_NOT_FOUND);
-        }
-
-        return submissionFiles;
+    /**
+     * 根据 submission_id 删除所有文件
+     * Delete all files under a submission
+     */
+    public void deleteBySubmissionId(Integer submissionId) {
+        submissionFileMapper.deleteBySubmissionId(submissionId);
     }
 
     /**
      * 查询所有
-     * Query all submissionFiles
+     * Select all submission files (multi-criteria)
      */
     public List<SubmissionFile> selectAll(SubmissionFile submissionFile) {
-
-        List<SubmissionFile> submissionFiles = submissionFileMapper.selectAll(submissionFile);
-
-        return submissionFiles;
+        return submissionFileMapper.selectAll(submissionFile);
     }
 
+    /**
+     * 查询 submission 下所有文件
+     * Select submission files by submission ID
+     */
+    public List<SubmissionFile> selectBySubmissionId(Integer submissionId) {
+        return submissionFileMapper.selectBySubmissionId(submissionId);
+    }
+
+    /**
+     * （可选）如果你在 XML 中保留了 selectSubmissionInfo，则提供同名方法
+     */
+    public List<SubmissionFile> selectSubmissionInfo(Integer submissionId) {
+        return submissionFileMapper.selectBySubmissionId(submissionId);
+        // 若 XML 中确实有 <select id="selectSubmissionInfo">，改成：
+        // return submissionFileMapper.selectSubmissionInfo(submissionId);
+    }
 }

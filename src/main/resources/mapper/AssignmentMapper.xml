@@ -7,7 +7,7 @@
     <sql id="Base_Column_List">
         id, user_id, course_id, title, start, due, description, criteria,
     submission_num, allowed_submission_times, highest_grade, lowest_grade, average_grade, grade_publish, 
-    group_mode, group_size
+    group_mode, group_size,course_content_id
     </sql>
 
 
@@ -20,6 +20,7 @@
             <if test="id != null"> and id = #{id}</if>
             <if test="userId != null"> and user_id = #{userId}</if>
             <if test="courseId != null"> and course_id = #{courseId}</if>
+            <if test="courseContentId != null"> and course_content_id = #{courseContentId}</if>
             <if test="title != null"> and title = #{title}</if>
             <if test="start != null"> and start = #{start}</if>
             <if test="due != null"> and due = #{due}</if>
@@ -60,6 +61,7 @@
             <if test="id != null">id,</if>
             <if test="userId != null">user_id,</if>
             <if test="courseId != null">course_id,</if>
+            <if test="courseContentId != null">course_content_id,</if>
             <if test="title != null">title,</if>
             <if test="start != null">start,</if>
             <if test="due != null">due,</if>
@@ -79,6 +81,7 @@
             <if test="id != null">#{id},</if>
             <if test="userId != null">#{userId},</if>
             <if test="courseId != null">#{courseId},</if>
+            <if test="courseContentId != null">#{courseContentId},</if>
             <if test="title != null">#{title},</if>
             <if test="start != null">#{start},</if>
             <if test="due != null">#{due},</if>
@@ -104,6 +107,7 @@
         <set>
             <if test="userId != null">user_id = #{userId},</if>
             <if test="courseId != null">course_id = #{courseId},</if>
+            <if test="courseContentId != null">course_content_id = #{courseContentId},</if>
             <if test="title != null">title = #{title},</if>
             <if test="start != null">start = #{start},</if>
             <if test="due != null">due = #{due},</if>

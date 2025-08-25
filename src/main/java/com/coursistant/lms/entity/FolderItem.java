@@ -13,11 +13,11 @@ public class FolderItem implements Serializable {
     /** 主键 ID */
     private Integer id;
 
+    /** 所属课程 ID */
+    private Integer courseId;
+
     /** 所属文件夹 ID */
     private Integer folderId;
-
-    /** 资源标题，例如 Lecture 1 Slides */
-    private String title;
 
     /** 资源类型：file=文件，link=链接，text=文本 */
     private String type;
@@ -34,6 +34,12 @@ public class FolderItem implements Serializable {
     /** 创建时间 */
     private LocalDateTime createTime;
 
+    /** 排序字段，值越小越靠前 */
+    private Integer orderIndex;
+
+    /** 是否是课程信息 */
+    private Integer isCourseInfo;
+
     public FolderItem() {
     }
 
@@ -45,20 +51,20 @@ public class FolderItem implements Serializable {
         this.id = id;
     }
 
+    public Integer getCourseId() {
+        return courseId;
+    }
+
+    public void setCourseId(Integer courseId) {
+        this.courseId = courseId;
+    }
+
     public Integer getFolderId() {
         return folderId;
     }
 
     public void setFolderId(Integer folderId) {
         this.folderId = folderId;
-    }
-
-    public String getTitle() {
-        return title;
-    }
-
-    public void setTitle(String title) {
-        this.title = title;
     }
 
     public String getType() {
@@ -101,12 +107,28 @@ public class FolderItem implements Serializable {
         this.createTime = createTime;
     }
 
+    public Integer getOrderIndex() {
+        return orderIndex;
+    }
+
+    public void setOrderIndex(Integer orderIndex) {
+        this.orderIndex = orderIndex;
+    }
+
+    public Integer getIsCourseInfo() {
+        return isCourseInfo;}
+
+    public void setIsCourseInfo(Integer isCourseInfo) {
+        this.isCourseInfo = isCourseInfo;
+    }
+
+
+
     @Override
     public String toString() {
         return "FolderItem{" +
                 "id=" + id +
                 ", folderId=" + folderId +
-                ", title='" + title + '\'' +
                 ", type='" + type + '\'' +
                 ", fileId=" + fileId +
                 ", content='" + content + '\'' +

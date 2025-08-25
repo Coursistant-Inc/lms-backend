@@ -2,6 +2,7 @@ package com.coursistant.lms.mapper.file;
 
 import com.coursistant.lms.entity.SubmissionFile;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
 import java.util.List;
@@ -15,39 +16,49 @@ import java.util.List;
 public interface SubmissionFileMapper {
 
     /**
-     * 新增 SubmissionFileFile
-     * Insert a new SubmissionFileFile
+     * 插入新记录
+     * Insert a new SubmissionFile
      */
     int insert(SubmissionFile submissionFile);
 
     /**
-     * 根据 ID 删除 SubmissionFile
-     * Delete an SubmissionFile by ID
+     * 根据主键删除
+     * Delete a SubmissionFile by ID
      */
-    int deleteById(Integer id);
+    int deleteById(@Param("id") Integer id);
 
     /**
-     * 根据 ID 更新 SubmissionFile
-     * Update an SubmissionFile by ID
+     * 根据主键更新
+     * Update a SubmissionFile by ID
      */
     int updateById(SubmissionFile submissionFile);
 
     /**
-     * 根据 ID 查询 SubmissionFile
-     * Query an SubmissionFile by ID
+     * 根据主键查询
+     * Query a SubmissionFile by ID
      */
-    SubmissionFile selectById(Integer id);
+    SubmissionFile selectById(@Param("id") Integer id);
 
     /**
-     * 查询所有 SubmissionFile（这里假设不带参数筛选）
-     * Query all SubmissionFiles (assuming no parameter filtering)
+     * 多条件查询所有记录
+     * Query all SubmissionFiles with multiple conditions
      */
     List<SubmissionFile> selectAll(SubmissionFile submissionFile);
 
     /**
-     * 根据 user_id 查询 SubmissionFile
-     * Query SubmissionFiles by assignment_id
+     * 查询某个 submission 下的所有文件
+     * Query all files under a submission
      */
-    @Select("SELECT * FROM AssignmentSubmissionFile WHERE submission_id = #{submissionId}")
-    List<SubmissionFile> selectBySubmissionId(Integer submissionId);
+    List<SubmissionFile> selectBySubmissionId(@Param("submissionId") Integer submissionId);
+
+    /**
+     * 根据 submission ID 删除文件
+     * Delete submission files by submission ID
+     */
+    int deleteBySubmissionId(@Param("submissionId") Integer submissionId);
+
+    // 查询某个 submission 的所有文件（与 XML 的 selectSubmissionInfo 对应）
+    List<SubmissionFile> selectSubmissionInfo(@Param("submissionId") Integer submissionId);
+
+
 }

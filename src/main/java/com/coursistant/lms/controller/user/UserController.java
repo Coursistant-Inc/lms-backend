@@ -140,4 +140,16 @@ public class UserController {
     {
         userService.reviewNameChangeRequest(decision, userId, adminId);
     }
+
+    /**
+     * 标记用户已修改密码
+     * Mark user's must_change_password as false
+     */
+    @PutMapping("/markPasswordChanged/{id}")
+    public Result markPasswordChanged(@PathVariable Integer id) {
+        logRequest("markPasswordChanged", id.toString());
+        userService.markPasswordChanged(id);
+        logResponse("markPasswordChanged", "User " + id + " must_change_password set to false");
+        return Result.success();
+    }
 }

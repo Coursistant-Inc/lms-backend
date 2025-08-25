@@ -87,29 +87,7 @@ public class DiskFilesController {
         return Result.success();
     }
 
-    /**
-     * Hadoop 处理文件
-     * Process a file with Hadoop
-     */
-    @PostMapping("/hadooped")
-    public Result hadooped(String path, String hadoopPath, String time) {
-        logRequest("hadooped", String.format("path=%s, hadoopPath=%s, time=%s", path, hadoopPath, time));
-        diskFilesService.hadooped(path, hadoopPath, time);
-        logResponse("hadooped", "Success");
-        return Result.success();
-    }
 
-    /**
-     * Qdrant 处理文件
-     * Process a file with Qdrant
-     */
-    @PostMapping("/qdranted")
-    public Result qdranted(String path, String time) {
-        logRequest("qdranted", String.format("path=%s, time=%s", path, time));
-        diskFilesService.qdranted(path, time);
-        logResponse("qdranted", "Success");
-        return Result.success();
-    }
 
     /**
      * 根据 ID 删除文件

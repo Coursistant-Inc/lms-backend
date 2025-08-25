@@ -42,7 +42,7 @@ public class AssignmentSubmissionService {
     private AssignmentService assignmentService;
 
 
-    public void add(AssignmentSubmission assignmentSubmission, List<MultipartFile> files) {
+    public Integer add(AssignmentSubmission assignmentSubmission) {
         int assignmentId = assignmentSubmission.getAssignmentId();
         int studentId = assignmentSubmission.getStudentId();
         ZoneId zone = ZoneId.of("UTC");
@@ -59,8 +59,12 @@ public class AssignmentSubmissionService {
         ZonedDateTime nowUtc = ZonedDateTime.now(ZoneOffset.UTC);
         ZonedDateTime dueTime = toCheck.getDue().atZone(ZoneOffset.UTC);
 
-        if (nowUtc.isAfter(dueTime) || submissions.size() >= toCheck.getAllowedSubmissionTimes()) {
-            throw new CustomException(ResultCodeEnum.SUBMISSION_NOT_VALID_ERROR);
+        if (nowUtc.isAfter(dueTime)) {
+            throw new CustomException(ResultCodeEnum.SUBMISSION_DUE_EXPIRED_ERROR);
+        }
+
+        if (submissions.size() >= toCheck.getAllowedSubmissionTimes()) {
+            throw new CustomException(ResultCodeEnum.SUBMISSION_ATTEMPT_EXCEEDED_ERROR);
         }
 
         // 将之前该学生的所有提交设为 is_final = false
@@ -68,7 +72,7 @@ public class AssignmentSubmissionService {
 
         // 当前新提交设为 is_final = true
         assignmentSubmission.setFinal(true);
-        assignmentSubmissionMapper.insert(assignmentSubmission);
+        Integer result=assignmentSubmissionMapper.insert(assignmentSubmission);
 
         // 如果是第一次提交，更新该作业的提交计数
         if (submissions.isEmpty()) {
@@ -77,14 +81,8 @@ public class AssignmentSubmissionService {
             assignmentService.incrementSubNumById(toUpdate);
         }
 
+        return result;
 
-        // 保存上传文件
-        int submissionId = assignmentSubmission.getId();
-        if (files != null && !files.isEmpty()) {
-            for (MultipartFile file : files) {
-                submissionFileService.add(file, submissionId);
-            }
-        }
     }
 
     /**

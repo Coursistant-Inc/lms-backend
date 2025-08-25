@@ -1,11 +1,12 @@
 package com.coursistant.lms.service.assignment;
 
 
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.List;
+import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.util.ObjectUtil;
+import com.coursistant.lms.entity.AssignmentGroup;
+import com.coursistant.lms.entity.CalendarDisplayEvent;
 
+import com.coursistant.lms.entity.DTO.AssignmentGroupDTO;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -24,6 +25,15 @@ import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.ObjectUtil;
 import jakarta.annotation.Resource;
 
+import java.awt.desktop.SystemEventListener;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
 
 @Service
 public class AssignmentService {
@@ -34,11 +44,9 @@ public class AssignmentService {
     @Resource
     private AssignmentFileService assignmentFileService;
 
-    @Resource
-    private LearnService learnService;
 
 
-    public void add(Assignment assignment, List<MultipartFile> files, ZoneId timezone) {
+    public int add(Assignment assignment, ZoneId timezone) {
         if (ObjectUtil.isNull(assignment.getSubmissionNum())) {
             assignment.setSubmissionNum(0);
         }
@@ -53,12 +61,8 @@ public class AssignmentService {
 
         assignmentMapper.insert(assignment);
         int assignmentId=assignment.getId();
-        //System.out.println("assignment id: " + Integer.toString(assignmentId));
-        if (ObjectUtil.isNotNull(files)) {
-            for (int i=0;i< files.size();i++){
-                assignmentFileService.add(files.get(i),assignmentId);
-            }
-        }
+
+        return assignmentId;
 
     }
 
@@ -136,17 +140,29 @@ public class AssignmentService {
         return assignmentDTO;
     }
 
-    public List<Assignment> selectByCourseId(Integer id, ZoneId timezone){
-        List<Assignment> assignments=assignmentMapper.selectByCourseId(id);
+    public List<AssignmentGroupDTO> selectByCourseId(Integer courseId, ZoneId timezone) {
+        List<Assignment> assignments = assignmentMapper.selectByCourseId(courseId);
 
-        for (Assignment assignment:assignments){
-            assignment.setStart(TimeZoneUtils.fromUtcLocalDateTime(assignment.getStart(),timezone));
-            assignment.setDue(TimeZoneUtils.fromUtcLocalDateTime(assignment.getDue(),timezone));
+        for (Assignment assignment : assignments) {
+            assignment.setStart(TimeZoneUtils.fromUtcLocalDateTime(assignment.getStart(), timezone));
+            assignment.setDue(TimeZoneUtils.fromUtcLocalDateTime(assignment.getDue(), timezone));
         }
 
+        Map<Integer, List<Assignment>> grouped = assignments.stream()
+                .collect(Collectors.groupingBy(Assignment::getCourseContentId, LinkedHashMap::new, Collectors.toList()));
 
-        return  assignments;
+        List<AssignmentGroupDTO> result = new ArrayList<>();
+        for (Map.Entry<Integer, List<Assignment>> entry : grouped.entrySet()) {
+            result.add(new AssignmentGroupDTO(entry.getKey(), entry.getValue()));
+            System.out.println(entry.getKey());
+            System.out.println(entry.getValue());
+        }
+
+        return result;
     }
+
+
+
 
     /**
      * 查询所有

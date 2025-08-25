@@ -5,11 +5,11 @@
 <mapper namespace="com.coursistant.lms.mapper.course.CourseMapper">
 
     <sql id="Base_Column_List">
-        id,name,course_code,teacher_id,semester,school
+        id,name,course_code,teacher_id,semester,school, title
     </sql>
 
     <sql id="Base_Column_List_WithPrefix">
-        c.id, c.name, c.course_code, c.teacher_id, c.semester, c.school
+        c.id, c.name, c.course_code, c.teacher_id, c.semester, c.school, c.title
     </sql>
 
     <select id="selectAll" resultType="com.coursistant.lms.entity.Course">
@@ -28,11 +28,17 @@
     </select>
 
     <select id="selectById" resultType="com.coursistant.lms.entity.Course">
-        select
-        <include refid="Base_Column_List" />
-        from Course
-        where id = #{id}
-    </select>
+        SELECT
+            c.*,
+            COALESCE(f.unit_count, 0) AS courseUnitCount
+        FROM Course c
+                 LEFT JOIN (
+            SELECT course_id, COUNT(*) AS unit_count
+            FROM Folder
+            GROUP BY course_id
+        ) f ON f.course_id = c.id
+        WHERE c.id = #{id}
+    </select>   
 
     <delete id="deleteById">
         delete from Course
@@ -49,6 +55,7 @@
             <if test="teacherId != null">teacher_id,</if>
             <if test="semester != null">semester,</if>
             <if test="school != null">school,</if>
+            <if test="title != null">title,</if>
         </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
             <if test="id != null">#{id},</if>
@@ -57,6 +64,7 @@
             <if test="teacherId != null">#{teacherId},</if>
             <if test="semester != null">#{semester},</if>
             <if test="school != null">#{school},</if>
+            <if test="title != null">#{title},</if>
         </trim>
     </insert>
 
@@ -78,26 +86,39 @@
             <if test="school != null">
                 school = #{school},
             </if>
+            <if test="title != null">
+                title = #{title},
+            </if>
         </set>
         where id = #{id}
     </update>
 
     <!-- 查询某用户通过 Teach 表教授的所有课程（含老师信息） -->
     <select id="selectByUserIdFromTeach" resultType="com.coursistant.lms.entity.Course">
-        SELECT c.*, u.name AS teacherName, u.phone AS teacherPhone, u.email AS teacherEmail
+        SELECT c.*, u.name AS teacherName, u.phone AS teacherPhone, u.email AS teacherEmail, COALESCE(f.unit_count, 0) AS courseUnitCount
         FROM Teach t
                  JOIN Course c ON t.course_id = c.id
                  LEFT JOIN User u ON c.teacher_id = u.id
+                 LEFT JOIN (
+                    SELECT course_id, COUNT(*) AS unit_count
+                    FROM Folder
+                    GROUP BY course_id
+                 ) f ON f.course_id = c.id
         WHERE t.user_id = #{userId}
         ORDER BY c.id   
     </select>
 
     <!-- 查询某用户通过 Learn 表学习的所有课程（含老师信息） -->
     <select id="selectByUserIdFromLearn" resultType="com.coursistant.lms.entity.Course">
-        SELECT c.*, u.name AS teacherName, u.phone AS teacherPhone, u.email AS teacherEmail
+        SELECT c.*, u.name AS teacherName, u.phone AS teacherPhone, u.email AS teacherEmail, COALESCE(f.unit_count, 0) AS courseUnitCount
         FROM Learn l
                  JOIN Course c ON l.course_id = c.id
                  LEFT JOIN User u ON c.teacher_id = u.id
+                 LEFT JOIN (
+                    SELECT course_id, COUNT(*) AS unit_count
+                    FROM Folder
+                    GROUP BY course_id
+                ) f ON f.course_id = c.id
         WHERE l.user_id = #{userId}
         ORDER BY c.id DESC
     </select>

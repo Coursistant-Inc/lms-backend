@@ -74,4 +74,8 @@ public interface UserMapper {
     void addNameChangeRequest(String currentName, String newName, Integer userId);
 
     void reviewNameChangeRequest(String decision, Integer userId, Integer adminId);
+
+    List<User> selectUsersByIds(List<Integer> userIds);
+
+    void updateMustChangePassword( Integer id, boolean mustChangePassword);
 }

@@ -19,7 +19,9 @@ import org.springframework.web.multipart.MultipartFile;
 import com.coursistant.lms.common.Result;
 import com.coursistant.lms.common.enums.ResultCodeEnum;
 import com.coursistant.lms.entity.Learn;
+import com.coursistant.lms.entity.User;
 import com.coursistant.lms.service.course.LearnService;
+import com.coursistant.lms.annotation.RequiresPermission;
 import com.github.pagehelper.PageInfo;
 
 import cn.hutool.core.util.ObjectUtil;
@@ -49,6 +51,7 @@ public class LearnController {
      * 新增
      * Add a new learning record
      */
+    @RequiresPermission("course:manage")
     @PostMapping("/add")
     public Result add(@RequestBody Learn learn) {
         logRequest("add", learn.toString());
@@ -61,6 +64,7 @@ public class LearnController {
      * 通过电子邮件新增学习记录
      * Add a learning record by email
      */
+    @RequiresPermission("course:manage")
     @PostMapping("/addByEmail")
     public Result addByEmail(@RequestParam("email") String email,
                              @RequestParam("courseId") Integer courseId,
@@ -78,6 +82,7 @@ public class LearnController {
      * 删除
      * Delete a learning record by ID
      */
+    @RequiresPermission("course:manage")
     @DeleteMapping("/delete/{id}")
     public Result deleteById(@PathVariable Integer id) {
         logRequest("deleteById", id.toString());
@@ -90,6 +95,7 @@ public class LearnController {
      * 批量删除
      * Batch delete learning records
      */
+    @RequiresPermission("course:manage")
     @DeleteMapping("/delete/batch")
     public Result deleteBatch(@RequestBody List<Integer> ids) {
         logRequest("deleteBatch", ids.toString());
@@ -102,6 +108,7 @@ public class LearnController {
      * 修改
      * Update a learning record
      */
+    @RequiresPermission("course:manage")
     @PutMapping("/update")
     public Result updateById(@RequestBody Learn learn) {
         logRequest("updateById", learn.toString());
@@ -114,6 +121,7 @@ public class LearnController {
      * 根据ID查询
      * Query a learning record by ID
      */
+    @RequiresPermission("course:view")
     @GetMapping("/selectById/{id}")
     public Result selectById(@PathVariable Integer id) {
         logRequest("selectById", id.toString());
@@ -126,6 +134,7 @@ public class LearnController {
      * 查询所有
      * Query all learning records
      */
+    @RequiresPermission("course:view")
     @GetMapping("/selectAll")
     public Result selectAll(Learn learn) {
         logRequest("selectAll", learn != null ? learn.toString() : "null");
@@ -182,5 +191,13 @@ public class LearnController {
     }
     
     
+    @GetMapping("/selectByCourseId/{id}")
+    public Result selectByCourseId(@PathVariable Integer id) {
+        logRequest("selectByCourseId", id.toString());
+        List<User> students = learnService.getStudentsByCourseId(id);
+        logResponse("selectByCourseId", null);
+        return Result.success(students);
+    }
+
     
 }

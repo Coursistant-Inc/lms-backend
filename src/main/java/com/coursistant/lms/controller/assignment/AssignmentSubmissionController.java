@@ -6,12 +6,15 @@ import com.coursistant.lms.entity.DTO.AssignmentSubmissionDTO;
 import com.coursistant.lms.service.assignment.AssignmentService;
 import com.coursistant.lms.service.assignment.AssignmentSubmissionService;
 import com.coursistant.lms.utils.TimeZoneUtils;
+import com.coursistant.lms.annotation.RequiresPermission;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import jakarta.annotation.Resource;
 import java.time.ZoneId;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Logger;
 
 /**
@@ -41,21 +44,25 @@ public class AssignmentSubmissionController {
      * 新增
      * Add a new assignmentSubmission
      */
+    @RequiresPermission("assignment:submit")
     @PostMapping("/add")
-    public Result add(@ModelAttribute AssignmentSubmission assignmentSubmission,
-                      @RequestPart(value = "files", required = false) List<MultipartFile> files,
+    public Result add(@RequestBody AssignmentSubmission assignmentSubmission,
+
                       @RequestHeader(value = "X-Timezone", required = false) String timezone) {
         logRequest("add", assignmentSubmission.toString());
 
-        assignmentSubmissionService.add(assignmentSubmission,files);
+        Integer submissionId= assignmentSubmissionService.add(assignmentSubmission);
         logResponse("add", "Success");
-        return Result.success();
+        Map<String, Object> data = new HashMap<>();
+        data.put("submissionId", submissionId);
+        return Result.success(data);
     }
 
     /**
      * 根据 ID 删除书签
      * Delete a assignmentSubmission by ID
      */
+    @RequiresPermission("assignment:submit")
     @DeleteMapping("/delete/{id}")
     public Result deleteById(@PathVariable Integer id) {
         logRequest("deleteById", id.toString());
@@ -68,6 +75,7 @@ public class AssignmentSubmissionController {
      * 批量删除书签
      * Batch delete assignmentSubmissions
      */
+    @RequiresPermission("assignment:submit")
     @DeleteMapping("/delete/batch")
     public Result deleteBatch(@RequestBody List<Integer> ids) {
         logRequest("deleteBatch", ids.toString());
@@ -80,6 +88,7 @@ public class AssignmentSubmissionController {
      * 更新书签
      * Update a assignmentSubmission
      */
+    @RequiresPermission("assignment:update")
     @PutMapping("/update")
     public Result updateById(@RequestBody AssignmentSubmission assignmentSubmission) {
         logRequest("updateById", assignmentSubmission.toString());
@@ -92,6 +101,7 @@ public class AssignmentSubmissionController {
      * 更新
      * Update grade
      */
+    @RequiresPermission("assignment:update")
     @PutMapping("/updateGrade")
     public Result updateGradeById(@RequestBody AssignmentSubmission assignmentSubmission) {
         logRequest("updateById", assignmentSubmission.toString());
@@ -104,6 +114,7 @@ public class AssignmentSubmissionController {
      * 根据 ID 查询书签
      * Query a assignmentSubmission by ID
      */
+    @RequiresPermission("assignment:submit")
     @GetMapping("/selectById/{id}")
     public Result selectById(@PathVariable Integer id,
                              @RequestHeader(value = "X-Timezone", required = false) String timezone) {
@@ -118,6 +129,7 @@ public class AssignmentSubmissionController {
      * 查询所有书签
      * Query all assignmentSubmissions
      */
+    @RequiresPermission("assignment:submit")
     @GetMapping("/selectAll")
     public Result selectAll(AssignmentSubmission assignmentSubmission,
                             @RequestHeader(value = "X-Timezone", required = false) String timezone){

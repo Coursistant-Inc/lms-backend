@@ -293,8 +293,7 @@ public class ProfileController {
                 // 1. 创建按日期存储的目录
                 // 1. Create a directory for today's date
                 String datePath = new SimpleDateFormat("yyyy/MM/dd").format(new Date());
-                String baseDir = "/home/admir/SpringBoot/saved_images/avatars/";
-                // String baseDir = "C:/Users/Shreyansh Bardia/LMS-pictures/"; // 更改头像存储路径 / Change path for avatars
+                String baseDir = "/home/ubuntu/SpringBoot/saved_images/avatars/"; // 更改头像存储路径 / Change path for avatars
                 // String baseDir = System.getProperty("user.home") + "/SpringBoot/saved_images/avatars";
                 String uploadDir = baseDir + datePath + "/";
                 File dir = new File(uploadDir);

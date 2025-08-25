@@ -1,6 +1,8 @@
 package com.coursistant.lms.service.course;
 
 
+import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.collection.CollUtil;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -14,10 +16,13 @@ import org.springframework.stereotype.Service;
 import com.coursistant.lms.common.enums.ResultCodeEnum;
 import com.coursistant.lms.entity.Course;
 import com.coursistant.lms.entity.DTO.CourseDetailsDTO;
+import com.coursistant.lms.entity.CourseSchedule;
+import com.coursistant.lms.entity.DTO.CourseDTO;
 import com.coursistant.lms.entity.Teach;
 import com.coursistant.lms.entity.User;
 import com.coursistant.lms.exception.CustomException;
 import com.coursistant.lms.mapper.course.CourseMapper;
+import com.coursistant.lms.mapper.course.CourseScheduleMapper;
 import com.coursistant.lms.service.user.UserService;
 
 import cn.hutool.core.util.ObjectUtil;
@@ -35,6 +40,9 @@ public class CourseService {
 
     @Resource
     private TeachService teachService;
+
+    @Resource
+    private CourseScheduleMapper courseScheduleMapper;
 
     @Resource(name = "generalRedisTemplate")
     private RedisTemplate<String, Object> generalRedisTemplate;
@@ -179,7 +187,25 @@ public class CourseService {
                 courses=courseMapper.selectByUserIdFromLearn(user.getId());
             }
         }
-        return courses;
+
+        // 构造返回的 CourseDTO 列表
+        List<CourseDTO> result = new ArrayList<>();
+        for (Course course : courses) {
+            CourseDTO dto = new CourseDTO();
+            // 继承 Course，所以直接 copy 属性
+            BeanUtil.copyProperties(course, dto);
+
+            // 查询 CourseSchedule
+            List<CourseSchedule> schedules = courseScheduleMapper.selectByCourseId(course.getId());
+            // 你 CourseDTO 只有一个 CourseSchedule 字段，可以决定放第一个或者改成 List<CourseSchedule>
+            if (CollUtil.isNotEmpty(schedules)) {
+                dto.setCourseSchedules(schedules);
+            }
+
+            result.add(dto);
+        }
+
+        return result;
     }
 
     /**
