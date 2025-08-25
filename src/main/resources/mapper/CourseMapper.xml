@@ -102,7 +102,7 @@
         ORDER BY c.id DESC
     </select>
 
-    <select id="selectCourseDetailsByUserId" resultType="com.coursistant.lms.entity.DTO.CourseDTO">
+    <select id="selectCourseDetailsByUserId" resultType="com.coursistant.lms.entity.DTO.CourseDetailsDTO">
         SELECT u.name, p.avatar, c.name as title
         FROM User u
         INNER JOIN Profile p ON u.id = p.user_id
