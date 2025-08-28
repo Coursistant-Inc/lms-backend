@@ -6,46 +6,72 @@
 <mapper namespace="com.coursistant.lms.mapper.assignment.AssignmentGroupMapper">
 
     <sql id="Base_Column_List">
-        id, assignment_id, course_id
+        id, assignment_id, course_id, group_name, group_status, join_mode
     </sql>
 
     <insert id="insert" parameterType="com.coursistant.lms.entity.AssignmentGroup" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO AssignmentGroups (assignment_id, course_id)
-        VALUES (#{assignmentId}, #{courseId})
+        INSERT INTO AssignmentGroup (assignment_id, course_id, group_name, group_status, join_mode)
+        VALUES (#{assignmentId}, #{courseId}, #{groupName}, #{groupStatus}, #{joinMode})
     </insert>
 
     <update id="updateById" parameterType="com.coursistant.lms.entity.AssignmentGroup">
-        UPDATE AssignmentGroups
+        UPDATE AssignmentGroup
         <set>
             <if test="assignmentId != null">assignment_id = #{assignmentId},</if>
             <if test="courseId != null">course_id = #{courseId},</if>
+            <if test="groupName != null">group_name = #{groupName},</if>
+            <if test="groupStatus != null">group_status = #{groupStatus},</if>
+            <if test="joinMode != null">join_mode = #{joinMode},</if>
         </set>
         WHERE id = #{id}
     </update>
 
     <delete id="deleteById" parameterType="int">
-        DELETE FROM AssignmentGroups WHERE id = #{id}
+        DELETE FROM AssignmentGroup WHERE id = #{id}
     </delete>
 
     <select id="selectById" resultType="com.coursistant.lms.entity.AssignmentGroup">
         SELECT <include refid="Base_Column_List"/>
-        FROM AssignmentGroups
+        FROM AssignmentGroup
         WHERE id = #{id}
     </select>
 
     <select id="selectAll" resultType="com.coursistant.lms.entity.AssignmentGroup" parameterType="com.coursistant.lms.entity.AssignmentGroup">
         SELECT <include refid="Base_Column_List"/>
-        FROM AssignmentGroups
+        FROM AssignmentGroup
         <where>
             <if test="assignmentId != null">AND assignment_id = #{assignmentId}</if>
             <if test="courseId != null">AND course_id = #{courseId}</if>
+            <if test="groupName != null">AND group_name LIKE CONCAT('%', #{groupName}, '%')</if>
+            <if test="groupStatus != null">AND group_status = #{groupStatus}</if>
+            <if test="joinMode != null">AND join_mode = #{joinMode}</if>
         </where>
     </select>
 
     <select id="selectByAssignmentId" resultType="com.coursistant.lms.entity.AssignmentGroup">
         SELECT <include refid="Base_Column_List"/>
-        FROM AssignmentGroups
+        FROM AssignmentGroup
         WHERE assignment_id = #{assignmentId}
+    </select>
+
+    <select id="selectByCourseId" resultType="com.coursistant.lms.entity.AssignmentGroup">
+        SELECT <include refid="Base_Column_List"/>
+        FROM AssignmentGroup
+        WHERE course_id = #{courseId}
+    </select>
+
+    <select id="selectByCourseIdAndAssignmentId" resultType="com.coursistant.lms.entity.AssignmentGroup">
+        SELECT <include refid="Base_Column_List"/>
+        FROM AssignmentGroup
+        WHERE course_id = #{courseId} AND assignment_id = #{assignmentId}
+    </select>
+
+    <select id="selectAvailableGroups" resultType="com.coursistant.lms.entity.AssignmentGroup">
+        SELECT <include refid="Base_Column_List"/>
+        FROM AssignmentGroup
+        WHERE course_id = #{courseId} 
+        AND assignment_id = #{assignmentId}
+        AND group_status = 'active'
     </select>
 
 </mapper>
