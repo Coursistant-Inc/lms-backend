@@ -174,7 +174,7 @@ public class CourseService {
         return courses;
     }
     
-    public List<Course>selectByUserId(Integer id) {
+    public List<CourseDTO>selectByUserId(Integer id) {
         User user=userService.selectById(id);
         List<Course> courses=new ArrayList();
         if (ObjectUtil.isNull(user)){

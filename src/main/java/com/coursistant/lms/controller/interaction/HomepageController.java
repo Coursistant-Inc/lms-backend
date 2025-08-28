@@ -56,7 +56,7 @@ public class HomepageController {
     @GetMapping("/courseDetails/{userId}")
     public Result getCourseDetails(@PathVariable Integer userId)
     {
-        List<Course> courseList = courseService.selectByUserId(userId);
+        List<Course> courseList = courseService.selectCoursesByUserId(userId);
         List<CourseDetailsDTO> courseDetails = courseService.getCourseDetailsByUserId(userId, courseList);
         return Result.success(courseDetails);
     }
