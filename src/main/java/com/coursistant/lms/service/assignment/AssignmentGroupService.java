@@ -21,6 +21,8 @@ import java.util.ArrayList;
 import com.coursistant.lms.entity.GroupMemberDetail;
 import java.util.Set;
 import java.util.HashSet;
+import java.util.Map;
+import java.util.HashMap;
 
 @Service
 public class AssignmentGroupService {
@@ -349,5 +351,144 @@ public class AssignmentGroupService {
                 groupMemberMapper.insert(member);
             }
         }
+    }
+
+    /**
+     * 老师创建小组
+     * @param courseId 课程ID
+     * @param assignmentId 作业ID
+     * @param title 小组标题
+     * @param freetojoin 是否自由加入 (1=是, 0=否)
+     * @param description 小组描述
+     * @param groupName 小组名称
+     * @param maxStudent 最大学生数量
+     * @return 创建的小组信息
+     */
+    @Transactional
+    public AssignmentGroup createGroupByTeacher(Integer courseId, Integer assignmentId, String title, 
+                                             Integer freetojoin, String description, String groupName, 
+                                             Integer maxStudent) {
+        // 验证课程是否存在
+        if (ObjectUtil.isNull(courseId)) {
+            throw new CustomException(ResultCodeEnum.COURSE_NOT_EXIST_ERROR);
+        }
+        
+        // 验证作业是否存在
+        if (ObjectUtil.isNull(assignmentId)) {
+            throw new CustomException(ResultCodeEnum.ASSIGNMENT_NOT_EXIST_ERROR);
+        }
+        
+        // 验证作业是否属于该课程
+        Assignment assignment = assignmentMapper.selectById(assignmentId);
+        if (ObjectUtil.isNull(assignment)) {
+            throw new CustomException(ResultCodeEnum.ASSIGNMENT_NOT_EXIST_ERROR);
+        }
+        if (!courseId.equals(assignment.getCourseId())) {
+            throw new CustomException(ResultCodeEnum.COURSE_NOT_EXIST_ERROR);
+        }
+        
+        // 验证最大学生数量
+        if (ObjectUtil.isNull(maxStudent) || maxStudent <= 0) {
+            throw new CustomException("400", "最大学生数量必须大于0");
+        }
+        
+        // 创建小组对象
+        AssignmentGroup group = new AssignmentGroup(assignmentId, courseId);
+        group.setTitle(title);
+        group.setGroupName(groupName);
+        group.setDescription(description);
+        group.setMaxStudent(maxStudent);
+        group.setCurrStudentCount(0); // 默认当前学生数量为0
+        group.setGroupStatus("active"); // 默认状态为active
+        
+        // 根据freetojoin设置joinMode
+        if (freetojoin != null && freetojoin == 0) {
+            group.setJoinMode("approval"); // 需要审批
+        } else {
+            group.setJoinMode("free"); // 自由加入
+        }
+        
+        // 设置创建时间
+        group.setCreateAt(LocalDateTime.now());
+        
+        // 保存到数据库
+        assignmentGroupMapper.insert(group);
+        
+        return group;
+    }
+
+    /**
+     * 老师添加学生到小组
+     * @param groupId 小组ID
+     * @param assignmentId 作业ID
+     * @param studentId 学生ID
+     * @return 添加结果信息
+     */
+    @Transactional
+    public Map<String, Object> addStudentToGroupByTeacher(Integer groupId, Integer assignmentId, Integer studentId) {
+        // 验证小组是否存在
+        AssignmentGroup group = assignmentGroupMapper.selectById(groupId);
+        if (ObjectUtil.isNull(group)) {
+            throw new CustomException("400", "小组不存在");
+        }
+        
+        // 验证作业是否存在
+        Assignment assignment = assignmentMapper.selectById(assignmentId);
+        if (ObjectUtil.isNull(assignment)) {
+            throw new CustomException("400", "作业不存在");
+        }
+        
+        // 验证学生是否存在且是学生角色
+        User student = userMapper.selectById(studentId);
+        if (ObjectUtil.isNull(student) || !"STUDENT".equalsIgnoreCase(student.getLevel())) {
+            throw new CustomException("400", "学生不存在或用户类型不正确");
+        }
+        
+        // 验证小组是否属于该作业
+        if (!assignmentId.equals(group.getAssignmentId())) {
+            throw new CustomException("400", "小组不属于该作业");
+        }
+        
+        // 检查学生是否已经在该小组中
+        GroupMember existingMember = groupMemberMapper.selectByGroupIdAndUserId(groupId, studentId);
+        if (existingMember != null) {
+            throw new CustomException("400", "学生已经在该小组中");
+        }
+        
+        // 检查学生是否已经在其他小组中（同一作业下）
+        List<AssignmentGroup> allGroups = assignmentGroupMapper.selectByAssignmentId(assignmentId);
+        for (AssignmentGroup g : allGroups) {
+            GroupMember exists = groupMemberMapper.selectByGroupIdAndUserId(g.getId(), studentId);
+            if (exists != null) {
+                throw new CustomException("400", "学生已经在其他小组中");
+            }
+        }
+        
+        // 检查当前学生人数是否超过最大上限
+        if (group.getCurrStudentCount() >= group.getMaxStudent()) {
+            throw new CustomException("400", "小组已达到最大人数上限，无法添加更多学生");
+        }
+        
+        // 添加学生到小组
+        GroupMember newMember = new GroupMember();
+        newMember.setGroupId(groupId);
+        newMember.setCourseId(group.getCourseId());
+        newMember.setUserId(studentId);
+        groupMemberMapper.insert(newMember);
+        
+        // 更新小组的当前学生数量
+        group.setCurrStudentCount(group.getCurrStudentCount() + 1);
+        assignmentGroupMapper.updateById(group);
+        
+        // 返回结果信息
+        Map<String, Object> result = new HashMap<>();
+        result.put("message", "学生添加成功");
+        result.put("groupId", groupId);
+        result.put("studentId", studentId);
+        result.put("studentName", student.getName());
+        result.put("newCurrStudentCount", group.getCurrStudentCount());
+        result.put("maxStudent", group.getMaxStudent());
+        
+        return result;
     }
 }

@@ -6,12 +6,12 @@
 <mapper namespace="com.coursistant.lms.mapper.assignment.AssignmentGroupMapper">
 
     <sql id="Base_Column_List">
-        id, assignment_id, course_id, group_name, group_status, join_mode
+        id, assignment_id, course_id, title, group_name, group_status, join_mode, description, curr_student_count, max_student, create_at
     </sql>
 
     <insert id="insert" parameterType="com.coursistant.lms.entity.AssignmentGroup" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO AssignmentGroup (assignment_id, course_id, group_name, group_status, join_mode)
-        VALUES (#{assignmentId}, #{courseId}, #{groupName}, #{groupStatus}, #{joinMode})
+        INSERT INTO AssignmentGroup (assignment_id, course_id, title, group_name, group_status, join_mode, description, curr_student_count, max_student, create_at)
+        VALUES (#{assignmentId}, #{courseId}, #{title}, #{groupName}, #{groupStatus}, #{joinMode}, #{description}, #{currStudentCount}, #{maxStudent}, #{createAt})
     </insert>
 
     <update id="updateById" parameterType="com.coursistant.lms.entity.AssignmentGroup">
@@ -19,9 +19,14 @@
         <set>
             <if test="assignmentId != null">assignment_id = #{assignmentId},</if>
             <if test="courseId != null">course_id = #{courseId},</if>
+            <if test="title != null">title = #{title},</if>
             <if test="groupName != null">group_name = #{groupName},</if>
             <if test="groupStatus != null">group_status = #{groupStatus},</if>
             <if test="joinMode != null">join_mode = #{joinMode},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="currStudentCount != null">curr_student_count = #{currStudentCount},</if>
+            <if test="maxStudent != null">max_student = #{maxStudent},</if>
+            <if test="createAt != null">create_at = #{createAt},</if>
         </set>
         WHERE id = #{id}
     </update>

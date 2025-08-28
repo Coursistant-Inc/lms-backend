@@ -14,13 +14,14 @@ import java.util.List;
 import java.util.Map;
 import com.coursistant.lms.entity.GroupMemberDetail;
 import java.util.HashMap;
+import com.coursistant.lms.exception.CustomException;
 
 /**
  * 小组分组控制器（用于作业）
 * Controller for assignment groups
 */
 @RestController
-@RequestMapping("/assignmentGroup")
+@RequestMapping("/grouping")
 public class AssignmentGroupController {
 
     @Resource
@@ -272,6 +273,100 @@ public class AssignmentGroupController {
             errorResult.put("courseId", courseId);
             errorResult.put("assignmentId", assignmentId);
             return Result.error(ResultCodeEnum.SYSTEM_ERROR, errorResult);
+        }
+    }
+
+    /**
+     * 老师创建小组
+     * API: /api/grouping/teacher/add
+     */
+    @RequiresPermission("assignment:manage")
+    @PostMapping("/teacher/add")
+    public Result createGroupByTeacher(@RequestBody Map<String, Object> params) {
+        Account loginUser = TokenUtils.getCurrentUser();
+        
+        // 验证用户是否为老师
+        if (!"Teacher".equalsIgnoreCase(loginUser.getLevel())) {
+            return Result.error(ResultCodeEnum.INVALID_ACCESS_ERROR);
+        }
+        
+        // 获取参数
+        Integer courseId = (Integer) params.get("courseId");
+        Integer assignmentId = (Integer) params.get("assignmentId");
+        String title = (String) params.get("title");
+        Integer freetojoin = (Integer) params.get("freetojoin");
+        String description = (String) params.get("description");
+        String groupName = (String) params.get("group_name");
+        Integer maxStudent = (Integer) params.get("max_student");
+        
+        // 验证必填参数
+        if (courseId == null || assignmentId == null || groupName == null || maxStudent == null) {
+            return Result.error(ResultCodeEnum.PARAM_LOST_ERROR);
+        }
+        
+        try {
+            // 调用服务层创建小组
+            AssignmentGroup createdGroup = assignmentGroupService.createGroupByTeacher(
+                courseId, assignmentId, title, freetojoin, description, groupName, maxStudent
+            );
+            
+            // 返回创建成功的小组信息
+            Map<String, Object> result = new HashMap<>();
+            result.put("message", "Group created successfully");
+            result.put("groupId", createdGroup.getId());
+            result.put("group", createdGroup);
+            
+            return Result.success(result);
+        } catch (CustomException e) {
+            return Result.error(e.getCode(), e.getMsg());
+        } catch (Exception e) {
+            return Result.error(ResultCodeEnum.SYSTEM_ERROR, "Failed to create group: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 测试端点 - 验证路径映射是否工作
+     */
+    @GetMapping("/teacher/test")
+    public Result testTeacherEndpoint() {
+        return Result.success("Teacher endpoint is working!");
+    }
+
+    /**
+     * 老师添加学生到小组
+     * API: /api/grouping/teacher/addStudent
+     */
+    @RequiresPermission("assignment:manage")
+    @PostMapping("/teacher/addStudent")
+    public Result addStudentToGroup(@RequestBody Map<String, Object> params) {
+        Account loginUser = TokenUtils.getCurrentUser();
+        
+        // 验证用户是否为老师
+        if (!"Teacher".equalsIgnoreCase(loginUser.getLevel())) {
+            return Result.error(ResultCodeEnum.INVALID_ACCESS_ERROR);
+        }
+        
+        // 获取参数
+        Integer groupId = (Integer) params.get("groupId");
+        Integer assignmentId = (Integer) params.get("assignmentId");
+        Integer studentId = (Integer) params.get("studentId");
+        
+        // 验证必填参数
+        if (groupId == null || assignmentId == null || studentId == null) {
+            return Result.error(ResultCodeEnum.PARAM_LOST_ERROR);
+        }
+        
+        try {
+            // 调用服务层添加学生到小组
+            Map<String, Object> result = assignmentGroupService.addStudentToGroupByTeacher(
+                groupId, assignmentId, studentId
+            );
+            
+            return Result.success(result);
+        } catch (CustomException e) {
+            return Result.error(e.getCode(), e.getMsg());
+        } catch (Exception e) {
+            return Result.error(ResultCodeEnum.SYSTEM_ERROR, "添加学生失败: " + e.getMessage());
         }
     }
 }

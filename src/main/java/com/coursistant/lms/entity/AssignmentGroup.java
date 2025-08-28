@@ -1,6 +1,7 @@
 package com.coursistant.lms.entity;
 
 import java.io.Serializable;
+import java.time.LocalDateTime;
  
  /**
   * 作业小组实体类
@@ -18,6 +19,9 @@ import java.io.Serializable;
      /** 课程 ID */
      private Integer courseId;
 
+     /** 小组标题 */
+     private String title;
+
      /** 小组名称 */
      private String groupName;
 
@@ -27,6 +31,18 @@ import java.io.Serializable;
      /** 加入模式：'free', 'approval' */
      private String joinMode;
 
+     /** 小组描述 */
+     private String description;
+
+     /** 当前学生数量 */
+     private Integer currStudentCount;
+
+     /** 最大学生数量 */
+     private Integer maxStudent;
+
+     /** 创建时间 */
+     private LocalDateTime createAt;
+
      public AssignmentGroup() {}
 
      public AssignmentGroup(Integer assignmentId, Integer courseId) {
@@ -34,6 +50,8 @@ import java.io.Serializable;
          this.courseId = courseId;
          this.groupStatus = "active";
          this.joinMode = "free";
+         this.currStudentCount = 0;
+         this.createAt = LocalDateTime.now();
      }
 
      public Integer getId() {
@@ -60,6 +78,14 @@ import java.io.Serializable;
          this.courseId = courseId;
      }
 
+     public String getTitle() {
+         return title;
+     }
+
+     public void setTitle(String title) {
+         this.title = title;
+     }
+
      public String getGroupName() {
          return groupName;
      }
@@ -84,15 +110,52 @@ import java.io.Serializable;
          this.joinMode = joinMode;
      }
 
+     public String getDescription() {
+         return description;
+     }
+
+     public void setDescription(String description) {
+         this.description = description;
+     }
+
+     public Integer getCurrStudentCount() {
+         return currStudentCount;
+     }
+
+     public void setCurrStudentCount(Integer currStudentCount) {
+         this.currStudentCount = currStudentCount;
+     }
+
+     public Integer getMaxStudent() {
+         return maxStudent;
+     }
+
+     public void setMaxStudent(Integer maxStudent) {
+         this.maxStudent = maxStudent;
+     }
+
+     public LocalDateTime getCreateAt() {
+         return createAt;
+     }
+
+     public void setCreateAt(LocalDateTime createAt) {
+         this.createAt = createAt;
+     }
+
      @Override
      public String toString() {
          return "AssignmentGroup{" +
                  "id=" + id +
                  ", assignmentId=" + assignmentId +
                  ", courseId=" + courseId +
+                 ", title='" + title + '\'' +
                  ", groupName='" + groupName + '\'' +
                  ", groupStatus='" + groupStatus + '\'' +
                  ", joinMode='" + joinMode + '\'' +
+                 ", description='" + description + '\'' +
+                 ", currStudentCount=" + currStudentCount +
+                 ", maxStudent=" + maxStudent +
+                 ", createAt=" + createAt +
                  '}';
      }
  }
