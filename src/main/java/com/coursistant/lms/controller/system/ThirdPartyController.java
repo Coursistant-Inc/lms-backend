@@ -89,6 +89,7 @@ public class ThirdPartyController {
      */
     @PostMapping("/linkedin/continue")
     public Result continueWithLinkedIn(@RequestParam String authorizationCode) {
+        System.out.println("LinkedIn Login Request: " + authorizationCode);
         logRequest("continueWithLinkedIn", authorizationCode);
         Result userInfo = oAuthService.getEmailFromAuthCodeLinkedIn(authorizationCode);
         logResponse("continueWithLinkedIn", "Success");
@@ -104,6 +105,7 @@ public class ThirdPartyController {
 
     @PostMapping("/google/continue")
     public Result continueWithGoogle(@RequestParam String authorizationCode) throws JsonProcessingException {
+        System.out.println("Google Login Request: " + authorizationCode);
         logRequest("continueWithGoogle", authorizationCode);
         Result userInfo = oAuthService.getEmailFromAuthCodeGoogle(authorizationCode);
         logResponse("continueWithGoogle", "Success");
