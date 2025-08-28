@@ -277,8 +277,9 @@ public class AssignmentGroupController {
     }
 
     /**
-     * 老师创建小组
+     * 老师创建小组（支持Period-based分组）
      * API: /api/grouping/teacher/add
+     * assignmentId: 可以是作业ID、周期ID或-1表示通用周期
      */
     @RequiresPermission("assignment:manage")
     @PostMapping("/teacher/add")
@@ -333,8 +334,9 @@ public class AssignmentGroupController {
     }
 
     /**
-     * 老师添加学生到小组
+     * 老师添加学生到小组（支持Period-based分组）
      * API: /api/grouping/teacher/addStudent
+     * assignmentId: 可以是作业ID、周期ID或-1表示通用周期
      */
     @RequiresPermission("assignment:manage")
     @PostMapping("/teacher/addStudent")

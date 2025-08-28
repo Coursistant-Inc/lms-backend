@@ -354,9 +354,9 @@ public class AssignmentGroupService {
     }
 
     /**
-     * 老师创建小组
+     * 老师创建小组（支持Period-based分组）
      * @param courseId 课程ID
-     * @param assignmentId 作业ID
+     * @param assignmentId 周期ID（可以是作业ID、周期ID或-1表示通用周期）
      * @param title 小组标题
      * @param freetojoin 是否自由加入 (1=是, 0=否)
      * @param description 小组描述
@@ -373,18 +373,9 @@ public class AssignmentGroupService {
             throw new CustomException(ResultCodeEnum.COURSE_NOT_EXIST_ERROR);
         }
         
-        // 验证作业是否存在
+        // 验证周期ID（assignmentId现在表示周期ID，支持-1作为通用周期）
         if (ObjectUtil.isNull(assignmentId)) {
-            throw new CustomException(ResultCodeEnum.ASSIGNMENT_NOT_EXIST_ERROR);
-        }
-        
-        // 验证作业是否属于该课程
-        Assignment assignment = assignmentMapper.selectById(assignmentId);
-        if (ObjectUtil.isNull(assignment)) {
-            throw new CustomException(ResultCodeEnum.ASSIGNMENT_NOT_EXIST_ERROR);
-        }
-        if (!courseId.equals(assignment.getCourseId())) {
-            throw new CustomException(ResultCodeEnum.COURSE_NOT_EXIST_ERROR);
+            throw new CustomException("400", "周期ID不能为空");
         }
         
         // 验证最大学生数量
@@ -418,9 +409,9 @@ public class AssignmentGroupService {
     }
 
     /**
-     * 老师添加学生到小组
+     * 老师添加学生到小组（支持Period-based分组）
      * @param groupId 小组ID
-     * @param assignmentId 作业ID
+     * @param assignmentId 周期ID（可以是作业ID、周期ID或-1表示通用周期）
      * @param studentId 学生ID
      * @return 添加结果信息
      */
@@ -432,21 +423,15 @@ public class AssignmentGroupService {
             throw new CustomException("400", "小组不存在");
         }
         
-        // 验证作业是否存在
-        Assignment assignment = assignmentMapper.selectById(assignmentId);
-        if (ObjectUtil.isNull(assignment)) {
-            throw new CustomException("400", "作业不存在");
-        }
-        
         // 验证学生是否存在且是学生角色
         User student = userMapper.selectById(studentId);
         if (ObjectUtil.isNull(student) || !"STUDENT".equalsIgnoreCase(student.getLevel())) {
             throw new CustomException("400", "学生不存在或用户类型不正确");
         }
         
-        // 验证小组是否属于该作业
+        // 验证小组是否属于该周期（支持-1作为通用周期）
         if (!assignmentId.equals(group.getAssignmentId())) {
-            throw new CustomException("400", "小组不属于该作业");
+            throw new CustomException("400", "小组不属于该周期");
         }
         
         // 检查学生是否已经在该小组中
@@ -455,12 +440,14 @@ public class AssignmentGroupService {
             throw new CustomException("400", "学生已经在该小组中");
         }
         
-        // 检查学生是否已经在其他小组中（同一作业下）
-        List<AssignmentGroup> allGroups = assignmentGroupMapper.selectByAssignmentId(assignmentId);
-        for (AssignmentGroup g : allGroups) {
-            GroupMember exists = groupMemberMapper.selectByGroupIdAndUserId(g.getId(), studentId);
-            if (exists != null) {
-                throw new CustomException("400", "学生已经在其他小组中");
+        // 检查学生是否已经在其他小组中（同一周期下，但-1作为通用周期时跳过此检查）
+        if (assignmentId != -1) {
+            List<AssignmentGroup> allGroups = assignmentGroupMapper.selectByAssignmentId(assignmentId);
+            for (AssignmentGroup g : allGroups) {
+                GroupMember exists = groupMemberMapper.selectByGroupIdAndUserId(g.getId(), studentId);
+                if (exists != null) {
+                    throw new CustomException("400", "学生已经在其他小组中");
+                }
             }
         }
         
@@ -490,5 +477,8 @@ public class AssignmentGroupService {
         result.put("maxStudent", group.getMaxStudent());
         
         return result;
+        
+        // 注意：如果是通用周期（assignmentId = -1），学生可以同时加入多个通用小组
+        // 这为灵活的课程管理提供了可能
     }
 }
