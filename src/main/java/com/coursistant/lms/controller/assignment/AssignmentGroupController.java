@@ -371,4 +371,81 @@ public class AssignmentGroupController {
             return Result.error(ResultCodeEnum.SYSTEM_ERROR, "添加学生失败: " + e.getMessage());
         }
     }
+
+    /**
+     * 老师从小组中删除学生（支持Period-based分组）
+     * API: /api/grouping/teacher/deleteStudent
+     * assignmentId: 可以是作业ID、周期ID或-1表示通用周期
+     */
+    @RequiresPermission("assignment:manage")
+    @DeleteMapping("/teacher/deleteStudent")
+    public Result deleteStudentFromGroup(@RequestBody Map<String, Object> params) {
+        Account loginUser = TokenUtils.getCurrentUser();
+        
+        // 验证用户是否为老师
+        if (!"Teacher".equalsIgnoreCase(loginUser.getLevel())) {
+            return Result.error(ResultCodeEnum.INVALID_ACCESS_ERROR);
+        }
+        
+        // 获取参数
+        Integer groupId = (Integer) params.get("groupId");
+        Integer assignmentId = (Integer) params.get("assignmentId");
+        Integer studentId = (Integer) params.get("studentId");
+        
+        // 验证必填参数
+        if (groupId == null || assignmentId == null || studentId == null) {
+            return Result.error(ResultCodeEnum.PARAM_LOST_ERROR);
+        }
+        
+        try {
+            // 调用服务层删除学生
+            Map<String, Object> result = assignmentGroupService.deleteStudentFromGroupByTeacher(
+                groupId, assignmentId, studentId
+            );
+            
+            return Result.success(result);
+        } catch (CustomException e) {
+            return Result.error(e.getCode(), e.getMsg());
+        } catch (Exception e) {
+            return Result.error(ResultCodeEnum.SYSTEM_ERROR, "删除学生失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 老师删除小组（支持Period-based分组）
+     * API: /api/grouping/teacher/delete
+     * assignmentId: 可以是作业ID、周期ID或-1表示通用周期
+     */
+    @RequiresPermission("assignment:manage")
+    @DeleteMapping("/teacher/delete")
+    public Result deleteGroup(@RequestBody Map<String, Object> params) {
+        Account loginUser = TokenUtils.getCurrentUser();
+        
+        // 验证用户是否为老师
+        if (!"Teacher".equalsIgnoreCase(loginUser.getLevel())) {
+            return Result.error(ResultCodeEnum.INVALID_ACCESS_ERROR);
+        }
+        
+        // 获取参数
+        Integer groupId = (Integer) params.get("groupId");
+        Integer assignmentId = (Integer) params.get("assignmentId");
+        
+        // 验证必填参数
+        if (groupId == null || assignmentId == null) {
+            return Result.error(ResultCodeEnum.PARAM_LOST_ERROR);
+        }
+        
+        try {
+            // 调用服务层删除小组
+            Map<String, Object> result = assignmentGroupService.deleteGroupByTeacher(
+                groupId, assignmentId
+            );
+            
+            return Result.success(result);
+        } catch (CustomException e) {
+            return Result.error(e.getCode(), e.getMsg());
+        } catch (Exception e) {
+            return Result.error(ResultCodeEnum.SYSTEM_ERROR, "删除小组失败: " + e.getMessage());
+        }
+    }
 }

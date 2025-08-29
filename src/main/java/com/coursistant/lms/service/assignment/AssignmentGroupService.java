@@ -481,4 +481,88 @@ public class AssignmentGroupService {
         // 注意：如果是通用周期（assignmentId = -1），学生可以同时加入多个通用小组
         // 这为灵活的课程管理提供了可能
     }
+
+    /**
+     * 老师从小组中删除学生（支持Period-based分组）
+     * @param groupId 小组ID
+     * @param assignmentId 周期ID（可以是作业ID、周期ID或-1表示通用周期）
+     * @param studentId 学生ID
+     * @return 删除结果信息
+     */
+    @Transactional
+    public Map<String, Object> deleteStudentFromGroupByTeacher(Integer groupId, Integer assignmentId, Integer studentId) {
+        // 验证小组是否存在
+        AssignmentGroup group = assignmentGroupMapper.selectById(groupId);
+        if (ObjectUtil.isNull(group)) {
+            throw new CustomException("400", "小组不存在");
+        }
+        
+        // 验证小组是否属于该周期（支持-1作为通用周期）
+        if (!assignmentId.equals(group.getAssignmentId())) {
+            throw new CustomException("400", "小组不属于该周期");
+        }
+        
+        // 检查学生是否在该小组中
+        GroupMember existingMember = groupMemberMapper.selectByGroupIdAndUserId(groupId, studentId);
+        if (existingMember == null) {
+            throw new CustomException("400", "学生不在该小组中");
+        }
+        
+        // 从小组中删除学生
+        groupMemberMapper.deleteById(existingMember.getId());
+        
+        // 更新小组的当前学生数量
+        group.setCurrStudentCount(group.getCurrStudentCount() - 1);
+        assignmentGroupMapper.updateById(group);
+        
+        // 返回结果信息
+        Map<String, Object> result = new HashMap<>();
+        result.put("message", "学生删除成功");
+        result.put("groupId", groupId);
+        result.put("studentId", studentId);
+        result.put("newCurrStudentCount", group.getCurrStudentCount());
+        result.put("maxStudent", group.getMaxStudent());
+        
+        return result;
+    }
+
+    /**
+     * 老师删除小组（支持Period-based分组）
+     * @param groupId 小组ID
+     * @param assignmentId 周期ID（可以是作业ID、周期ID或-1表示通用周期）
+     * @return 删除结果信息
+     */
+    @Transactional
+    public Map<String, Object> deleteGroupByTeacher(Integer groupId, Integer assignmentId) {
+        // 验证小组是否存在
+        AssignmentGroup group = assignmentGroupMapper.selectById(groupId);
+        if (ObjectUtil.isNull(group)) {
+            throw new CustomException("400", "小组不存在");
+        }
+        
+        // 验证小组是否属于该周期（支持-1作为通用周期）
+        if (!assignmentId.equals(group.getAssignmentId())) {
+            throw new CustomException("400", "小组不属于该周期");
+        }
+        
+        // 获取小组信息用于返回
+        String groupName = group.getGroupName();
+        Integer courseId = group.getCourseId();
+        
+        // 先删除小组成员
+        groupMemberMapper.deleteByGroupId(groupId);
+        
+        // 再删除小组
+        assignmentGroupMapper.deleteById(groupId);
+        
+        // 返回结果信息
+        Map<String, Object> result = new HashMap<>();
+        result.put("message", "小组删除成功");
+        result.put("groupId", groupId);
+        result.put("groupName", groupName);
+        result.put("courseId", courseId);
+        result.put("assignmentId", assignmentId);
+        
+        return result;
+    }
 }
