@@ -74,6 +74,8 @@ public class Assignment implements Serializable {
 
     private Integer courseContentId;
 
+    private BigDecimal fullMark;
+
 
 
 
@@ -98,6 +100,7 @@ public class Assignment implements Serializable {
         if (lowestGrade != null) sb.append("\"lowestGrade\":").append(lowestGrade).append(",");
         if (averageGrade != null) sb.append("\"averageGrade\":").append(averageGrade).append(",");
         if (gradePublish != null) sb.append("\"gradePublish\":").append(gradePublish).append(",");
+        if (fullMark != null) sb.append("\"fullMark\":").append(fullMark).append(",");
 
         if (sb.charAt(sb.length() - 1) == ',') {
             sb.deleteCharAt(sb.length() - 1); // 去掉最后一个逗号
@@ -166,7 +169,13 @@ public class Assignment implements Serializable {
         this.description = description;
     }
 
+    public BigDecimal getFullMark() {
+        return fullMark;
+    }
 
+    public void setFullMark(BigDecimal fullMark) {
+        this.fullMark = fullMark;
+    }
 
     public String getCriteria() {
         return criteria;
