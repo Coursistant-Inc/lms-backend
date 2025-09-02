@@ -19,4 +19,10 @@ public interface AssignmentGroupMapper {
     List<AssignmentGroup> selectAll(AssignmentGroup group); // 可带筛选条件
  
     List<AssignmentGroup> selectByAssignmentId(Integer assignmentId);
+
+    List<AssignmentGroup> selectByCourseId(Integer courseId);
+
+    List<AssignmentGroup> selectByCourseIdAndAssignmentId(Integer courseId, Integer assignmentId);
+
+    List<AssignmentGroup> selectAvailableGroups(Integer courseId, Integer assignmentId);
 }
