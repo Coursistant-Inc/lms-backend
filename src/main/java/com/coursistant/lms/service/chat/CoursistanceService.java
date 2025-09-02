@@ -26,6 +26,7 @@ import org.apache.hc.client5.http.entity.mime.MultipartEntityBuilder;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
+import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.springframework.stereotype.Service;
 
 import jakarta.annotation.Resource;
@@ -152,7 +153,7 @@ public class CoursistanceService {
 
 
         // 定义两个 API 地址 / Define two API endpoints
-        String queryApiUrl = "http://dev.xlearnedu.com:5000/chat";
+        String queryApiUrl = "https://ec2.dev.xlearnedu.com/query";
         String analyzeImageUrl = "http://dev.xlearnedu.com:5001/analyze-image";
         String analyzeFileUrl   = "http://dev.xlearnedu.com:5005/analyze-file";
         try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
@@ -207,20 +208,42 @@ public class CoursistanceService {
 
             // 创建 POST 请求到 query API / Create POST request to query API
             HttpPost queryPost = new HttpPost(queryApiUrl);
-            MultipartEntityBuilder queryBuilder = MultipartEntityBuilder.create();
-            queryBuilder.addTextBody("course_id", courseId.toString(), ContentType.TEXT_PLAIN);
-            // 添加 course_list
-            if (courseId==0) {
-                queryBuilder.addTextBody("course_list", course_list, ContentType.TEXT_PLAIN);
-            }
+
+            queryPost.setHeader("Content-Type", "application/json");
             // 如果图片分析成功，将 analyzedResult 拼接到 query 后，并加上英文说明
             // If image analysis is successful, append analyzedResult to query with English explanation
             if (analyzedResult != null) {
                 logger.info("File analysis: " + analyzedResult);
                 query += " The question includes a file: " + analyzedResult;
             }
-            queryBuilder.addTextBody("text", query, ContentType.TEXT_PLAIN);
 
+
+            String jsonBody = String.format("{ \"question\": \"%s\", \"top_k\": 2 }", query);
+
+            ObjectMapper mapper = new ObjectMapper();
+            Object jsonObj = mapper.readValue(jsonBody, Object.class);
+            String prettyBody = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(jsonObj);
+
+            logger.info("Query Request Body:\n" + prettyBody);
+
+            queryPost.setEntity(new StringEntity(jsonBody, ContentType.APPLICATION_JSON));
+            /*MultipartEntityBuilder queryBuilder = MultipartEntityBuilder.create();
+            queryBuilder.addTextBody("course_id", courseId.toString(), ContentType.TEXT_PLAIN);
+            // 添加 course_list
+            if (courseId==0) {
+                queryBuilder.addTextBody("course_list", course_list, ContentType.TEXT_PLAIN);
+            }
+
+            // 如果图片分析成功，将 analyzedResult 拼接到 query 后，并加上英文说明
+            // If image analysis is successful, append analyzedResult to query with English explanation
+            if (analyzedResult != null) {
+                logger.info("File analysis: " + analyzedResult);
+                query += " The question includes a file: " + analyzedResult;
+            }
+            queryBuilder.addTextBody("question", query, ContentType.TEXT_PLAIN);
+            queryBuilder.addTextBody("top_k", "2", ContentType.TEXT_PLAIN);*/
+
+/*
             if (!initial) {
                 queryBuilder.addTextBody("past_chat", jsonString, ContentType.APPLICATION_JSON);
             }
@@ -228,10 +251,10 @@ public class CoursistanceService {
             // 添加初始标志 / Add initial flag
             if (initial) {
                 queryBuilder.addTextBody("initial", initial ? "1" : "0", ContentType.TEXT_PLAIN);
-            }
-
+            }*/
+/*
             HttpEntity queryEntity = queryBuilder.build();
-            queryPost.setEntity(queryEntity);
+            queryPost.setEntity(queryEntity);*/
 
             // 发送 query 请求并接收响应 / Send query request and receive response
             try (CloseableHttpResponse queryResponse = httpClient.execute(queryPost)) {
@@ -243,7 +266,8 @@ public class CoursistanceService {
                     JsonNode queryRootNode = objectMapper.readTree(queryResponseJson);
 
                     // 从 JSON 中提取字符串和图片内容 / Extract text and image from JSON
-                    String answer = queryRootNode.path("text").asText();
+                    String answer = queryRootNode.path("large_model_result").path("answer").asText();
+
                     String imageValue = queryRootNode.path("image_bytes").asText();
                     if (initial) {
                         String summary = queryRootNode.path("summary").asText();
@@ -252,6 +276,8 @@ public class CoursistanceService {
                     dialogue.setRecentMessage(answer);
                     dialogueService.updateById(dialogue, timezone);
                     //String imageBase64 = "Image not found".equals(imageValue) ? null : imageValue;
+
+                    logger.info("Full Query Response: " + queryResponseJson);
 
                     logger.info("Query analysis result: " + answer);
 
@@ -265,7 +291,7 @@ public class CoursistanceService {
                     if (!"null".equals(imageValue)) {
                         String datePath = new SimpleDateFormat("yyyy/MM/dd").format(new Date());
                         String baseDir = "/home/ubuntu/SpringBoot/saved_images/answer_images"; // 设定存储路径 / Set storage path
-                        //String baseDir = "C:\\Users\\Charlottejas\\Desktop\\Jerry\\项目脚手架\\manager\\"; // 设定存储路径
+
                         String uploadDir = baseDir + datePath + "/";
                         File dir = new File(uploadDir);
                         if (!dir.exists() && !dir.mkdirs()) {
