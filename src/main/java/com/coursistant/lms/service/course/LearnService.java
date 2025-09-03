@@ -24,8 +24,6 @@ import com.coursistant.lms.exception.CustomException;
 import com.coursistant.lms.mapper.course.LearnMapper;
 import com.coursistant.lms.mapper.user.UserMapper;
 import com.coursistant.lms.service.user.UserService;
-import com.github.pagehelper.PageHelper;
-import com.github.pagehelper.PageInfo;
 
 import cn.hutool.core.util.ObjectUtil;
 import jakarta.annotation.Resource;
@@ -297,29 +295,6 @@ public class LearnService {
         return learns;
     }
 
-    public PageInfo<Learn> selectPage(Learn learn, Integer pageNum, Integer pageSize) {
-        String cacheKey = "learn:page:" + pageNum + ":" + pageSize;
-        if (learn != null) {
-            cacheKey += ":" + learn.toString();
-        }
-
-        // 从 Redis 获取缓存 // Get cache from Redis
-        PageInfo<Learn> pageInfo = (PageInfo<Learn>) learnPageRedisTemplate.opsForValue().get(cacheKey);
-        if (pageInfo != null) {
-            System.out.println("from cache: " + cacheKey);
-            return pageInfo;
-        }
-
-        // 如果缓存不存在，从数据库查询 // If cache does not exist, query from database
-        PageHelper.startPage(pageNum, pageSize);
-        List<Learn> list = learnMapper.selectAll(learn);
-        pageInfo = PageInfo.of(list);
-
-        if (!list.isEmpty()) {
-            learnPageRedisTemplate.opsForValue().set(cacheKey, pageInfo, CACHE_EXPIRE_TIME, TimeUnit.SECONDS);
-        }
-        return pageInfo;
-    }
 
     /**
      * 读取 Excel 文件，提取用户名列表 // Read Excel file and extract username list

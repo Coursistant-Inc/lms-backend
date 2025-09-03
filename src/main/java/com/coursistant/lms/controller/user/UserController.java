@@ -18,7 +18,6 @@ import org.springframework.web.bind.annotation.RestController;
 import com.coursistant.lms.common.Result;
 import com.coursistant.lms.entity.User;
 import com.coursistant.lms.service.user.UserService;
-import com.github.pagehelper.PageInfo;
 
 /**
  * 用户前端操作接口

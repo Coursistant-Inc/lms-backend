@@ -25,8 +25,6 @@ import com.coursistant.lms.service.system.RefreshTokenService;
 import com.coursistant.lms.utils.EmailUtil;
 import com.coursistant.lms.utils.PasswordEncoderUtil;
 import com.coursistant.lms.utils.TokenUtils;
-import com.github.pagehelper.PageHelper;
-import com.github.pagehelper.PageInfo;
 
 import jakarta.annotation.Resource;
 import java.util.List;
