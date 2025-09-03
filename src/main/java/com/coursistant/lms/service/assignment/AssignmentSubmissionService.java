@@ -72,7 +72,7 @@ public class AssignmentSubmissionService {
 
         // 当前新提交设为 is_final = true
         assignmentSubmission.setFinal(true);
-        Integer result=assignmentSubmissionMapper.insert(assignmentSubmission);
+        assignmentSubmissionMapper.insert(assignmentSubmission);
 
         // 如果是第一次提交，更新该作业的提交计数
         if (submissions.isEmpty()) {
@@ -80,6 +80,8 @@ public class AssignmentSubmissionService {
             toUpdate.setId(assignmentId);
             assignmentService.incrementSubNumById(toUpdate);
         }
+
+        Integer result=assignmentSubmission.getId();
 
         return result;
 

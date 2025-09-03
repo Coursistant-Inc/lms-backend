@@ -85,6 +85,10 @@ public enum ResultCodeEnum {
     GROUP_JOIN_INVALID_ERROR("4050", "Group Is Full/Not Open for Join"),
     DUPLICATED_GROUP_MEMBER_ERROR("4051", "User Already In Group"),
     DUPLICATED_LEARN_RELATION_ERROR("4052", "User Already In This Course"),
+    DUPLICATED_JOIN_REQUEST_ERROR("4053", "Join Request Already Exists"),
+    REQUEST_NOT_EXIST_ERROR("4054", "Join Request Not Exist"),
+    REQUEST_ALREADY_PROCESSED_ERROR("4055", "Join Request Already Processed"),
+    NO_PERMISSION_ERROR("4056", "No Permission to Perform This Action"),
 
     /**
      * External service errors (600X)
