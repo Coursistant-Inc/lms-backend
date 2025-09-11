@@ -268,7 +268,7 @@ public class CoursistanceService {
                     // 从 JSON 中提取字符串和图片内容 / Extract text and image from JSON
                     String answer = queryRootNode.path("large_model_result").path("answer").asText();
 
-                    String imageValue = queryRootNode.path("image_bytes").asText();
+                    String imageValue = queryRootNode.path("image_url").asText();
                     if (initial) {
                         String summary = queryRootNode.path("summary").asText();
                         dialogue.setSummary(summary);
@@ -283,35 +283,12 @@ public class CoursistanceService {
 
                     // 设置到返回对象中 / Set values in return object
                     returnQuery.setAnswer(answer);
-                    returnQuery.setImageBase64(imageValue);
+                    returnQuery.setImageURL(imageValue);
                     returnQuery.setQueryId(dialogueId);
 
                     // 保存聊天记录 / Save chat history
                     chat.setAnswerText(answer);
-                    if (!"null".equals(imageValue)) {
-                        String datePath = new SimpleDateFormat("yyyy/MM/dd").format(new Date());
-                        String baseDir = "/home/ubuntu/SpringBoot/saved_images/answer_images"; // 设定存储路径 / Set storage path
 
-                        String uploadDir = baseDir + datePath + "/";
-                        File dir = new File(uploadDir);
-                        if (!dir.exists() && !dir.mkdirs()) {
-                            throw new RuntimeException("Failed to create directory: " + uploadDir);
-                        }
-
-                        // 创建唯一文件名 / Create unique filename
-                        String fileName = System.currentTimeMillis() + "_" + dialogueId + ".png";
-                        String filePath = uploadDir + fileName;
-
-                        try {
-                            // 存储文件 / Save file
-                            File imageFile = base64ToFile(imageValue, filePath);
-                            System.out.println("Save answer image：" + imageFile.getAbsolutePath());
-                            // 保存文件路径 / Save file path
-                            chat.setAnswerImage(filePath);
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-                    }
                 } else {
                     throw new IOException("Failed to query API. HTTP Status: " +
                             queryResponse.getCode());

@@ -16,7 +16,7 @@ public class Query implements Serializable {
 
     // 用于存储图片的 Base64 编码
     // Stores the image in Base64 encoding
-    private String imageBase64;
+    private String imageURL;
 
     private Integer queryId;
 
@@ -34,9 +34,9 @@ public class Query implements Serializable {
 
     // 全参构造器
     // Full-argument constructor
-    public Query(String answer, String imageBase64) {
+    public Query(String answer, String imageURL) {
         this.answer = answer;
-        this.imageBase64 = imageBase64;
+        this.imageURL = imageURL;
     }
 
     // Getter 和 Setter 方法
@@ -49,12 +49,12 @@ public class Query implements Serializable {
         this.answer = answer;
     }
 
-    public String getImageBase64() {
-        return imageBase64;
+    public String getImageURL() {
+        return imageURL;
     }
 
-    public void setImageBase64(String imageBase64) {
-        this.imageBase64 = imageBase64;
+    public void setImageURL(String imageURL) {
+        this.imageURL = imageURL;
     }
 
     public Integer getQueryId() {
