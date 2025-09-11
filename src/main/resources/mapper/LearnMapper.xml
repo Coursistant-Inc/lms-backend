@@ -98,4 +98,14 @@
         WHERE user_id = #{userId} AND course_id = #{courseId}
     </select>
 
+
+    <select id="selectEmailsByCourseId" resultType="java.lang.String">
+        SELECT u.email
+        FROM Learn l
+                 JOIN User u ON l.user_id = u.id
+        WHERE l.course_id = #{courseId}
+          AND u.email IS NOT NULL
+    </select>
+
+
 </mapper>

@@ -127,7 +127,7 @@ public class SubmissionFileController {
                               @RequestParam("orderIndex") Integer orderIndex) {
         logRequest("addWithFile", file.getOriginalFilename());
 
-        FileSummary summary = diskFilesService.add(file, courseId, userId, category, 0);
+        FileSummary summary = diskFilesService.add(file, courseId, userId, category, 0,false);
         Integer fileId = summary.getId();
 
         SubmissionFile item = new SubmissionFile();

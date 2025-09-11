@@ -5,14 +5,19 @@ import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.ObjectUtil;
 
 import com.coursistant.lms.common.enums.ResultCodeEnum;
-import com.coursistant.lms.entity.Assignment;
-import com.coursistant.lms.entity.AssignmentSubmission;
+import com.coursistant.lms.entity.*;
 
 import com.coursistant.lms.entity.DTO.AssignmentSubmissionDTO;
-import com.coursistant.lms.entity.SubmissionFile;
 import com.coursistant.lms.exception.CustomException;
+import com.coursistant.lms.mapper.assignment.AssignmentMapper;
 import com.coursistant.lms.mapper.assignment.AssignmentSubmissionMapper;
+import com.coursistant.lms.mapper.course.CourseMapper;
+import com.coursistant.lms.mapper.file.AssignmentItemMapper;
+import com.coursistant.lms.mapper.file.DiskFilesMapper;
+import com.coursistant.lms.mapper.file.SubmissionFileMapper;
+import com.coursistant.lms.mapper.user.UserMapper;
 import com.coursistant.lms.service.file.SubmissionFileService;
+import com.coursistant.lms.utils.EmailUtil;
 import com.coursistant.lms.utils.TimeZoneUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -20,12 +25,9 @@ import org.springframework.web.multipart.MultipartFile;
 import jakarta.annotation.Resource;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.ZoneId;
-import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Objects;
+import java.time.*;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
 import java.util.stream.Collectors;
 
 
@@ -34,12 +36,32 @@ public class AssignmentSubmissionService {
 
     @Resource
     private AssignmentSubmissionMapper assignmentSubmissionMapper;
-    
+
+    @Resource
+    private UserMapper userMapper;
+
+    @Resource
+    private CourseMapper courseMapper;
+
+    @Resource
+    private AssignmentMapper assignmentMapper;
+
+    @Resource
+    private DiskFilesMapper diskFilesMapper;
+
+    @Resource
+    private SubmissionFileMapper submissionFileMapper;
+
     @Resource
     private SubmissionFileService submissionFileService;
 
     @Resource
     private AssignmentService assignmentService;
+
+    @Resource
+    private EmailUtil emailUtil;
+
+
 
 
     public Integer add(AssignmentSubmission assignmentSubmission) {
@@ -60,7 +82,10 @@ public class AssignmentSubmissionService {
         ZonedDateTime dueTime = toCheck.getDue().atZone(ZoneOffset.UTC);
 
         if (nowUtc.isAfter(dueTime)) {
-            throw new CustomException(ResultCodeEnum.SUBMISSION_DUE_EXPIRED_ERROR);
+            assignmentSubmission.setLate(true);
+            Duration diff = Duration.between(nowUtc, dueTime).abs();
+            assignmentSubmission.setLateTime(diff.toString());
+            //throw new CustomException(ResultCodeEnum.SUBMISSION_DUE_EXPIRED_ERROR);
         }
 
         if (submissions.size() >= toCheck.getAllowedSubmissionTimes()) {
@@ -205,6 +230,66 @@ public class AssignmentSubmissionService {
         }
 
         return assignmentSubmissions;
+    }
+
+
+    public void sendSubmissionEmail(Integer submissionId) {
+        AssignmentSubmission assignmentSubmission=assignmentSubmissionMapper.selectById(submissionId);
+        User student=userMapper.selectById(assignmentSubmission.getStudentId());
+        Assignment assignment=assignmentMapper.selectById(assignmentSubmission.getAssignmentId());
+        Course course=courseMapper.selectById(assignment.getCourseId());
+        List<SubmissionFile> submissionFiles=submissionFileMapper.selectFileBySubmissionId(assignmentSubmission.getId());
+        List<String> fileNames=new ArrayList<>();
+        for  (SubmissionFile submissionFile:submissionFiles){
+            String fileName=diskFilesMapper.selectById(submissionFile.getFileId()).getName();
+            Double sizeKb = diskFilesMapper.selectById(submissionFile.getFileId()).getSize();
+
+            // 转换成 MB，保留两位小数
+            double sizeMb = sizeKb / 1024.0;
+            String sizeStr = String.format("%.2f MB", sizeMb);
+
+            // 拼接结果
+            String fileWithSize = fileName + " (" + sizeStr + ")";
+            fileNames.add(fileWithSize);
+        }
+
+        String studentName=student.getUsername();
+        String email=student.getEmail();
+        LocalDateTime utcTime=assignmentSubmission.getDate();
+        ZoneId laZone = ZoneId.of("America/Los_Angeles");
+        ZonedDateTime laTime = utcTime.atZone(ZoneOffset.UTC).withZoneSameInstant(laZone);
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMMM d, yyyy h:mm a z", Locale.ENGLISH);
+        String formatted = laTime.format(formatter);
+
+        // 拼接文件名列表
+        StringBuilder fileListBuilder = new StringBuilder();
+        for (String fileName : fileNames) {
+            if (fileListBuilder.length() > 0) {
+                fileListBuilder.append(", ");
+            }
+            fileListBuilder.append(fileName);
+        }
+        String filesList = fileListBuilder.toString();
+
+
+
+        // 组装邮件正文
+        String subject = "Submission Confirmation — " + assignment.getTitle()
+                + " (ID " + assignmentSubmission.getId() + ")";
+        String emailBody = ""
+                + "Hi " + studentName + ",\n\n"
+                + "This email confirms that your submission to " + assignment.getTitle() + " was successful.\n\n"
+                + "Submission ID: " + assignmentSubmission.getId() + "\n"
+                + "Received: " + formatted +"\n"
+                + "Course/Section: " + course.getName() + "\n"
+                + "File(s): " + filesList + "\n\n"
+                + "If you did not intend to submit, or you need to make changes, please check "
+                + "the assignment’s resubmission policy and deadline on the LMS page.\n\n"
+                + "Best regards,\n"
+                + "Coursistant xLearn Team";
+
+        emailUtil.sendEmail(email,subject,emailBody);
+
     }
 
 }

@@ -59,7 +59,7 @@ public class DiskFilesService {
      * 新增文件
      * Add a new file
      */
-    public FileSummary add(MultipartFile file, Integer courseId, Integer userId, String category, Integer analysis) {
+    public FileSummary add(MultipartFile file, Integer courseId, Integer userId, String category, Integer analysis, Boolean upload2RAG) {
         FileSummary summary = new FileSummary();
 
         // 创建文件存储路径
@@ -150,9 +150,11 @@ public class DiskFilesService {
             throw new CustomException(ResultCodeEnum.FILE_UPLOAD_ERROR);
         }
 
-        // ============ 异步调用部分 ==============
-        // 在这里触发异步上传到 5100/file 的逻辑，不阻塞 add 的返回
-        asyncFileUploadService.asyncUploadFile(courseId, file);
+        if (upload2RAG) {
+            // ============ 异步调用部分 ==============
+            // 在这里触发异步上传到 5100/file 的逻辑，不阻塞 add 的返回
+            asyncFileUploadService.asyncUploadFile(courseId, file);
+        }
 
         return summary;
     }

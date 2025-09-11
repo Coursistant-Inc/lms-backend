@@ -264,6 +264,8 @@ public class UserService {
         String refreshToken=refreshTokenService.createAndStoreRefreshToken(dbUser.getId(),dbUser.getRole());
         dbUser.setRefreshToken(refreshToken);
 
+        dbUser.setPassword(null);
+
         return dbUser;
     }
 

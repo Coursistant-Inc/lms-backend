@@ -6,7 +6,7 @@
 
     <!-- 字段列表 // Base column list -->
     <sql id="Base_Column_List">
-        id, assignment_id, student_id, grader_id, date, status, grade, comment, is_final
+        id, assignment_id, student_id, grader_id, date, status, grade, comment, is_final,is_late,late_time
     </sql>
 
     <!-- 查询所有 AssignmentSubmission // Select all AssignmentSubmissions -->
@@ -24,6 +24,8 @@
             <if test="grade != null"> AND grade = #{grade} </if>
             <if test="comment != null"> AND comment = #{comment} </if>
             <if test="isFinal != null"> AND is_final = #{isFinal} </if>
+            <if test="isLate != null"> AND is_late = #{isLate} </if>
+            <if test="lateTime != null"> AND late_time = #{lateTime} </if>
         </where>
     </select>
 
@@ -53,6 +55,8 @@
             <if test="grade != null">grade,</if>
             <if test="comment != null">comment,</if>
             <if test="isFinal != null">is_final,</if>
+            <if test="isLate != null">is_late,</if>
+            <if test="lateTime != null">late_time,</if>
         </trim>
         <trim prefix="VALUES (" suffix=")" suffixOverrides=",">
             <if test="id != null">#{id},</if>
@@ -63,6 +67,8 @@
             <if test="grade != null">#{grade},</if>
             <if test="comment != null">#{comment},</if>
             <if test="isFinal != null">#{isFinal},</if>
+            <if test="isLate != null">#{isLate},</if>
+            <if test="lateTime != null">#{lateTime},</if>
         </trim>
     </insert>
 
@@ -77,6 +83,8 @@
             <if test="grade != null">grade = #{grade},</if>
             <if test="comment != null">comment = #{comment},</if>
             <if test="isFinal != null">is_final = #{isFinal},</if>
+            <if test="isLate != null">is_late = #{isLate},</if>
+            <if test="lateTime != null">late_time = #{lateTime},</if>
         </set>
         WHERE id = #{id}
     </update>

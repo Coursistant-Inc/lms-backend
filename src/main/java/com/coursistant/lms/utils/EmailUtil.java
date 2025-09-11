@@ -21,7 +21,7 @@ public class EmailUtil {
     private static final String FROM_EMAIL = "do.not.reply@coursistant.com";
     private final String salesRequestEmail = "info@coursistant.com";
     private final String salesSubject = "You have received a new sales enquiry via the website form from ";
-    // 替换为你的邮箱 // Replace with your email
+
 
     /**
      * 发送邮件 // Send email

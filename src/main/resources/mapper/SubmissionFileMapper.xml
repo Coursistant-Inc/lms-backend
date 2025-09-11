@@ -88,4 +88,14 @@
         delete from AssignmentSubmissionFile where submission_id = #{submissionId}
     </delete>
 
+
+    <select id="selectFileBySubmissionId" resultType="com.coursistant.lms.entity.SubmissionFile">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM AssignmentSubmissionFile
+        WHERE submission_id = #{submissionId}
+        AND type = 'file'
+    </select>
+
+
 </mapper>

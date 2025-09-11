@@ -97,6 +97,17 @@ public class AssignmentController {
         return Result.success();
     }
 
+    @RequiresPermission("assignment:manage")
+    @PutMapping("/publishGrade")
+    public Result publishGrade(@RequestBody Assignment assignment,
+                             @RequestHeader(value = "X-Timezone", required = false) String timezone) {
+        logRequest("updateById", assignment.toString());
+        ZoneId zone=TimeZoneUtils.resolveZoneId(timezone);
+        assignmentService.publishGrade(assignment);
+        logResponse("updateById", "Success");
+        return Result.success();
+    }
+
     /**
      * 根据 ID 查询书签
      * Query a assignment by ID

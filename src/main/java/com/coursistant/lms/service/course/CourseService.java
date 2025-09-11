@@ -23,6 +23,7 @@ import com.coursistant.lms.entity.User;
 import com.coursistant.lms.exception.CustomException;
 import com.coursistant.lms.mapper.course.CourseMapper;
 import com.coursistant.lms.mapper.course.CourseScheduleMapper;
+import com.coursistant.lms.mapper.course.LearnMapper;
 import com.coursistant.lms.service.user.UserService;
 
 import cn.hutool.core.util.ObjectUtil;
@@ -33,6 +34,9 @@ public class CourseService {
 
     @Resource
     private CourseMapper courseMapper;
+
+    @Resource
+    private LearnMapper learnMapper;
 
     @Resource
     private UserService userService;
@@ -242,6 +246,13 @@ public class CourseService {
     public void updateLastSelectedCourse(Integer userId, Integer courseId)
     {
         courseMapper.updateLastSelectedCourse(userId,courseId);
+    }
+
+    public Integer countStudentByCourseId(Integer courseId){
+        int num= learnMapper.countByCourseId(courseId);
+
+
+        return  num;
     }
 
 

@@ -5,6 +5,7 @@ import com.coursistant.lms.entity.Course;
 import com.coursistant.lms.entity.DTO.CourseDTO;
 import com.coursistant.lms.service.course.CourseService;
 import com.coursistant.lms.annotation.RequiresPermission;
+import io.swagger.v3.oas.models.security.SecurityScheme;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.annotation.Resource;
@@ -125,6 +126,16 @@ public class CourseController {
         List<CourseDTO> list = courseService.selectByUserId(id);
         logResponse("selectById", null);
         return Result.success(list);
+    }
+
+
+    @RequiresPermission("course:view")
+    @GetMapping("/countStudentByCourseId/{id}")
+    public Result countStudentByCourseId(@PathVariable Integer id) {
+        logRequest("countStudentByCourseId", id.toString());
+        Integer num = courseService.countStudentByCourseId(id);
+        logResponse("countStudentByCourseId", num.toString());
+        return Result.success(num);
     }
 
 }

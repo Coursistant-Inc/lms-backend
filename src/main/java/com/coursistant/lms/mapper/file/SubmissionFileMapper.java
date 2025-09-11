@@ -61,4 +61,12 @@ public interface SubmissionFileMapper {
     List<SubmissionFile> selectSubmissionInfo(@Param("submissionId") Integer submissionId);
 
 
+    /**
+     * 查询指定 submissionId 且 type='file' 的文件
+     * Query a file with given submissionId and type='file'
+     */
+    List<SubmissionFile> selectFileBySubmissionId(@Param("submissionId") Integer submissionId);
+
+
+
 }

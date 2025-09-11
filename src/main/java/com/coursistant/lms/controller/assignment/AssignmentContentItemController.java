@@ -138,7 +138,7 @@ public class AssignmentContentItemController {
                               @RequestParam("orderIndex") Integer orderIndex) {
         logRequest("addWithFile", file.getOriginalFilename());
 
-        FileSummary summary = diskFilesService.add(file, courseId, userId, category, analysis);
+        FileSummary summary = diskFilesService.add(file, courseId, userId, category, analysis,true);
         Integer fileId = summary.getId();
 
         AssignmentItem item = new AssignmentItem();

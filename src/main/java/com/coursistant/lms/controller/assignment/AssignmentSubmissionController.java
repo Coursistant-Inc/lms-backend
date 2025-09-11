@@ -140,4 +140,22 @@ public class AssignmentSubmissionController {
         return Result.success(list);
     }
 
+
+    /**
+     * 发送提交成功的通知邮件
+     * Send submission confirmation email
+     */
+    @RequiresPermission("assignment:submit")
+    @PostMapping("/sendSubmissionEmail/{submissionId}")
+    public Result sendSubmissionEmail(@PathVariable("submissionId") Integer submissionId) {
+        logRequest("sendSubmissionEmail", "submissionId=" + submissionId);
+
+        // 调用 service 逻辑（内部完成邮件组装和发送）
+        assignmentSubmissionService.sendSubmissionEmail(submissionId);
+
+        logResponse("sendSubmissionEmail", "success");
+        return Result.success();
+    }
+
+
 }
