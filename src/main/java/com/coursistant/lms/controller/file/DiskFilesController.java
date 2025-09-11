@@ -51,7 +51,7 @@ public class DiskFilesController {
         if (files.length==1){
             logRequest("add", String.format("fileName=%s, courseName=%s, userId=%d, category=%s, analysis=%d",
                 files[0].getOriginalFilename(), courseId, userId, categories[0],analysis));
-            FileSummary summary=diskFilesService.add(files[0], courseId, userId, categories[0],analysis);
+            FileSummary summary=diskFilesService.add(files[0], courseId, userId, categories[0],analysis,true);
 
             logResponse("add", "Success");
         
@@ -65,7 +65,7 @@ public class DiskFilesController {
                 logRequest("add", String.format("fileName=%s, courseName=%s, userId=%d, category=%s, analysis=%d",
                         file.getOriginalFilename(), courseId, userId, category, analysis));
         
-                diskFilesService.add(file, courseId, userId, category, 0);
+                diskFilesService.add(file, courseId, userId, category, 0,true);
 
                 logResponse("add", "Success");
             }

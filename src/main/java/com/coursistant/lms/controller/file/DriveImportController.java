@@ -135,7 +135,7 @@ public class DriveImportController {
                 "fileName=%s, courseId=%d, userId=%d, category=%s, analysis=%d",
                 filename, courseId, userId, category, analysis));
 
-        FileSummary summary = diskFilesService.add(mf, courseId, userId, category, analysis);
+        FileSummary summary = diskFilesService.add(mf, courseId, userId, category, analysis,true);
 
         logResponse("importFromGoogleDrive", "Success");
 

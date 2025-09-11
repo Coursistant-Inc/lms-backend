@@ -45,6 +45,8 @@ public class AssignmentSubmission implements Serializable {
 
 
 
+
+
     /** 状态
      * Submission status
      */
@@ -62,6 +64,10 @@ public class AssignmentSubmission implements Serializable {
 
     private Boolean isFinal;
 
+    private Boolean isLate;
+
+    private String lateTime;
+
 
 
     public AssignmentSubmission() {}
@@ -78,6 +84,8 @@ public class AssignmentSubmission implements Serializable {
         if (grade != null) sb.append("\"grade\":\"").append(grade).append("\",");
         if (comment != null) sb.append("\"comment\":\"").append(comment).append("\",");
         if (isFinal != null) sb.append("\"isFinal\":").append(isFinal).append(",");
+        if (isLate != null) sb.append("\"isLate\":").append(isLate).append(",");
+        if (lateTime != null) sb.append("\"lateTime\":").append(lateTime).append(",");
 
         if (sb.charAt(sb.length() - 1) == ',') {
             sb.deleteCharAt(sb.length() - 1);
@@ -159,5 +167,21 @@ public class AssignmentSubmission implements Serializable {
 
     public void setFinal(Boolean aFinal) {
         isFinal = aFinal;
+    }
+
+    public Boolean getLate() {
+        return isLate;
+    }
+
+    public void setLate(Boolean late) {
+        isLate = late;
+    }
+
+    public String getLateTime() {
+        return lateTime;
+    }
+
+    public void setLateTime(String lateTime) {
+        this.lateTime = lateTime;
     }
 }

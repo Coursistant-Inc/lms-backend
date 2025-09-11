@@ -59,4 +59,19 @@ public interface LearnMapper {
 
     Learn selectByUserIdAndCourseId(Integer userId, Integer courseId);
 
+    /**
+     * 根据 Course ID 查询用户邮箱列表
+     * Query all user emails associated with a course id
+     */
+    List<String> selectEmailsByCourseId(Integer courseId);
+
+    /**
+     * 根据 Course ID 查询记录数量
+     * Count how many Learn records are associated with a course id
+     */
+    @Select("SELECT COUNT(*) FROM Learn WHERE course_id = #{courseId}")
+    int countByCourseId(Integer courseId);
+
+
+
 }

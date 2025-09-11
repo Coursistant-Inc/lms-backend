@@ -13,6 +13,7 @@ import com.coursistant.lms.entity.User;
 import com.coursistant.lms.exception.CustomException;
 import com.coursistant.lms.mapper.course.CourseMapper;
 import com.coursistant.lms.mapper.course.CourseScheduleMapper;
+import com.coursistant.lms.mapper.course.LearnMapper;
 import com.coursistant.lms.service.user.UserService;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
@@ -29,6 +30,9 @@ public class CourseService {
 
     @Resource
     private CourseMapper courseMapper;
+
+    @Resource
+    private LearnMapper learnMapper;
 
     @Resource
     private UserService userService;
@@ -208,6 +212,13 @@ public class CourseService {
             courseAllRedisTemplate.opsForValue().set(cacheKey, courses, CACHE_EXPIRE_TIME, TimeUnit.SECONDS);
         }
         return courses;
+    }
+
+    public Integer countStudentByCourseId(Integer courseId){
+        int num= learnMapper.countByCourseId(courseId);
+
+
+        return  num;
     }
 
 

@@ -22,7 +22,7 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 public class RedisConfig {
 
     private static final String REDIS_HOST = "localhost";
-    private static final int REDIS_PORT = 6382;
+    private static final int REDIS_PORT = 6379;
     //@Value("${REDIS_DEFAULT_USERNAME}")
     //private String redisUsername;
 
