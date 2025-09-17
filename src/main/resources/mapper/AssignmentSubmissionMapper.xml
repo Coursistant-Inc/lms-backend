@@ -6,7 +6,7 @@
 
     <!-- 字段列表 // Base column list -->
     <sql id="Base_Column_List">
-        id, assignment_id, student_id, grader_id, date, status, grade, comment, is_final,is_late,late_time
+        id, assignment_id, student_id, grader_id, date, status, grade, comment, is_final,is_late,late_time,group_id
     </sql>
 
     <!-- 查询所有 AssignmentSubmission // Select all AssignmentSubmissions -->
@@ -19,6 +19,7 @@
             <if test="assignmentId != null"> AND assignment_id = #{assignmentId} </if>
             <if test="studentId != null"> AND student_id = #{studentId} </if>
             <if test="graderId != null"> AND grader_id = #{graderId} </if>
+            <if test="groupId != null"> AND group_id = #{groupId} </if>
             <if test="date != null"> AND date = #{date} </if>
             <if test="status != null"> AND status = #{status} </if>
             <if test="grade != null"> AND grade = #{grade} </if>
@@ -51,6 +52,7 @@
             <if test="assignmentId != null">assignment_id,</if>
             <if test="studentId != null">student_id,</if>
             <if test="graderId != null">grader_id,</if>
+            <if test="groupId != null">group_id,</if>
             <if test="status != null">status,</if>
             <if test="grade != null">grade,</if>
             <if test="comment != null">comment,</if>
@@ -63,6 +65,7 @@
             <if test="assignmentId != null">#{assignmentId},</if>
             <if test="studentId != null">#{studentId},</if>
             <if test="graderId != null">#{graderId},</if>
+            <if test="groupId != null">#{groupId},</if>
             <if test="status != null">#{status},</if>
             <if test="grade != null">#{grade},</if>
             <if test="comment != null">#{comment},</if>
@@ -79,6 +82,7 @@
             <if test="assignmentId != null">assignment_id = #{assignmentId},</if>
             <if test="studentId != null">student_id = #{studentId},</if>
             <if test="graderId != null">grader_id = #{graderId},</if>
+            <if test="groupId != null">group_id = #{groupId},</if>
             <if test="status != null">status = #{status},</if>
             <if test="grade != null">grade = #{grade},</if>
             <if test="comment != null">comment = #{comment},</if>
@@ -102,6 +106,28 @@
           AND is_final = 1
           AND grade IS NOT NULL
     </select>
+
+
+    <!-- 查找指定 assignmentId + studentId，且 final = true 的记录 -->
+    <select id="selectFinalByAssignmentIdAndUserId" resultType="com.coursistant.lms.entity.AssignmentSubmission">
+        SELECT
+        <include refid="Base_Column_List" />
+        FROM AssignmentSubmission
+        WHERE assignment_id = #{assignmentId}
+        AND student_id = #{studentId}
+        AND is_final = 1
+    </select>
+
+    <!-- 查找指定 assignmentId + groupId，且 final = true 的记录 -->
+    <select id="selectFinalByAssignmentIdAndGroupId" resultType="com.coursistant.lms.entity.AssignmentSubmission">
+        SELECT
+        <include refid="Base_Column_List" />
+        FROM AssignmentSubmission
+        WHERE assignment_id = #{assignmentId}
+        AND group_id = #{groupId}
+        AND is_final = 1
+    </select>
+
 
 
 </mapper>

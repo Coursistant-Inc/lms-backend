@@ -11,6 +11,7 @@ import com.coursistant.lms.entity.DTO.AssignmentSubmissionDTO;
 import com.coursistant.lms.exception.CustomException;
 import com.coursistant.lms.mapper.assignment.AssignmentMapper;
 import com.coursistant.lms.mapper.assignment.AssignmentSubmissionMapper;
+import com.coursistant.lms.mapper.assignment.GroupMemberMapper;
 import com.coursistant.lms.mapper.course.CourseMapper;
 import com.coursistant.lms.mapper.file.AssignmentItemMapper;
 import com.coursistant.lms.mapper.file.DiskFilesMapper;
@@ -48,6 +49,8 @@ public class AssignmentSubmissionService {
 
     @Resource
     private DiskFilesMapper diskFilesMapper;
+    @Resource
+    private GroupMemberMapper groupMemberMapper;
 
     @Resource
     private SubmissionFileMapper submissionFileMapper;
@@ -112,6 +115,85 @@ public class AssignmentSubmissionService {
 
     }
 
+
+    //小组作业
+
+    public Integer addAsGroup(AssignmentSubmission assignmentSubmission) {
+        int assignmentId = assignmentSubmission.getAssignmentId();
+        int studentId = assignmentSubmission.getStudentId();
+        Assignment assignmentInfo= assignmentMapper.selectById(assignmentSubmission.getAssignmentId());
+        Integer courseId=assignmentInfo.getCourseId();
+        ZoneId zone = ZoneId.of("UTC");
+
+        // 查询该学生在该作业下已有提交
+
+        Integer groupId=groupMemberMapper.selectGroupIdByCourseIdAndUserId(courseId,studentId);
+
+        if (groupId == null) {
+            throw new CustomException(ResultCodeEnum.GROUP_NOT_EXIST_ERROR);
+        }
+
+        List<GroupMember> members=groupMemberMapper.selectByGroupId(groupId);
+
+
+        List<AssignmentSubmission> submissions =new ArrayList<>();
+        for (GroupMember member:members){
+            AssignmentSubmission qryItem = new AssignmentSubmission();
+            qryItem.setAssignmentId(assignmentId);
+            qryItem.setStudentId(member.getUserId());
+            List<AssignmentSubmission> indiSubmissions = selectAll(qryItem, zone);
+            if (indiSubmissions!=null){
+                submissions.addAll(indiSubmissions);
+            }
+
+        }
+
+
+
+        // 查询该作业允许的提交次数
+        Assignment toCheck = assignmentService.selectById(assignmentId, zone);
+        // 当前 UTC 时间是否晚于作业截止时间
+        ZonedDateTime nowUtc = ZonedDateTime.now(ZoneOffset.UTC);
+        ZonedDateTime dueTime = toCheck.getDue().atZone(ZoneOffset.UTC);
+
+        if (nowUtc.isAfter(dueTime)) {
+            assignmentSubmission.setLate(true);
+            Duration diff = Duration.between(nowUtc, dueTime).abs();
+            assignmentSubmission.setLateTime(diff.toString());
+            //throw new CustomException(ResultCodeEnum.SUBMISSION_DUE_EXPIRED_ERROR);
+        }
+
+        /*
+        if (submissions.size() >= toCheck.getAllowedSubmissionTimes()) {
+            throw new CustomException(ResultCodeEnum.SUBMISSION_ATTEMPT_EXCEEDED_ERROR);
+        }*/
+
+        // 将之前该学生的所有提交设为 is_final = false
+        if (members != null && !members.isEmpty()) {
+            for (GroupMember member : members) {
+                assignmentSubmissionMapper.clearFinalFlag(assignmentId, member.getUserId());
+            }
+        }
+
+
+        // 当前新提交设为 is_final = true
+        assignmentSubmission.setFinal(true);
+        assignmentSubmission.setGroupId(groupId);
+        assignmentSubmissionMapper.insert(assignmentSubmission);
+
+        // 如果是第一次提交，更新该作业的提交计数
+        if (submissions.isEmpty()) {
+            Assignment toUpdate = new Assignment();
+            toUpdate.setId(assignmentId);
+            assignmentService.incrementSubNumById(toUpdate);
+        }
+
+        Integer result=assignmentSubmission.getId();
+
+        return result;
+
+    }
+
     /**
      * 删除
      * Delete a assignmentSubmission by ID
@@ -154,6 +236,35 @@ public class AssignmentSubmissionService {
         }
         assignmentSubmissionMapper.updateById(assignmentSubmission);
         calculateStats(assignmentSubmission.getAssignmentId());
+
+    }
+
+    public void updateGroupGradeById(AssignmentSubmission assignmentSubmission) {
+        if (ObjectUtil.isNull(assignmentSubmission.getGrade())){
+            throw new CustomException(ResultCodeEnum.PARAM_LOST_ERROR);
+        }
+        assignmentSubmissionMapper.updateById(assignmentSubmission);
+        calculateStats(assignmentSubmission.getAssignmentId());
+        /*
+        Assignment assignmentInfo= assignmentMapper.selectById(assignmentSubmission.getAssignmentId());
+        Integer courseId=assignmentInfo.getCourseId();
+        int studentId = assignmentSubmission.getStudentId();
+
+        Integer groupId=groupMemberMapper.selectGroupIdByCourseIdAndUserId(courseId,studentId);
+
+        if (groupId == null) {
+            throw new CustomException(ResultCodeEnum.GROUP_NOT_EXIST_ERROR);
+        }
+
+        List<GroupMember> members=groupMemberMapper.selectByGroupId(groupId);
+
+        if (members != null && !members.isEmpty()) {
+            for (GroupMember member : members) {
+                assignmentSubmissionMapper.updateById(assignmentSubmission);
+            }
+        }*/
+
+
 
     }
 
@@ -222,14 +333,35 @@ public class AssignmentSubmissionService {
      * Query all assignmentSubmissions
      */
     public List<AssignmentSubmission> selectAll(AssignmentSubmission assignmentSubmission1, ZoneId timezone) {
-        // 如果缓存不存在，从数据库查询
-        // If cache does not exist, query from database
+
         List<AssignmentSubmission> assignmentSubmissions = assignmentSubmissionMapper.selectAll(assignmentSubmission1);
         for (AssignmentSubmission assignmentSubmission:assignmentSubmissions){
             assignmentSubmission.setDate(TimeZoneUtils.fromUtcLocalDateTime(assignmentSubmission.getDate(),timezone));
         }
 
         return assignmentSubmissions;
+    }
+
+
+    public AssignmentSubmission selectFinalSubmissionByUserId(Integer assignmentId, Integer studentId, ZoneId timezone) {
+
+        AssignmentSubmission assignmentSubmission = assignmentSubmissionMapper.selectFinalByAssignmentIdAndUserId(assignmentId,studentId);
+        assignmentSubmission.setDate(TimeZoneUtils.fromUtcLocalDateTime(assignmentSubmission.getDate(),timezone));
+
+
+        return assignmentSubmission;
+    }
+
+    public AssignmentSubmission selectGroupFinalSubmissionByUserId(Integer assignmentId, Integer studentId, ZoneId timezone) {
+
+        Assignment assignmentInfo= assignmentMapper.selectById(assignmentId);
+        Integer courseId=assignmentInfo.getCourseId();
+        Integer groupId=groupMemberMapper.selectGroupIdByCourseIdAndUserId(courseId,studentId);
+        AssignmentSubmission assignmentSubmission = assignmentSubmissionMapper.selectFinalByAssignmentIdAndGroupId(assignmentId,groupId);
+        assignmentSubmission.setDate(TimeZoneUtils.fromUtcLocalDateTime(assignmentSubmission.getDate(),timezone));
+
+
+        return assignmentSubmission;
     }
 
 

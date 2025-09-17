@@ -77,6 +77,9 @@ public class Assignment implements Serializable {
     private BigDecimal fullMark;
 
 
+    private Boolean isGroup;
+
+
 
 
 
@@ -101,6 +104,7 @@ public class Assignment implements Serializable {
         if (averageGrade != null) sb.append("\"averageGrade\":").append(averageGrade).append(",");
         if (gradePublish != null) sb.append("\"gradePublish\":").append(gradePublish).append(",");
         if (fullMark != null) sb.append("\"fullMark\":").append(fullMark).append(",");
+        if (isGroup != null) sb.append("\"isGroup\":").append(isGroup).append(",");
 
         if (sb.charAt(sb.length() - 1) == ',') {
             sb.deleteCharAt(sb.length() - 1); // 去掉最后一个逗号
@@ -255,5 +259,13 @@ public class Assignment implements Serializable {
 
     public void setCourseContentId(Integer courseContentId) {
         this.courseContentId = courseContentId;
+    }
+
+    public Boolean getGroup() {
+        return isGroup;
+    }
+
+    public void setGroup(Boolean group) {
+        isGroup = group;
     }
 }

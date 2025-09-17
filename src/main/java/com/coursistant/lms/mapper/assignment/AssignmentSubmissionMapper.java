@@ -63,4 +63,20 @@ public interface AssignmentSubmissionMapper {
     List<AssignmentSubmission> selectFinalGradedByAssignmentId(@Param("assignmentId") Integer assignmentId);
 
 
+    /**
+     * 查询指定 assignmentId + studentId 的最终提交
+     * Query the final submission by assignmentId and studentId
+     */
+    AssignmentSubmission selectFinalByAssignmentIdAndUserId(@Param("assignmentId") Integer assignmentId,
+                                                            @Param("studentId") Integer studentId);
+
+    /**
+     * 查询指定 assignmentId + groupId 的最终提交
+     * Query the final submission by assignmentId and groupId
+     */
+    AssignmentSubmission selectFinalByAssignmentIdAndGroupId(@Param("assignmentId") Integer assignmentId,
+                                                             @Param("groupId") Integer groupId);
+
+
+
 }

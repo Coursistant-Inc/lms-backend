@@ -58,6 +58,19 @@ public class AssignmentSubmissionController {
         return Result.success(data);
     }
 
+    @RequiresPermission("assignment:submit")
+    @PostMapping("/addAsGroup")
+    public Result addAsGroup(@RequestBody AssignmentSubmission assignmentSubmission,
+                      @RequestHeader(value = "X-Timezone", required = false) String timezone) {
+        logRequest("addAsGroup", assignmentSubmission.toString());
+
+        Integer submissionId= assignmentSubmissionService.addAsGroup(assignmentSubmission);
+        logResponse("addAsGroup", "Success");
+        Map<String, Object> data = new HashMap<>();
+        data.put("submissionId", submissionId);
+        return Result.success(data);
+    }
+
     /**
      * 根据 ID 删除书签
      * Delete a assignmentSubmission by ID
@@ -110,6 +123,15 @@ public class AssignmentSubmissionController {
         return Result.success();
     }
 
+    @RequiresPermission("assignment:manage")
+    @PutMapping("/updateGroupGrade")
+    public Result updateGroupGradeById(@RequestBody AssignmentSubmission assignmentSubmission) {
+        logRequest("updateGroupGradeById", assignmentSubmission.toString());
+        assignmentSubmissionService.updateGroupGradeById(assignmentSubmission);
+        logResponse("updateGroupGradeById", "Success");
+        return Result.success();
+    }
+
     /**
      * 根据 ID 查询书签
      * Query a assignmentSubmission by ID
@@ -139,6 +161,40 @@ public class AssignmentSubmissionController {
         logResponse("selectAll", null);
         return Result.success(list);
     }
+
+
+    /**
+     * 查询指定 assignmentId + studentId 的最终提交
+     * Get the final submission by assignmentId and studentId
+     */
+    @RequiresPermission("assignment:submit")
+    @GetMapping("/selectFinalByUser")
+    public Result selectFinalByUser(@RequestParam("assignmentId") Integer assignmentId,
+                                    @RequestParam("studentId") Integer studentId,
+                                    @RequestHeader(value = "X-Timezone", required = false) String timezone) {
+        logRequest("selectFinalByUser", "assignmentId=" + assignmentId + ", studentId=" + studentId);
+        ZoneId zone = TimeZoneUtils.resolveZoneId(timezone);
+        AssignmentSubmission submission = assignmentSubmissionService.selectFinalSubmissionByUserId(assignmentId, studentId, zone);
+        logResponse("selectFinalByUser", submission != null ? submission.toString() : "null");
+        return Result.success(submission);
+    }
+
+    /**
+     * 查询指定 assignmentId + groupId 的最终提交
+     * Get the final submission by assignmentId and groupId
+     */
+    @RequiresPermission("assignment:submit")
+    @GetMapping("/selectGroupFinalByUser")
+    public Result selectGroupFinalByUser(@RequestParam("assignmentId") Integer assignmentId,
+                                         @RequestParam("studentId") Integer studentId,
+                                     @RequestHeader(value = "X-Timezone", required = false) String timezone) {
+        logRequest("selectFinalByGroup", "assignmentId=" + assignmentId + ", groupId=" + studentId);
+        ZoneId zone = TimeZoneUtils.resolveZoneId(timezone);
+        AssignmentSubmission submission = assignmentSubmissionService.selectGroupFinalSubmissionByUserId(assignmentId, studentId, zone);
+        logResponse("selectFinalByGroup", submission != null ? submission.toString() : "null");
+        return Result.success(submission);
+    }
+
 
 
     /**
