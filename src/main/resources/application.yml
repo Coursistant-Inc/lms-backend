@@ -1,0 +1,128 @@
+server:
+  port: 9090
+  servlet:
+    context-path: /api
+    encoding:
+      enabled: false
+
+
+# spring配置
+spring:
+    
+  security:
+      oauth2:
+        client:
+          registration:
+            google:
+              client-id: ${GOOGLE_CLIENT_ID}
+              client-secret: ${GOOGLE_CLIENT_SECRET}
+              redirect-uri: https://ec2.dev.xlearnedu.com/login/oauth2/code/google
+            google-drive: # 新增：专门给 Drive 授权
+              client-id: ${GOOGLE_CLIENT_ID}
+              client-secret: ${GOOGLE_CLIENT_SECRET}
+              authorization-grant-type: authorization_code
+              scope:
+                - https://www.googleapis.com/auth/drive.readonly
+              redirect-uri: http://localhost:9090/api/login/oauth2/code/google-drive
+              client-name: Google Drive
+              provider: google
+            microsoft:
+              client-id: ${MICROSOFT_CLIENT_ID}
+              client-secret: ${MICROSOFT_CLIENT_SECRET}
+              authorization-grant-type: authorization_code
+              scope: openid, profile, email
+              redirect-uri: https://ec2.dev.xlearnedu.com/login/oauth2/code/microsoft
+              client-name: Microsoft
+              provider: microsoft
+            facebook:
+              client-id: ${FACEBOOK_CLIENT_ID}
+              client-secret: ${FACEBOOK_CLIENT_SECRET}
+              redirect-uri:  https://ec2.dev.xlearnedu.com/login/oauth2/code/facebook
+              
+          provider:
+            google:
+              authorization-uri: https://accounts.google.com/o/oauth2/v2/auth
+              token-uri: https://oauth2.googleapis.com/token
+              user-info-uri: https://www.googleapis.com/oauth2/v3/userinfo
+              user-name-attribute: sub
+            microsoft:
+              authorization-uri: https://login.microsoftonline.com/common/oauth2/v2.0/authorize
+              token-uri: https://login.microsoftonline.com/common/oauth2/v2.0/token
+              user-info-uri: https://graph.microsoft.com/oidc/userinfo
+              user-name-attribute: sub
+              jwk-set-uri: https://login.microsoftonline.com/common/discovery/v2.0/keys
+    
+  linkedin:
+    client-id: ${LINKEDIN_CLIENT_ID}
+    client-secret: ${LINKEDIN_CLIENT_SECRET}
+    redirect-uri: https://ec2.dev.xlearnedu.com/login/oauth2/code/linkedin
+    token-url: https://www.linkedin.com/oauth/v2/accessToken
+    auth-url: https://www.linkedin.com/oauth/v2/authorization
+    scope: openid profile email
+    
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    url: jdbc:mysql://54.201.68.249:3306/lms?useUnicode=true&characterEncoding=utf-8&allowMultiQueries=true&useSSL=false&serverTimezone=GMT%2b8&allowPublicKeyRetrieval=true
+
+    hikari:
+      maximum-pool-size: 32
+      minimum-idle: 8
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      connection-timeout: 10000
+      leak-detection-threshold: 30000
+      
+      
+  servlet:
+    multipart:
+      max-file-size: 1000MB
+      max-request-size: 1000MB
+  hadoop:
+    fs:
+      defaultFS: hdfs://dev.xlearnedu.com:9666 # HDFS 的地址 (替换为你的 Hadoop 集群地址)
+      user: admir  # 访问 HDFS 的用户
+
+  mvc:      
+    pathmatch:
+      matching-strategy: ant_path_matcher
+
+  mail:
+    host: mail.privateemail.com  # 你的邮件服务器
+    port: 587
+    username: ${MAIL_USERNAME}  # 你的邮箱
+    password: ${MAIL_PASSWORD}  # 你的邮箱授权码
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+
+# 配置mybatis实体和xml映射
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.coursistant.lms.entity
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    map-underscore-to-camel-case: true
+
+# 分页
+pagehelper:
+  helper-dialect: mysql
+  reasonable: true
+  support-methods-arguments: true
+  params: count=countSql
+
+minio:
+  url: http://localhost:9000
+  access-key: lmsadmin
+  secret-key: LmsMinIO2025!SecureProd
+
+ip: localhost
+
+api:
+  base:
+    url: http://localhost
