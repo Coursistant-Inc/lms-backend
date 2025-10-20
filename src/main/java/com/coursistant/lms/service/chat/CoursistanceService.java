@@ -218,7 +218,11 @@ public class CoursistanceService {
             }
 
 
-            String jsonBody = String.format("{ \"question\": \"%s\", \"top_k\": 2 }", query);
+            String jsonBody = String.format(
+                    "{ \"question\": \"%s\", \"top_k\": 2, \"course_id\": %d }",
+                    query, courseId
+            );
+
 
             ObjectMapper mapper = new ObjectMapper();
             Object jsonObj = mapper.readValue(jsonBody, Object.class);
@@ -288,6 +292,7 @@ public class CoursistanceService {
 
                     // 保存聊天记录 / Save chat history
                     chat.setAnswerText(answer);
+                    chat.setAnswerImage(imageValue);
 
                 } else {
                     throw new IOException("Failed to query API. HTTP Status: " +
