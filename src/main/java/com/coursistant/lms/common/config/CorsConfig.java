@@ -5,11 +5,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
+import java.util.Arrays;
 
-/**
- * 跨域配置
- * Cross-Origin Resource Sharing (CORS) configuration
- */
 @Configuration
 public class CorsConfig {
 
@@ -17,10 +14,21 @@ public class CorsConfig {
     public CorsFilter corsFilter() {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         CorsConfiguration corsConfiguration = new CorsConfiguration();
-        corsConfiguration.addAllowedOrigin("*"); // 1 设置访问源地址 / Set allowed origin addresses
-        corsConfiguration.addAllowedHeader("*"); // 2 设置访问源请求头 / Set allowed request headers
-        corsConfiguration.addAllowedMethod("*"); // 3 设置访问源请求方法 / Set allowed request methods
-        source.registerCorsConfiguration("/**", corsConfiguration); // 4 对接口配置跨域设置 / Apply CORS settings to all endpoints
+        
+        // 明确指定允许的域名
+        corsConfiguration.setAllowedOriginPatterns(Arrays.asList(
+            "https://usc.xlearnedu.com:*",
+            "https://chat.xlearnedu.com:*",
+            "https://ec2.dev.xlearnedu.com:*",
+            "https://dev.chat.xlearnedu.com:*",
+            "http://localhost:3000"  // 开发环境
+        ));
+        
+        corsConfiguration.addAllowedHeader("*");
+        corsConfiguration.addAllowedMethod("*");
+        corsConfiguration.setAllowCredentials(true);
+        
+        source.registerCorsConfiguration("/**", corsConfiguration);
         return new CorsFilter(source);
     }
 }
