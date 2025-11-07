@@ -136,7 +136,7 @@ ip: localhost
 
 api:
   base:
-    url: https://api.xlearnedu.com
+    url: ${API_BASE_URL}
 
 
 rocketchat:
