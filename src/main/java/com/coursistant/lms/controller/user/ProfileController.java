@@ -214,7 +214,7 @@ public class ProfileController {
      */
     @PostMapping(value = "/update", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public Result updateProfile(@RequestParam("userId") Integer userId,
-                                @RequestPart(value = "profile", required = false) String profileJson,
+                                @RequestParam(value = "profile", required = false) String profileJson,
                                 @RequestParam(value = "avatar", required = false) MultipartFile avatar) {
         ObjectMapper objectMapper = new ObjectMapper();
         Profile profile;
@@ -256,7 +256,7 @@ public class ProfileController {
 
     
 
-        if (ObjectUtils.isEmpty(avatar) && !avatar.isEmpty()) {
+        if (ObjectUtils.isEmpty(avatar) && avatar!=null) {
             try {
 
                String avatarFileName = avatar.getOriginalFilename();
