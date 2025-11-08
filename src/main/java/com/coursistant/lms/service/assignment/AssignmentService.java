@@ -175,6 +175,7 @@ public class AssignmentService {
 
         BeanUtil.copyProperties(assignment, assignmentDTO);
         List<AssignmentFile> assignmentFiles=assignmentFileService.selectByAssignmentId(id);
+        assignmentDTO.setGroup(assignment.getGroup());
         assignmentDTO.setFiles(assignmentFiles);
 
         return assignmentDTO;

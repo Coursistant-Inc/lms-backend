@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.coursistant.lms.mapper.quiz.AttemptItemMapper">
+
+    <sql id="Base_Column_List">
+        id, attempt_id, quiz_item_id, question_id, answer_payload,
+        auto_score, manual_score, final_score, needs_grading, graded_at, updated_at
+    </sql>
+
+    <select id="selectAll" resultType="com.coursistant.lms.entity.AttemptItem">
+        select
+        <include refid="Base_Column_List"/>
+        from AttemptItem
+        <where>
+            <if test="id != null">and id = #{id}</if>
+            <if test="attemptId != null">and attempt_id = #{attemptId}</if>
+            <if test="quizItemId != null">and quiz_item_id = #{quizItemId}</if>
+            <if test="questionId != null">and question_id = #{questionId}</if>
+            <if test="answerPayload != null">and answer_payload = #{answerPayload}</if>
+            <if test="autoScore != null">and auto_score = #{autoScore}</if>
+            <if test="manualScore != null">and manual_score = #{manualScore}</if>
+            <if test="finalScore != null">and final_score = #{finalScore}</if>
+            <if test="needsGrading != null">and needs_grading = #{needsGrading}</if>
+            <if test="gradedAt != null">and graded_at = #{gradedAt}</if>
+            <if test="updatedAt != null">and updated_at = #{updatedAt}</if>
+        </where>
+    </select>
+
+    <select id="selectById" resultType="com.coursistant.lms.entity.AttemptItem">
+        select
+        <include refid="Base_Column_List"/>
+        from AttemptItem
+        where id = #{id}
+    </select>
+
+    <delete id="deleteById">
+        delete from AttemptItem
+        where id = #{id}
+    </delete>
+
+    <insert id="insert" parameterType="com.coursistant.lms.entity.AttemptItem" useGeneratedKeys="true" keyProperty="id">
+        insert into AttemptItem
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="id != null">id,</if>
+            <if test="attemptId != null">attempt_id,</if>
+            <if test="quizItemId != null">quiz_item_id,</if>
+            <if test="questionId != null">question_id,</if>
+            <if test="answerPayload != null">answer_payload,</if>
+            <if test="autoScore != null">auto_score,</if>
+            <if test="manualScore != null">manual_score,</if>
+            <if test="finalScore != null">final_score,</if>
+            <if test="needsGrading != null">needs_grading,</if>
+            <if test="gradedAt != null">graded_at,</if>
+            <if test="updatedAt != null">updated_at,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="id != null">#{id},</if>
+            <if test="attemptId != null">#{attemptId},</if>
+            <if test="quizItemId != null">#{quizItemId},</if>
+            <if test="questionId != null">#{questionId},</if>
+            <if test="answerPayload != null">#{answerPayload},</if>
+            <if test="autoScore != null">#{autoScore},</if>
+            <if test="manualScore != null">#{manualScore},</if>
+            <if test="finalScore != null">#{finalScore},</if>
+            <if test="needsGrading != null">#{needsGrading},</if>
+            <if test="gradedAt != null">#{gradedAt},</if>
+            <if test="updatedAt != null">#{updatedAt},</if>
+        </trim>
+    </insert>
+
+    <update id="updateById" parameterType="com.coursistant.lms.entity.AttemptItem">
+        update AttemptItem
+        <set>
+            <if test="attemptId != null">attempt_id = #{attemptId},</if>
+            <if test="quizItemId != null">quiz_item_id = #{quizItemId},</if>
+            <if test="questionId != null">question_id = #{questionId},</if>
+            <if test="answerPayload != null">answer_payload = #{answerPayload},</if>
+            <if test="autoScore != null">auto_score = #{autoScore},</if>
+            <if test="manualScore != null">manual_score = #{manualScore},</if>
+            <if test="finalScore != null">final_score = #{finalScore},</if>
+            <if test="needsGrading != null">needs_grading = #{needsGrading},</if>
+            <if test="gradedAt != null">graded_at = #{gradedAt},</if>
+            <if test="updatedAt != null">updated_at = #{updatedAt},</if>
+        </set>
+        where id = #{id}
+    </update>
+
+</mapper>

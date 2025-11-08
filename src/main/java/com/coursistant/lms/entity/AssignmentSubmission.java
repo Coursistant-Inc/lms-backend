@@ -68,6 +68,8 @@ public class AssignmentSubmission implements Serializable {
 
     private String lateTime;
 
+    private Integer groupId;
+
 
 
     public AssignmentSubmission() {}
@@ -79,6 +81,7 @@ public class AssignmentSubmission implements Serializable {
         if (assignmentId != null) sb.append("\"assignmentId\":").append(assignmentId).append(",");
         if (studentId != null) sb.append("\"studentId\":").append(studentId).append(",");
         if (graderId != null) sb.append("\"graderId\":").append(graderId).append(",");
+        if (groupId != null) sb.append("\"groupId\":").append(groupId).append(",");
         if (date != null) sb.append("\"date\":\"").append(date).append("\",");
         if (status != null) sb.append("\"status\":\"").append(status).append("\",");
         if (grade != null) sb.append("\"grade\":\"").append(grade).append("\",");
@@ -183,5 +186,13 @@ public class AssignmentSubmission implements Serializable {
 
     public void setLateTime(String lateTime) {
         this.lateTime = lateTime;
+    }
+
+    public Integer getGroupId() {
+        return groupId;
+    }
+
+    public void setGroupId(Integer groupId) {
+        this.groupId = groupId;
     }
 }

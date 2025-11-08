@@ -7,7 +7,7 @@
     <sql id="Base_Column_List">
         id, user_id, course_id, title, start, due, description, criteria,
     submission_num, allowed_submission_times, highest_grade, lowest_grade, average_grade, grade_publish, 
-    group_mode, group_size,course_content_id,full_mark
+    group_mode, group_size,course_content_id,full_mark, is_group
     </sql>
 
 
@@ -35,6 +35,8 @@
             <if test="groupMode != null"> and group_mode = #{groupMode}, </if>
             <if test="groupSize != null"> and group_size = #{groupSize}, </if>
             <if test="fullMark != null"> and full_mark = #{fullMark}, </if>
+            <if test="isGroup != null"> and is_group = #{isGroup}</if>
+
 
 
         </where>
@@ -77,6 +79,7 @@
             <if test="groupMode != null"> group_mode,</if>
             <if test="groupSize != null"> group_size,</if>
             <if test="fullMark != null"> full_mark,</if>
+            <if test="isGroup != null"> is_group,</if>
 
         </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
@@ -98,6 +101,7 @@
             <if test="groupMode != null">#{groupMode},</if>
             <if test="groupSize != null">#{groupSize},</if>
             <if test="fullMark != null">#{fullMark},</if>
+            <if test="isGroup != null">#{isGroup},</if>
 
         </trim>
     </insert>
@@ -125,6 +129,8 @@
             <if test="groupMode != null">group_mode = #{groupMode},</if>
             <if test="groupSize != null">group_size = #{groupSize},</if>
             <if test="fullMark != null">full_mark = #{fullMark},</if>
+            <if test="isGroup != null">is_group = #{isGroup},</if>
+
 
         </set>
         where id = #{id}

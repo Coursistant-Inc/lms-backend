@@ -1,16 +1,10 @@
 package com.coursistant.lms.service.user;
 
-import java.util.List;
-import java.util.Objects;
-import java.util.Random;
-import java.util.concurrent.TimeUnit;
-
-import jakarta.annotation.Resource;
-
-import org.springframework.beans.BeanUtils;
-import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.stereotype.Service;
-
+import cn.hutool.core.util.ObjectUtil;
+import com.coursistant.lms.exception.CustomException;
+import com.coursistant.lms.service.groupchat.RocketChatAuthService;
+import com.coursistant.lms.service.system.RefreshTokenService;
+import com.coursistant.lms.utils.EmailUtil;
 import com.coursistant.lms.common.Constants;
 import com.coursistant.lms.common.enums.AdminEnums;
 import com.coursistant.lms.common.enums.LevelEnum;
@@ -25,9 +19,11 @@ import com.coursistant.lms.service.system.RefreshTokenService;
 import com.coursistant.lms.utils.EmailUtil;
 import com.coursistant.lms.utils.PasswordEncoderUtil;
 import com.coursistant.lms.utils.TokenUtils;
+import java.util.concurrent.CompletableFuture;
 
 import jakarta.annotation.Resource;
 import java.util.List;
+import java.util.Map;
 import java.util.ArrayList;
 import java.util.stream.Collectors;
 import java.util.Objects;
@@ -56,6 +52,9 @@ public class UserService {
     @Resource
     private EmailUtil emailUtil; // 注入 EmailUtil // Inject EmailUtil
 
+    @Resource
+    private RocketChatAuthService rocketChatAuthService;
+
     // 缓存过期时间（秒） // Cache expiration time (seconds)
     private static final long CACHE_EXPIRE_TIME = 300;
 
@@ -76,11 +75,13 @@ public class UserService {
         if (ObjectUtil.isNotNull(dbUser)) {
             throw new CustomException(ResultCodeEnum.USER_EXIST_ERROR);
         }
+        
+        // 加密密码
         if (ObjectUtil.isEmpty(user.getPassword())) {
-            user.setEncryptPassword(Constants.USER_DEFAULT_PASSWORD);
-        } else {
-            user.setEncryptPassword(user.getPassword());
+            throw new CustomException(ResultCodeEnum.PARAM_LOST_ERROR);
         }
+        user.setEncryptPassword(user.getPassword());
+        
         if (ObjectUtil.isEmpty(user.getName())) {
             user.setName(user.getUsername());
         }
@@ -91,7 +92,7 @@ public class UserService {
         user.setRole(RoleEnum.USER.name());
         userMapper.insert(user);
 
-        // 清理相关缓存 // Clear related caches
+        // 清理相关缓存
         clearUserAllCache();
     }
 
@@ -214,19 +215,18 @@ public class UserService {
 
 
     /**
-     * 登录 // User login
+     * 登录 / User login
      */
     public Account login(Account account) {
         String cacheKey = "user:email:" + account.getEmail();
         String loginAttemptsKey = "user:login:attempts:" + account.getEmail();
         String lockKey = "user:login:lock:" + account.getEmail();
 
-        Account dbUser;
-
         if (Boolean.TRUE.equals(generalRedisTemplate.hasKey(lockKey))) {
             throw new CustomException("6001", "Your account is locked. Please try again later.");
         }
 
+        Account dbUser;
         Account cachedAccount = (Account) generalRedisTemplate.opsForValue().get(cacheKey);
         if (cachedAccount != null) {
             dbUser = cachedAccount;
@@ -237,8 +237,6 @@ public class UserService {
         if (ObjectUtil.isNull(dbUser)) {
             throw new CustomException(ResultCodeEnum.USER_NOT_EXIST_ERROR);
         }
-
-        generalRedisTemplate.opsForValue().set(cacheKey, dbUser, 3600, TimeUnit.SECONDS);
 
         if (!PasswordEncoderUtil.matches(account.getPassword(), dbUser.getPassword())) {
             Integer attempts = (Integer) generalRedisTemplate.opsForValue().get(loginAttemptsKey);
@@ -254,29 +252,72 @@ public class UserService {
             throw new CustomException("6003", "Invalid email or password. Remaining attempts: " + (6 - attempts));
         }
 
+        generalRedisTemplate.opsForValue().set(cacheKey, dbUser, 3600, TimeUnit.SECONDS);
         generalRedisTemplate.delete(loginAttemptsKey);
         generalRedisTemplate.delete(lockKey);
 
-        String tokenData = dbUser.getId() + "-" + RoleEnum.USER.name();
-        String token = TokenUtils.createAccessToken(tokenData);
-        dbUser.setAccessToken(token);
+        // ⭐⭐⭐ 异步同步 RocketChat 用户和课程频道 ⭐⭐⭐
+        final Integer userId = dbUser.getId();
+        final String userEmail = dbUser.getEmail();
+        final String userName = dbUser.getName();
+        final String userPassword = account.getPassword();
+        
+        CompletableFuture.runAsync(() -> {
+            try {
+                System.out.println("======================================");
+                System.out.println("🚀 Starting RocketChat sync (ASYNC)");
+                System.out.println("   Email: " + userEmail);
+                System.out.println("   Name: " + userName);
+                System.out.println("   UserID: " + userId);
+                System.out.println("======================================");
+                
+                // ✅ 自动创建用户、激活、加入课程频道
+                rocketChatAuthService.ensureUserExistsAndJoinCourses(
+                    userEmail,
+                    userPassword,
+                    userName,
+                    userId.longValue()
+                );
+                
+                System.out.println("======================================");
+                System.out.println("✅ ✅ ✅ RocketChat sync completed!");
+                System.out.println("   User: " + userEmail);
+                System.out.println("======================================");
+                
+            } catch (Exception e) {
+                System.err.println("======================================");
+                System.err.println("❌ ❌ ❌ RocketChat sync FAILED!");
+                System.err.println("   User: " + userEmail);
+                System.err.println("   Error: " + e.getMessage());
+                e.printStackTrace();
+                System.err.println("======================================");
+                // 不抛出异常，不影响登录流程
+            }
+        });
 
-        String refreshToken=refreshTokenService.createAndStoreRefreshToken(dbUser.getId(),dbUser.getRole());
-        dbUser.setRefreshToken(refreshToken);
+        try {
+            String tokenData = dbUser.getId() + "-" + RoleEnum.USER.name();
+            String token = TokenUtils.createAccessToken(tokenData);
+            dbUser.setAccessToken(token);
 
-        dbUser.setPassword(null);
+            String refreshToken = refreshTokenService.createAndStoreRefreshToken(dbUser.getId(), dbUser.getRole());
+            dbUser.setRefreshToken(refreshToken);
 
-        return dbUser;
+            dbUser.setPassword(null);
+            return dbUser;
+            
+        } catch (Exception e) {
+            throw new CustomException("4815", "Error When Creating Token: " + e.getMessage());
+        }
     }
 
 
     /**
-     * 注册 register
+     * 注册 / Register
      */
     public void register(Account account) {
         User user = new User();
         BeanUtils.copyProperties(account, user);
-
 
         // check invitation code
         String invitation = user.getInvitation();
@@ -292,7 +333,60 @@ public class UserService {
             throw new CustomException(ResultCodeEnum.INVITATION_NOT_EXIST_ERROR);
         }
 
-        add(user);
+        // 检查用户是否已存在
+        User dbUser = userMapper.selectByEmail(user.getEmail());
+        if (ObjectUtil.isNotNull(dbUser)) {
+            throw new CustomException(ResultCodeEnum.USER_EXIST_ERROR);
+        }
+
+        // ⭐ 设置默认值
+        if (ObjectUtil.isEmpty(user.getName())) {
+            user.setName(user.getUsername());
+        }
+        if (ObjectUtil.isEmpty(user.getLevel())) {
+            user.setLevel(LevelEnum.STUDENT.level);
+        }
+        user.setRole(RoleEnum.USER.name());
+
+        // ⭐ 先加密密码并插入 LMS 数据库
+        user.setEncryptPassword(account.getPassword());
+        userMapper.insert(user);
+
+        // ⭐⭐⭐ 异步在 RocketChat 创建用户（不阻塞注册流程）⭐⭐⭐
+        final Integer userId = user.getId();
+        final String userEmail = account.getEmail();
+        final String userPassword = account.getPassword();
+        final String userName = user.getName() != null ? user.getName() : account.getEmail().split("@")[0];
+        
+        CompletableFuture.runAsync(() -> {
+            try {
+                System.out.println("======================================");
+                System.out.println("🚀 Creating RocketChat user (ASYNC)");
+                System.out.println("   Email: " + userEmail);
+                System.out.println("======================================");
+                
+                rocketChatAuthService.ensureUserExistsAndJoinCourses(
+                    userEmail,
+                    userPassword,
+                    userName,
+                    userId.longValue()
+                );
+                
+                System.out.println("✅ User created in RocketChat: " + userEmail);
+                System.out.println("======================================");
+                
+            } catch (Exception e) {
+                System.err.println("======================================");
+                System.err.println("⚠️ Failed to create user in RocketChat");
+                System.err.println("   Email: " + userEmail);
+                System.err.println("   Error: " + e.getMessage());
+                e.printStackTrace();
+                System.err.println("======================================");
+                // 不阻止注册流程
+            }
+        });
+
+        // 清理缓存
         clearUserAllCache();
         generalRedisTemplate.delete("email:verification:register:" + account.getEmail());
     }
@@ -309,6 +403,9 @@ public class UserService {
         }
     }
 
+
+
+    
 
 
     /**

@@ -39,12 +39,22 @@
         <include refid="Base_Column_List" />
         from GroupMember
         <where>
-            <if test="id != null"> and id= #{id}</if>
-            <if test="username != null"> and group_id = #{groupId}</if>
-            <if test="password != null"> and course_id= #{courseId}</if>
-            <if test="name != null"> and user_id= #{userId}</if>
-
+            <if test="id != null">AND id = #{id}</if>
+            <if test="groupId != null">AND group_id = #{groupId}</if>
+            <if test="courseId != null">AND course_id = #{courseId}</if>
+            <if test="userId != null">AND user_id = #{userId}</if>
         </where>
     </select>
+
+
+    <select id="selectGroupIdByCourseIdAndUserId"
+            parameterType="map"
+            resultType="int">
+        SELECT group_id
+        FROM GroupMember
+        WHERE course_id = #{courseId}
+          AND user_id = #{userId}
+    </select>
+
 
 </mapper>
