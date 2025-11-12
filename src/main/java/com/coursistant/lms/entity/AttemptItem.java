@@ -49,4 +49,92 @@ public class AttemptItem implements Serializable {
                 ", updatedAt=" + updatedAt +
                 '}';
     }
+
+    public Integer getId() {
+        return id;
+    }
+
+    public void setId(Integer id) {
+        this.id = id;
+    }
+
+    public Integer getAttemptId() {
+        return attemptId;
+    }
+
+    public void setAttemptId(Integer attemptId) {
+        this.attemptId = attemptId;
+    }
+
+    public Integer getQuizItemId() {
+        return quizItemId;
+    }
+
+    public void setQuizItemId(Integer quizItemId) {
+        this.quizItemId = quizItemId;
+    }
+
+    public Integer getQuestionId() {
+        return questionId;
+    }
+
+    public void setQuestionId(Integer questionId) {
+        this.questionId = questionId;
+    }
+
+    public String getAnswerPayload() {
+        return answerPayload;
+    }
+
+    public void setAnswerPayload(String answerPayload) {
+        this.answerPayload = answerPayload;
+    }
+
+    public BigDecimal getAutoScore() {
+        return autoScore;
+    }
+
+    public void setAutoScore(BigDecimal autoScore) {
+        this.autoScore = autoScore;
+    }
+
+    public BigDecimal getManualScore() {
+        return manualScore;
+    }
+
+    public void setManualScore(BigDecimal manualScore) {
+        this.manualScore = manualScore;
+    }
+
+    public BigDecimal getFinalScore() {
+        return finalScore;
+    }
+
+    public void setFinalScore(BigDecimal finalScore) {
+        this.finalScore = finalScore;
+    }
+
+    public Boolean getNeedsGrading() {
+        return needsGrading;
+    }
+
+    public void setNeedsGrading(Boolean needsGrading) {
+        this.needsGrading = needsGrading;
+    }
+
+    public LocalDateTime getGradedAt() {
+        return gradedAt;
+    }
+
+    public void setGradedAt(LocalDateTime gradedAt) {
+        this.gradedAt = gradedAt;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
+    }
 }

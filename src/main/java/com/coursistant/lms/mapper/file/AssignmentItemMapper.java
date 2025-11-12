@@ -2,6 +2,7 @@ package com.coursistant.lms.mapper.file;
 
 
 import com.coursistant.lms.entity.AssignmentItem;
+import com.coursistant.lms.entity.DiskFiles;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
@@ -50,4 +51,6 @@ public interface AssignmentItemMapper {
     int deleteByAssignmentId(@Param("assignmentId") Integer assignmentId);
 
     List<AssignmentItem> selectCourseInfo(@Param("courseId") Integer courseId);
+
+    List<DiskFiles> selectAssignmentFilesByCourseId(@Param("courseId") Integer courseId);
 }

@@ -17,9 +17,11 @@ public class QuizService {
     @Resource
     private QuizMapper quizMapper;
 
-    public void add(Quiz quiz) {
+    public Integer add(Quiz quiz) {
         quizMapper.insert(quiz);
+        return quiz.getId();
     }
+
 
     /**
      * 删除

@@ -6,7 +6,9 @@ import com.coursistant.lms.service.quiz.QuizService;
 import jakarta.annotation.Resource;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Logger;
 
 @RestController
@@ -28,9 +30,11 @@ public class QuizController {
     @PostMapping("/add")
     public Result add(@RequestBody Quiz quiz) {
         logRequest("add", quiz.toString());
-        quizService.add(quiz);
+        Integer id= quizService.add(quiz);
+        Map<String, Object> data = new HashMap<>();
+        data.put("quizId", id);
         logResponse("add", "Success");
-        return Result.success();
+        return Result.success(data);
     }
 
     @DeleteMapping("/delete/{id}")

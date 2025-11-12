@@ -8,6 +8,7 @@ import com.coursistant.lms.entity.*;
 import com.coursistant.lms.entity.DTO.AssignmentGroupDTO;
 import com.coursistant.lms.mapper.course.CourseMapper;
 import com.coursistant.lms.mapper.course.LearnMapper;
+import com.coursistant.lms.mapper.file.AssignmentItemMapper;
 import com.coursistant.lms.service.course.LearnService;
 import com.coursistant.lms.service.file.AssignmentFileService;
 import com.coursistant.lms.common.enums.ResultCodeEnum;
@@ -46,6 +47,9 @@ public class AssignmentService {
     @Resource
     private AssignmentFileService assignmentFileService;
 
+    @Resource
+    private AssignmentItemMapper assignmentItemMapper;
+
 
 
     public int add(Assignment assignment, ZoneId timezone) {
@@ -73,12 +77,10 @@ public class AssignmentService {
      * Delete a assignment by ID
      */
     public void deleteById(Integer id) {
+
         assignmentMapper.deleteById(id);
 
-        List<AssignmentFile> assignmentFiles=assignmentFileService.selectByAssignmentId(id);
-        for (int i=0;i< assignmentFiles.size();i++){
-            assignmentFileService.deleteById(assignmentFiles.get(i).getId());
-        }
+        assignmentItemMapper.deleteByAssignmentId(id);
 
 
     }

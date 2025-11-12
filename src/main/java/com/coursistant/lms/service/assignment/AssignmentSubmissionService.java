@@ -342,6 +342,24 @@ public class AssignmentSubmissionService {
         return assignmentSubmissions;
     }
 
+    public List<AssignmentSubmission> selectFinalByUserAndCourse(Integer courseId, Integer studentId, ZoneId timezone) {
+
+        List<Integer> assignmentIds = assignmentMapper.selectIdsByCourse(courseId);
+        if (assignmentIds == null || assignmentIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<AssignmentSubmission> assignmentSubmissions =
+                assignmentSubmissionMapper.selectFinalByAssignmentIdsAndStudent(assignmentIds, studentId);
+
+        for (AssignmentSubmission assignmentSubmission:assignmentSubmissions){
+            assignmentSubmission.setDate(TimeZoneUtils.fromUtcLocalDateTime(assignmentSubmission.getDate(),timezone));
+        }
+
+
+        return assignmentSubmissions;
+    }
+
 
     public AssignmentSubmission selectFinalSubmissionByUserId(Integer assignmentId, Integer studentId, ZoneId timezone) {
 

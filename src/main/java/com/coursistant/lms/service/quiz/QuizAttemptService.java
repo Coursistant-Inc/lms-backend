@@ -17,8 +17,10 @@ public class QuizAttemptService {
     @Resource
     private QuizAttemptMapper quizAttemptMapper;
 
-    public void add(QuizAttempt attempt) {
+    public Integer add(QuizAttempt attempt) {
         quizAttemptMapper.insert(attempt);
+
+        return attempt.getId();
     }
 
     /**

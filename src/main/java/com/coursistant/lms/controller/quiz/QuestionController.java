@@ -10,7 +10,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Resource;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Logger;
 
 @RestController
@@ -44,9 +46,11 @@ public class QuestionController {
         q.setAnswerKey(req.getAnswerKey() == null ? null : objectMapper.writeValueAsString(req.getAnswerKey()));
         q.setStatus(req.getStatus());
 
-        questionService.add(q);
+        Integer id=questionService.add(q);
+        Map<String, Object> data = new HashMap<>();
+        data.put("questionId", id);
         logResponse("add", "Success");
-        return Result.success();
+        return Result.success(data);
     }
 
     @DeleteMapping("/delete/{id}")

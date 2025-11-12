@@ -2,7 +2,11 @@ package com.coursistant.lms.controller.quiz;
 
 import com.coursistant.lms.common.Result;
 import com.coursistant.lms.entity.AttemptItem;
+import com.coursistant.lms.entity.DTO.AttemptItemBatchReq;
+import com.coursistant.lms.entity.DTO.AttemptItemCreateReq;
 import com.coursistant.lms.service.quiz.AttemptItemService;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Resource;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,6 +20,9 @@ public class AttemptItemController {
     @Resource
     private AttemptItemService attemptItemService;
 
+    @Resource
+    private ObjectMapper objectMapper;
+
     private static final Logger logger = Logger.getLogger(AttemptItemController.class.getName());
 
     private void logRequest(String methodName, String requestBody) {
@@ -26,12 +33,45 @@ public class AttemptItemController {
     }
 
     @PostMapping("/add")
-    public Result add(@RequestBody AttemptItem attemptItem) {
-        logRequest("add", attemptItem.toString());
-        attemptItemService.add(attemptItem);
+    public Result add(@RequestBody AttemptItemCreateReq req) throws JsonProcessingException {
+        logRequest("add", req.toString());
+        AttemptItem item = new AttemptItem();
+        item.setAttemptId(req.getAttemptId());
+        item.setQuizItemId(req.getQuizItemId());
+        item.setQuestionId(req.getQuestionId());
+        item.setNeedsGrading(req.getNeedsGrading());
+
+        // 序列化为字符串再存库
+        item.setAnswerPayload(
+                req.getAnswerPayload() == null ? null : objectMapper.writeValueAsString(req.getAnswerPayload())
+        );
+
+        attemptItemService.add(item);
         logResponse("add", "Success");
         return Result.success();
     }
+
+
+    @PostMapping("/addBatch")
+    public Result addBatch(@RequestBody List<AttemptItemCreateReq> items) throws com.fasterxml.jackson.core.JsonProcessingException {
+        logRequest("addBatch", items == null ? "null" : "size=" + items.size());
+
+        List<AttemptItem> list = new java.util.ArrayList<>();
+        for (AttemptItemCreateReq req : items) {
+            AttemptItem it = new AttemptItem();
+            it.setAttemptId(req.getAttemptId());
+            it.setQuizItemId(req.getQuizItemId());
+            it.setQuestionId(req.getQuestionId());
+            it.setNeedsGrading(req.getNeedsGrading());
+            it.setAnswerPayload(req.getAnswerPayload() == null ? null : objectMapper.writeValueAsString(req.getAnswerPayload()));
+            list.add(it);
+        }
+
+        attemptItemService.addBatch(list);
+        logResponse("addBatch", "Success");
+        return Result.success();
+    }
+
 
     @DeleteMapping("/delete/{id}")
     public Result deleteById(@PathVariable Integer id) {

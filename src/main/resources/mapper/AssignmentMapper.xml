@@ -56,6 +56,13 @@
         where id = #{id}
     </delete>
 
+    <select id="selectIdsByCourse" resultType="int">
+        SELECT id
+        FROM Assignment
+        WHERE course_id = #{courseId}
+    </select>
+
+
     <!-- 插入新的 Assignment // Insert a new Assignment -->
     <insert id="insert" parameterType="com.coursistant.lms.entity.Assignment" useGeneratedKeys="true" keyProperty="id">
         insert into Assignment

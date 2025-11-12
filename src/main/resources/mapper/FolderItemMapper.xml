@@ -93,4 +93,16 @@
         delete from FolderItem where folder_id = #{folderId}
     </delete>
 
+    <select id="selectFolderFilesByCourseId" resultType="com.coursistant.lms.entity.DiskFiles">
+        SELECT DISTINCT d.*
+        FROM Diskfiles d
+                 JOIN FolderItem fi ON d.id = fi.file_id
+        WHERE fi.course_id = #{courseId}
+          AND fi.type = 'file'
+          AND fi.file_id IS NOT NULL
+          AND d.`delete` = 0
+        ORDER BY d.create_time DESC
+    </select>
+
+
 </mapper>
