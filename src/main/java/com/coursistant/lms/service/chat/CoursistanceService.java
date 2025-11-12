@@ -222,12 +222,11 @@ public class CoursistanceService {
                 query += " The question includes a file: " + analyzedResult;
             }
 
-
+            // 合并版本：包含course_id参数
             String jsonBody = String.format(
                     "{ \"question\": \"%s\", \"top_k\": 2, \"course_id\": %d }",
                     query, courseId
             );
-
 
             ObjectMapper mapper = new ObjectMapper();
             Object jsonObj = mapper.readValue(jsonBody, Object.class);
