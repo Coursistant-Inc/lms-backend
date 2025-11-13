@@ -1,6 +1,7 @@
 package com.coursistant.lms.mapper.file;
 
 import com.coursistant.lms.entity.DiskFiles;
+import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
 import java.util.List;
@@ -54,5 +55,8 @@ public interface DiskFilesMapper {
      */
     @Select("select * from Diskfiles where path = #{path}")
     DiskFiles selectByPath(String path);
+
+
+
 
 }

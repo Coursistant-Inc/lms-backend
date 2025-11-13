@@ -2,6 +2,7 @@ package com.coursistant.lms.controller.assignment;
 
 import com.coursistant.lms.common.Result;
 import com.coursistant.lms.entity.Assignment;
+import com.coursistant.lms.entity.DiskFiles;
 import com.coursistant.lms.entity.FileSummary;
 import com.coursistant.lms.entity.AssignmentItem;
 import com.coursistant.lms.service.assignment.AssignmentContentItemService;
@@ -154,5 +155,19 @@ public class AssignmentContentItemController {
         data.put("assignmentContentItemId", courseContentItemId);
         return Result.success(data);
     }
+
+    /**
+     * 根据课程ID查询作业相关文件
+     * Query assignment-related files by courseId
+     */
+    @RequiresPermission("assignment:submit")
+    @GetMapping("/selectAssignmentFilesByCourseId")
+    public Result selectAssignmentFilesByCourseId(@RequestParam Integer courseId) {
+        logRequest("selectAssignmentFilesByCourseId", "courseId=" + courseId);
+        List<DiskFiles> files = assignmentContentItemService.selectAssignmentFilesByCourseId(courseId);
+        logResponse("selectAssignmentFilesByCourseId", "count=" + files.size());
+        return Result.success(files);
+    }
+
 
 }

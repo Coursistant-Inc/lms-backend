@@ -1,6 +1,7 @@
 package com.coursistant.lms.mapper.quiz;
 
 import com.coursistant.lms.entity.AttemptItem;
+import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
 
@@ -11,6 +12,9 @@ public interface AttemptItemMapper {
      * Insert a new attemptItem record
      */
     int insert(AttemptItem attemptItem);
+
+    // 批量新增 AttemptItem
+    int insertBatch(@Param("items") List<AttemptItem> items);
 
     /**
      * 删除

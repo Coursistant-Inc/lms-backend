@@ -162,6 +162,23 @@ public class AssignmentSubmissionController {
         return Result.success(list);
     }
 
+    /**
+     * 查询学生在课程下的最终提交记录
+     * Query all final assignment submissions for a student in a specific course
+     */
+    @RequiresPermission("assignment:submit")
+    @GetMapping("/selectFinalByUserAndCourse")
+    public Result selectFinalByUserAndCourse(@RequestParam Integer courseId,
+                                             @RequestParam Integer studentId,
+                                             @RequestHeader(value = "X-Timezone", required = false) String timezone) {
+        logRequest("selectFinalByUserAndCourse", "courseId=" + courseId + ", studentId=" + studentId);
+        ZoneId zone = TimeZoneUtils.resolveZoneId(timezone);
+        List<AssignmentSubmission> submissions = assignmentSubmissionService.selectFinalByUserAndCourse(courseId, studentId, zone);
+        logResponse("selectFinalByUserAndCourse", "count=" + submissions.size());
+        return Result.success(submissions);
+    }
+
+
 
     /**
      * 查询指定 assignmentId + studentId 的最终提交

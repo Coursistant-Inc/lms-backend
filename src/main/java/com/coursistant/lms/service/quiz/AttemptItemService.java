@@ -8,6 +8,7 @@ import com.coursistant.lms.mapper.quiz.AttemptItemMapper;
 import com.coursistant.lms.mapper.quiz.QuizMapper;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -20,6 +21,25 @@ public class AttemptItemService {
     public void add(AttemptItem item) {
         attemptItemMapper.insert(item);
     }
+
+    // AttemptItemService.java
+
+
+    @Transactional
+    public void addBatch(List<AttemptItem> items) {
+        if (items == null || items.isEmpty()) {
+            return; // 或抛参数异常
+        }
+        // 可选：同一次批量必须属于同一个 attemptId
+        Integer attemptId0 = items.get(0).getAttemptId();
+        for (AttemptItem it : items) {
+            if (!attemptId0.equals(it.getAttemptId())) {
+                throw new CustomException(ResultCodeEnum.PARAM_LOST_ERROR);
+            }
+        }
+        attemptItemMapper.insertBatch(items);
+    }
+
 
     /**
      * 删除

@@ -1,6 +1,7 @@
 package com.coursistant.lms.service.course;
 
 import cn.hutool.core.util.ObjectUtil;
+import com.coursistant.lms.entity.DiskFiles;
 import com.coursistant.lms.entity.FolderItem;
 import com.coursistant.lms.mapper.file.FolderItemMapper;
 import org.springframework.stereotype.Service;
@@ -104,4 +105,8 @@ public class CourseContentItemService {
      * Select folder items by course ID whose is_course_info is 1
      */
     public List<FolderItem> selectCourseInfo(Integer courseId) { return folderItemMapper.selectCourseInfo(courseId); }
+
+    public List<DiskFiles> selectCourseFilesByCourseId(Integer courseId) {
+        return folderItemMapper.selectFolderFilesByCourseId(courseId);
+    }
 }

@@ -89,4 +89,16 @@
         delete from AssignmentItem where assignment_id = #{assignmentId}
     </delete>
 
+
+    <select id="selectAssignmentFilesByCourseId" resultType="com.coursistant.lms.entity.DiskFiles">
+        SELECT DISTINCT d.*
+        FROM Diskfiles d
+                 JOIN AssignmentItem ai ON d.id = ai.file_id
+                 JOIN Assignment a ON ai.assignment_id = a.id
+        WHERE a.course_id = #{courseId}
+          AND ai.type = 'file'
+          AND d.`delete` = 0
+        ORDER BY d.create_time DESC
+    </select>
+
 </mapper>

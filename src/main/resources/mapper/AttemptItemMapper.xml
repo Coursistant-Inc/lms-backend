@@ -70,6 +70,23 @@
         </trim>
     </insert>
 
+    <!-- AttemptItemMapper.xml -->
+    <insert id="insertBatch" parameterType="java.util.List">
+        INSERT INTO AttemptItem
+        (attempt_id, quiz_item_id, question_id, answer_payload, needs_grading)
+        VALUES
+        <foreach collection="items" item="it" separator=",">
+            (
+            #{it.attemptId},
+            #{it.quizItemId},
+            #{it.questionId},
+            #{it.answerPayload},
+            #{it.needsGrading}
+            )
+        </foreach>
+    </insert>
+
+
     <update id="updateById" parameterType="com.coursistant.lms.entity.AttemptItem">
         update AttemptItem
         <set>

@@ -15,8 +15,9 @@ public class QuestionService {
     @Resource
     private QuestionMapper questionMapper;
 
-    public void add(Question question) {
+    public Integer add(Question question) {
         questionMapper.insert(question);
+        return question.getId(); // 返回主键 ID
     }
 
     /**

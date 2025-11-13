@@ -1,6 +1,7 @@
 package com.coursistant.lms.controller.course;
 
 import com.coursistant.lms.common.Result;
+import com.coursistant.lms.entity.DiskFiles;
 import com.coursistant.lms.entity.FileSummary;
 import com.coursistant.lms.entity.FolderItem;
 import com.coursistant.lms.service.file.DiskFilesService;
@@ -155,5 +156,19 @@ public class CourseContentItemController {
         data.put("courseContentItemId", courseContentItemId);
         return Result.success(data);
     }
+
+    /**
+     * 根据课程ID查询文件夹资源中的文件
+     * Query folder-item files by courseId
+     */
+    @RequiresPermission("assignment:submit")
+    @GetMapping("/selectCourseFilesByCourseId")
+    public Result selectFolderFilesByCourseId(@RequestParam Integer courseId) {
+        logRequest("selectCourseFilesByCourseId", "courseId=" + courseId);
+        List<DiskFiles> files = courseContentItemService.selectCourseFilesByCourseId(courseId);
+        logResponse("selectCourseFilesByCourseId", "count=" + files.size());
+        return Result.success(files);
+    }
+
 
 }

@@ -70,6 +70,10 @@ public interface AssignmentMapper {
     @Select("SELECT * FROM Assignment WHERE course_id = #{courseId}")
     List<Assignment> selectByCourseId(Integer courseId);
 
+
+    List<Integer> selectIdsByCourse(@Param("courseId") Integer courseId);
+
+
     /**
      * 查询某学生在指定时间范围内所有课程的作业（用于日历展示）
      */

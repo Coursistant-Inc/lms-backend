@@ -1,6 +1,7 @@
 package com.coursistant.lms.mapper.file;
 
 
+import com.coursistant.lms.entity.DiskFiles;
 import com.coursistant.lms.entity.FolderItem;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
@@ -51,4 +52,7 @@ public interface FolderItemMapper {
     int deleteByFolderId(@Param("folderId") Integer folderId);
 
     List<FolderItem> selectCourseInfo(@Param("courseId") Integer courseId);
+
+    List<DiskFiles> selectFolderFilesByCourseId(@Param("courseId") Integer courseId);
+
 }

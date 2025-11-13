@@ -70,6 +70,11 @@ public class CoursistanceService {
     public Query query(File file, Integer courseId, String query, Integer dialogueId, Integer userId, ZoneId timezone) {
         Query returnQuery = new Query();
 
+        // 去掉所有控制字符（除了常见的 \r、\n、\t 可保留或替换为空格）
+        query = query.replaceAll("[\\p{Cntrl}&&[^\r\n\t]]", " ");
+        query = query.replace("\r", " ").replace("\n", " ");
+
+
         // 检查对话是否存在 / Check if dialogue exists
         Dialogue dialogue= dialogueMapper.selectById(dialogueId);
         Boolean initial=false;

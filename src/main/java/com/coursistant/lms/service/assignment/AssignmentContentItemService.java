@@ -4,6 +4,7 @@ import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.ObjectUtil;
 import com.coursistant.lms.common.enums.ResultCodeEnum;
 import com.coursistant.lms.entity.AssignmentItem;
+import com.coursistant.lms.entity.DiskFiles;
 import com.coursistant.lms.exception.CustomException;
 import com.coursistant.lms.mapper.file.AssignmentItemMapper;
 import jakarta.annotation.Resource;
@@ -56,6 +57,8 @@ public class AssignmentContentItemService {
     public void deleteById(Integer id) {
         assignmentItemMapper.deleteById(id);
     }
+
+
 
     /**
      * 批量删除
@@ -114,4 +117,10 @@ public class AssignmentContentItemService {
      */
     public List<AssignmentItem> selectCourseInfo(Integer courseId) {
         return assignmentItemMapper.selectCourseInfo(courseId); }
+
+
+    public List<DiskFiles> selectAssignmentFilesByCourseId(Integer courseId) {
+        return assignmentItemMapper.selectAssignmentFilesByCourseId(courseId);
+    }
+
 }

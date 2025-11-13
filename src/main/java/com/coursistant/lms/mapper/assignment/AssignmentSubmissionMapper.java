@@ -77,6 +77,11 @@ public interface AssignmentSubmissionMapper {
     AssignmentSubmission selectFinalByAssignmentIdAndGroupId(@Param("assignmentId") Integer assignmentId,
                                                              @Param("groupId") Integer groupId);
 
+    List<AssignmentSubmission> selectFinalByAssignmentIdsAndStudent(
+            @Param("assignmentIds") List<Integer> assignmentIds,
+            @Param("studentId") Integer studentId
+    );
+
 
 
 }

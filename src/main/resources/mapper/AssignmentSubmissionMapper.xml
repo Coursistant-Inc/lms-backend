@@ -129,5 +129,18 @@
     </select>
 
 
+    <select id="selectFinalByAssignmentIdsAndStudent" resultType="com.coursistant.lms.entity.AssignmentSubmission">
+        SELECT *
+        FROM AssignmentSubmission
+        WHERE student_id = #{studentId}
+        AND is_final = 1
+        AND assignment_id IN
+        <foreach collection="assignmentIds" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </select>
+
+
+
 
 </mapper>
