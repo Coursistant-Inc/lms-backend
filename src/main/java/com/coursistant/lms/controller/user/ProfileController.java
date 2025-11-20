@@ -229,7 +229,7 @@ public class ProfileController {
             // 将 JSON 字符串转换为 Profile 对象
             // Convert JSON string to Profile object
             // if(profileJson!=null)
-            if(ObjectUtils.isEmpty(profileJson))
+            if(!ObjectUtils.isEmpty(profileJson))
             {
                 profile = objectMapper.readValue(profileJson, Profile.class);
 

@@ -19,11 +19,15 @@ import com.coursistant.lms.service.system.RefreshTokenService;
 import com.coursistant.lms.utils.EmailUtil;
 import com.coursistant.lms.utils.PasswordEncoderUtil;
 import com.coursistant.lms.utils.TokenUtils;
+import org.springframework.beans.BeanUtils;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.stereotype.Service;
 import java.util.concurrent.CompletableFuture;
 
 import jakarta.annotation.Resource;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.ArrayList;
 import java.util.stream.Collectors;
 import java.util.Objects;

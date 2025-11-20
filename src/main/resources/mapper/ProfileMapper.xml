@@ -3,8 +3,8 @@
 <mapper namespace="com.coursistant.lms.mapper.user.ProfileMapper">
     <!-- Insert a new profile -->
     <insert id="insert" parameterType="com.coursistant.lms.entity.Profile">
-        INSERT INTO Profile (user_id, preferred_name, pronouns, email, introduction, avatar, school_name, graduation_year, major, interest, profile)
-        VALUES (#{userId}, #{preferredName}, #{pronouns}, #{email}, #{introduction}, #{avatar}, #{schoolName}, #{graduationYear}, #{major}, #{interest}, #{profile})
+        INSERT INTO Profile (user_id, preferred_name, pronouns, email, introduction, avatar, school_name, graduation_year, major, interest, profile, date_of_birth)
+        VALUES (#{userId}, #{preferredName}, #{pronouns}, #{email}, #{introduction}, #{avatar}, #{schoolName}, #{graduationYear}, #{major}, #{interest}, #{profile}, #{dateOfBirth})
     </insert>
 
     <!-- Delete a profile by ID -->
@@ -24,7 +24,8 @@
             major = #{major},
             interest = #{interest},
             profile = #{profile},
-            email = #{email}
+            email = #{email},
+            date_of_birth = #{dateOfBirth}
         WHERE id = #{id}
     </update>
 
