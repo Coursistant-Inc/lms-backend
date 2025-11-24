@@ -158,7 +158,7 @@ public class CoursistanceService {
 
 
         // 定义两个 API 地址 / Define two API endpoints
-        String queryApiUrl = "https://ec2.dev.xlearnedu.com/query";
+        String queryApiUrl = "https://dev.xlearnedu.com/query";
         String analyzeImageUrl = "http://dev.xlearnedu.com:5001/analyze-image";
         String analyzeFileUrl   = "http://dev.xlearnedu.com:5005/analyze-file";
         try (CloseableHttpClient httpClient = HttpClients.createDefault()) {

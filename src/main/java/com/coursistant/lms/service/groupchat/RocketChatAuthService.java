@@ -17,6 +17,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.client.HttpClientErrorException;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @Service
 public class RocketChatAuthService {
 
@@ -37,6 +40,8 @@ public class RocketChatAuthService {
 
     private String adminAuthToken;
     private String adminUserId;
+
+    private static final Logger logger = LoggerFactory.getLogger(RocketChatAuthService.class);
 
     /**
      * 🎯 主入口：确保用户存在并自动加入课程频道
@@ -368,39 +373,73 @@ public class RocketChatAuthService {
 
     private String getUserIdByEmail(String email) {
         try {
-            String queryJson = "{\"emails.address\":\"" + email + "\"}";
-            String encodedQuery = java.net.URLEncoder.encode(queryJson, "UTF-8");
-            String url = rocketChatUrl + "/api/v1/users.list?query=" + encodedQuery;
+            System.out.println("🔍 [getUserIdByEmail] Searching for: " + email);
             
-            HttpHeaders headers = new HttpHeaders();
-            headers.set("X-Auth-Token", adminAuthToken);
-            headers.set("X-User-Id", adminUserId);
-            HttpEntity<String> request = new HttpEntity<>(headers);
-
-            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, request, String.class);
-            JsonNode jsonResponse = objectMapper.readTree(response.getBody());
-
-            if (jsonResponse.path("success").asBoolean() && 
-                jsonResponse.path("users").size() > 0) {
+            int count = 100; // 每页100条
+            int offset = 0;
+            int maxPages = 20; // 最多查20页（2000个用户）
+            
+            for (int page = 0; page < maxPages; page++) {
+                String queryJson = "{\"emails.address\":\"" + email + "\"}";
+                String encodedQuery = java.net.URLEncoder.encode(queryJson, "UTF-8");
+                String url = rocketChatUrl + "/api/v1/users.list?query=" + encodedQuery + 
+                            "&count=" + count + "&offset=" + offset;
                 
-                for (int i = 0; i < jsonResponse.path("users").size(); i++) {
-                    JsonNode user = jsonResponse.path("users").get(i);
-                    JsonNode emails = user.path("emails");
+                System.out.println("🔍 [getUserIdByEmail] Page " + (page + 1) + ", offset: " + offset);
+                
+                HttpHeaders headers = new HttpHeaders();
+                headers.set("X-Auth-Token", adminAuthToken);
+                headers.set("X-User-Id", adminUserId);
+                HttpEntity<String> request = new HttpEntity<>(headers);
+
+                ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, request, String.class);
+                JsonNode jsonResponse = objectMapper.readTree(response.getBody());
+
+                if (jsonResponse.path("success").asBoolean()) {
+                    JsonNode users = jsonResponse.path("users");
+                    int userCount = users.size();
                     
-                    for (int j = 0; j < emails.size(); j++) {
-                        String userEmail = emails.get(j).path("address").asText();
+                    System.out.println("🔍 [getUserIdByEmail] Found " + userCount + " users on this page");
+                    
+                    if (userCount == 0) {
+                        break; // 没有更多用户了
+                    }
+                    
+                    // 遍历当前页的用户
+                    for (int i = 0; i < userCount; i++) {
+                        JsonNode user = users.get(i);
+                        JsonNode emails = user.path("emails");
                         
-                        if (userEmail.equalsIgnoreCase(email)) {
-                            return user.path("_id").asText();
+                        for (int j = 0; j < emails.size(); j++) {
+                            String userEmail = emails.get(j).path("address").asText();
+                            
+                            if (userEmail.equalsIgnoreCase(email)) {
+                                String userId = user.path("_id").asText();
+                                String username = user.path("username").asText();
+                                System.out.println("✅ [getUserIdByEmail] Found! Username: " + username + ", UserID: " + userId);
+                                return userId;
+                            }
                         }
                     }
+                    
+                    // 如果这页用户数少于count，说明已经是最后一页
+                    if (userCount < count) {
+                        break;
+                    }
+                    
+                    offset += count; // 下一页
+                } else {
+                    System.out.println("❌ [getUserIdByEmail] API call failed");
+                    break;
                 }
             }
             
+            System.out.println("❌ [getUserIdByEmail] User not found after checking all pages: " + email);
             return null;
             
         } catch (Exception e) {
-            System.err.println("❌ Error getting user by email: " + e.getMessage());
+            System.err.println("❌ [getUserIdByEmail] Exception: " + e.getMessage());
+            e.printStackTrace();
             return null;
         }
     }
@@ -458,9 +497,9 @@ public class RocketChatAuthService {
     private void createUser(String email, String password, String name) {
         try {
             String url = rocketChatUrl + "/api/v1/users.create";
-            
+
             String username = email.replaceAll("[^a-zA-Z0-9]", "").toLowerCase();
-            
+
             ObjectNode userData = objectMapper.createObjectNode();
             userData.put("email", email);
             userData.put("name", name != null ? name : username);
@@ -475,14 +514,25 @@ public class RocketChatAuthService {
             headers.setContentType(MediaType.APPLICATION_JSON);
             headers.set("X-Auth-Token", adminAuthToken);
             headers.set("X-User-Id", adminUserId);
+
+            logger.info("RocketChat users.create headers - X-User-Id={}, X-Auth-Token prefix={}",
+                    adminUserId,
+                    adminAuthToken != null && adminAuthToken.length() > 8
+                            ? adminAuthToken.substring(0, 8) + "****"
+                            : adminAuthToken);
+
             HttpEntity<String> request = new HttpEntity<>(userData.toString(), headers);
 
             ResponseEntity<String> response = restTemplate.postForEntity(url, request, String.class);
+
+            logger.info("RocketChat users.create status={}, body={}",
+                    response.getStatusCode().value(), response.getBody());
+
             JsonNode jsonResponse = objectMapper.readTree(response.getBody());
 
             if (!jsonResponse.path("success").asBoolean()) {
                 String error = jsonResponse.path("error").asText();
-                if (error.contains("already in use")) {
+                if (error != null && error.contains("already in use")) {
                     String userId = getUserIdByEmail(email);
                     if (userId != null) {
                         activateUser(userId);
@@ -491,14 +541,14 @@ public class RocketChatAuthService {
                 }
                 throw new RuntimeException("Failed to create user: " + error);
             }
-            
+
             String userId = jsonResponse.path("user").path("_id").asText();
             if (userId != null && !userId.isEmpty()) {
                 activateUser(userId);
             }
-            
+
         } catch (Exception e) {
-            System.err.println("❌ Error creating user: " + e.getMessage());
+            logger.error("❌ Error creating user in RocketChat for email={}", email, e);
             throw new RuntimeException("Failed to create user", e);
         }
     }
