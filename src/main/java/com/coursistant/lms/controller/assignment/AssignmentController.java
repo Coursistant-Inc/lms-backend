@@ -31,11 +31,11 @@ public class AssignmentController {
     private static final Logger logger = Logger.getLogger(AssignmentController.class.getName());
 
     private void logRequest(String methodName, String requestBody) {
-        logger.info(() -> String.format("Start %s: %s", methodName, requestBody));
+        // logger.info(() -> String.format("Start %s: %s", methodName, requestBody));
     }
 
     private void logResponse(String methodName, String response) {
-        logger.info(() -> String.format("End %s: %s", methodName, response));
+        // logger.info(() -> String.format("End %s: %s", methodName, response));
     }
 
     /**
@@ -116,10 +116,10 @@ public class AssignmentController {
     @GetMapping("/selectById/{id}")
     public Result selectById(@PathVariable Integer id,
                              @RequestHeader(value = "X-Timezone", required = false) String timezone) {
-        logRequest("selectById", id.toString());
+        // logRequest("selectById", id.toString());
         ZoneId zone=TimeZoneUtils.resolveZoneId(timezone);
         AssignmentDTO assignment = assignmentService.selectById(id,zone);
-        logResponse("selectById", assignment.toString());
+        // logResponse("selectById", assignment.toString());
         return Result.success(assignment);
     }
 
@@ -131,13 +131,13 @@ public class AssignmentController {
     @GetMapping("/selectByCourseId/{id}")
     public Result selectByCourseId(@PathVariable Integer id,
                                    @RequestHeader(value = "X-Timezone", required = false) String timezone) {
-        logRequest("selectByCourseId", id.toString());
+        // logRequest("selectByCourseId", id.toString());
 
         ZoneId zone = TimeZoneUtils.resolveZoneId(timezone);
 
         List<AssignmentGroupDTO> assignments = assignmentService.selectByCourseId(id, zone);
 
-        logResponse("selectByCourseId", "Total: " + assignments.size());
+        // logResponse("selectByCourseId", "Total: " + assignments.size());
         return Result.success(assignments);
     }
 
@@ -150,10 +150,10 @@ public class AssignmentController {
     @GetMapping("/selectAll")
     public Result selectAll(Assignment assignment,
                             @RequestHeader(value = "X-Timezone", required = false) String timezone) {
-        logRequest("selectAll", assignment != null ? assignment.toString() : "null");
+        // logRequest("selectAll", assignment != null ? assignment.toString() : "null");
         ZoneId zone=TimeZoneUtils.resolveZoneId(timezone);
         List<Assignment> list = assignmentService.selectAll(assignment,zone);
-        logResponse("selectAll", null);
+        // logResponse("selectAll", null);
         return Result.success(list);
     }
 

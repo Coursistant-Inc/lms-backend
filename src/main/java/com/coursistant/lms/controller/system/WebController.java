@@ -107,10 +107,12 @@ public Result login(@RequestBody Account account, HttpServletResponse response) 
         dbAccount.setRocketChatToken(rcToken.get("authToken"));
         dbAccount.setRocketChatUserId(rcToken.get("userId"));
         
-        System.out.println("✅ RocketChat token created for: " + dbAccount.getEmail());
+        // System.out.println("✅ RocketChat token created for: " + dbAccount.getEmail());
+        logger.info("✅ RocketChat token created for: " + dbAccount.getEmail());
         
     } catch (Exception e) {
-        System.err.println("⚠️ RocketChat login failed: " + e.getMessage());
+        // System.err.println("⚠️ RocketChat login failed: " + e.getMessage());
+        logger.info("⚠️ RocketChat login failed: " + e.getMessage());
         e.printStackTrace();
         // RocketChat 失败不影响 LMS 登录，继续
     }
