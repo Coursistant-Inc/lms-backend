@@ -140,7 +140,7 @@ public class ProfileController {
         if (!ObjectUtils.isEmpty(avatar) && !avatar.isEmpty()) {
             try {
 
-
+                System.out.println("AVATAR FOUND");
                 String avatarFileName = avatar.getOriginalFilename();
                 int i = avatarFileName.lastIndexOf(".");
 
@@ -170,7 +170,7 @@ public class ProfileController {
                 // 1. 创建按日期存储的目录
                 // 1. Create a directory for today's date
                 String datePath = new SimpleDateFormat("yyyy/MM/dd").format(new Date());
-                String baseDir = "/home/admir/SpringBoot/saved_images/avatars/"; // 更改头像存储路径 / Change path for avatars
+                String baseDir = "/home/ubuntu/SpringBoot/saved_images/avatars/"; // 更改头像存储路径 / Change path for avatars
                 // String baseDir = "C:/Users/Shreyansh Bardia/LMS-pictures/";
                 // String baseDir = System.getProperty("user.home") + "/SpringBoot/saved_images/avatars";
                 String uploadDir = baseDir + datePath + "/";
@@ -199,6 +199,10 @@ public class ProfileController {
                 logger.severe("Error saving avatar: " + e.getMessage());
             }
 
+        }
+
+        else{
+            System.out.println("AVATAR NOT FOUND");
         }
 
 
@@ -256,7 +260,7 @@ public class ProfileController {
 
     
 
-        if (ObjectUtils.isEmpty(avatar) && avatar!=null) {
+        if (!ObjectUtils.isEmpty(avatar) && avatar!=null) {
             try {
 
                String avatarFileName = avatar.getOriginalFilename();
@@ -313,10 +317,10 @@ public class ProfileController {
 
                 // 4. 设置头像文件路径
                 // 4. Set the avatar file path in the profile
-                // if(profile!=null)
-                // {
-                //     profile.setAvatar(absoluteFilePath);
-                // }
+                if(profile!=null)
+                {
+                    profile.setAvatar(absoluteFilePath);
+                }
 
                 profileService.updateAvatarPathById(userId, absoluteFilePath);
 
@@ -326,6 +330,9 @@ public class ProfileController {
                 logger.severe("Error saving avatar: " + e.getMessage());
             }
 
+        }
+        else{
+            System.out.println("AVATAR NOT FOUND");
         }
         // if(profile!=null)
         if(!ObjectUtils.isEmpty(profile))
