@@ -158,7 +158,7 @@ public class CoursistanceService {
 
 
         // 定义两个 API 地址 / Define two API endpoints
-        String queryApiUrl = "https://ec2.dev.xlearnedu.com/query";
+        String queryApiUrl = "https://dev.xlearnedu.com/query";
         String analyzeImageUrl = "http://dev.xlearnedu.com:5001/analyze-image";
         String analyzeFileUrl   = "http://dev.xlearnedu.com:5005/analyze-file";
         try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
@@ -222,12 +222,11 @@ public class CoursistanceService {
                 query += " The question includes a file: " + analyzedResult;
             }
 
-
+            // 合并版本：包含course_id参数
             String jsonBody = String.format(
                     "{ \"question\": \"%s\", \"top_k\": 2, \"course_id\": %d }",
                     query, courseId
             );
-
 
             ObjectMapper mapper = new ObjectMapper();
             Object jsonObj = mapper.readValue(jsonBody, Object.class);

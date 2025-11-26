@@ -18,6 +18,7 @@ import com.coursistant.lms.annotation.RequiresPermission;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import com.coursistant.lms.service.groupchat.RocketChatAuthService;
 
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.Cookie;
@@ -27,6 +28,7 @@ import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Logger;
 import java.time.ZoneId;
 
@@ -44,6 +46,8 @@ public class WebController {
     private CoursistanceService coursistanceService;
     @Resource
     private RefreshTokenService refreshTokenService;
+    @Resource
+    private RocketChatAuthService rocketChatAuthService;
 
 
     @GetMapping("/")
@@ -60,42 +64,62 @@ public class WebController {
         logger.info(() -> String.format("End %s: %s", methodName, response));
     }
 
-    /**
-     * 登录 // Login
-     */
     @PostMapping("/login")
-    public Result login(@RequestBody Account account, HttpServletResponse response) {
-        if (ObjectUtil.isEmpty(account.getEmail()) || ObjectUtil.isEmpty(account.getPassword())
-                || ObjectUtil.isEmpty(account.getRole())) {
-            return Result.error(ResultCodeEnum.PARAM_LOST_ERROR);
-        }
-        Account dbAccount = null;
-        if (RoleEnum.ADMIN.name().equals(account.getRole())) {
-            dbAccount = adminService.login(account);
-        }
-        if (RoleEnum.USER.name().equals(account.getRole())) {
-            dbAccount = userService.login(account);
-        }
-
-        // 设置 refresh token 到 HttpOnly Cookie
-        if (ObjectUtil.isNotEmpty(dbAccount.getRefreshToken())) {
-            Cookie cookie = new Cookie("refreshToken", dbAccount.getRefreshToken());
-            cookie.setHttpOnly(true);
-            cookie.setSecure(true); // 生产环境建议开启 HTTPS 才设置 true
-            cookie.setPath("/");
-            cookie.setMaxAge(60 * 60 * 24 * 30); // 30 天
-
-            // 可选：跨域场景设置 domain
-            // cookie.setDomain("your-domain.com");
-
-            response.addCookie(cookie);
-        }
-
-        dbAccount.setRefreshToken(null);
-
-
-        return Result.success(dbAccount);
+public Result login(@RequestBody Account account, HttpServletResponse response) {
+    if (ObjectUtil.isEmpty(account.getEmail()) || ObjectUtil.isEmpty(account.getPassword())
+            || ObjectUtil.isEmpty(account.getRole())) {
+        return Result.error(ResultCodeEnum.PARAM_LOST_ERROR);
     }
+    
+    Account dbAccount = null;
+    if (RoleEnum.ADMIN.name().equals(account.getRole())) {
+        dbAccount = adminService.login(account);
+    }
+    if (RoleEnum.USER.name().equals(account.getRole())) {
+        dbAccount = userService.login(account);
+    }
+
+    // 设置 refresh token 到 HttpOnly Cookie
+    if (ObjectUtil.isNotEmpty(dbAccount.getRefreshToken())) {
+        Cookie cookie = new Cookie("refreshToken", dbAccount.getRefreshToken());
+        cookie.setHttpOnly(true);
+        cookie.setSecure(true);
+        cookie.setPath("/");
+        cookie.setMaxAge(60 * 60 * 24 * 30);
+        response.addCookie(cookie);
+    }
+
+    dbAccount.setRefreshToken(null);
+
+    
+    try {
+        // 1. 确保 RocketChat 用户存在
+        rocketChatAuthService.ensureUserExists(
+            dbAccount.getEmail(), 
+            account.getPassword(), 
+            dbAccount.getName()
+        );
+        
+        // 2. 创建 RocketChat token
+        Map<String, String> rcToken = rocketChatAuthService.createTokenForUser(dbAccount.getEmail());
+        
+        // 3. 保存到 dbAccount
+        dbAccount.setRocketChatToken(rcToken.get("authToken"));
+        dbAccount.setRocketChatUserId(rcToken.get("userId"));
+        
+        // System.out.println("✅ RocketChat token created for: " + dbAccount.getEmail());
+        logger.info("✅ RocketChat token created for: " + dbAccount.getEmail());
+        
+    } catch (Exception e) {
+        // System.err.println("⚠️ RocketChat login failed: " + e.getMessage());
+        logger.info("⚠️ RocketChat login failed: " + e.getMessage());
+        e.printStackTrace();
+        // RocketChat 失败不影响 LMS 登录，继续
+    }
+    
+
+    return Result.success(dbAccount);
+}
 
     @PostMapping("/refresh-token")
     public Result refreshToken(HttpServletRequest request) {

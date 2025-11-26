@@ -29,8 +29,6 @@ import java.security.interfaces.RSAPublicKey;
 @Component
 public class JwtInterceptor implements HandlerInterceptor {
 
-    //private static final Logger log = LoggerFactory.getLogger(JwtInterceptor.class);
-
     @Resource
     private AdminService adminService;
     @Resource
@@ -38,6 +36,14 @@ public class JwtInterceptor implements HandlerInterceptor {
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
+        
+        // ⭐ 白名单：RocketChat iframe-auth 不需要验证 token
+        String path = request.getRequestURI();
+        if (path.contains("/rocketchat/")) {
+            System.out.println("✅ RocketChat path, skipping JWT check: " + path);
+            return true;
+        }
+        
         // 1. 从http请求的header中获取token
         // Retrieve the token from the HTTP request header
         String token = request.getHeader(Constants.TOKEN);
