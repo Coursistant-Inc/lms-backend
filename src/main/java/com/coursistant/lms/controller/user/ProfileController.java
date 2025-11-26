@@ -82,6 +82,7 @@ public class ProfileController {
             // Convert JSON string to Profile object
             profile = objectMapper.readValue(profileJson, Profile.class);
         } catch (JsonProcessingException e) {
+            e.printStackTrace();
             throw new RuntimeException("Invalid profile JSON format", e);
         }
         logRequest("update", profile.toString());

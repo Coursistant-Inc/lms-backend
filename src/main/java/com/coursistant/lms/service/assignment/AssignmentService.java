@@ -9,6 +9,7 @@ import com.coursistant.lms.entity.DTO.AssignmentGroupDTO;
 import com.coursistant.lms.mapper.course.CourseMapper;
 import com.coursistant.lms.mapper.course.LearnMapper;
 import com.coursistant.lms.mapper.file.AssignmentItemMapper;
+import com.coursistant.lms.mapper.quiz.QuizMapper;
 import com.coursistant.lms.service.course.LearnService;
 import com.coursistant.lms.service.file.AssignmentFileService;
 import com.coursistant.lms.common.enums.ResultCodeEnum;
@@ -43,6 +44,9 @@ public class AssignmentService {
 
     @Resource
     private LearnMapper     learnMapper;
+
+    @Resource
+    private QuizMapper quizMapper;
 
     @Resource
     private AssignmentFileService assignmentFileService;
@@ -180,25 +184,59 @@ public class AssignmentService {
     }
 
     public List<AssignmentGroupDTO> selectByCourseId(Integer courseId, ZoneId timezone) {
+        // 1. 查询作业
         List<Assignment> assignments = assignmentMapper.selectByCourseId(courseId);
 
+        // 2. 查询 quiz
+        List<Quiz> quizzes = quizMapper.selectByCourseId(courseId);
+
+        // 3. Assignment 调整时区
         for (Assignment assignment : assignments) {
             assignment.setStart(TimeZoneUtils.fromUtcLocalDateTime(assignment.getStart(), timezone));
             assignment.setDue(TimeZoneUtils.fromUtcLocalDateTime(assignment.getDue(), timezone));
         }
 
-        Map<Integer, List<Assignment>> grouped = assignments.stream()
-                .collect(Collectors.groupingBy(Assignment::getCourseContentId, LinkedHashMap::new, Collectors.toList()));
+        // 4. Quiz 调整时区（如果有 start / due）
+        for (Quiz quiz : quizzes) {
+            //quiz.setStartAt(TimeZoneUtils.fromUtcLocalDateTime(quiz.getStartAt(), timezone));
+            quiz.setDueAt(TimeZoneUtils.fromUtcLocalDateTime(quiz.getDueAt(), timezone));
+        }
 
+        // 5. 按 courseContentId 分组（作业）
+        Map<Integer, List<Assignment>> assignmentGrouped =
+                assignments.stream()
+                        .collect(Collectors.groupingBy(
+                                Assignment::getCourseContentId,
+                                LinkedHashMap::new,
+                                Collectors.toList()
+                        ));
+
+        // 6. 按 courseContentId 分组（Quiz）
+        Map<Integer, List<Quiz>> quizGrouped =
+                quizzes.stream()
+                        .collect(Collectors.groupingBy(
+                                Quiz::getCourseContentId,
+                                LinkedHashMap::new,
+                                Collectors.toList()
+                        ));
+
+        // 7. 合并分组并输出
         List<AssignmentGroupDTO> result = new ArrayList<>();
-        for (Map.Entry<Integer, List<Assignment>> entry : grouped.entrySet()) {
-            result.add(new AssignmentGroupDTO(entry.getKey(), entry.getValue()));
-            System.out.println(entry.getKey());
-            System.out.println(entry.getValue());
+
+        for (Map.Entry<Integer, List<Assignment>> entry : assignmentGrouped.entrySet()) {
+            Integer courseContentId = entry.getKey();
+            List<Assignment> assignmentList = entry.getValue();
+
+            // 找到同一 contentId 下的 quiz（可能没有）
+            List<Quiz> quizList = quizGrouped.getOrDefault(courseContentId, new ArrayList<>());
+
+            // 传给 DTO
+            result.add(new AssignmentGroupDTO(courseContentId, assignmentList, quizList));
         }
 
         return result;
     }
+
 
 
 

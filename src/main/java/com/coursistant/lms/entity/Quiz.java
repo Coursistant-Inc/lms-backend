@@ -43,6 +43,10 @@ public class Quiz implements Serializable {
     /** 最后更新时间 */
     private LocalDateTime updatedAt;
 
+    private Integer courseContentId;
+
+    private Boolean integrity;
+
     // ======= toString only =======
     @Override
     public String toString() {
@@ -147,5 +151,21 @@ public class Quiz implements Serializable {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public Integer getCourseContentId() {
+        return courseContentId;
+    }
+
+    public void setCourseContentId(Integer courseContentId) {
+        this.courseContentId = courseContentId;
+    }
+
+    public Boolean getIntegrity() {
+        return integrity;
+    }
+
+    public void setIntegrity(Boolean integrity) {
+        this.integrity = integrity;
     }
 }
