@@ -247,6 +247,7 @@ public class ProfileController {
             // System.out.println("Avatar file size in MB: "+avatarFileSizeInMB);
 
         } catch (JsonProcessingException e) {
+            e.printStackTrace();
             throw new RuntimeException("Invalid profile JSON format", e);
         }
         if(profile!=null)

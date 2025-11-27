@@ -2,6 +2,7 @@ package com.coursistant.lms.entity.DTO;
 
 import com.coursistant.lms.entity.Assignment;
 import com.coursistant.lms.entity.AssignmentFile;
+import com.coursistant.lms.entity.Quiz;
 
 import java.util.List;
 
@@ -18,11 +19,14 @@ public class AssignmentGroupDTO {
     /** 当前 courseContentId 下的作业列表 / Assignment list under this content */
     private List<Assignment> assignments;
 
+    private List<Quiz> quizzes;
+
     public AssignmentGroupDTO() {}
 
-    public AssignmentGroupDTO(Integer courseContentId, List<Assignment> assignments) {
+    public AssignmentGroupDTO(Integer courseContentId, List<Assignment> assignments, List<Quiz> quizzes) {
         this.courseContentId = courseContentId;
         this.assignments = assignments;
+        this.quizzes = quizzes;
     }
 
     public Integer getCourseContentId() {
@@ -39,6 +43,14 @@ public class AssignmentGroupDTO {
 
     public void setAssignments(List<Assignment> assignments) {
         this.assignments = assignments;
+    }
+
+    public List<Quiz> getQuizzes() {
+        return quizzes;
+    }
+
+    public void setQuizzes(List<Quiz> quizzes) {
+        this.quizzes = quizzes;
     }
 
     @Override

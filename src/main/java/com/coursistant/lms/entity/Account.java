@@ -66,6 +66,28 @@ public class Account {
 
     private String type;
 
+    // ⭐ 新增字段
+    transient private String rocketChatToken;
+    transient private String rocketChatUserId;
+
+    // getter 和 setter
+    public String getRocketChatToken() {
+        return rocketChatToken;
+    }
+
+    public void setRocketChatToken(String rocketChatToken) {
+        this.rocketChatToken = rocketChatToken;
+    }
+
+    public String getRocketChatUserId() {
+        return rocketChatUserId;
+    }
+
+    public void setRocketChatUserId(String rocketChatUserId) {
+        this.rocketChatUserId = rocketChatUserId;
+    }
+
+
 
     public Integer getId() {
         return id;
@@ -181,26 +203,6 @@ public class Account {
         this.type = type;
     }
 
-    // ⭐ 新增字段
-    transient private String rocketChatToken;
-    transient private String rocketChatUserId;
-    
-    // getter 和 setter
-    public String getRocketChatToken() {
-        return rocketChatToken;
-    }
-    
-    public void setRocketChatToken(String rocketChatToken) {
-        this.rocketChatToken = rocketChatToken;
-    }
-    
-    public String getRocketChatUserId() {
-        return rocketChatUserId;
-    }
-    
-    public void setRocketChatUserId(String rocketChatUserId) {
-        this.rocketChatUserId = rocketChatUserId;
-    }
 
     
 }

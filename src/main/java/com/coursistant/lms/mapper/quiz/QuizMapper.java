@@ -1,6 +1,8 @@
 package com.coursistant.lms.mapper.quiz;
 
 import com.coursistant.lms.entity.Quiz;
+import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
 
 import java.util.List;
 
@@ -35,4 +37,10 @@ public interface QuizMapper {
      * Query all quiz records (filterable)
      */
     List<Quiz> selectAll(Quiz filter);
+
+
+    @Select("SELECT * FROM Quiz WHERE course_id = #{courseId}")
+    List<Quiz> selectByCourseId(Integer courseId);
+
+
 }

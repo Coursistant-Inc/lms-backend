@@ -6,7 +6,7 @@
 
     <sql id="Base_Column_List">
         id, course_id, title, description, time_limit_minutes, attempts_allowed,
-        grading_policy, start_at, due_at, publish_state, updated_at
+        grading_policy, start_at, due_at, publish_state, updated_at,course_content_id,integrity
     </sql>
 
     <select id="selectAll" resultType="com.coursistant.lms.entity.Quiz">
@@ -25,6 +25,8 @@
             <if test="dueAt != null">and due_at = #{dueAt}</if>
             <if test="publishState != null">and publish_state = #{publishState}</if>
             <if test="updatedAt != null">and updated_at = #{updatedAt}</if>
+            <if test="courseContentId != null">and course_content_id = #{courseContentId}</if>
+            <if test="integrity != null">and integrity = #{integrity}</if>
         </where>
     </select>
 
@@ -53,6 +55,8 @@
             <if test="dueAt != null">due_at,</if>
             <if test="publishState != null">publish_state,</if>
             <if test="updatedAt != null">updated_at,</if>
+            <if test="courseContentId != null">course_content_id,</if>
+            <if test="integrity != null">integrity,</if>
         </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
             <if test="id != null">#{id},</if>
@@ -66,6 +70,8 @@
             <if test="dueAt != null">#{dueAt},</if>
             <if test="publishState != null">#{publishState},</if>
             <if test="updatedAt != null">#{updatedAt},</if>
+            <if test="courseContentId != null">#{courseContentId},</if>
+            <if test="integrity != null">#{integrity},</if>
         </trim>
     </insert>
 
@@ -82,6 +88,8 @@
             <if test="dueAt != null">due_at = #{dueAt},</if>
             <if test="publishState != null">publish_state = #{publishState},</if>
             <if test="updatedAt != null">updated_at = #{updatedAt},</if>
+            <if test="courseContentId != null">course_content_id = #{courseContentId},</if>
+            <if test="integrity != null">integrity= #{integrity},</if>
         </set>
         where id = #{id}
     </update>
