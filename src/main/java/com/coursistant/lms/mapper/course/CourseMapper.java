@@ -1,10 +1,12 @@
 package com.coursistant.lms.mapper.course;
 
-import com.coursistant.lms.entity.Course;
+import java.util.List;
+
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
-import java.util.List;
+import com.coursistant.lms.entity.Course;
+import com.coursistant.lms.entity.DTO.CourseDetailsDTO;
 
 /**
  * 操作 course 相关数据接口
@@ -52,6 +54,10 @@ public interface CourseMapper {
     List<Course> selectByUserIdFromTeach(@Param("userId") Integer userId);
 
     List<Course> selectByUserIdFromLearn(@Param("userId") Integer userId);
+
+    List<CourseDetailsDTO> selectCourseDetailsByUserId(Integer userId, List<Course> courseList);
+
+    void updateLastSelectedCourse(Integer userId, Integer courseId);
 
 
 }

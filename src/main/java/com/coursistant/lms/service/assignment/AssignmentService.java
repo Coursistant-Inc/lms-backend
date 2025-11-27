@@ -9,18 +9,24 @@ import com.coursistant.lms.entity.DTO.AssignmentGroupDTO;
 import com.coursistant.lms.mapper.course.CourseMapper;
 import com.coursistant.lms.mapper.course.LearnMapper;
 import com.coursistant.lms.mapper.file.AssignmentItemMapper;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
 import com.coursistant.lms.mapper.quiz.QuizMapper;
 import com.coursistant.lms.service.course.LearnService;
 import com.coursistant.lms.service.file.AssignmentFileService;
 import com.coursistant.lms.common.enums.ResultCodeEnum;
+import com.coursistant.lms.entity.CalendarDisplayEvent;
 import com.coursistant.lms.entity.DTO.AssignmentDTO;
 import com.coursistant.lms.exception.CustomException;
 import com.coursistant.lms.mapper.assignment.AssignmentMapper;
+import com.coursistant.lms.service.course.LearnService;
+import com.coursistant.lms.service.file.AssignmentFileService;
 import com.coursistant.lms.utils.EmailUtil;
 import com.coursistant.lms.utils.TimeZoneUtils;
-import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
 
+import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.util.ObjectUtil;
 import jakarta.annotation.Resource;
 
 import java.awt.desktop.SystemEventListener;
@@ -257,6 +263,13 @@ public class AssignmentService {
 
 
         return assignments;
+    }
+
+    public List<AssignmentDTO> selectAssignmentsByCourseAndUserId(Integer userId, Integer courseId)
+    {
+        List<AssignmentDTO> assignmentDetails = assignmentMapper.selectAssignmentsByCourseAndUserId(userId,courseId);
+        
+        return assignmentDetails;
     }
 
     public List<CalendarDisplayEvent> selectAssignmentByUserAndTimeRange(Integer userId, LocalDateTime start, LocalDateTime end, ZoneId timezone) {

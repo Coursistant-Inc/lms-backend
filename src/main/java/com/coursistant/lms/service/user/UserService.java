@@ -6,29 +6,33 @@ import com.coursistant.lms.service.groupchat.RocketChatAuthService;
 import com.coursistant.lms.service.system.RefreshTokenService;
 import com.coursistant.lms.utils.EmailUtil;
 import com.coursistant.lms.common.Constants;
+import com.coursistant.lms.common.enums.AdminEnums;
 import com.coursistant.lms.common.enums.LevelEnum;
 import com.coursistant.lms.common.enums.ResultCodeEnum;
 import com.coursistant.lms.common.enums.RoleEnum;
 import com.coursistant.lms.entity.Account;
 import com.coursistant.lms.entity.DTO.PasswordDTO;
 import com.coursistant.lms.entity.User;
+import com.coursistant.lms.exception.CustomException;
 import com.coursistant.lms.mapper.user.UserMapper;
+import com.coursistant.lms.service.system.RefreshTokenService;
+import com.coursistant.lms.utils.EmailUtil;
 import com.coursistant.lms.utils.PasswordEncoderUtil;
 import com.coursistant.lms.utils.TokenUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
-
-import java.util.Random;
 import java.util.concurrent.CompletableFuture;
 
 import jakarta.annotation.Resource;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.ArrayList;
 import java.util.stream.Collectors;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
+import cn.hutool.core.util.ObjectUtil;
 
 /**
  * User业务处理 // User business processing
@@ -519,6 +523,38 @@ public class UserService {
 
         // 发送邮件
         emailUtil.sendEmail(email, subject, content);
+    }
+
+    public String getUserLevel(Integer id)
+    {
+        return userMapper.selectUserLevelById(id);
+    }
+
+    public void updateName(String currentName, String newName, Integer userId)
+    {
+        userMapper.addNameChangeRequest(currentName, newName, userId);
+    }
+
+    public void reviewNameChangeRequest(String decision, Integer userId, Integer adminId)
+    {
+        User user = userMapper.selectById(adminId);
+        String role = user.getRole();
+
+        if (!role.equals("ADMIN"))
+        {
+            throw new CustomException(ResultCodeEnum.INVALID_ACCESS_ERROR);
+        }
+        
+        if (decision.equals(AdminEnums.APPROVED)|| decision.equals(AdminEnums.DENIED))
+        {
+            userMapper.reviewNameChangeRequest(decision, userId, adminId);
+        }
+
+        else
+        {
+            throw new CustomException(ResultCodeEnum.PARAM_ERROR);
+        }
+
     }
 
     public void markPasswordChanged(Integer id) {

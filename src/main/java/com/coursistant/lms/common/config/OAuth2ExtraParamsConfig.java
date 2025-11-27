@@ -16,10 +16,16 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Configuration
-@RequiredArgsConstructor
+// @RequiredArgsConstructor
 public class OAuth2ExtraParamsConfig {
 
     private final ClientRegistrationRepository repo; // 构造注入
+
+    public OAuth2ExtraParamsConfig(ClientRegistrationRepository repo)
+    {
+        this.repo = repo;
+    }
+    
 
     @Bean
     public OAuth2AuthorizationRequestResolver authorizationRequestResolver() {

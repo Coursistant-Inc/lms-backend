@@ -1,13 +1,23 @@
 package com.coursistant.lms.controller.user;
 
+import java.util.List;
+import java.util.logging.Logger;
+
+import jakarta.annotation.Resource;
+
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.coursistant.lms.common.Result;
 import com.coursistant.lms.entity.User;
 import com.coursistant.lms.service.user.UserService;
-import org.springframework.web.bind.annotation.*;
-
-import jakarta.annotation.Resource;
-import java.util.List;
-import java.util.logging.Logger;
 
 /**
  * 用户前端操作接口
@@ -113,6 +123,21 @@ public class UserController {
         List<User> list = userService.selectTeachers();
         logResponse("selectTeachers", "null");
         return Result.success(list);
+    }
+
+    @PostMapping("/nameChange")
+    public Result nameChangeRequest(@RequestParam("currentName") String currentName, @RequestParam("newName") String newName, @RequestParam("userId") Integer userId)
+    {
+        userService.updateName(currentName, newName, userId);
+        // return "Your request has been received. You will be notified once a decision has been taken";
+        return Result.success("Your request has been received. You will be notified once a decision has been taken");
+    }
+
+    // This method should be accessible only to university admins
+    @PostMapping("/reviewNameChange")
+    public void reviewNameChangeRequest(@RequestParam("decision") String decision, @RequestParam("userId") Integer userId, @RequestParam("adminId") Integer adminId)
+    {
+        userService.reviewNameChangeRequest(decision, userId, adminId);
     }
 
     /**

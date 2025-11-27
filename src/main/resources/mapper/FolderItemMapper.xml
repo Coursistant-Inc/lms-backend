@@ -36,12 +36,12 @@
         where id = #{id}
     </select>
 
-    <select id="selectByFolderId" resultType="com.coursistant.lms.entity.FolderItem">
+    <!-- <select id="selectByFolderId" resultType="com.coursistant.lms.entity.FolderItem">
         select
         <include refid="Base_Column_List"/>
         from FolderItem
         where folder_id = #{folderId}
-    </select>
+    </select> -->
 
     <insert id="insert" parameterType="com.coursistant.lms.entity.FolderItem" useGeneratedKeys="true" keyProperty="id">
         insert into FolderItem
@@ -102,6 +102,12 @@
           AND fi.file_id IS NOT NULL
           AND d.`delete` = 0
         ORDER BY d.create_time DESC
+    </select>
+
+
+    <select id="selectByFolderId" parameterType="Integer" resultType="com.coursistant.lms.entity.FolderItem">
+        SELECT * FROM FolderItem
+        WHERE folder_id = #{folderId}
     </select>
 
 

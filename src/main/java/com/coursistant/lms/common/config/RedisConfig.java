@@ -87,6 +87,11 @@ public class RedisConfig {
         return createRedisTemplate(createLettuceConnectionFactory(5));
     }
 
+    @Bean(name = "learnPageRedisTemplate")
+    public RedisTemplate<String, Object> learnPageRedisTemplate() {
+        return createRedisTemplate(createLettuceConnectionFactory(5));
+    }
+
 
     @Bean(name = "refreshTokenRedisTemplate")
     public RedisTemplate<String, Object> refreshTokenRedisTemplate() {

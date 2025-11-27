@@ -12,6 +12,10 @@ public class Profile implements Serializable {
     private String avatar;
     private Integer id;
     private Integer userId;
+    private String dateOfBirth;
+
+    private String privacy;
+    private String completedCourses;
 
     // Educational Background
     private String schoolName;
@@ -19,6 +23,7 @@ public class Profile implements Serializable {
     private String major;
     private String interest;
     private String profile;
+
 
 
     @Override
@@ -133,4 +138,32 @@ public class Profile implements Serializable {
     public void setProfile(String profile) {
         this.profile = profile;
     }
+
+    public String getPrivacy() {
+        return privacy;
+    }
+
+    public void setPrivacy(String privacy) {
+        this.privacy = privacy;
+    }
+
+    public String getCompletedCourses() {
+        return completedCourses;
+    }
+
+    public void setCompletedCourses(String completedCourses) {
+        this.completedCourses = completedCourses;
+    }
+
+    public String getDateOfBirth() {
+        return dateOfBirth;
+    }
+
+    public void setDateOfBirth(String dateOfBirth) {
+        this.dateOfBirth = dateOfBirth;
+    }
+
+    
+
+    
 }

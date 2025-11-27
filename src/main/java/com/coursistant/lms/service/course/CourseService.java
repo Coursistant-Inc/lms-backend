@@ -3,9 +3,19 @@ package com.coursistant.lms.service.course;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
-import cn.hutool.core.util.ObjectUtil;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.TimeUnit;
+
+import jakarta.annotation.Resource;
+
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.stereotype.Service;
+
 import com.coursistant.lms.common.enums.ResultCodeEnum;
 import com.coursistant.lms.entity.Course;
+import com.coursistant.lms.entity.DTO.CourseDetailsDTO;
 import com.coursistant.lms.entity.CourseSchedule;
 import com.coursistant.lms.entity.DTO.CourseDTO;
 import com.coursistant.lms.entity.Teach;
@@ -15,14 +25,8 @@ import com.coursistant.lms.mapper.course.CourseMapper;
 import com.coursistant.lms.mapper.course.CourseScheduleMapper;
 import com.coursistant.lms.mapper.course.LearnMapper;
 import com.coursistant.lms.service.user.UserService;
-import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.stereotype.Service;
 
-import jakarta.annotation.Resource;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.concurrent.TimeUnit;
+import cn.hutool.core.util.ObjectUtil;
 
 
 @Service
@@ -155,6 +159,25 @@ public class CourseService {
      * 根据User ID查询
      * Query a course by user ID
      */
+
+
+
+    public List<Course>selectCoursesByUserId(Integer id) {
+        User user=userService.selectById(id);
+        List<Course> courses=new ArrayList();
+        if (ObjectUtil.isNull(user)){
+            throw new CustomException(ResultCodeEnum.USER_NOT_EXIST_ERROR);
+        }else{
+            if ("TEACHER".equals(user.getLevel())){
+                courses=courseMapper.selectByUserIdFromTeach(user.getId());
+            }
+            if ("STUDENT".equals(user.getLevel())){
+                courses=courseMapper.selectByUserIdFromLearn(user.getId());
+            }
+        }
+        return courses;
+    }
+    
     public List<CourseDTO>selectByUserId(Integer id) {
         User user=userService.selectById(id);
         List<Course> courses=new ArrayList();
@@ -212,6 +235,17 @@ public class CourseService {
             courseAllRedisTemplate.opsForValue().set(cacheKey, courses, CACHE_EXPIRE_TIME, TimeUnit.SECONDS);
         }
         return courses;
+    }
+
+    public List<CourseDetailsDTO> getCourseDetailsByUserId(Integer userId, List<Course> courseList)
+    {
+        List<CourseDetailsDTO> courseDetails = courseMapper.selectCourseDetailsByUserId(userId,courseList);
+        return courseDetails;
+    }
+
+    public void updateLastSelectedCourse(Integer userId, Integer courseId)
+    {
+        courseMapper.updateLastSelectedCourse(userId,courseId);
     }
 
     public Integer countStudentByCourseId(Integer courseId){

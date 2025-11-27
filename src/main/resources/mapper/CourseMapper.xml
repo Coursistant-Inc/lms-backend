@@ -105,7 +105,7 @@
                     GROUP BY course_id
                  ) f ON f.course_id = c.id
         WHERE t.user_id = #{userId}
-        ORDER BY c.id DESC
+        ORDER BY c.id   
     </select>
 
     <!-- 查询某用户通过 Learn 表学习的所有课程（含老师信息） -->
@@ -122,6 +122,25 @@
         WHERE l.user_id = #{userId}
         ORDER BY c.id DESC
     </select>
+
+    <select id="selectCourseDetailsByUserId" resultType="com.coursistant.lms.entity.DTO.CourseDetailsDTO">
+        SELECT u.name, p.avatar, c.name as title
+        FROM User u
+        INNER JOIN Profile p ON u.id = p.user_id
+        INNER JOIN Teach t ON u.id = t.user_id
+        INNER JOIN Course c ON c.id = t.course_id
+        WHERE c.id IN
+        <foreach item="course" index="index" collection="courseList"
+            open="(" separator="," close=")">
+                #{course.id}
+        </foreach>
+    </select>
+
+    <insert id="updateLastSelectedCourse">
+        INSERT INTO LastSelectedCourse(student_id,course_id)
+        VALUES(#{userId},#{courseId})
+        ON DUPLICATE KEY UPDATE course_id = #{courseId}
+    </insert>
 
 
 

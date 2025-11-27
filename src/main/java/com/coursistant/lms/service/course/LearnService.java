@@ -1,29 +1,32 @@
 package com.coursistant.lms.service.course;
 
-import cn.hutool.core.util.ObjectUtil;
-import com.coursistant.lms.exception.CustomException;
-import com.coursistant.lms.common.enums.ResultCodeEnum;
-import com.coursistant.lms.entity.Learn;
-import com.coursistant.lms.entity.User;
-import com.coursistant.lms.mapper.course.LearnMapper;
-import com.coursistant.lms.mapper.user.UserMapper;
-import com.coursistant.lms.service.user.UserService;
-
-
-import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
-
-import jakarta.annotation.Resource;
+import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellType;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.WorkbookFactory;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-import java.util.ArrayList;
+import com.coursistant.lms.common.enums.ResultCodeEnum;
+import com.coursistant.lms.entity.Learn;
+import com.coursistant.lms.entity.User;
+import com.coursistant.lms.exception.CustomException;
+import com.coursistant.lms.mapper.course.LearnMapper;
+import com.coursistant.lms.mapper.user.UserMapper;
+import com.coursistant.lms.service.user.UserService;
+
+import cn.hutool.core.util.ObjectUtil;
+import jakarta.annotation.Resource;
 import java.util.stream.Collectors;
 
 @Service
@@ -37,6 +40,9 @@ public class LearnService {
 
     @Resource(name = "learnAllRedisTemplate")
     private RedisTemplate<String, Object> learnAllRedisTemplate;
+
+    @Resource(name = "learnPageRedisTemplate")
+    private RedisTemplate<String, Object> learnPageRedisTemplate;
 
     @Resource
     private UserService userService;
@@ -290,7 +296,6 @@ public class LearnService {
     }
 
 
-
     /**
      * 读取 Excel 文件，提取用户名列表 // Read Excel file and extract username list
      */
@@ -319,4 +324,26 @@ public class LearnService {
         return emails;
     }
 
+    public void updateCourseStatus(Integer userId, Integer courseId, String courseStatus)
+    {
+        learnMapper.updateLearnStatusById(userId, courseId, courseStatus);
+    }
+
+    public String selectCourseStatus(Integer userId, Integer courseId)
+    {
+       String courseStatus = learnMapper.selectLearnStatusById(userId, courseId);
+
+       return courseStatus;
+    }
+
+    public void updateCourseGrade(Integer userId, Integer courseId, String grade)
+    {
+        learnMapper.updateGradeById(userId, courseId, grade);
+    }
+
+    public String selectCourseGrade(Integer userId, Integer courseId)
+    {
+        String grade = learnMapper.selectGradeById(userId, courseId);
+        return grade;
+    }
 }
