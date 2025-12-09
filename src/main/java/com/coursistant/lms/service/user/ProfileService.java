@@ -66,24 +66,24 @@ public class ProfileService {
         profileMapper.deleteById(id);
     }
 
-    public void updateUserPrivacy(String privacy, Integer userId)
-    {
-        if(privacy.equals(LevelEnum.SELF.level)||privacy.equals(LevelEnum.TEACHER.level)||privacy.equals(LevelEnum.STUDENT.level))
-        {
-            profileMapper.updateUserPrivacyById(privacy, userId);
-        }
+    // public void updateUserPrivacy(String privacy, Integer userId)
+    // {
+    //     if(privacy.equals(LevelEnum.SELF.level)||privacy.equals(LevelEnum.TEACHER.level)||privacy.equals(LevelEnum.STUDENT.level))
+    //     {
+    //         profileMapper.updateUserPrivacyById(privacy, userId);
+    //     }
 
-        else
-        {
-            throw new CustomException(ResultCodeEnum.PARAM_ERROR);
-        }
-    }
+    //     else
+    //     {
+    //         throw new CustomException(ResultCodeEnum.PARAM_ERROR);
+    //     }
+    // }
 
-    public String selectUserPrivacy(Integer userId)
-    {
-        String privacy = profileMapper.selectUserPrivacyById(userId);
-        return privacy;
-    }
+    // public String selectUserPrivacy(Integer userId)
+    // {
+    //     String privacy = profileMapper.selectUserPrivacyById(userId);
+    //     return privacy;
+    // }
 
     public List<Map<String,Object>> selectGradesById(Integer userId)
     {

@@ -60,7 +60,7 @@
     </select>
 
     <!--Change profile privacy settings for a user-->
-    <update id="updateUserPrivacyById" parameterType="com.coursistant.lms.entity.Profile">
+    <!-- <update id="updateUserPrivacyById" parameterType="com.coursistant.lms.entity.Profile">
         UPDATE Profile 
         SET privacy = #{privacy} 
         WHERE user_id = #{userId}
@@ -71,7 +71,7 @@
         SELECT privacy 
         FROM Profile 
         WHERE user_id = #{userId}
-    </select>
+    </select> -->
 
     <select id="selectGradesById" resultType="map">
         SELECT c.name,l.grade 

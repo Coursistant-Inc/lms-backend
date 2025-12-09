@@ -61,25 +61,32 @@ public class ProfileController {
      * Get profile by user ID
      */
     @GetMapping("/user/{userId}")
-    public Result getProfileByUserId(@PathVariable Integer userId,@RequestParam(value="self_user_id") Integer selfUserId) {
-        String selfLevel = userService.getUserLevel(selfUserId);
-        String userPrivacyLevel = profileService.selectUserPrivacy(userId);
-        if(ObjectUtils.isEmpty(userPrivacyLevel)||userPrivacyLevel.equals(selfLevel))
-        {
-            logger.log(Level.INFO,"view profile of :"+userId+" by: "+selfUserId);
-            Profile profile = profileService.getProfileByUserId(userId);
-            // if(profile == null)
-            if(ObjectUtils.isEmpty(profile))
-            {
-                // return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Profile not found!");
-                return Result.error(ResultCodeEnum.PROFILE_NOT_FOUND);
-            }
-            logResponse("getProfileByUserId", profile.toString());
-            return Result.success(profile);
+    public Result getProfileByUserId(@PathVariable Integer userId) {
+
+        Profile profile = profileService.getProfileByUserId(userId);
+        if (ObjectUtils.isEmpty(profile)) {
+            return Result.error(ResultCodeEnum.PROFILE_NOT_FOUND);
         }
 
-        // return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Viewing profile of this user is not allowed as the user's level is: "+userPrivacyLevel + " and your level is: " + selfLevel);
-        return Result.error(ResultCodeEnum.PROFILE_VIEWING_NOT_ALLOWED);
+        return Result.success(profile);
+        // String selfLevel = userService.getUserLevel(selfUserId);
+        // String userPrivacyLevel = profileService.selectUserPrivacy(userId);
+        // if(ObjectUtils.isEmpty(userPrivacyLevel)||userPrivacyLevel.equals(selfLevel))
+        // {
+        //     logger.log(Level.INFO,"view profile of :"+userId+" by: "+selfUserId);
+        //     Profile profile = profileService.getProfileByUserId(userId);
+        //     // if(profile == null)
+        //     if(ObjectUtils.isEmpty(profile))
+        //     {
+        //         // return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Profile not found!");
+        //         return Result.error(ResultCodeEnum.PROFILE_NOT_FOUND);
+        //     }
+        //     logResponse("getProfileByUserId", profile.toString());
+        //     return Result.success(profile);
+        // }
+
+        // // return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Viewing profile of this user is not allowed as the user's level is: "+userPrivacyLevel + " and your level is: " + selfLevel);
+        // return Result.error(ResultCodeEnum.PROFILE_VIEWING_NOT_ALLOWED);
     }
 
     /**
@@ -394,18 +401,18 @@ public class ProfileController {
         return Result.success("Profile deleted successfully!");
     }
 
-    @PostMapping("/update/privacy")
-    public Result updatePrivacy(@RequestParam(value="privacy") String privacy, @RequestParam(value="user_id") Integer userId) {
-        //TODO: process POST request
+    // @PostMapping("/update/privacy")
+    // public Result updatePrivacy(@RequestParam(value="privacy") String privacy, @RequestParam(value="user_id") Integer userId) {
+    //     //TODO: process POST request
         
-        // logger.log(Level.INFO,"Deleted profile of user id: "+id);
-        logger.log(Level.INFO,"Updated privacy setting of user id: "+userId);
+    //     // logger.log(Level.INFO,"Deleted profile of user id: "+id);
+    //     logger.log(Level.INFO,"Updated privacy setting of user id: "+userId);
 
-        profileService.updateUserPrivacy(privacy, userId);
+    //     profileService.updateUserPrivacy(privacy, userId);
 
-        // return "Privacy setting updated.";
-        return Result.success("Privacy setting updated.");
-    }
+    //     // return "Privacy setting updated.";
+    //     return Result.success("Privacy setting updated.");
+    // }
 
     // Student viewing their grades
     @PostMapping("/grades")
