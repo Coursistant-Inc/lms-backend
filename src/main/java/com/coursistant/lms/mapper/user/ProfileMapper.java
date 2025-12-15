@@ -43,9 +43,9 @@ public interface ProfileMapper {
      */
     List<Profile> selectAll();
 
-    void updateUserPrivacyById(String privacy, Integer userId);
+    // void updateUserPrivacyById(String privacy, Integer userId);
 
-    String selectUserPrivacyById(Integer userId);
+    // String selectUserPrivacyById(Integer userId);
 
     List<Map<String,Object>> selectGradesById(Integer userId);
 

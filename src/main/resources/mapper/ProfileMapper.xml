@@ -51,7 +51,7 @@
         WHERE p.user_id = #{userId}
         GROUP BY p.user_id, p.id, p.preferred_name, p.pronouns, p.email, 
                 p.introduction, p.avatar, p.school_name, p.graduation_year, 
-                p.major, p.interest, p.profile, p.privacy;
+                p.major, p.interest, p.profile;
     </select>
 
     <!-- Select all profiles -->
@@ -60,18 +60,18 @@
     </select>
 
     <!--Change profile privacy settings for a user-->
-    <update id="updateUserPrivacyById" parameterType="com.coursistant.lms.entity.Profile">
+    <!-- <update id="updateUserPrivacyById" parameterType="com.coursistant.lms.entity.Profile">
         UPDATE Profile 
         SET privacy = #{privacy} 
         WHERE user_id = #{userId}
-    </update>
+    </update> -->
 
-    <!--Show privacy settings for a user-->
-    <select id="selectUserPrivacyById" parameterType="com.coursistant.lms.entity.Profile" resultType="String">
+    <!-- Show privacy settings for a user-->
+    <!-- <select id="selectUserPrivacyById" parameterType="com.coursistant.lms.entity.Profile" resultType="String">
         SELECT privacy 
         FROM Profile 
         WHERE user_id = #{userId}
-    </select>
+    </select> -->
 
     <select id="selectGradesById" resultType="map">
         SELECT c.name,l.grade 
