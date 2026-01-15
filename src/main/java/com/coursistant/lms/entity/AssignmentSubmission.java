@@ -70,6 +70,8 @@ public class AssignmentSubmission implements Serializable {
 
     private Integer groupId;
 
+    private String studentComment;
+
 
 
     public AssignmentSubmission() {}
@@ -194,5 +196,13 @@ public class AssignmentSubmission implements Serializable {
 
     public void setGroupId(Integer groupId) {
         this.groupId = groupId;
+    }
+
+    public String getStudentComment() {
+        return studentComment;
+    }
+
+    public void setStudentComment(String studentComment) {
+        this.studentComment = studentComment;
     }
 }

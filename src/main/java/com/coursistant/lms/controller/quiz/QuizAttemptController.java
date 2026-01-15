@@ -76,4 +76,46 @@ public class QuizAttemptController {
         logResponse("selectAll", "Success");
         return Result.success(list);
     }
+
+    @PostMapping("/updateGradebyId/{id}")
+    public Result updateGradebyId(@PathVariable Integer id) {
+        logRequest("updateGradebyId", id.toString());
+
+        int finalScore = quizAttemptService.updateGrade(id);
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("quizAttemptId", id);
+        data.put("finalScore", finalScore);
+
+        logResponse("updateGradebyId", "finalScore=" + finalScore);
+        return Result.success(data);
+    }
+
+    @GetMapping("/latestByQuiz")
+    public Result latestByQuiz(@RequestParam("quizId") Integer quizId) {
+        logRequest("latestByQuiz", quizId == null ? "null" : quizId.toString());
+
+        List<QuizAttempt> list = quizAttemptService.getLatestAttemptsDistinctStudentByQuizId(quizId);
+
+        logResponse("latestByQuiz", list == null ? "null" : list.toString());
+        return Result.success(list);
+    }
+
+    /**
+     * 【功能2】按 quizId + studentId 查询：该学生在该测验下最新一次尝试（主键 id 最大）
+     * GET /quizAttempt/latest?quizId=123&studentId=456
+     */
+    @GetMapping("/latest")
+    public Result latest(@RequestParam("quizId") Integer quizId,
+                         @RequestParam("studentId") Integer studentId) {
+        logRequest("latest",
+                (quizId == null ? "null" : quizId.toString()) + "," + (studentId == null ? "null" : studentId.toString()));
+
+        QuizAttempt quizAttempt = quizAttemptService.getLatestAttemptByQuizIdAndStudentId(quizId, studentId);
+
+        logResponse("latest", quizAttempt == null ? "null" : quizAttempt.toString());
+        return Result.success(quizAttempt);
+    }
+
+
 }

@@ -2,6 +2,7 @@ package com.coursistant.lms.mapper.quiz;
 
 import com.coursistant.lms.entity.AttemptItem;
 import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
 
 import java.util.List;
 
@@ -39,4 +40,8 @@ public interface AttemptItemMapper {
      * Query all attemptItem records (filterable)
      */
     List<AttemptItem> selectAll(AttemptItem filter);
+
+    @Select("SELECT IFNULL(SUM(final_score), 0) FROM AttemptItem WHERE attempt_id = #{attemptId}")
+    int selectTotalFinalScoreByAttemptId(Integer attemptId);
+
 }

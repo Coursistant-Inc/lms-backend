@@ -35,6 +35,8 @@ public class QuizAttempt implements Serializable {
     /** 最后更新时间 */
     private LocalDateTime updatedAt;
 
+
+
     @Override
     public String toString() {
         return "QuizAttempt{" +

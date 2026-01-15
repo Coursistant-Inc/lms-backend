@@ -6,7 +6,7 @@
 
     <!-- 字段列表 // Base column list -->
     <sql id="Base_Column_List">
-        id, assignment_id, student_id, grader_id, date, status, grade, comment, is_final,is_late,late_time,group_id
+        id, assignment_id, student_id, grader_id, date, status, grade, comment, is_final,is_late,late_time,group_id, student_comment
     </sql>
 
     <!-- 查询所有 AssignmentSubmission // Select all AssignmentSubmissions -->
@@ -27,6 +27,8 @@
             <if test="isFinal != null"> AND is_final = #{isFinal} </if>
             <if test="isLate != null"> AND is_late = #{isLate} </if>
             <if test="lateTime != null"> AND late_time = #{lateTime} </if>
+            <if test="studentComment != null"> AND student_comment = #{studentComment} </if>
+
         </where>
     </select>
 
@@ -59,6 +61,7 @@
             <if test="isFinal != null">is_final,</if>
             <if test="isLate != null">is_late,</if>
             <if test="lateTime != null">late_time,</if>
+            <if test="studentComment != null">student_comment,</if>
         </trim>
         <trim prefix="VALUES (" suffix=")" suffixOverrides=",">
             <if test="id != null">#{id},</if>
@@ -72,6 +75,7 @@
             <if test="isFinal != null">#{isFinal},</if>
             <if test="isLate != null">#{isLate},</if>
             <if test="lateTime != null">#{lateTime},</if>
+            <if test="studentComment != null">#{studentComment},</if>
         </trim>
     </insert>
 
@@ -89,6 +93,8 @@
             <if test="isFinal != null">is_final = #{isFinal},</if>
             <if test="isLate != null">is_late = #{isLate},</if>
             <if test="lateTime != null">late_time = #{lateTime},</if>
+            <if test="studentComment != null">student_comment = #{studentComment},</if>
+
         </set>
         WHERE id = #{id}
     </update>

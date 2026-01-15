@@ -27,6 +27,8 @@ public class Folder implements Serializable {
 
     private String title;
 
+    private Boolean submissionRequired;
+
     public Folder() {
     }
 
@@ -76,6 +78,14 @@ public class Folder implements Serializable {
 
     public void setTitle(String title) {
         this.title = title;
+    }
+
+    public Boolean getSubmissionRequired() {
+        return submissionRequired;
+    }
+
+    public void setSubmissionRequired(Boolean submissionRequired) {
+        this.submissionRequired = submissionRequired;
     }
 
     @Override

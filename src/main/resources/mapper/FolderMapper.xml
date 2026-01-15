@@ -5,7 +5,7 @@
 <mapper namespace="com.coursistant.lms.mapper.file.FolderMapper">
 
     <sql id="Base_Column_List">
-        id, course_id, name, description, order_index, title
+        id, course_id, name, description, order_index, submission_required,title
     </sql>
 
     <select id="selectAll" resultType="com.coursistant.lms.entity.Folder">
@@ -16,6 +16,8 @@
             <if test="id != null">and id = #{id}</if>
             <if test="courseId != null">and course_id = #{courseId}</if>
             <if test="name != null">and name = #{name}</if>
+            <if test="submissionRequired != null">and submission_required = #{submissionRequired}</if>
+
         </where>
     </select>
 
@@ -34,6 +36,8 @@
             <if test="description != null">description,</if>
             <if test="orderIndex != null">order_index,</if>
             <if test="title != null">title,</if>
+            <if test="submissionRequired != null">submission_required,</if>
+
         </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
             <if test="courseId != null">#{courseId},</if>
@@ -41,6 +45,8 @@
             <if test="description != null">#{description},</if>
             <if test="orderIndex != null">#{orderIndex},</if>
             <if test="title != null">#{title},</if>
+            <if test="submissionRequired != null">#{submissionRequired},</if>
+
         </trim>
     </insert>
 
@@ -52,6 +58,8 @@
             <if test="description != null">description = #{description},</if>
             <if test="orderIndex != null">order_index = #{orderIndex},</if>
             <if test="title != null">title = #{title},</if>
+            <if test="submissionRequired != null">submission_required = #{submissionRequired},</if>
+
         </set>
         where id = #{id}
     </update>

@@ -79,6 +79,8 @@ public class Assignment implements Serializable {
 
     private Boolean isGroup;
 
+    private Boolean submissionRequired;
+
 
 
 
@@ -114,6 +116,14 @@ public class Assignment implements Serializable {
         return sb.toString();
     }
 
+
+    public Boolean getSubmissionRequired() {
+        return submissionRequired;
+    }
+
+    public void setSubmissionRequired(Boolean submissionRequired) {
+        this.submissionRequired = submissionRequired;
+    }
 
     public Integer getId() {
         return id;

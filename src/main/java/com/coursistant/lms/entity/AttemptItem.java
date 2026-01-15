@@ -33,6 +33,8 @@ public class AttemptItem implements Serializable {
     /** 最后更新时间 */
     private LocalDateTime updatedAt;
 
+    private String comment;
+
     @Override
     public String toString() {
         return "AttemptItem{" +
@@ -136,5 +138,13 @@ public class AttemptItem implements Serializable {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public String getComment() {
+        return comment;
+    }
+
+    public void setComment(String comment) {
+        this.comment = comment;
     }
 }

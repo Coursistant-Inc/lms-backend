@@ -6,8 +6,9 @@
 
     <sql id="Base_Column_List">
         id, attempt_id, quiz_item_id, question_id, answer_payload,
-        auto_score, manual_score, final_score, needs_grading, graded_at, updated_at
+    auto_score, manual_score, final_score, comment, needs_grading, graded_at, updated_at
     </sql>
+
 
     <select id="selectAll" resultType="com.coursistant.lms.entity.AttemptItem">
         select
@@ -25,6 +26,8 @@
             <if test="needsGrading != null">and needs_grading = #{needsGrading}</if>
             <if test="gradedAt != null">and graded_at = #{gradedAt}</if>
             <if test="updatedAt != null">and updated_at = #{updatedAt}</if>
+            <if test="comment != null">and comment = #{comment}</if>
+
         </where>
     </select>
 
@@ -54,6 +57,8 @@
             <if test="needsGrading != null">needs_grading,</if>
             <if test="gradedAt != null">graded_at,</if>
             <if test="updatedAt != null">updated_at,</if>
+            <if test="comment != null">comment,</if>
+
         </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
             <if test="id != null">#{id},</if>
@@ -67,6 +72,8 @@
             <if test="needsGrading != null">#{needsGrading},</if>
             <if test="gradedAt != null">#{gradedAt},</if>
             <if test="updatedAt != null">#{updatedAt},</if>
+            <if test="comment != null">#{comment},</if>
+
         </trim>
     </insert>
 
@@ -100,6 +107,8 @@
             <if test="needsGrading != null">needs_grading = #{needsGrading},</if>
             <if test="gradedAt != null">graded_at = #{gradedAt},</if>
             <if test="updatedAt != null">updated_at = #{updatedAt},</if>
+            <if test="comment != null">comment = #{comment},</if>
+
         </set>
         where id = #{id}
     </update>
