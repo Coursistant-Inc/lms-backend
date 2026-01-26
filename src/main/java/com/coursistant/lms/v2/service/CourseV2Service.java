@@ -1,6 +1,6 @@
 package com.coursistant.lms.v2.service;
 
-import com.coursistant.lms.v2.dto.CourseDetailDTO;
+import com.coursistant.lms.v2.dto.CourseDetailV2DTO;
 import com.coursistant.lms.v2.entity.QAssignmentEntity;
 import com.coursistant.lms.v2.entity.QCourseEntity;
 import com.coursistant.lms.v2.entity.QCourseUnitEntity;
@@ -14,21 +14,21 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
-public class CourseService {
+public class CourseV2Service {
     private final JPAQueryFactory queryFactory;
 
-    public CourseDetailDTO getCourseDetail(Long courseId) {
-        CourseDetailDTO.CourseInfo courseInfo = queryCourseInfo(courseId);
-        List<CourseDetailDTO.CourseUnit> courseUnits = queryCourseUnits(courseId);
-        List<CourseDetailDTO.Assignment> assignments = queryAssignmentsForCourse(courseId);
+    public CourseDetailV2DTO getCourseDetail(Long courseId) {
+        CourseDetailV2DTO.CourseInfo courseInfo = queryCourseInfo(courseId);
+        List<CourseDetailV2DTO.CourseUnit> courseUnits = queryCourseUnits(courseId);
+        List<CourseDetailV2DTO.Assignment> assignments = queryAssignmentsForCourse(courseId);
 
-        return new CourseDetailDTO(courseInfo, courseUnits, assignments);
+        return new CourseDetailV2DTO(courseInfo, courseUnits, assignments);
     }
 
-    private CourseDetailDTO.CourseInfo queryCourseInfo(Long courseId) {
+    private CourseDetailV2DTO.CourseInfo queryCourseInfo(Long courseId) {
         return queryFactory
                 .select(Projections.constructor(
-                        CourseDetailDTO.CourseInfo.class,
+                        CourseDetailV2DTO.CourseInfo.class,
                         course.id,
                         course.createdAt,
                         course.updatedAt,
@@ -47,10 +47,10 @@ public class CourseService {
                 .fetchOne();
     }
 
-    private List<CourseDetailDTO.CourseUnit> queryCourseUnits(Long courseId) {
+    private List<CourseDetailV2DTO.CourseUnit> queryCourseUnits(Long courseId) {
         return queryFactory
                 .select(Projections.constructor(
-                        CourseDetailDTO.CourseUnit.class,
+                        CourseDetailV2DTO.CourseUnit.class,
                         courseUnit.id,
                         courseUnit.createdAt,
                         courseUnit.updatedAt,
@@ -64,10 +64,10 @@ public class CourseService {
                 .fetch();
     }
 
-    private List<CourseDetailDTO.Assignment> queryAssignmentsForCourse(Long courseId) {
+    private List<CourseDetailV2DTO.Assignment> queryAssignmentsForCourse(Long courseId) {
         return queryFactory
                 .select(Projections.constructor(
-                        CourseDetailDTO.Assignment.class,
+                        CourseDetailV2DTO.Assignment.class,
                         assignment.id,
                         assignment.createdAt,
                         assignment.updatedAt,

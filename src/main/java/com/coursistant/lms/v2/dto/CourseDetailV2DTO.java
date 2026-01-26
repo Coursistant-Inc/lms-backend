@@ -10,7 +10,7 @@ import java.util.List;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class CourseDetailDTO {
+public class CourseDetailV2DTO {
     private CourseInfo courseInfo;
     private List<CourseUnit> courseUnits;
     private List<Assignment> assignments;
