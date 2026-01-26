@@ -14,7 +14,6 @@ import java.util.Objects;
 @Setter
 @ToString
 @NoArgsConstructor
-@RequiredArgsConstructor
 @Table(name = "`User`")
 public class UserEntity {
     @Id

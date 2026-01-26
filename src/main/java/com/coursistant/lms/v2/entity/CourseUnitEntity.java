@@ -12,7 +12,6 @@ import java.util.Objects;
 @Setter
 @ToString
 @NoArgsConstructor
-@RequiredArgsConstructor
 @Table(name = "nw_course_unit")
 public class CourseUnitEntity {
     @Id

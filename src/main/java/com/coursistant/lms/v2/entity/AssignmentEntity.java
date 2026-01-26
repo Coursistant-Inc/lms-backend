@@ -15,7 +15,6 @@ import java.util.Objects;
 @Setter
 @ToString
 @NoArgsConstructor
-@RequiredArgsConstructor
 @Table(name = "nw_assignment")
 public class AssignmentEntity {
     @Id
