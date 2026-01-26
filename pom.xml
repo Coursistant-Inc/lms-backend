@@ -19,8 +19,9 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <java.version>21</java.version>
         <maven.compiler.version>3.11.0</maven.compiler.version>
-        <querydsl.version>5.1.0</querydsl.version>
+        <querydsl.version>5.0.0</querydsl.version>
         <lombok.version>1.18.36</lombok.version>
+        <spring-boot.version>3.4.4</spring-boot.version>
     </properties>
 
 
@@ -88,6 +89,13 @@
             <artifactId>flyway-mysql</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>com.querydsl</groupId>
+            <artifactId>querydsl-apt</artifactId>
+            <version>${querydsl.version}</version>
+            <classifier>jakarta</classifier>
+            <scope>provided</scope>
+        </dependency>
         <dependency>
             <groupId>com.querydsl</groupId>
             <artifactId>querydsl-jpa</artifactId>
@@ -301,20 +309,6 @@
                     <source>21</source>
                     <target>21</target>
                     <release>21</release> <!-- ✅ 添加 release 更稳定 -->
-                    <annotationProcessorPaths>
-                        <path>
-                            <groupId>org.projectlombok</groupId>
-                            <artifactId>lombok</artifactId>
-                            <version>${lombok.version}</version>
-                        </path>
-                        <path>
-                            <groupId>com.querydsl</groupId>
-                            <artifactId>querydsl-apt</artifactId>
-                            <version>${querydsl.version}</version>
-                            <classifier>jakarta</classifier>
-                        </path>
-                    </annotationProcessorPaths>
-                    <generatedSourcesDirectory>${project.build.directory}/generated-sources/java</generatedSourcesDirectory>
                 </configuration>
             </plugin>
         </plugins>
