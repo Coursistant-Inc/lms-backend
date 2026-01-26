@@ -1,0 +1,1 @@
+﻿-- Baseline migration to record current tables

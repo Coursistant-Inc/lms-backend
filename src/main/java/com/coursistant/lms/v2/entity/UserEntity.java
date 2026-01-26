@@ -10,17 +10,11 @@ import java.time.LocalDateTime;
 @Entity
 @Data
 @NoArgsConstructor
-@Table(name = "`User`",
-        indexes = {
-                @Index(name = "email", columnList = "email", unique = true)
-        },
-        uniqueConstraints = {
-                @UniqueConstraint(name = "email", columnNames = {"email"})
-        })
+@Table(name = "User")
 public class UserEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id", nullable = false, columnDefinition = "int")
+    @Column(name = "id", nullable = false, columnDefinition = "INT")
     private Integer id;
 
     @Column(name = "username", nullable = false, length = 50)
@@ -35,13 +29,13 @@ public class UserEntity {
     @Column(name = "avatar")
     private String avatar;
 
-    @Column(name = "email", unique = true)
+    @Column(name = "email")
     private String email;
 
     @Column(name = "password", length = 250)
     private String password;
 
-    @Column(name = "must_change_password", columnDefinition = "tinyint(1)")
+    @Column(name = "must_change_password", columnDefinition = "TINYINT(1)")
     @ColumnDefault("0")
     @Comment("1 = must change password on next login, 0 = no requirement")
     private Boolean mustChangePassword;
@@ -58,7 +52,7 @@ public class UserEntity {
     @Column(name = "invitation")
     private String invitation;
 
-    @Column(name = "status_id", columnDefinition = "int")
+    @Column(name = "status_id", columnDefinition = "INT")
     private Integer statusId;
 
     @Column(name = "create_at", nullable = false, updatable = false)
@@ -70,20 +64,6 @@ public class UserEntity {
     }
 
     public enum Role {
-        USER,
-        ADMIN
-    }
-
-    @PrePersist
-    protected void onCreate() {
-        if (createAt == null) {
-            createAt = LocalDateTime.now();
-        }
-        if (mustChangePassword == null) {
-            mustChangePassword = false;
-        }
-        if (role == null) {
-            role = Role.USER;
-        }
+        USER
     }
 }

@@ -6,8 +6,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.SneakyThrows;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.OnDelete;
-import org.hibernate.annotations.OnDeleteAction;
 
 import java.time.Instant;
 
@@ -20,12 +18,10 @@ public class AssignmentEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "created_at", nullable = false, updatable = false,
-            columnDefinition = "TIMESTAMP(6) DEFAULT CURRENT_TIMESTAMP(6)")
+    @Column(name = "created_at", nullable = false, updatable = false, columnDefinition = "TIMESTAMP(6)")
     private Instant createdAt;
 
-    @Column(name = "updated_at", nullable = false,
-            columnDefinition = "TIMESTAMP(6) DEFAULT CURRENT_TIMESTAMP(6)")
+    @Column(name = "updated_at", nullable = false, columnDefinition = "TIMESTAMP(6)")
     private Instant updatedAt;
 
     @Column(nullable = false, columnDefinition = "VARCHAR(63)", length = 63)
@@ -37,8 +33,7 @@ public class AssignmentEntity {
     @Column(nullable = false, columnDefinition = "VARCHAR(31)", length = 31)
     private String type;
 
-    @Column(name = "due_time", nullable = false,
-            columnDefinition = "TIMESTAMP(6) DEFAULT CURRENT_TIMESTAMP(6)")
+    @Column(name = "due_time", nullable = false, columnDefinition = "TIMESTAMP(6)")
     private Instant dueTime;
 
     @Convert(converter = SettingsConverter.class)
@@ -48,11 +43,7 @@ public class AssignmentEntity {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "course_unit_id",
             referencedColumnName = "id",
-            foreignKey = @ForeignKey(
-                    name = "fk_nw_assignment_course_unit",
-                    foreignKeyDefinition = "FOREIGN KEY (course_unit_id) REFERENCES nw_course_unit(id) ON DELETE NO ACTION"
-            ))
-    @OnDelete(action = OnDeleteAction.NO_ACTION)
+            foreignKey = @ForeignKey(name = "fk_nw_assignment_course_unit"))
     private CourseUnitEntity courseUnit;
 
     @PrePersist

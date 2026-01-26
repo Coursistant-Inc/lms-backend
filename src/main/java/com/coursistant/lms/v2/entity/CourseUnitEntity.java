@@ -3,8 +3,6 @@
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.OnDelete;
-import org.hibernate.annotations.OnDeleteAction;
 
 import java.time.Instant;
 
@@ -17,12 +15,10 @@ public class CourseUnitEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "created_at", nullable = false, updatable = false,
-            columnDefinition = "TIMESTAMP(6) DEFAULT CURRENT_TIMESTAMP(6)")
+    @Column(name = "created_at", nullable = false, updatable = false, columnDefinition = "TIMESTAMP(6)")
     private Instant createdAt;
 
-    @Column(name = "updated_at", nullable = false,
-            columnDefinition = "TIMESTAMP(6) DEFAULT CURRENT_TIMESTAMP(6)")
+    @Column(name = "updated_at", nullable = false, columnDefinition = "TIMESTAMP(6)")
     private Instant updatedAt;
 
     @Column(name = "sort_order", nullable = false)
@@ -37,11 +33,7 @@ public class CourseUnitEntity {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "course_id",
             referencedColumnName = "id",
-            foreignKey = @ForeignKey(
-                    name = "fk_nw_course_unit_course",
-                    foreignKeyDefinition = "FOREIGN KEY (course_id) REFERENCES nw_course(id) ON DELETE NO ACTION"
-            ))
-    @OnDelete(action = OnDeleteAction.NO_ACTION)
+            foreignKey = @ForeignKey(name = "fk_nw_course_unit_course"))
     private CourseEntity course;
 
     @PrePersist
