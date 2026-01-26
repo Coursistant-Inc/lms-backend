@@ -1,4 +1,4 @@
-﻿package com.coursistant.lms.v2.entity;
+package com.coursistant.lms.v2.entity;
 
 import jakarta.persistence.*;
 import lombok.Data;

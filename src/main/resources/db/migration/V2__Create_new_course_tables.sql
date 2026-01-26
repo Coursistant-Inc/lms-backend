@@ -1,4 +1,4 @@
-﻿CREATE TABLE IF NOT EXISTS nw_course (
+CREATE TABLE IF NOT EXISTS nw_course (
                                          id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
                                          created_at TIMESTAMP(6) NOT NULL,
     updated_at TIMESTAMP(6) NOT NULL,
