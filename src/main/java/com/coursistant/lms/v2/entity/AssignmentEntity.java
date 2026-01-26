@@ -1,17 +1,21 @@
 package com.coursistant.lms.v2.entity;
 
-import jakarta.persistence.*;
-
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.SneakyThrows;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import jakarta.persistence.*;
+import lombok.*;
+import org.hibernate.proxy.HibernateProxy;
 
 import java.time.Instant;
+import java.util.Objects;
 
 @Entity
-@Data
+@Getter
+@Setter
+@ToString
 @NoArgsConstructor
+@RequiredArgsConstructor
 @Table(name = "nw_assignment")
 public class AssignmentEntity {
     @Id
@@ -44,7 +48,41 @@ public class AssignmentEntity {
     @JoinColumn(name = "course_unit_id",
             referencedColumnName = "id",
             foreignKey = @ForeignKey(name = "fk_nw_assignment_course_unit"))
+    @ToString.Exclude
     private CourseUnitEntity courseUnit;
+
+    @Data
+    public static class AssignmentSettings {
+        private Boolean allowLateSubmission;
+        private Integer allowedResubmissionCount;
+    }
+
+    @Converter
+    public static class SettingsConverter implements AttributeConverter<AssignmentSettings, String> {
+        private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
+        static {
+            OBJECT_MAPPER.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        }
+
+        @Override
+        public String convertToDatabaseColumn(AssignmentSettings attribute) {
+            try {
+                return attribute == null ? null : OBJECT_MAPPER.writeValueAsString(attribute);
+            } catch (JsonProcessingException e) {
+                throw new RuntimeException("JSON serialization failed", e);
+            }
+        }
+
+        @Override
+        public AssignmentSettings convertToEntityAttribute(String dbData) {
+            try {
+                return dbData == null ? null : OBJECT_MAPPER.readValue(dbData, AssignmentSettings.class);
+            } catch (JsonProcessingException e) {
+                return null;
+            }
+        }
+    }
 
     @PrePersist
     protected void onCreate() {
@@ -57,26 +95,19 @@ public class AssignmentEntity {
         updatedAt = Instant.now();
     }
 
-    @Converter
-    public static class SettingsConverter implements AttributeConverter<AssignmentSettings, String> {
-        private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-
-        @Override
-        @SneakyThrows
-        public String convertToDatabaseColumn(AssignmentSettings attribute) {
-            return attribute == null ? null : OBJECT_MAPPER.writeValueAsString(attribute);
-        }
-
-        @Override
-        @SneakyThrows
-        public AssignmentSettings convertToEntityAttribute(String dbData) {
-            return dbData == null ? null : OBJECT_MAPPER.readValue(dbData, AssignmentSettings.class);
-        }
+    @Override
+    public final boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null) return false;
+        Class<?> oEffectiveClass = o instanceof HibernateProxy ? ((HibernateProxy) o).getHibernateLazyInitializer().getPersistentClass() : o.getClass();
+        Class<?> thisEffectiveClass = this instanceof HibernateProxy ? ((HibernateProxy) this).getHibernateLazyInitializer().getPersistentClass() : this.getClass();
+        if (thisEffectiveClass != oEffectiveClass) return false;
+        AssignmentEntity that = (AssignmentEntity) o;
+        return getId() != null && Objects.equals(getId(), that.getId());
     }
 
-    @Data
-    public static class AssignmentSettings {
-        private Boolean allowLateSubmission;
-        private Integer allowedResubmissionCount;
+    @Override
+    public final int hashCode() {
+        return this instanceof HibernateProxy ? ((HibernateProxy) this).getHibernateLazyInitializer().getPersistentClass().hashCode() : getClass().hashCode();
     }
 }
