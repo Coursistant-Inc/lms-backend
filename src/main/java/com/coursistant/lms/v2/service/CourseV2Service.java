@@ -9,6 +9,8 @@ import com.coursistant.lms.v2.repository.UserRepository;
 import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
@@ -17,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class CourseV2Service {
     private final JPAQueryFactory queryFactory;
@@ -195,6 +198,30 @@ public class CourseV2Service {
             if (update.settings() != null) clause.set(assignment.settings, update.settings());
 
             clause.where(assignment.id.eq(assignmentId)).execute();
+        }
+    }
+
+    public void deleteCourse(Long courseId) {
+        try {
+            courseRepository.deleteById(courseId);
+        } catch (EmptyResultDataAccessException e) {
+            log.info("Course with id {} not found", courseId);
+        }
+    }
+
+    public void deleteCourseUnit(Long courseUnitId) {
+        try {
+            courseUnitRepository.deleteById(courseUnitId);
+        } catch (EmptyResultDataAccessException e) {
+            log.info("Course unit with id {} not found", courseUnitId);
+        }
+    }
+
+    public void deleteAssignment(Long assignmentId) {
+        try {
+            assignmentRepository.deleteById(assignmentId);
+        } catch (EmptyResultDataAccessException e) {
+            log.info("Assignment with id {} not found", assignmentId);
         }
     }
 

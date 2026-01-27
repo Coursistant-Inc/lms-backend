@@ -58,7 +58,7 @@ public class CourseV2Controller {
 
     @PostMapping("/{courseId}/units/{courseUnitId}/assignments/new")
     public ResponseEntity<ApiResponse<Long>> createAssignment(
-            @PathVariable Long ignoredCourseId,
+            @SuppressWarnings("unused") @PathVariable Long courseId,
             @PathVariable Long courseUnitId,
             @RequestBody CreateAssignmentRequest request
     ) {
@@ -77,6 +77,39 @@ public class CourseV2Controller {
         courseService.updateCourse(courseId, request);
         return ResponseEntity.ok(
                 ApiResponse.success("Updating course success", courseId)
+        );
+    }
+
+    @PostMapping("/{courseId}/delete")
+    public ResponseEntity<ApiResponse<Boolean>> deleteCourse(
+            @PathVariable Long courseId
+    ) {
+        courseService.deleteCourse(courseId);
+        return ResponseEntity.ok(
+                ApiResponse.success("Deleting course success", true)
+        );
+    }
+
+    @PostMapping("/{courseId}/units/{courseUnitId}/delete")
+    public ResponseEntity<ApiResponse<Boolean>> deleteCourseUnit(
+            @SuppressWarnings("unused") @PathVariable Long courseId,
+            @PathVariable Long courseUnitId
+    ) {
+        courseService.deleteCourseUnit(courseUnitId);
+        return ResponseEntity.ok(
+                ApiResponse.success("Deleting course unit success", true)
+        );
+    }
+
+    @PostMapping("/{courseId}/units/{courseUnitId}/assignments/{assignmentId}/delete")
+    public ResponseEntity<ApiResponse<Boolean>> deleteCourse(
+            @SuppressWarnings("unused") @PathVariable Long courseId,
+            @SuppressWarnings("unused") @PathVariable Long courseUnitId,
+            @PathVariable Long assignmentId
+    ) {
+        courseService.deleteAssignment(assignmentId);
+        return ResponseEntity.ok(
+                ApiResponse.success("Deleting assignment success", true)
         );
     }
 }
