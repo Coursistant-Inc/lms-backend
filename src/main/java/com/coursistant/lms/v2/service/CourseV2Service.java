@@ -1,9 +1,6 @@
 package com.coursistant.lms.v2.service;
 
-import com.coursistant.lms.v2.dto.CreateAssignmentRequest;
-import com.coursistant.lms.v2.dto.CreateCourseRequest;
-import com.coursistant.lms.v2.dto.CourseDetailV2DTO;
-import com.coursistant.lms.v2.dto.CreateCourseUnitRequest;
+import com.coursistant.lms.v2.dto.*;
 import com.coursistant.lms.v2.entity.*;
 import com.coursistant.lms.v2.repository.AssignmentRepository;
 import com.coursistant.lms.v2.repository.CourseRepository;
@@ -14,8 +11,10 @@ import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.CollectionUtils;
 
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -28,9 +27,9 @@ public class CourseV2Service {
 
     @Transactional(readOnly = true)
     public CourseDetailV2DTO getCourseDetail(Long courseId) {
-        CourseDetailV2DTO.CourseInfo courseInfo = queryCourseInfo(courseId);
-        List<CourseDetailV2DTO.CourseUnit> courseUnits = queryCourseUnits(courseId);
-        List<CourseDetailV2DTO.Assignment> assignments = queryAssignmentsForCourse(courseId);
+        var courseInfo = queryCourseInfo(courseId);
+        var courseUnits = queryCourseUnits(courseId);
+        var assignments = queryAssignmentsForCourse(courseId);
 
         return new CourseDetailV2DTO(courseInfo, courseUnits, assignments);
     }
@@ -93,7 +92,7 @@ public class CourseV2Service {
     }
 
     @Transactional
-    public CourseEntity createCourse(CreateCourseRequest course, Integer creatorId) {
+    public CourseEntity createCourse(Integer creatorId, CreateCourseRequest course) {
         var newCourse = new CourseEntity();
 
         newCourse.setCourseCode(course.getCourseCode());
@@ -109,7 +108,7 @@ public class CourseV2Service {
     }
 
     @Transactional
-    public CourseUnitEntity createCourseUnit(CreateCourseUnitRequest unit, Long courseId) {
+    public CourseUnitEntity createCourseUnit(Long courseId, CreateCourseUnitRequest unit) {
         var newUnit = new CourseUnitEntity();
 
         newUnit.setSortOrder(unit.getSortOrder());
@@ -123,7 +122,7 @@ public class CourseV2Service {
     }
 
     @Transactional
-    public AssignmentEntity createAssignment(CreateAssignmentRequest assignment, Long courseUnitId) {
+    public AssignmentEntity createAssignment(Long courseUnitId, CreateAssignmentRequest assignment) {
         var newAssignment = new AssignmentEntity();
 
         newAssignment.setTitle(assignment.getTitle());
@@ -134,6 +133,69 @@ public class CourseV2Service {
         newAssignment.setCourseUnit(courseUnit);
 
         return assignmentRepository.save(newAssignment);
+    }
+
+    @Transactional
+    public void updateCourse(Long courseId, UpdateCourseRequest update) {
+        if (!update.isValid()) return;
+
+        if (update.courseUpdate() != null) updateCourseEntity(courseId, update.courseUpdate());
+        if (!CollectionUtils.isEmpty(update.courseUnitUpdateMap())) {
+            batchUpdateCourseUnits(courseId, update.courseUnitUpdateMap());
+        }
+        if (!CollectionUtils.isEmpty(update.assignmentUpdateMap())) {
+            batchUpdateAssignments(courseId, update.assignmentUpdateMap());
+        }
+    }
+
+    private void updateCourseEntity(Long courseId, UpdateCourseRequest.CourseUpdate update) {
+        if (!update.hasUpdates()) return;
+
+        var clause = queryFactory.update(course);
+
+        if (update.courseCode() != null) clause.set(course.courseCode, update.courseCode());
+        if (update.name() != null) clause.set(course.name, update.name());
+        if (update.description() != null) clause.set(course.description, update.description());
+        if (update.school() != null) clause.set(course.school, update.school());
+        if (update.semester() != null) clause.set(course.semester, update.semester());
+
+        clause.where(course.id.eq(courseId)).execute();
+    }
+
+    private void batchUpdateCourseUnits(Long ignoredCourseId, Map<Long, UpdateCourseRequest.CourseUnitUpdate> updates) {
+        // TODO: validation for correct relations
+
+        for (var entry : updates.entrySet()) {
+            var unitId = entry.getKey();
+            var update = entry.getValue();
+            if (!update.hasUpdates()) continue;
+
+            var clause = queryFactory.update(courseUnit);
+
+            if (update.sortOrder() != null) clause.set(courseUnit.sortOrder, update.sortOrder());
+            if (update.title() != null) clause.set(courseUnit.title, update.title());
+            if (update.description() != null) clause.set(courseUnit.description, update.description());
+
+            clause.where(courseUnit.id.eq(unitId)).execute();
+        }
+    }
+
+    private void batchUpdateAssignments(Long ignoredCourseId, Map<Long, UpdateCourseRequest.AssignmentUpdate> updates) {
+        for (var entry : updates.entrySet()) {
+            var assignmentId = entry.getKey();
+            var update = entry.getValue();
+            if (!update.hasUpdates()) continue;
+
+            var clause = queryFactory.update(assignment);
+
+            if (update.title() != null) clause.set(assignment.title, update.title());
+            if (update.description() != null) clause.set(assignment.description, update.description());
+            if (update.type() != null) clause.set(assignment.type, update.type());
+            if (update.dueTime() != null) clause.set(assignment.dueTime, update.dueTime());
+            if (update.settings() != null) clause.set(assignment.settings, update.settings());
+
+            clause.where(assignment.id.eq(assignmentId)).execute();
+        }
     }
 
     private static final QCourseEntity course = QCourseEntity.courseEntity;

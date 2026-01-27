@@ -1,9 +1,9 @@
 package com.coursistant.lms.v2.dto;
 
+import com.coursistant.lms.v2.entity.AssignmentEntity;
 import jakarta.annotation.Nullable;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Positive;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
 import org.springframework.util.CollectionUtils;
 
 import java.time.Instant;
@@ -21,8 +21,8 @@ public record UpdateCourseRequest(
     }
 
     public record CourseUpdate(
-            @Nullable @Size(max = 15) String courseCode,
-            @Nullable @Size(max = 127) String name,
+            @Nullable @Size(max = 15) @NotBlank String courseCode,
+            @Nullable @Size(max = 127) @NotBlank String name,
             @Nullable @Size(max = 1000) String description,
             @Nullable @Size(max = 127) String school,
             @Nullable @Size(max = 127) String semester
@@ -35,7 +35,7 @@ public record UpdateCourseRequest(
 
     public record CourseUnitUpdate(
             @Nullable @Positive Integer sortOrder,
-            @Nullable @Size(max = 63) String title,
+            @Nullable @Size(max = 63) @NotBlank String title,
             @Nullable @Size(max = 1000) String description
     ) {
         public boolean hasUpdates() {
@@ -44,24 +44,15 @@ public record UpdateCourseRequest(
     }
 
     public record AssignmentUpdate(
-            @Nullable @Size(max = 63) String title,
+            @Nullable @Size(max = 63) @NotBlank String title,
             @Nullable @Size(max = 1000) String description,
-            @Nullable @Size(max = 31) String type,
+            @Nullable @Size(max = 31) @NotBlank String type,
             @Nullable Instant dueTime,
-            @Nullable AssignmentSettings settings
+            @Nullable AssignmentEntity.AssignmentSettings settings
     ) {
         public boolean hasUpdates() {
             return title != null || description != null || type != null
                     || dueTime != null || settings != null;
-        }
-
-        public record AssignmentSettings(
-                @Nullable Boolean allowLateSubmission,
-                @Nullable Integer allowedResubmissionCount
-        ) {
-            public boolean hasUpdates() {
-                return allowLateSubmission != null || allowedResubmissionCount != null;
-            }
         }
     }
 }
