@@ -15,6 +15,7 @@ import com.coursistant.lms.service.user.UserService;
 import com.coursistant.lms.utils.TokenUtils;
 import com.coursistant.lms.utils.TimeZoneUtils;
 import com.coursistant.lms.annotation.RequiresPermission;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -24,17 +25,14 @@ import jakarta.annotation.Resource;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+
 import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.List;
 import java.util.Map;
-import java.util.logging.Logger;
 import java.time.ZoneId;
 
-/**
- * 基础前端接口 // Basic frontend API
- */
+@Slf4j
 @RestController
 public class WebController {
 
@@ -55,71 +53,63 @@ public class WebController {
         return Result.success("访问成功"); // Access successful
     }
 
-    private static final Logger logger = Logger.getLogger(WebController.class.getName());
-    private void logRequest(String methodName, String requestBody) {
-        logger.info(() -> String.format("Start %s: %s", methodName, requestBody));
-    }
-
-    private void logResponse(String methodName, String response) {
-        logger.info(() -> String.format("End %s: %s", methodName, response));
-    }
-
     @PostMapping("/login")
-public Result login(@RequestBody Account account, HttpServletResponse response) {
-    if (ObjectUtil.isEmpty(account.getEmail()) || ObjectUtil.isEmpty(account.getPassword())
-            || ObjectUtil.isEmpty(account.getRole())) {
-        return Result.error(ResultCodeEnum.PARAM_LOST_ERROR);
-    }
-    
-    Account dbAccount = null;
-    if (RoleEnum.ADMIN.name().equals(account.getRole())) {
-        dbAccount = adminService.login(account);
-    }
-    if (RoleEnum.USER.name().equals(account.getRole())) {
-        dbAccount = userService.login(account);
-    }
+    public Result login(@RequestBody Account account, HttpServletResponse response) {
+        if (ObjectUtil.isEmpty(account.getEmail()) || ObjectUtil.isEmpty(account.getPassword())
+                || ObjectUtil.isEmpty(account.getRole())) {
+            return Result.error(ResultCodeEnum.PARAM_LOST_ERROR);
+        }
 
-    // 设置 refresh token 到 HttpOnly Cookie
-    if (ObjectUtil.isNotEmpty(dbAccount.getRefreshToken())) {
-        Cookie cookie = new Cookie("refreshToken", dbAccount.getRefreshToken());
-        cookie.setHttpOnly(true);
-        cookie.setSecure(true);
-        cookie.setPath("/");
-        cookie.setMaxAge(60 * 60 * 24 * 30);
-        response.addCookie(cookie);
+        Account dbAccount = null;
+        if (RoleEnum.ADMIN.name().equals(account.getRole())) {
+            dbAccount = adminService.login(account);
+        }
+        if (RoleEnum.USER.name().equals(account.getRole())) {
+            dbAccount = userService.login(account);
+        }
+
+        // TODO: Error handling
+        if (dbAccount == null) return Result.error(ResultCodeEnum.PARAM_LOST_ERROR);
+
+        var standardJwt = TokenUtils.createStandardAccessToken(dbAccount.getId(), dbAccount.getRole());
+        response.setHeader("Authorization", "Bearer " + standardJwt);
+
+        if (ObjectUtil.isNotEmpty(dbAccount.getRefreshToken())) {
+            Cookie cookie = new Cookie("refreshToken", dbAccount.getRefreshToken());
+            cookie.setHttpOnly(true);
+            cookie.setSecure(true);
+            cookie.setPath("/");
+            cookie.setMaxAge(60 * 60 * 24 * 30);
+            response.addCookie(cookie);
+        }
+
+        dbAccount.setRefreshToken(null);
+
+        try {
+            // 1. 确保 RocketChat 用户存在
+            rocketChatAuthService.ensureUserExists(
+                    dbAccount.getEmail(),
+                    account.getPassword(),
+                    dbAccount.getName()
+            );
+
+            // 2. 创建 RocketChat token
+            Map<String, String> rcToken = rocketChatAuthService.createTokenForUser(dbAccount.getEmail());
+
+            // 3. 保存到 dbAccount
+            dbAccount.setRocketChatToken(rcToken.get("authToken"));
+            dbAccount.setRocketChatUserId(rcToken.get("userId"));
+
+            // System.out.println("✅ RocketChat token created for: " + dbAccount.getEmail());
+            log.info("✅ RocketChat token created for: {}", dbAccount.getEmail());
+
+        } catch (Exception e) {
+            log.warn("⚠️ RocketChat login failed: {}", e.getMessage());
+        }
+
+
+        return Result.success(dbAccount);
     }
-
-    dbAccount.setRefreshToken(null);
-
-    
-    try {
-        // 1. 确保 RocketChat 用户存在
-        rocketChatAuthService.ensureUserExists(
-            dbAccount.getEmail(), 
-            account.getPassword(), 
-            dbAccount.getName()
-        );
-        
-        // 2. 创建 RocketChat token
-        Map<String, String> rcToken = rocketChatAuthService.createTokenForUser(dbAccount.getEmail());
-        
-        // 3. 保存到 dbAccount
-        dbAccount.setRocketChatToken(rcToken.get("authToken"));
-        dbAccount.setRocketChatUserId(rcToken.get("userId"));
-        
-        // System.out.println("✅ RocketChat token created for: " + dbAccount.getEmail());
-        logger.info("✅ RocketChat token created for: " + dbAccount.getEmail());
-        
-    } catch (Exception e) {
-        // System.err.println("⚠️ RocketChat login failed: " + e.getMessage());
-        logger.info("⚠️ RocketChat login failed: " + e.getMessage());
-        e.printStackTrace();
-        // RocketChat 失败不影响 LMS 登录，继续
-    }
-    
-
-    return Result.success(dbAccount);
-}
 
     @PostMapping("/refresh-token")
     public Result refreshToken(HttpServletRequest request) {
@@ -156,7 +146,7 @@ public Result login(@RequestBody Account account, HttpServletResponse response) 
      */
     @PostMapping("/register")
     public Result register(@RequestBody Account account) {
-        if (StrUtil.isBlank(account.getPassword()) ||  StrUtil.isBlank(account.getEmail())
+        if (StrUtil.isBlank(account.getPassword()) || StrUtil.isBlank(account.getEmail())
                 || ObjectUtil.isEmpty(account.getRole())) {
             return Result.error(ResultCodeEnum.PARAM_LOST_ERROR);
         }
@@ -184,7 +174,7 @@ public Result login(@RequestBody Account account, HttpServletResponse response) 
      */
     @PostMapping("/sendRegisterEmailVerification")
     public Result sendRegisterEmailVerification(String email) {
-        userService.sendEmailVerificationCode(email,"register");
+        userService.sendEmailVerificationCode(email, "register");
         return Result.success();
     }
 
@@ -199,10 +189,9 @@ public Result login(@RequestBody Account account, HttpServletResponse response) 
     }
 
 
-
     @PostMapping("/sendResetEmailVerification")
     public Result sendResetEmailVerification(String email) {
-        userService.sendEmailVerificationCode(email,"reset");
+        userService.sendEmailVerificationCode(email, "reset");
         return Result.success();
     }
 
@@ -217,13 +206,11 @@ public Result login(@RequestBody Account account, HttpServletResponse response) 
                     || ObjectUtil.isEmpty(account.getNewPassword())) {
                 return Result.error(ResultCodeEnum.PARAM_LOST_ERROR);
             }
-        }
-        else if ("reset".equals(account.getType())){
+        } else if ("reset".equals(account.getType())) {
             if (StrUtil.isBlank(account.getEmail()) || ObjectUtil.isEmpty(account.getNewPassword())) {
                 return Result.error(ResultCodeEnum.PARAM_LOST_ERROR);
             }
-        }
-        else{
+        } else {
             return Result.error(ResultCodeEnum.PARAM_LOST_ERROR);
         }
         if (RoleEnum.ADMIN.name().equals(account.getRole())) {
@@ -241,7 +228,7 @@ public Result login(@RequestBody Account account, HttpServletResponse response) 
         if (StrUtil.isBlank(account.getEmail()) || StrUtil.isBlank(account.getCode())) {
             return Result.error(ResultCodeEnum.PARAM_LOST_ERROR);
         }
-        String token=userService.resetPasswordValidation(account);
+        String token = userService.resetPasswordValidation(account);
 
         return Result.success(token);
     }
@@ -256,7 +243,7 @@ public Result login(@RequestBody Account account, HttpServletResponse response) 
                         @RequestParam("query") String query,
                         @RequestParam("dialogueId") Integer dialogueId,
                         @RequestParam("userId") Integer userId,
-                        @RequestHeader(value = "X-Timezone", required = false) String timezone){
+                        @RequestHeader(value = "X-Timezone", required = false) String timezone) {
 
         String savedFilePath = "N/A";
 
@@ -280,26 +267,25 @@ public Result login(@RequestBody Account account, HttpServletResponse response) 
                 file.transferTo(destFile);
                 savedFilePath = destFile.getAbsolutePath();
 
-                logger.info("File saved at: " + savedFilePath);
+                log.info("File saved at: {}", savedFilePath);
             }
         } catch (Exception e) {
-            logger.severe("Error saving file: " + e.getMessage());
+            log.error("Error saving file: {}", e.getMessage());
 
         }
 
         // 记录请求日志，包含文件存储路径 // Log request, including file storage path
-        logRequest("query", String.format("filePath=%s, courseId=%s, query=%s, dialogueId=%d",
+        log.info("Start {}: {}", "query", String.format("filePath=%s, courseId=%s, query=%s, dialogueId=%d",
                 savedFilePath, courseId, query, dialogueId));
-        Query re_query = new Query();
+        Query re_query;
         System.out.println(query);
         ZoneId zone = TimeZoneUtils.resolveZoneId(timezone);
         if (file != null && !file.isEmpty()) {
-            re_query = coursistanceService.query(new File(savedFilePath), courseId, query, dialogueId, userId,zone);
-        }
-        else {
+            re_query = coursistanceService.query(new File(savedFilePath), courseId, query, dialogueId, userId, zone);
+        } else {
             re_query = coursistanceService.query(null, courseId, query, dialogueId, userId, zone);
         }
-        logResponse("query", re_query.toString());
+        log.info("End {}: {}", "query", re_query.toString());
         return Result.success(re_query);
     }
 

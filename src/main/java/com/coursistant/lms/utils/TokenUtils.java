@@ -20,6 +20,7 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
+
 import java.util.Date;
 import java.security.interfaces.RSAPrivateKey;
 
@@ -49,7 +50,7 @@ public class TokenUtils {
      * 生成token // Generate token
      */
     public static String createAccessToken(String data) {
-        RSAPrivateKey privateKey = null;
+        RSAPrivateKey privateKey;
         try {
             privateKey = (RSAPrivateKey) RsaKeyUtil.loadPrivateKey("private.pem");
         } catch (Exception e) {
@@ -58,6 +59,28 @@ public class TokenUtils {
         return JWT.create().withAudience(data) // 将 userId-role 保存到 token 里面,作为载荷 // Store userId-role in the token as payload
                 .withExpiresAt(DateUtil.offsetHour(new Date(), 2)) // 2小时后token过期 // Token expires after 2 hours
                 .sign(Algorithm.RSA256(null, privateKey)); // 以 password 作为 token 的密钥 // Use password as the token's secret key
+    }
+
+    public static String createStandardAccessToken(Integer userId, String role) {
+        RSAPrivateKey privateKey;
+        try {
+            privateKey = (RSAPrivateKey) RsaKeyUtil.loadPrivateKey("private.pem");
+        } catch (Exception e) {
+            // TODO: Error
+            throw new CustomException(ResultCodeEnum.TOKEN_CREATION_ERROR);
+        }
+
+        // Standard jwt claims
+        return JWT.create()
+                .withSubject(userId.toString())
+                .withClaim("userId", userId)           // custom claim: userId
+                .withClaim("role", role)               // custom claim: role
+                .withClaim("type", "access")     // custom claim：token type
+                .withIssuedAt(new Date())
+                .withExpiresAt(DateUtil.offsetHour(new Date(), 2))
+                .withAudience("com.coursistant.lms")         // standard audience claim
+                .withIssuer("https://usc.xlearnedu.com")
+                .sign(Algorithm.RSA256(null, privateKey));
     }
 
     /**

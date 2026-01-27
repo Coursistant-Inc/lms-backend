@@ -12,8 +12,11 @@ import com.coursistant.lms.entity.Account;
 import com.coursistant.lms.exception.CustomException;
 import com.coursistant.lms.service.system.AdminService;
 import com.coursistant.lms.service.user.UserService;
+import com.coursistant.lms.utils.JwtParserUtil;
 import com.coursistant.lms.utils.RsaKeyUtil;
 
+import lombok.extern.slf4j.Slf4j;
+import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
@@ -26,6 +29,7 @@ import java.security.interfaces.RSAPublicKey;
  * jwt拦截器
  * JWT interceptor for authentication
  */
+@Slf4j
 @Component
 public class JwtInterceptor implements HandlerInterceptor {
 
@@ -33,15 +37,36 @@ public class JwtInterceptor implements HandlerInterceptor {
     private AdminService adminService;
     @Resource
     private UserService userService;
-
+    @Resource
+    private JwtParserUtil jwtParserUtil;
     @Override
-    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
+    public boolean preHandle(HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull Object handler) {
         
         // ⭐ 白名单：RocketChat iframe-auth 不需要验证 token
         String path = request.getRequestURI();
         if (path.contains("/rocketchat/")) {
             System.out.println("✅ RocketChat path, skipping JWT check: " + path);
             return true;
+        }
+
+        String standardAuthHeader = request.getHeader("Authorization");
+        String standardToken;
+        Integer userIdFromStandardToken;
+
+        if (standardAuthHeader != null && standardAuthHeader.startsWith("Bearer ")) {
+            standardToken = standardAuthHeader.substring(7);
+            try {
+                userIdFromStandardToken = jwtParserUtil.getUserId(standardToken);
+
+                request.setAttribute("userId", userIdFromStandardToken);
+                request.setAttribute("userRole", jwtParserUtil.getRole(standardToken));
+                request.setAttribute("authType", "standard");
+
+                log.info("Authentication succeed using standard Authorization header, userId: {}", userIdFromStandardToken);
+                return true;
+            } catch (Exception e) {
+                log.warn("Standard Authorization header failed to parse, try legacy token: {}", e.getMessage());
+            }
         }
         
         // 1. 从http请求的header中获取token
