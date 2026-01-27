@@ -24,7 +24,7 @@ public class CourseEntity {
     @Column(name = "updated_at", nullable = false, columnDefinition = "TIMESTAMP(6)")
     private Instant updatedAt;
 
-    @Column(name = "course_code", nullable = false, columnDefinition = "VARCHAR(16)", length = 16)
+    @Column(name = "course_code", nullable = false, columnDefinition = "VARCHAR(15)", length = 15)
     private String courseCode;
 
     @Column(nullable = false, columnDefinition = "VARCHAR(127)", length = 127)
