@@ -36,10 +36,10 @@ public class CourseV2Controller {
 
     @PostMapping("/new")
     public ResponseEntity<ApiResponse<Long>> createCourse(
+            @RequestAttribute("userId") Integer userId,
             @RequestBody CreateCourseRequest request
     ) {
-        // TODO: User id not implemented
-        var course = courseService.createCourse(1, request);
+        var course = courseService.createCourse(userId, request);
         return ResponseEntity.ok(
                 ApiResponse.success("Creating course success", course.getId())
         );
