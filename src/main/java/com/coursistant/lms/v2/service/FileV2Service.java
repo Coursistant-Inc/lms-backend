@@ -78,6 +78,7 @@ public class FileV2Service {
         var exists = queryFactory.selectOne()
                 .from(mapping.getQEntity())
                 .where(mapping.getIdPath().eq(entityId))
+                .limit(1)
                 .fetchFirst() != null;
 
         if (!exists) {
