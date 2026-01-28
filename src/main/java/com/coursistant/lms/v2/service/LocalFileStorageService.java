@@ -2,6 +2,7 @@ package com.coursistant.lms.v2.service;
 
 import cn.hutool.core.io.FileUtil;
 import com.coursistant.lms.v2.common.FileStorageResult;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -16,6 +17,7 @@ import java.util.UUID;
 
 @Slf4j
 @Service("localFileStorageService")
+@RequiredArgsConstructor
 public class LocalFileStorageService implements FileStorageService {
     private static final String BASE_FILE_PATH = "disk/";
 

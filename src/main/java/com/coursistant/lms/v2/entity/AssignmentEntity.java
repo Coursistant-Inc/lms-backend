@@ -51,6 +51,8 @@ public class AssignmentEntity {
     private CourseUnitEntity courseUnit;
 
     @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class AssignmentSettings {
         private Boolean allowLateSubmission;
         private Integer allowedResubmissionCount;

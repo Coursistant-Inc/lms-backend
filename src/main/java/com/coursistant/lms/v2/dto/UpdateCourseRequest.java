@@ -14,7 +14,7 @@ public record UpdateCourseRequest(
         Map<@Positive Long, @Valid CourseUnitUpdate> courseUnitUpdateMap,
         Map<@Positive Long, @Valid AssignmentUpdate> assignmentUpdateMap
 ) {
-    public boolean isValid() {
+    public boolean hasUpdates() {
         return (courseUpdate != null && courseUpdate.hasUpdates()) ||
                 (!CollectionUtils.isEmpty(courseUnitUpdateMap)) ||
                 (!CollectionUtils.isEmpty(assignmentUpdateMap));

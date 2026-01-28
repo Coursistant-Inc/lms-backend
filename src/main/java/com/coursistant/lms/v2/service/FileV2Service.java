@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -61,7 +62,7 @@ public class FileV2Service {
                 .fileSize(dto.getFile().getSize())
                 .mimeType(dto.getFile().getContentType())
                 .filePath(storageResult.getFilePath())
-                .entityType(dto.getEntityType())
+                .entityType(dto.getEntityType().getCode())
                 .entityId(dto.getEntityId())
                 .uploadUser(userRef)
                 .build();
@@ -69,8 +70,8 @@ public class FileV2Service {
         return fileReferenceRepository.save(fileRef);
     }
 
-    private void validateEntityExists(String entityType, Long entityId) {
-        var mapping = repositoryMapping.get(entityType);
+    private void validateEntityExists(EntityType entityType, Long entityId) {
+        var mapping = repositoryMapping.get(entityType.getCode());
         if (mapping == null) {
             throw new IllegalArgumentException("Unknown entity type: " + entityType);
         }
@@ -88,8 +89,26 @@ public class FileV2Service {
     }
 
     @Transactional(readOnly = true)
+    public List<FileResponse> getFileReferencesByEntity(EntityType entityType, Long entityId) {
+        return queryFactory.select(
+                        Projections.constructor(FileResponse.class,
+                                file.id,
+                                file.createdAt,
+                                file.updatedAt,
+                                file.fileName,
+                                file.fileSize,
+                                file.mimeType,
+                                file.filePath
+                        ))
+                .from(file)
+                .where(file.entityType.eq(entityType.getCode())
+                        .and(file.entityId.eq(entityId)))
+                .fetch();
+    }
+
+    @Transactional(readOnly = true)
     public Page<FileResponse> getFileReferencesByEntityPageable(
-            String entityType, Long entityId, Pageable pageable) {
+            EntityType entityType, Long entityId, Pageable pageable) {
         var query = queryFactory.select(
                         Projections.constructor(FileResponse.class,
                                 file.id,
@@ -101,7 +120,7 @@ public class FileV2Service {
                                 file.filePath
                         ))
                 .from(file)
-                .where(file.entityType.eq(entityType)
+                .where(file.entityType.eq(entityType.getCode())
                         .and(file.entityId.eq(entityId)));
 
         long total = query.fetch().size();

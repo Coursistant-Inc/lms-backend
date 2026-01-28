@@ -140,7 +140,7 @@ public class CourseV2Service {
 
     @Transactional
     public void updateCourse(Long courseId, UpdateCourseRequest update) {
-        if (!update.isValid()) return;
+        if (!update.hasUpdates()) return;
 
         if (update.courseUpdate() != null) updateCourseEntity(courseId, update.courseUpdate());
         if (!CollectionUtils.isEmpty(update.courseUnitUpdateMap())) {
