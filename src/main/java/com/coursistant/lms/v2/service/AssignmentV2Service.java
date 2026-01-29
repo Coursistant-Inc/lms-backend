@@ -32,28 +32,33 @@ public class AssignmentV2Service {
 
     @Transactional(readOnly = true)
     public AssignmentForEditResponse getAssignmentForEdit(Long assignmentId) {
-        var result = queryFactory
-                .select(Projections.constructor(
-                        AssignmentForEditResponse.class,
-                        assignment.id,
+        var query = queryFactory
+                .select(
                         assignment.createdAt,
                         assignment.updatedAt,
                         assignment.title,
                         assignment.description,
                         assignment.type,
                         assignment.dueTime,
-                        assignment.settings,
-                        null
-                ))
+                        assignment.settings
+                )
                 .from(assignment)
                 .where(assignment.id.eq(assignmentId))
                 .fetchOne();
-        if (result == null) throw new RuntimeException();
+        if (query == null) throw new RuntimeException();
 
         var attachments = fileService.getFileReferencesByEntity(EntityType.ASSIGNMENT, assignmentId);
-        result.setAttachments(attachments);
 
-        return result;
+        return AssignmentForEditResponse.builder()
+                .createdAt(query.get(assignment.createdAt))
+                .updatedAt(query.get(assignment.updatedAt))
+                .title(query.get(assignment.title))
+                .description(query.get(assignment.description))
+                .type(query.get(assignment.type))
+                .dueTime(query.get(assignment.dueTime))
+                .settings(query.get(assignment.settings))
+                .attachments(attachments)
+                .build();
     }
 
     @Transactional
@@ -127,7 +132,6 @@ public class AssignmentV2Service {
 
         var attachments = fileService.getFileReferencesByEntity(EntityType.ASSIGNMENT, assignmentId);
         var assignmentDTO = new AssignmentForEditResponse(
-                result.get(assignment.id),
                 result.get(assignment.createdAt),
                 result.get(assignment.updatedAt),
                 result.get(assignment.title),
