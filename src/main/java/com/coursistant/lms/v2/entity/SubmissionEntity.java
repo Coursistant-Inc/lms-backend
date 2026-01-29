@@ -35,6 +35,7 @@ public class SubmissionEntity {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "student_id",
             referencedColumnName = "id",
+            columnDefinition = "INT",
             foreignKey = @ForeignKey(name = "fk_nw_submission_student"))
     @ToString.Exclude
     private UserEntity student;

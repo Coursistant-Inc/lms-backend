@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS nw_submission (
     updated_at TIMESTAMP(6) NOT NULL,
     submission_count INT NOT NULL,
     submission_content TEXT(1000) NOT NULL,
-    student_id BIGINT NOT NULL,
+    student_id INT NOT NULL,
     assignment_id BIGINT NOT NULL,
     PRIMARY KEY (id),
     CONSTRAINT fk_nw_submission_student
