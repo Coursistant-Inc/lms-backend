@@ -129,8 +129,10 @@ public class CourseV2Service {
         var newAssignment = new AssignmentEntity();
 
         newAssignment.setTitle(assignment.getTitle());
+        newAssignment.setDescription("");
         newAssignment.setType(assignment.getType());
         newAssignment.setDueTime(assignment.getDueTime());
+        newAssignment.setSettings(new AssignmentEntity.AssignmentSettings(false, 100));
 
         var courseUnit = courseUnitRepository.getReferenceById(courseUnitId);
         newAssignment.setCourseUnit(courseUnit);
