@@ -7,6 +7,7 @@ import com.coursistant.lms.v2.dto.LocalFileUploadDTO;
 import com.coursistant.lms.v2.entity.*;
 import com.coursistant.lms.v2.repository.AssignmentRepository;
 import com.coursistant.lms.v2.repository.FileReferenceRepository;
+import com.coursistant.lms.v2.repository.SubmissionRepository;
 import com.coursistant.lms.v2.repository.UserRepository;
 import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.Projections;
@@ -32,6 +33,7 @@ public class FileV2Service {
     private final FileReferenceRepository fileReferenceRepository;
     private final UserRepository userRepository;
     private final AssignmentRepository assignmentRepository;
+    private final SubmissionRepository submissionRepository;
 
     private Map<String, EntityRepositoryMapping<?>> repositoryMapping;
 
@@ -43,6 +45,12 @@ public class FileV2Service {
                         assignmentRepository,
                         QAssignmentEntity.assignmentEntity,
                         q -> ((QAssignmentEntity) q).id
+                ),
+                EntityType.SUBMISSION.getCode(),
+                new EntityRepositoryMapping<>(
+                        submissionRepository,
+                        QSubmissionEntity.submissionEntity,
+                        q -> ((QSubmissionEntity) q).id
                 )
         );
     }
@@ -141,6 +149,19 @@ public class FileV2Service {
                 .fetch();
 
         return new PageImpl<>(content, pageable, total);
+    }
+
+    @Transactional
+    public void deleteFile(Long fileId) {
+        // TODO: This is not atomic, also no error handling
+        var path = queryFactory.select(file.filePath)
+                .from(file)
+                .where(file.id.eq(fileId))
+                .limit(1)
+                .fetchFirst();
+        if (path == null) throw new EntityNotFoundException("File with ID " + fileId + " not found");
+        fileReferenceRepository.deleteById(fileId);
+        storageService.delete(path);
     }
 
     private static final QFileReferenceEntity file = QFileReferenceEntity.fileReferenceEntity;

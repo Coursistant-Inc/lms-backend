@@ -10,5 +10,4 @@ import org.springframework.web.multipart.MultipartFile;
 @AllArgsConstructor
 public class AssignmentAttachmentUploadRequest {
     private MultipartFile file;
-    private Long assignmentId;
 }

@@ -8,7 +8,7 @@ import jakarta.validation.constraints.Size;
 
 import java.time.Instant;
 
-public record UpdateAssignmentDetailRequest(
+public record EditAssignmentRequest(
         @Nullable @Size(max = 63) @NotBlank String title,
         @Nullable @Size(max = 1000) String description,
         @Nullable @Size(max = 31) @NotBlank String type,

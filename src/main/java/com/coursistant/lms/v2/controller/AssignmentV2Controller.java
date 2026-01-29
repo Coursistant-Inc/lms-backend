@@ -1,14 +1,82 @@
 package com.coursistant.lms.v2.controller;
 
+import com.coursistant.lms.v2.common.ApiResponse;
+import com.coursistant.lms.v2.dto.AssignmentForEditResponse;
+import com.coursistant.lms.v2.dto.AssignmentForSubmissionResponse;
+import com.coursistant.lms.v2.dto.EditAssignmentRequest;
+import com.coursistant.lms.v2.service.AssignmentV2Service;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/v2/assignments")
 @Slf4j
 @RequiredArgsConstructor
 public class AssignmentV2Controller {
+    private final AssignmentV2Service assignmentService;
 
+    @GetMapping("/{assignmentId}/edit")
+    public ResponseEntity<ApiResponse<AssignmentForEditResponse>> getAssignmentForEdit(
+            @PathVariable Long assignmentId
+    ) {
+        var assignment = assignmentService.getAssignmentForEdit(assignmentId);
+        return ResponseEntity.ok(
+                ApiResponse.success("Querying assignment success", assignment)
+        );
+    }
+
+    @PostMapping("/{assignmentId}/edit")
+    public ResponseEntity<ApiResponse<Boolean>> updateAssignment(
+            @PathVariable Long assignmentId,
+            @RequestBody EditAssignmentRequest request
+    ) {
+        assignmentService.editAssignment(assignmentId, request);
+        return ResponseEntity.ok(
+                ApiResponse.success("Editing assignment success", true)
+        );
+    }
+
+    @PostMapping(value = "/{assignmentId}/edit/attachment", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(responses = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Upload success, returns file id",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE))
+    })
+    public ResponseEntity<ApiResponse<Long>> uploadAssignmentAttachment(
+            @RequestAttribute("userId") Integer userId,
+            @PathVariable Long assignmentId,
+            @RequestPart("attachment") MultipartFile attachment
+    ) {
+        var fileId = assignmentService.uploadAttachment(assignmentId, attachment, userId);
+        return ResponseEntity.ok(
+                ApiResponse.success("Editing assignment success", fileId)
+        );
+    }
+
+    @PostMapping("/{assignmentId}/edit/attachment/{attachmentId}/delete")
+    public ResponseEntity<ApiResponse<Boolean>> deleteAssignmentAttachment(
+            @SuppressWarnings("unused") @PathVariable Long assignmentId,
+            @PathVariable Long attachmentId
+    ) {
+        assignmentService.deleteAttachment(attachmentId);
+        return ResponseEntity.ok(
+                ApiResponse.success("Deleting attachment success", true)
+        );
+    }
+
+    @GetMapping("/{assignmentId}/submission")
+    public ResponseEntity<ApiResponse<AssignmentForSubmissionResponse>> getAssignmentForSubmission(
+            @RequestAttribute("userId") Integer userId,
+            @PathVariable Long assignmentId
+    ) {
+        var result = assignmentService.getAssignmentForSubmission(assignmentId, userId);
+        return ResponseEntity.ok(
+                ApiResponse.success("Querying assignment submission success", result)
+        );
+    }
 }
