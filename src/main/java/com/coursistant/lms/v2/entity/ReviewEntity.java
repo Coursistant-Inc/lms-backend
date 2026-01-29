@@ -12,6 +12,8 @@ import java.util.Objects;
 @Setter
 @ToString
 @NoArgsConstructor
+@AllArgsConstructor
+@Builder
 @Table(name = "nw_review")
 public class ReviewEntity {
     @Id

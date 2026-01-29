@@ -95,6 +95,7 @@ public class FileV2Service {
 
     @Transactional(readOnly = true)
     public List<FileResponse> getFileReferencesByEntity(EntityType entityType, Long entityId) {
+        var type = entityType.getCode();
         return queryFactory.select(
                         Projections.constructor(FileResponse.class,
                                 file.id,
@@ -106,7 +107,7 @@ public class FileV2Service {
                                 file.filePath
                         ))
                 .from(file)
-                .where(file.entityType.eq(entityType.getCode())
+                .where(file.entityType.eq(type)
                         .and(file.entityId.eq(entityId)))
                 .fetch();
     }
@@ -114,6 +115,7 @@ public class FileV2Service {
     @Transactional(readOnly = true)
     public Page<FileResponse> getFileReferencesByEntityPageable(
             EntityType entityType, Long entityId, Pageable pageable) {
+        var type = entityType.getCode();
         var query = queryFactory.select(
                         Projections.constructor(FileResponse.class,
                                 file.id,
@@ -125,7 +127,7 @@ public class FileV2Service {
                                 file.filePath
                         ))
                 .from(file)
-                .where(file.entityType.eq(entityType.getCode())
+                .where(file.entityType.eq(type)
                         .and(file.entityId.eq(entityId)));
 
         long total = query.fetch().size();

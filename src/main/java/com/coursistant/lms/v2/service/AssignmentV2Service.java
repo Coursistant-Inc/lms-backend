@@ -4,6 +4,7 @@ import com.coursistant.lms.v2.common.EntityType;
 import com.coursistant.lms.v2.dto.*;
 import com.coursistant.lms.v2.entity.*;
 import com.coursistant.lms.v2.repository.AssignmentRepository;
+import com.coursistant.lms.v2.repository.ReviewRepository;
 import com.coursistant.lms.v2.repository.SubmissionRepository;
 import com.coursistant.lms.v2.repository.UserRepository;
 import com.querydsl.core.types.Projections;
@@ -16,11 +17,13 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Instant;
+import java.util.*;
 
 @Service
 @Slf4j
 @RequiredArgsConstructor
 public class AssignmentV2Service {
+    private final ReviewRepository reviewRepository;
     private final UserRepository userRepository;
     private final AssignmentRepository assignmentRepository;
     private final SubmissionRepository submissionRepository;
@@ -199,7 +202,6 @@ public class AssignmentV2Service {
                                       AssignmentSubmissionRequest request) {
         var result = queryFactory
                 .select(
-                        assignment.id,
                         assignment.dueTime,
                         assignment.settings,
 
@@ -253,8 +255,144 @@ public class AssignmentV2Service {
         fileService.deleteFile(fileId);
     }
 
+    @Transactional(readOnly = true)
+    public AssignmentForReviewResponse getAssignmentForReview(Long assignmentId) {
+        var assignmentPart = queryFactory
+                .select(
+                        assignment.createdAt,
+                        assignment.updatedAt,
+                        assignment.title,
+                        assignment.description,
+                        assignment.type,
+                        assignment.dueTime,
+                        assignment.settings
+                )
+                .from(assignment)
+                .where(assignment.id.eq(assignmentId))
+                .fetchOne();
+        if (assignmentPart == null) throw new EntityNotFoundException();
+
+        var result = queryFactory
+                .select(
+                        submission.id,
+                        submission.createdAt,
+                        submission.updatedAt,
+                        submission.submissionCount,
+                        submission.submissionContent,
+                        review.id,
+                        review.createdAt,
+                        review.updatedAt,
+                        review.grade,
+                        review.teacherComment
+                )
+                .from(submission)
+                .leftJoin(review).on(review.submission.id.eq(submission.id))
+                .where(submission.assignment.id.eq(assignmentId))
+                .fetch();
+
+        var submissionIds = new ArrayList<Long>();
+        var submissions = new HashMap<Long, AssignmentForReviewResponse.Submission>();
+        var reviews = new HashMap<Long, AssignmentForReviewResponse.Review>();
+
+        for (var entry : result) {
+            var submissionId = entry.get(submission.id);
+            if (submissionId == null) throw new EntityNotFoundException();
+            submissionIds.add(submissionId);
+            submissions.put(submissionId, AssignmentForReviewResponse.Submission.builder()
+                    .createdAt(entry.get(submission.createdAt))
+                    .updatedAt(entry.get(submission.updatedAt))
+                    .submissionCount(entry.get(submission.submissionCount))
+                    .submissionContent(entry.get(submission.submissionContent))
+                    .build());
+
+            var reviewId = entry.get(review.id);
+            if (reviewId == null) continue;
+            reviews.put(reviewId, AssignmentForReviewResponse.Review.builder()
+                    .submissionId(submissionId)
+                    .createdAt(entry.get(review.createdAt))
+                    .updatedAt(entry.get(review.updatedAt))
+                    .grade(entry.get(review.grade))
+                    .teacherComment(entry.get(review.teacherComment))
+                    .build());
+        }
+
+        var submissionType = EntityType.SUBMISSION.getCode();
+        var filesQuery = queryFactory.select(
+                        file.id,
+                        file.createdAt,
+                        file.updatedAt,
+                        file.fileName,
+                        file.fileSize,
+                        file.mimeType,
+                        file.filePath,
+                        file.entityId
+                )
+                .from(file)
+                .where(file.entityType.eq(submissionType)
+                        .and(file.entityId.in(submissionIds)))
+                .fetch();
+
+        var files = new HashMap<Long, FlatFile>();
+        for (var entry : filesQuery) {
+            var fileId = entry.get(file.id);
+            if (fileId == null) throw new EntityNotFoundException();
+
+            files.put(fileId, FlatFile.builder()
+                    .createdAt(entry.get(file.createdAt))
+                    .updatedAt(entry.get(file.updatedAt))
+                    .parentEntityType(EntityType.SUBMISSION.getCode())
+                    .parentEntityId(entry.get(file.entityId))
+                    .fileName(entry.get(file.fileName))
+                    .fileSize(entry.get(file.fileSize))
+                    .mimeType(entry.get(file.mimeType))
+                    .filePath(entry.get(file.filePath))
+                    .build());
+        }
+
+        return new AssignmentForReviewResponse(AssignmentForReviewResponse.Assignment.builder()
+                .createdAt(assignmentPart.get(assignment.createdAt))
+                .updatedAt(assignmentPart.get(assignment.updatedAt))
+                .title(assignmentPart.get(assignment.title))
+                .description(assignmentPart.get(assignment.description))
+                .type(assignmentPart.get(assignment.type))
+                .dueTime(assignmentPart.get(assignment.dueTime))
+                .settings(assignmentPart.get(assignment.settings))
+                .build(),
+                submissions, reviews, files);
+    }
+
+    @Transactional
+    public Long createSubmissionReview(Long submissionId, CreateSubmissionReviewRequest request) {
+        // TODO: Validation (ESSENTIAL)
+        var submissionRef = submissionRepository.getReferenceById(submissionId);
+        var newReview = ReviewEntity.builder()
+                .grade(request.getGrade())
+                .teacherComment(request.getTeacherComment())
+                .submission(submissionRef)
+                .build();
+
+        reviewRepository.save(newReview);
+        return newReview.getId();
+    }
+
+    @Transactional
+    public void updateSubmissionReview(Long submissionId, Map<Long, UpdateSubmissionReviewRequest> requests) {
+        for (var request : requests.entrySet()) {
+            var reviewId = request.getKey();
+            var update = request.getValue();
+
+            if (!update.hasUpdate()) return;
+            var clause = queryFactory.update(review);
+
+            if (update.grade() != null) clause.set(review.grade, update.grade());
+            if (update.teacherComment() != null) clause.set(review.teacherComment, update.teacherComment());
+
+            clause.where(review.id.eq(reviewId)).execute();
+        }
+    }
+
     private static final QAssignmentEntity assignment = QAssignmentEntity.assignmentEntity;
     private static final QSubmissionEntity submission = QSubmissionEntity.submissionEntity;
-    private static final QUserEntity user = QUserEntity.userEntity;
+    private static final QFileReferenceEntity file = QFileReferenceEntity.fileReferenceEntity;
     private static final QReviewEntity review = QReviewEntity.reviewEntity;
 }
