@@ -21,7 +21,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
@@ -64,8 +63,6 @@ public class FileV2Service {
         var userRef = userRepository.getReferenceById(dto.getUserId());
 
         var fileRef = FileReferenceEntity.builder()
-                .createdAt(Instant.now())
-                .updatedAt(Instant.now())
                 .fileName(dto.getFile().getOriginalFilename())
                 .fileSize(dto.getFile().getSize())
                 .mimeType(dto.getFile().getContentType())

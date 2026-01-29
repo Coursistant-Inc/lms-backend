@@ -52,6 +52,17 @@ public class FileReferenceEntity {
     @ToString.Exclude
     private UserEntity uploadUser;
 
+    @PrePersist
+    protected void onCreate() {
+        createdAt = Instant.now();
+        updatedAt = Instant.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = Instant.now();
+    }
+
     @Override
     public final boolean equals(Object o) {
         if (this == o) return true;

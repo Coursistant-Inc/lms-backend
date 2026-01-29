@@ -3,6 +3,7 @@ package com.coursistant.lms.v2.controller;
 import com.coursistant.lms.v2.common.ApiResponse;
 import com.coursistant.lms.v2.dto.AssignmentForEditResponse;
 import com.coursistant.lms.v2.dto.AssignmentForSubmissionResponse;
+import com.coursistant.lms.v2.dto.AssignmentSubmissionRequest;
 import com.coursistant.lms.v2.dto.EditAssignmentRequest;
 import com.coursistant.lms.v2.service.AssignmentV2Service;
 import io.swagger.v3.oas.annotations.Operation;
@@ -32,7 +33,7 @@ public class AssignmentV2Controller {
     }
 
     @PostMapping("/{assignmentId}/edit")
-    public ResponseEntity<ApiResponse<Boolean>> updateAssignment(
+    public ResponseEntity<ApiResponse<Boolean>> editAssignment(
             @PathVariable Long assignmentId,
             @RequestBody EditAssignmentRequest request
     ) {
@@ -77,6 +78,53 @@ public class AssignmentV2Controller {
         var result = assignmentService.getAssignmentForSubmission(assignmentId, userId);
         return ResponseEntity.ok(
                 ApiResponse.success("Querying assignment submission success", result)
+        );
+    }
+
+    @PostMapping("/{assignmentId}/submission")
+    public ResponseEntity<ApiResponse<Boolean>> submitAssignment(
+            @RequestAttribute("userId") Integer userId,
+            @PathVariable Long assignmentId,
+            @RequestBody AssignmentSubmissionRequest request
+    ) {
+        assignmentService.createSubmission(assignmentId, userId, request);
+        return ResponseEntity.ok(
+                ApiResponse.success("Submitting assignment success", true)
+        );
+    }
+    @PostMapping("/{assignmentId}/submission/{submissionId}")
+    public ResponseEntity<ApiResponse<Boolean>> resubmitAssignment(
+            @RequestAttribute("userId") Integer userId,
+            @PathVariable Long assignmentId,
+            @PathVariable Long submissionId,
+            @RequestBody AssignmentSubmissionRequest request
+    ) {
+        assignmentService.resubmitSubmission(assignmentId, submissionId, userId, request);
+        return ResponseEntity.ok(
+                ApiResponse.success("Submitting assignment success", true)
+        );
+    }
+
+    @PostMapping("/{assignmentId}/submission/file")
+    public ResponseEntity<ApiResponse<Long>> uploadAssignmentSubmissionFile(
+            @RequestAttribute("userId") Integer userId,
+            @PathVariable Long assignmentId,
+            @RequestPart("file") MultipartFile file
+    ) {
+        var result = assignmentService.uploadSubmissionFile(assignmentId, file, userId);
+        return ResponseEntity.ok(
+                ApiResponse.success("Uploading assignment submission file success", result)
+        );
+    }
+
+    @PostMapping("/{assignmentId}/submission/file/{fileId}/delete")
+    public ResponseEntity<ApiResponse<Boolean>> deleteAssignmentSubmissionFile(
+            @SuppressWarnings("unused") @PathVariable Long assignmentId,
+            @PathVariable Long fileId
+    ) {
+        assignmentService.deleteSubmissionFile(fileId);
+        return ResponseEntity.ok(
+                ApiResponse.success("Deleting submission file success", true)
         );
     }
 }

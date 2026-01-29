@@ -12,6 +12,8 @@ import java.util.Objects;
 @Setter
 @ToString
 @NoArgsConstructor
+@AllArgsConstructor
+@Builder
 @Table(name = "nw_submission")
 public class SubmissionEntity {
     @Id
@@ -43,6 +45,17 @@ public class SubmissionEntity {
             foreignKey = @ForeignKey(name = "fk_nw_submission_assignment"))
     @ToString.Exclude
     private AssignmentEntity assignment;
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt = Instant.now();
+        updatedAt = Instant.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = Instant.now();
+    }
 
     @Override
     public final boolean equals(Object o) {
