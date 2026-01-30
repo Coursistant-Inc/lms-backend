@@ -38,7 +38,7 @@ public class CourseV2Service {
                         course.name,
                         course.teacher.name,
                         courseUnit.id.count().intValue(),
-                        Expressions.nullExpression()
+                        Expressions.nullExpression(String.class)
                 ))
                 .from(course)
                 .innerJoin(user).on(course.teacher.id.eq(user.id))
