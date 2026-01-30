@@ -14,6 +14,7 @@ public class SubmissionResponse {
     private Long id;
     private Instant createdAt;
     private Instant updatedAt;
+    private Long assignmentId;
     private Integer submissionCount;
     private String submissionContent;
     private List<FileResponse> files;

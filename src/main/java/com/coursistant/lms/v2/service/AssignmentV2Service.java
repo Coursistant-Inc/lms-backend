@@ -7,7 +7,6 @@ import com.coursistant.lms.v2.repository.AssignmentRepository;
 import com.coursistant.lms.v2.repository.ReviewRepository;
 import com.coursistant.lms.v2.repository.SubmissionRepository;
 import com.coursistant.lms.v2.repository.UserRepository;
-import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +33,7 @@ public class AssignmentV2Service {
     public AssignmentForEditResponse getAssignmentForEdit(Long assignmentId) {
         var query = queryFactory
                 .select(
+                        assignment.id,
                         assignment.createdAt,
                         assignment.updatedAt,
                         assignment.title,
@@ -50,6 +50,7 @@ public class AssignmentV2Service {
         var attachments = fileService.getFileReferencesByEntity(EntityType.ASSIGNMENT, assignmentId);
 
         return AssignmentForEditResponse.builder()
+                .id(query.get(assignment.id))
                 .createdAt(query.get(assignment.createdAt))
                 .updatedAt(query.get(assignment.updatedAt))
                 .title(query.get(assignment.title))
@@ -132,6 +133,7 @@ public class AssignmentV2Service {
 
         var attachments = fileService.getFileReferencesByEntity(EntityType.ASSIGNMENT, assignmentId);
         var assignmentDTO = new AssignmentForEditResponse(
+                result.get(assignment.id),
                 result.get(assignment.createdAt),
                 result.get(assignment.updatedAt),
                 result.get(assignment.title),
@@ -150,6 +152,7 @@ public class AssignmentV2Service {
                     submissionId,
                     result.get(submission.createdAt),
                     result.get(submission.updatedAt),
+                    assignmentId,
                     result.get(submission.submissionCount),
                     result.get(submission.submissionContent),
                     files
@@ -162,6 +165,7 @@ public class AssignmentV2Service {
     @Transactional
     public Long createSubmission(Long assignmentId, Integer userId,
                                  AssignmentSubmissionRequest request) {
+        if (!request.hasUpdates()) throw new IllegalArgumentException();
         var result = queryFactory
                 .select(
                         assignment.dueTime,
@@ -204,6 +208,7 @@ public class AssignmentV2Service {
     @Transactional
     public Boolean resubmitSubmission(Long assignmentId, Long submissionId, Integer userId,
                                       AssignmentSubmissionRequest request) {
+        if (!request.hasUpdates()) return true;
         var result = queryFactory
                 .select(
                         assignment.dueTime,
@@ -295,14 +300,15 @@ public class AssignmentV2Service {
                 .fetch();
 
         var submissionIds = new ArrayList<Long>();
-        var submissions = new HashMap<Long, AssignmentForReviewResponse.Submission>();
-        var reviews = new HashMap<Long, AssignmentForReviewResponse.Review>();
+        var submissions = new ArrayList<AssignmentForReviewResponse.Submission>();
+        var reviews = new ArrayList<AssignmentForReviewResponse.Review>();
 
         for (var entry : result) {
             var submissionId = entry.get(submission.id);
             if (submissionId == null) throw new EntityNotFoundException();
             submissionIds.add(submissionId);
-            submissions.put(submissionId, AssignmentForReviewResponse.Submission.builder()
+            submissions.add(AssignmentForReviewResponse.Submission.builder()
+                    .id(submissionId)
                     .createdAt(entry.get(submission.createdAt))
                     .updatedAt(entry.get(submission.updatedAt))
                     .submissionCount(entry.get(submission.submissionCount))
@@ -311,10 +317,11 @@ public class AssignmentV2Service {
 
             var reviewId = entry.get(review.id);
             if (reviewId == null) continue;
-            reviews.put(reviewId, AssignmentForReviewResponse.Review.builder()
-                    .submissionId(submissionId)
+            reviews.add(AssignmentForReviewResponse.Review.builder()
+                    .id(reviewId)
                     .createdAt(entry.get(review.createdAt))
                     .updatedAt(entry.get(review.updatedAt))
+                    .submissionId(submissionId)
                     .grade(entry.get(review.grade))
                     .teacherComment(entry.get(review.teacherComment))
                     .build());
@@ -336,16 +343,17 @@ public class AssignmentV2Service {
                         .and(file.entityId.in(submissionIds)))
                 .fetch();
 
-        var files = new HashMap<Long, FlatFile>();
+        var files = new ArrayList<FileResponse>();
         for (var entry : filesQuery) {
             var fileId = entry.get(file.id);
             if (fileId == null) throw new EntityNotFoundException();
 
-            files.put(fileId, FlatFile.builder()
+            files.add(FileResponse.builder()
+                    .id(fileId)
                     .createdAt(entry.get(file.createdAt))
                     .updatedAt(entry.get(file.updatedAt))
-                    .parentEntityType(EntityType.SUBMISSION.getCode())
-                    .parentEntityId(entry.get(file.entityId))
+                    .entityId(entry.get(file.entityId))
+                    .entityType(EntityType.SUBMISSION.getCode())
                     .fileName(entry.get(file.fileName))
                     .fileSize(entry.get(file.fileSize))
                     .mimeType(entry.get(file.mimeType))

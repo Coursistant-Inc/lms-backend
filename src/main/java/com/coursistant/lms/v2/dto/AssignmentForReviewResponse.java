@@ -7,22 +7,23 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
-import java.util.Map;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class AssignmentForReviewResponse {
     private Assignment assignment;
-    private Map<Long, Submission> submissions;
-    private Map<Long, Review> reviews;
-    private Map<Long, FlatFile> files;
+    private List<Submission> submissions;
+    private List<Review> reviews;
+    private List<FileResponse> files;
 
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
     @Builder
     public static class Assignment {
+        private Long id;
         private Instant createdAt;
         private Instant updatedAt;
         private String title;
@@ -37,8 +38,10 @@ public class AssignmentForReviewResponse {
     @AllArgsConstructor
     @Builder
     public static class Submission {
+        private Long id;
         private Instant createdAt;
         private Instant updatedAt;
+        private Long assignmentId;
         private Integer submissionCount;
         private String submissionContent;
     }
@@ -48,9 +51,10 @@ public class AssignmentForReviewResponse {
     @AllArgsConstructor
     @Builder
     public static class Review {
-        private Long submissionId;
+        private Long id;
         private Instant createdAt;
         private Instant updatedAt;
+        private Long submissionId;
         private Integer grade;
         private String teacherComment;
     }

@@ -14,6 +14,7 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 public class AssignmentForEditResponse {
+    private Long id;
     private Instant createdAt;
     private Instant updatedAt;
     private String title;
