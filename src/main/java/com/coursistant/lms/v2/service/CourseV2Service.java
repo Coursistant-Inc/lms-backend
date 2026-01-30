@@ -7,6 +7,7 @@ import com.coursistant.lms.v2.repository.CourseRepository;
 import com.coursistant.lms.v2.repository.CourseUnitRepository;
 import com.coursistant.lms.v2.repository.UserRepository;
 import com.querydsl.core.types.Projections;
+import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,6 +28,24 @@ public class CourseV2Service {
     private final CourseRepository courseRepository;
     private final CourseUnitRepository courseUnitRepository;
     private final AssignmentRepository assignmentRepository;
+
+    @Transactional(readOnly = true)
+    public List<CoursePreviewResponse> getCourses() {
+        return queryFactory
+                .select(Projections.constructor(CoursePreviewResponse.class,
+                        course.id,
+                        course.courseCode,
+                        course.name,
+                        course.teacher.name,
+                        courseUnit.id.count().intValue(),
+                        Expressions.nullExpression()
+                ))
+                .from(course)
+                .innerJoin(user).on(course.teacher.id.eq(user.id))
+                .leftJoin(courseUnit).on(course.id.eq(courseUnit.course.id))
+                .groupBy(course.id)
+                .fetch();
+    }
 
     @Transactional(readOnly = true)
     public CourseDetailV2DTO getCourseDetail(Long courseId) {

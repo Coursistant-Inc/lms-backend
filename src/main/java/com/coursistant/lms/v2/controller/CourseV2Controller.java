@@ -10,12 +10,24 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/v2/courses")
 @Slf4j
 @RequiredArgsConstructor
 public class CourseV2Controller {
     private final CourseV2Service courseService;
+
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<CoursePreviewResponse>>> getCourses(
+            @SuppressWarnings("unused") @RequestAttribute("userId") Integer userId
+    ) {
+        var results = courseService.getCourses();
+        return ResponseEntity.ok(
+                ApiResponse.success("Success querying courses", results)
+        );
+    }
 
     @GetMapping("/{courseId}/detail")
     public ResponseEntity<ApiResponse<CourseDetailV2DTO>> getCourseDetail(
