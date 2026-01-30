@@ -30,7 +30,7 @@ public class CourseV2Service {
     private final AssignmentRepository assignmentRepository;
 
     @Transactional(readOnly = true)
-    public List<CoursePreviewResponse> getCourses() {
+    public List<CoursePreviewResponse> getCourses(Integer userId) {
         return queryFactory
                 .select(Projections.constructor(CoursePreviewResponse.class,
                         course.id,
@@ -41,7 +41,8 @@ public class CourseV2Service {
                         Expressions.nullExpression(String.class)
                 ))
                 .from(course)
-                .innerJoin(user).on(course.teacher.id.eq(user.id))
+                .innerJoin(userCourseRelation).on(userCourseRelation.course.id.eq(course.id)
+                        .and(userCourseRelation.user.id.eq(userId)))
                 .leftJoin(courseUnit).on(course.id.eq(courseUnit.course.id))
                 .groupBy(course.id)
                 .fetch();
@@ -250,4 +251,5 @@ public class CourseV2Service {
     private static final QCourseUnitEntity courseUnit = QCourseUnitEntity.courseUnitEntity;
     private static final QAssignmentEntity assignment = QAssignmentEntity.assignmentEntity;
     private static final QUserEntity user = QUserEntity.userEntity;
+    private static final QUserCourseRelationEntity userCourseRelation = QUserCourseRelationEntity.userCourseRelationEntity;
 }

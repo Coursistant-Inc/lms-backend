@@ -21,9 +21,9 @@ public class CourseV2Controller {
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<CoursePreviewResponse>>> getCourses(
-            @SuppressWarnings("unused") @RequestAttribute("userId") Integer userId
+            @RequestAttribute("userId") Integer userId
     ) {
-        var results = courseService.getCourses();
+        var results = courseService.getCourses(userId);
         return ResponseEntity.ok(
                 ApiResponse.success("Success querying courses", results)
         );
