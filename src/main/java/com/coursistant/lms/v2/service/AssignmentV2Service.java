@@ -288,6 +288,9 @@ public class AssignmentV2Service {
                         submission.updatedAt,
                         submission.submissionCount,
                         submission.submissionContent,
+
+                        user.name,
+
                         review.id,
                         review.createdAt,
                         review.updatedAt,
@@ -295,6 +298,7 @@ public class AssignmentV2Service {
                         review.teacherComment
                 )
                 .from(submission)
+                .innerJoin(user).on(submission.student.id.eq(user.id))
                 .leftJoin(review).on(review.submission.id.eq(submission.id))
                 .where(submission.assignment.id.eq(assignmentId))
                 .fetch();
@@ -311,6 +315,7 @@ public class AssignmentV2Service {
                     .id(submissionId)
                     .createdAt(entry.get(submission.createdAt))
                     .updatedAt(entry.get(submission.updatedAt))
+                    .studentName(entry.get(user.name))
                     .submissionCount(entry.get(submission.submissionCount))
                     .submissionContent(entry.get(submission.submissionContent))
                     .build());
@@ -403,6 +408,7 @@ public class AssignmentV2Service {
         }
     }
 
+    private static final QUserEntity user = QUserEntity.userEntity;
     private static final QAssignmentEntity assignment = QAssignmentEntity.assignmentEntity;
     private static final QSubmissionEntity submission = QSubmissionEntity.submissionEntity;
     private static final QFileReferenceEntity file = QFileReferenceEntity.fileReferenceEntity;

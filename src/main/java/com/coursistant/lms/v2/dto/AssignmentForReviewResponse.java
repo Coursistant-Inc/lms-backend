@@ -42,6 +42,7 @@ public class AssignmentForReviewResponse {
         private Instant createdAt;
         private Instant updatedAt;
         private Long assignmentId;
+        private String studentName;
         private Integer submissionCount;
         private String submissionContent;
     }
