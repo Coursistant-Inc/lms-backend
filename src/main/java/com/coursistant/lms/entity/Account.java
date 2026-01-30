@@ -70,6 +70,11 @@ public class Account {
     transient private String rocketChatToken;
     transient private String rocketChatUserId;
 
+    private String nwAccessToken;
+    public void setNwAccessToken(String nwAccessToken) {
+        this.nwAccessToken = nwAccessToken;
+    }
+
     // getter 和 setter
     public String getRocketChatToken() {
         return rocketChatToken;

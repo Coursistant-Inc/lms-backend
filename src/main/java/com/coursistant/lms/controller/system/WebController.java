@@ -78,12 +78,7 @@ public class WebController {
         }
 
         var standardJwt = TokenUtils.createStandardAccessToken(dbAccount.getId(), dbAccount.getRole());
-        var accCookie = new Cookie("accessToken", standardJwt);
-        accCookie.setHttpOnly(true);
-        accCookie.setSecure(true);
-        accCookie.setPath("/");
-        accCookie.setMaxAge(2 * 60 * 60);
-        response.addCookie(accCookie);
+        dbAccount.setNwAccessToken(standardJwt);
 
         if (ObjectUtil.isNotEmpty(dbAccount.getRefreshToken())) {
             Cookie cookie = new Cookie("refreshToken", dbAccount.getRefreshToken());
