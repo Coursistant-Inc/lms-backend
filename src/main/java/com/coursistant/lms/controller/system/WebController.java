@@ -15,8 +15,10 @@ import com.coursistant.lms.service.user.UserService;
 import com.coursistant.lms.utils.TokenUtils;
 import com.coursistant.lms.utils.TimeZoneUtils;
 import com.coursistant.lms.annotation.RequiresPermission;
+import com.coursistant.lms.v2.common.ApiResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import com.coursistant.lms.service.groupchat.RocketChatAuthService;
@@ -54,10 +56,11 @@ public class WebController {
     }
 
     @PostMapping("/login")
-    public Result login(@RequestBody Account account, HttpServletResponse response) {
+    public ResponseEntity<ApiResponse<Account>> login(@RequestBody Account account, HttpServletResponse response) {
         if (ObjectUtil.isEmpty(account.getEmail()) || ObjectUtil.isEmpty(account.getPassword())
                 || ObjectUtil.isEmpty(account.getRole())) {
-            return Result.error(ResultCodeEnum.PARAM_LOST_ERROR);
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(4001, "Parameter missing"));
         }
 
         Account dbAccount = null;
@@ -69,7 +72,10 @@ public class WebController {
         }
 
         // TODO: Error handling
-        if (dbAccount == null) return Result.error(ResultCodeEnum.PARAM_LOST_ERROR);
+        if (dbAccount == null) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(4001, "Parameter missing"));
+        }
 
         var standardJwt = TokenUtils.createStandardAccessToken(dbAccount.getId(), dbAccount.getRole());
         response.setHeader("Authorization", "Bearer " + standardJwt);
@@ -107,8 +113,9 @@ public class WebController {
             log.warn("⚠️ RocketChat login failed: {}", e.getMessage());
         }
 
-
-        return Result.success(dbAccount);
+        return ResponseEntity.ok(
+                ApiResponse.success("Login success", dbAccount)
+        );
     }
 
     @PostMapping("/refresh-token")
