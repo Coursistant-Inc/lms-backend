@@ -11,4 +11,5 @@ import lombok.NoArgsConstructor;
 public class AssignmentForSubmissionResponse {
     private AssignmentForEditResponse assignment;
     @Nullable private SubmissionResponse submission;
+    @Nullable private AssignmentForReviewResponse.Review review;
 }

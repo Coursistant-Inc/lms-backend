@@ -119,12 +119,21 @@ public class AssignmentV2Service {
                         submission.createdAt,
                         submission.updatedAt,
                         submission.submissionCount,
-                        submission.submissionContent
+                        submission.submissionContent,
+
+                        review.id,
+                        review.createdAt,
+                        review.updatedAt,
+                        review.grade,
+                        review.teacherComment
                 )
                 .from(assignment)
                 .leftJoin(submission).on(
                         submission.assignment.id.eq(assignment.id)
                                 .and(submission.student.id.eq(userId))
+                )
+                .leftJoin(review).on(
+                        review.submission.id.eq(submission.id)
                 )
                 .where(assignment.id.eq(assignmentId))
                 .fetchOne();
@@ -159,7 +168,20 @@ public class AssignmentV2Service {
             );
         }
 
-        return new AssignmentForSubmissionResponse(assignmentDTO, submissionDTO);
+        AssignmentForReviewResponse.Review reviewDTO = null;
+        var reviewId = result.get(review.id);
+        if (reviewId != null) {
+            reviewDTO = new AssignmentForReviewResponse.Review(
+                    reviewId,
+                    result.get(review.createdAt),
+                    result.get(review.updatedAt),
+                    submissionId,
+                    result.get(review.grade),
+                    result.get(review.teacherComment)
+            );
+        }
+
+        return new AssignmentForSubmissionResponse(assignmentDTO, submissionDTO, reviewDTO);
     }
 
     @Transactional
