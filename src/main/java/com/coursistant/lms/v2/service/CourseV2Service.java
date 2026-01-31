@@ -2,10 +2,7 @@ package com.coursistant.lms.v2.service;
 
 import com.coursistant.lms.v2.dto.*;
 import com.coursistant.lms.v2.entity.*;
-import com.coursistant.lms.v2.repository.AssignmentRepository;
-import com.coursistant.lms.v2.repository.CourseRepository;
-import com.coursistant.lms.v2.repository.CourseUnitRepository;
-import com.coursistant.lms.v2.repository.UserRepository;
+import com.coursistant.lms.v2.repository.*;
 import com.querydsl.core.types.Projections;
 import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
@@ -28,6 +25,7 @@ public class CourseV2Service {
     private final CourseRepository courseRepository;
     private final CourseUnitRepository courseUnitRepository;
     private final AssignmentRepository assignmentRepository;
+    private final UserCourseRelationRepository userCourseRelationRepository;
 
     @Transactional(readOnly = true)
     public List<CoursePreviewResponse> getCourses(Integer userId) {
@@ -127,7 +125,12 @@ public class CourseV2Service {
         var creator = userRepository.getReferenceById(creatorId);
         newCourse.setTeacher(creator);
 
-        return courseRepository.save(newCourse);
+        var result = courseRepository.save(newCourse);
+
+        var relation = UserCourseRelationEntity.builder().user(creator).course(result).build();
+        userCourseRelationRepository.save(relation);
+
+        return result;
     }
 
     @Transactional

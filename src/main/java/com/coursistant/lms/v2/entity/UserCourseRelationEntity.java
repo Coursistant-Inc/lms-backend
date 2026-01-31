@@ -12,6 +12,7 @@ import java.util.Objects;
 @ToString
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 @Table(name = "rel_user_course")
 public class UserCourseRelationEntity {
     @Id
