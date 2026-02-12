@@ -32,7 +32,7 @@ public class ReviewEntity {
     @Column(name = "teacher_comment", nullable = false, columnDefinition = "TEXT", length = 1000)
     private String teacherComment;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "submission_id",
             referencedColumnName = "id",
             foreignKey = @ForeignKey(name = "fk_nw_review_submission"))
