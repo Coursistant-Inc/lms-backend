@@ -1,0 +1,133 @@
+package com.coursistant.lms.module.file.controller;
+
+import cn.hutool.core.io.FileUtil;
+import org.springframework.core.io.InputStreamResource;
+import cn.hutool.core.thread.ThreadUtil;
+import cn.hutool.core.util.StrUtil;
+import com.coursistant.lms.shared.web.Result;
+import com.coursistant.lms.module.file.service.MinIOService;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import jakarta.annotation.Resource;
+import jakarta.servlet.http.HttpServletResponse;
+
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.URLEncoder;
+
+/**
+ * 文件接口
+ * File API
+ */
+@RestController
+@RequestMapping("/files")
+public class FileController {
+
+    // 文件上传存储路径
+    // File upload storage path
+    private static final String filePath = System.getProperty("user.dir") + "/files/";
+
+    @Value("${server.port:9090}")
+    private String port;
+
+    @Value("${ip:localhost}")
+    private String ip;
+
+    @Resource
+    private MinIOService minIOService;
+
+    /**
+     * 文件上传
+     * Upload a file
+     */
+    @PostMapping("/upload")
+    public Result upload(MultipartFile file) {
+        String flag;
+        synchronized (FileController.class) {
+            flag = System.currentTimeMillis() + "";
+            ThreadUtil.sleep(1L);
+        }
+        String fileName = file.getOriginalFilename();
+        try {
+            if (!FileUtil.isDirectory(filePath)) {
+                FileUtil.mkdir(filePath);
+            }
+            // 文件存储形式：时间戳-文件名
+            // File storage format: timestamp-filename
+            FileUtil.writeBytes(file.getBytes(), filePath + flag + "-" + fileName);  // ***/manager/files/1697438073596-avatar.png
+            System.out.println(fileName + "--上传成功");
+
+        } catch (Exception e) {
+            System.err.println(fileName + "--文件上传失败 / File upload failed");
+        }
+        String http = "http://" + ip + ":" + port + "/files/";
+        return Result.success(http + flag + "-" + fileName);  //  http://localhost:9090/files/1697438073596-avatar.png
+    }
+
+    /**
+     * 获取文件
+     * Retrieve a file
+     *
+     * @param flag 文件标识符 / File identifier
+     * @param response HTTP 响应对象 / HTTP response object
+     */
+    @GetMapping("/{flag}") //  1697438073596-avatar.png
+    public void avatarPath(@PathVariable String flag, HttpServletResponse response) {
+        OutputStream os;
+        try {
+            if (StrUtil.isNotEmpty(flag)) {
+                response.addHeader("Content-Disposition", "attachment;filename=" + URLEncoder.encode(flag, "UTF-8"));
+                response.setContentType("application/octet-stream");
+                byte[] bytes = FileUtil.readBytes(filePath + flag);
+                os = response.getOutputStream();
+                os.write(bytes);
+                os.flush();
+                os.close();
+            }
+        } catch (Exception e) {
+            System.out.println("文件下载失败 / File download failed");
+        }
+    }
+
+    /**
+     * 删除文件
+     * Delete a file
+     *
+     * @param flag 文件标识符 / File identifier
+     */
+    @DeleteMapping("/{flag}")
+    public void delFile(@PathVariable String flag) {
+        FileUtil.del(filePath + flag);
+        System.out.println("删除文件 " + flag + " 成功 / File " + flag + " deleted successfully");
+    }
+
+    /* 
+     * Download a file from MinIO bucket storage
+     */
+    @GetMapping("/downloadFileMinIO")
+    public ResponseEntity<InputStreamResource> download(
+            @RequestParam String bucket,
+            @RequestParam String fileDest
+    ) {
+        try {
+            InputStream stream = minIOService.downloadFile(fileDest, bucket);
+
+            String outputFilename = fileDest.substring(fileDest.lastIndexOf("/") + 1);
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + outputFilename + "\"")
+                    .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                    .body(new InputStreamResource(stream));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError()
+                    .body(null); // or return an error message instead
+        }
+    }
+}

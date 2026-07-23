@@ -102,8 +102,8 @@ spring:
 
 # 配置mybatis实体和xml映射
 mybatis:
-  mapper-locations: classpath:mapper/*.xml
-  type-aliases-package: com.example.entity
+  mapper-locations: classpath:mapper/**/*.xml
+  type-aliases-package: com.coursistant.lms.module
   configuration:
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
     map-underscore-to-camel-case: true
@@ -144,4 +144,10 @@ rocketchat:
   admin:
     username: ${ROCKETCHAT_ADMIN_USERNAME}  # 管理员用户名
     password: ${ROCKETCHAT_ADMIN_PASSWORD}  # 管理员密码
+
+token:
+  access-expire-hours: 2
+  refresh-expire-days: 30
+  private-key-path: private.pem
+  public-key-path: public.pem
 

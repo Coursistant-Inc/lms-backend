@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.coursistant.lms.module.assignment.repository.AssignmentGroupMapper">
+
+    <sql id="Base_Column_List">
+        id, assignment_id, course_id, title, group_name, group_status, join_mode, description, curr_student_count, max_student, create_at
+    </sql>
+
+    <insert id="insert" parameterType="com.coursistant.lms.module.assignment.entity.AssignmentGroup" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO AssignmentGroup (assignment_id, course_id, title, group_name, group_status, join_mode, description, curr_student_count, max_student, create_at)
+        VALUES (#{assignmentId}, #{courseId}, #{title}, #{groupName}, #{groupStatus}, #{joinMode}, #{description}, #{currStudentCount}, #{maxStudent}, #{createAt})
+    </insert>
+
+    <update id="updateById" parameterType="com.coursistant.lms.module.assignment.entity.AssignmentGroup">
+        UPDATE AssignmentGroup
+        <set>
+            <if test="assignmentId != null">assignment_id = #{assignmentId},</if>
+            <if test="courseId != null">course_id = #{courseId},</if>
+            <if test="title != null">title = #{title},</if>
+            <if test="groupName != null">group_name = #{groupName},</if>
+            <if test="groupStatus != null">group_status = #{groupStatus},</if>
+            <if test="joinMode != null">join_mode = #{joinMode},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="currStudentCount != null">curr_student_count = #{currStudentCount},</if>
+            <if test="maxStudent != null">max_student = #{maxStudent},</if>
+            <if test="createAt != null">create_at = #{createAt},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById" parameterType="int">
+        DELETE FROM AssignmentGroup WHERE id = #{id}
+    </delete>
+
+    <select id="selectById" resultType="com.coursistant.lms.module.assignment.entity.AssignmentGroup">
+        SELECT <include refid="Base_Column_List"/>
+        FROM AssignmentGroup
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectAll" resultType="com.coursistant.lms.module.assignment.entity.AssignmentGroup" parameterType="com.coursistant.lms.module.assignment.entity.AssignmentGroup">
+        SELECT <include refid="Base_Column_List"/>
+        FROM AssignmentGroup
+        <where>
+            <if test="assignmentId != null">AND assignment_id = #{assignmentId}</if>
+            <if test="courseId != null">AND course_id = #{courseId}</if>
+            <if test="groupName != null">AND group_name LIKE CONCAT('%', #{groupName}, '%')</if>
+            <if test="groupStatus != null">AND group_status = #{groupStatus}</if>
+            <if test="joinMode != null">AND join_mode = #{joinMode}</if>
+        </where>
+    </select>
+
+    <select id="selectByAssignmentId" resultType="com.coursistant.lms.module.assignment.entity.AssignmentGroup">
+        SELECT <include refid="Base_Column_List"/>
+        FROM AssignmentGroup
+        WHERE assignment_id = #{assignmentId}
+    </select>
+
+    <select id="selectByCourseId" resultType="com.coursistant.lms.module.assignment.entity.AssignmentGroup">
+        SELECT <include refid="Base_Column_List"/>
+        FROM AssignmentGroup
+        WHERE course_id = #{courseId}
+    </select>
+
+    <select id="selectByCourseIdAndAssignmentId" resultType="com.coursistant.lms.module.assignment.entity.AssignmentGroup">
+        SELECT <include refid="Base_Column_List"/>
+        FROM AssignmentGroup
+        WHERE course_id = #{courseId} AND assignment_id = #{assignmentId}
+    </select>
+
+    <select id="selectAvailableGroups" resultType="com.coursistant.lms.module.assignment.entity.AssignmentGroup">
+        SELECT <include refid="Base_Column_List"/>
+        FROM AssignmentGroup
+        WHERE course_id = #{courseId} 
+        AND assignment_id = #{assignmentId}
+        AND group_status = 'active'
+    </select>
+
+</mapper>

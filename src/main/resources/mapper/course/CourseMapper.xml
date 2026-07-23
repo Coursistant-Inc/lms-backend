@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.coursistant.lms.module.course.repository.CourseMapper">
+
+    <sql id="Base_Column_List">
+        id,name,course_code,teacher_id,semester,school, title
+    </sql>
+
+    <sql id="Base_Column_List_WithPrefix">
+        c.id, c.name, c.course_code, c.teacher_id, c.semester, c.school, c.title
+    </sql>
+
+    <select id="selectAll" resultType="com.coursistant.lms.module.course.entity.Course">
+        select Course.*, User.name as teacherName, User.phone as teacherPhone, User.email as teacherEmail
+        from Course
+        left join User on Course.teacher_id = User.id
+        <where>
+            <if test="id != null"> and id= #{id}</if>
+            <if test="name != null"> and Course.name like concat('%', #{name}, '%')</if>
+            <if test="courseCode != null"> and course_code= #{courseCode}</if>
+            <if test="teacherId != null"> and teacher_id= #{teacherId}</if>
+            <if test="semester != null"> and semester= #{semester}</if>
+            <if test="school != null"> and school= #{school}</if>
+        </where>
+        order by Course.id desc
+    </select>
+
+    <select id="selectById" resultType="com.coursistant.lms.module.course.entity.Course">
+        SELECT
+            c.*,
+            COALESCE(f.unit_count, 0) AS courseUnitCount
+        FROM Course c
+                 LEFT JOIN (
+            SELECT course_id, COUNT(*) AS unit_count
+            FROM Folder
+            GROUP BY course_id
+        ) f ON f.course_id = c.id
+        WHERE c.id = #{id}
+    </select>   
+
+    <delete id="deleteById">
+        delete from Course
+        where  id = #{id}
+    </delete>
+
+    <insert id="insert" parameterType="com.coursistant.lms.module.course.entity.Course" useGeneratedKeys="true" keyProperty="id">
+
+    insert into Course
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="id != null">id,</if>
+            <if test="name != null">name,</if>
+            <if test="courseCode != null">course_code,</if>
+            <if test="teacherId != null">teacher_id,</if>
+            <if test="semester != null">semester,</if>
+            <if test="school != null">school,</if>
+            <if test="title != null">title,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="id != null">#{id},</if>
+            <if test="name != null">#{name},</if>
+            <if test="courseCode != null">#{courseCode},</if>
+            <if test="teacherId != null">#{teacherId},</if>
+            <if test="semester != null">#{semester},</if>
+            <if test="school != null">#{school},</if>
+            <if test="title != null">#{title},</if>
+        </trim>
+    </insert>
+
+    <update id="updateById" parameterType="com.coursistant.lms.module.course.entity.Course">
+        update Course
+        <set>
+            <if test="name != null">
+                name = #{name},
+            </if>
+            <if test="courseCode != null">
+                course_code = #{courseCode},
+            </if>
+            <if test="teacherId != null">
+                teacher_id = #{teacherId},
+            </if>
+            <if test="semester != null">
+                semester = #{semester},
+            </if>
+            <if test="school != null">
+                school = #{school},
+            </if>
+            <if test="title != null">
+                title = #{title},
+            </if>
+        </set>
+        where id = #{id}
+    </update>
+
+    <!-- 查询某用户通过 Teach 表教授的所有课程（含老师信息） -->
+    <select id="selectByUserIdFromTeach" resultType="com.coursistant.lms.module.course.entity.Course">
+        SELECT c.*, u.name AS teacherName, u.phone AS teacherPhone, u.email AS teacherEmail, COALESCE(f.unit_count, 0) AS courseUnitCount
+        FROM Teach t
+                 JOIN Course c ON t.course_id = c.id
+                 LEFT JOIN User u ON c.teacher_id = u.id
+                 LEFT JOIN (
+                    SELECT course_id, COUNT(*) AS unit_count
+                    FROM Folder
+                    GROUP BY course_id
+                 ) f ON f.course_id = c.id
+        WHERE t.user_id = #{userId}
+        ORDER BY c.id   
+    </select>
+
+    <!-- 查询某用户通过 Learn 表学习的所有课程（含老师信息） -->
+    <select id="selectByUserIdFromLearn" resultType="com.coursistant.lms.module.course.entity.Course">
+        SELECT c.*, u.name AS teacherName, u.phone AS teacherPhone, u.email AS teacherEmail, COALESCE(f.unit_count, 0) AS courseUnitCount
+        FROM Learn l
+                 JOIN Course c ON l.course_id = c.id
+                 LEFT JOIN User u ON c.teacher_id = u.id
+                 LEFT JOIN (
+                    SELECT course_id, COUNT(*) AS unit_count
+                    FROM Folder
+                    GROUP BY course_id
+                ) f ON f.course_id = c.id
+        WHERE l.user_id = #{userId}
+        ORDER BY c.id DESC
+    </select>
+
+    <select id="selectCourseDetailsByUserId" resultType="com.coursistant.lms.module.course.dto.CourseDetailsDTO">
+        SELECT u.name, p.avatar, c.name as title
+        FROM User u
+        INNER JOIN Profile p ON u.id = p.user_id
+        INNER JOIN Teach t ON u.id = t.user_id
+        INNER JOIN Course c ON c.id = t.course_id
+        WHERE c.id IN
+        <foreach item="course" index="index" collection="courseList"
+            open="(" separator="," close=")">
+                #{course.id}
+        </foreach>
+    </select>
+
+    <insert id="updateLastSelectedCourse">
+        INSERT INTO LastSelectedCourse(student_id,course_id)
+        VALUES(#{userId},#{courseId})
+        ON DUPLICATE KEY UPDATE course_id = #{courseId}
+    </insert>
+
+
+
+
+
+
+</mapper>

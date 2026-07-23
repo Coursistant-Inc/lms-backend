@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.coursistant.lms.module.auth.token.repository.RefreshTokenMapper">
+
+    <sql id="Base_Column_List">
+        id, user_id, token, ip_address, user_agent, expire_time, created_time, updated_time,role
+    </sql>
+
+    <!-- 插入 refresh token（动态） -->
+    <insert id="insert" parameterType="com.coursistant.lms.module.auth.token.entity.RefreshToken" useGeneratedKeys="true" keyProperty="id">
+        insert into RefreshToken
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="userId != null">user_id,</if>
+            <if test="token != null">token,</if>
+            <if test="ipAddress != null">ip_address,</if>
+            <if test="userAgent != null">user_agent,</if>
+            <if test="expireTime != null">expire_time,</if>
+            <if test="role != null">role,</if>
+            created_time,
+            updated_time
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="userId != null">#{userId},</if>
+            <if test="token != null">#{token},</if>
+            <if test="ipAddress != null">#{ipAddress},</if>
+            <if test="userAgent != null">#{userAgent},</if>
+            <if test="expireTime != null">#{expireTime},</if>
+            <if test="role != null">#{role},</if>
+            now(),
+            now()
+        </trim>
+    </insert>
+
+    <!-- 更新 refresh token -->
+    <update id="updateById" parameterType="com.coursistant.lms.module.auth.token.entity.RefreshToken">
+        update RefreshToken
+        <set>
+            <if test="userId != null">user_id = #{userId},</if>
+            <if test="token != null">token = #{token},</if>
+            <if test="ipAddress != null">ip_address = #{ipAddress},</if>
+            <if test="userAgent != null">user_agent = #{userAgent},</if>
+            <if test="expireTime != null">expire_time = #{expireTime},</if>
+            <if test="role != null">role = #{role},</if>
+            updated_time = now()
+        </set>
+        where id = #{id}
+    </update>
+
+    <select id="selectByUserIdAndRoleOrderByCreateTime" resultType="com.coursistant.lms.module.auth.token.entity.RefreshToken">
+        SELECT * FROM RefreshToken
+        WHERE user_id = #{userId} AND role = #{role}
+        ORDER BY created_time ASC
+    </select>
+
+
+    <!-- 删除 by ID -->
+    <delete id="deleteById">
+        delete from RefreshToken where id = #{id}
+    </delete>
+
+    <!-- 删除 by userId -->
+    <delete id="deleteByUserId">
+        delete from RefreshToken where user_id = #{userId}
+    </delete>
+
+    <!-- 删除所有过期 token（定时任务用） -->
+    <delete id="deleteExpiredTokens">
+        delete from RefreshToken where expire_time &lt; now()
+    </delete>
+
+    <!-- 查询 by ID -->
+    <select id="selectById" resultType="com.coursistant.lms.module.auth.token.entity.RefreshToken">
+        select
+        <include refid="Base_Column_List" />
+        from RefreshToken
+        where id = #{id}
+    </select>
+
+    <!-- 查询 by userId（最近一条） -->
+    <select id="selectByUserId" resultType="com.coursistant.lms.module.auth.token.entity.RefreshToken">
+        select
+        <include refid="Base_Column_List" />
+        from RefreshToken
+        where user_id = #{userId}
+        order by created_time desc
+        limit 1
+    </select>
+
+    <!-- 查询 by token（防止伪造） -->
+    <select id="selectByToken" resultType="com.coursistant.lms.module.auth.token.entity.RefreshToken">
+        select
+        <include refid="Base_Column_List" />
+        from RefreshToken
+        where token = #{token}
+    </select>
+
+    <!-- 查询 user 所有 token（多端支持时用） -->
+    <select id="selectAllByUserId" resultType="com.coursistant.lms.module.auth.token.entity.RefreshToken">
+        select
+        <include refid="Base_Column_List" />
+        from RefreshToken
+        where user_id = #{userId}
+        order by created_time desc
+    </select>
+
+</mapper>

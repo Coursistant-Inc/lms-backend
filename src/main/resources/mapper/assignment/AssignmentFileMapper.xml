@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.coursistant.lms.module.assignment.repository.AssignmentFileMapper">
+
+    <sql id="Base_Column_List">
+        id,assignment_id,name,path
+    </sql>
+
+    <!-- 查询所有 AssignmentFile // Select all AssignmentFiles -->
+    <select id="selectAll" resultType="com.coursistant.lms.module.assignment.entity.AssignmentFile">
+        select
+        <include refid="Base_Column_List" />
+        from AssignmentFile
+        <where>
+            <if test="id != null"> and id = #{id}</if>
+            <if test="assignmentId != null"> and assignment_id = #{assignmentId}</if>
+            <if test="name != null"> and name = #{name}</if>
+            <if test="path != null"> and path = #{path}</if>
+        </where>
+
+    </select>
+
+    <!-- 通过 ID 查询 AssignmentFile // Select AssignmentFile by ID -->
+    <select id="selectById" resultType="com.coursistant.lms.module.assignment.entity.AssignmentFile">
+        select
+        <include refid="Base_Column_List" />
+        from AssignmentFile
+        where id = #{id}
+    </select>
+
+    <!-- 通过 ID 删除 AssignmentFile // Delete AssignmentFile by ID -->
+    <delete id="deleteById">
+        delete from AssignmentFile
+        where id = #{id}
+    </delete>
+
+    <!-- 插入新的 AssignmentFile // Insert a new AssignmentFile -->
+    <insert id="insert" parameterType="com.coursistant.lms.module.assignment.entity.AssignmentFile" useGeneratedKeys="true" keyProperty="id">
+        insert into AssignmentFile
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="id != null">id,</if>
+            <if test="assignmentId != null">assignment_id,</if>
+            <if test="name != null">name,</if>
+            <if test="path != null">path,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="id != null">#{id},</if>
+            <if test="assignmentId != null">#{assignmentId},</if>
+            <if test="name != null">#{name},</if>
+            <if test="path != null">#{path},</if>
+        </trim>
+    </insert>
+
+
+
+    <!-- 更新 AssignmentFile // Update AssignmentFile -->
+    <update id="updateById" parameterType="com.coursistant.lms.module.assignment.entity.AssignmentFile">
+        update AssignmentFile
+        <set>
+            <if test="assignmentId != null">
+                assignment_id = #{assignmentId},
+            </if>
+            <if test="name != null">
+                name = #{name},
+            </if>
+            <if test="path != null">
+                path = #{path},
+            </if>
+        </set>
+        where id = #{id}
+    </update>
+
+
+</mapper>

@@ -5,7 +5,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-@MapperScan("com.coursistant.lms.mapper")
+@MapperScan("com.coursistant.lms.module")
 public class SpringbootApplication {
 
     public static void main(String[] args) {        

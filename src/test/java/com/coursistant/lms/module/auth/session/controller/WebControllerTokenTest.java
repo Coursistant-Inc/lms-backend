@@ -1,0 +1,121 @@
+package com.coursistant.lms.module.auth.session.controller;
+
+import com.coursistant.lms.module.auth.session.controller.WebController;
+import com.coursistant.lms.module.auth.token.dto.RefreshResult;
+import com.coursistant.lms.module.chat.service.CoursistanceService;
+import com.coursistant.lms.module.groupchat.service.RocketChatAuthService;
+import com.coursistant.lms.module.auth.admin.service.AdminService;
+import com.coursistant.lms.module.auth.token.service.RefreshTokenService;
+import com.coursistant.lms.module.user.service.UserService;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+
+import jakarta.servlet.http.Cookie;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+@ExtendWith(MockitoExtension.class)
+class WebControllerTokenTest {
+
+    @Mock
+    private AdminService adminService;
+    @Mock
+    private UserService userService;
+    @Mock
+    private CoursistanceService coursistanceService;
+    @Mock
+    private RefreshTokenService refreshTokenService;
+    @Mock
+    private RocketChatAuthService rocketChatAuthService;
+    @Mock
+    private StringRedisTemplate stringRedisTemplate;
+    @Mock
+    private ValueOperations<String, String> valueOperations;
+
+    @InjectMocks
+    private WebController webController;
+
+    private MockMvc mockMvc;
+
+    @BeforeEach
+    void setUp() {
+        mockMvc = MockMvcBuilders.standaloneSetup(webController).build();
+        lenient().when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+    }
+
+    @Test
+    void refreshToken_validCookie_returnsNewAccessTokenAndSetsCookie() throws Exception {
+        when(valueOperations.increment(startsWith("ratelimit:refresh:"))).thenReturn(1L);
+        when(refreshTokenService.getNewAccessToken("old-refresh"))
+                .thenReturn(new RefreshResult("new-access-token", "new-refresh-token"));
+
+        MvcResult result = mockMvc.perform(post("/refresh-token")
+                        .cookie(new Cookie("refreshToken", "old-refresh"))
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("200"))
+                .andExpect(jsonPath("$.data").value("new-access-token"))
+                .andReturn();
+
+        String setCookie = result.getResponse().getHeader("Set-Cookie");
+        assertNotNull(setCookie);
+        assertTrue(setCookie.contains("refreshToken=new-refresh-token"));
+        assertTrue(setCookie.toLowerCase().contains("httponly"));
+        verify(stringRedisTemplate).expire(startsWith("ratelimit:refresh:"), eq(60L), any());
+    }
+
+    @Test
+    void refreshToken_noCookie_returns4016() throws Exception {
+        when(valueOperations.increment(startsWith("ratelimit:refresh:"))).thenReturn(1L);
+
+        mockMvc.perform(post("/refresh-token").accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("4016"));
+    }
+
+    @Test
+    void refreshToken_rateLimitExceeded_returns429() throws Exception {
+        when(valueOperations.increment(startsWith("ratelimit:refresh:"))).thenReturn(11L);
+
+        mockMvc.perform(post("/refresh-token")
+                        .cookie(new Cookie("refreshToken", "any"))
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("429"))
+                .andExpect(jsonPath("$.msg").value("Too many requests, please try again later"));
+
+        verifyNoInteractions(refreshTokenService);
+    }
+
+    @Test
+    void logout_validAuth_clearsTokenAndCookie() throws Exception {
+        MvcResult result = mockMvc.perform(post("/logout")
+                        .requestAttr("userId", 42)
+                        .requestAttr("userRole", "USER")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("200"))
+                .andReturn();
+
+        verify(refreshTokenService).deleteByUserId(42, "USER");
+
+        String setCookie = result.getResponse().getHeader("Set-Cookie");
+        assertNotNull(setCookie);
+        assertTrue(setCookie.contains("refreshToken="));
+        assertTrue(setCookie.contains("Max-Age=0") || setCookie.toLowerCase().contains("max-age=0"));
+    }
+}

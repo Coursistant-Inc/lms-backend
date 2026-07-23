@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.coursistant.lms.module.file.repository.FolderMapper">
+
+    <sql id="Base_Column_List">
+        id, course_id, name, description, order_index, submission_required,title
+    </sql>
+
+    <select id="selectAll" resultType="com.coursistant.lms.module.file.entity.Folder">
+        select
+        <include refid="Base_Column_List"/>
+        from Folder
+        <where>
+            <if test="id != null">and id = #{id}</if>
+            <if test="courseId != null">and course_id = #{courseId}</if>
+            <if test="name != null">and name = #{name}</if>
+            <if test="submissionRequired != null">and submission_required = #{submissionRequired}</if>
+
+        </where>
+    </select>
+
+    <select id="selectById" resultType="com.coursistant.lms.module.file.entity.Folder">
+        select
+        <include refid="Base_Column_List"/>
+        from Folder
+        where id = #{id}
+    </select>
+
+    <insert id="insert" parameterType="com.coursistant.lms.module.file.entity.Folder" useGeneratedKeys="true" keyProperty="id">
+        insert into Folder
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="courseId != null">course_id,</if>
+            <if test="name != null">name,</if>
+            <if test="description != null">description,</if>
+            <if test="orderIndex != null">order_index,</if>
+            <if test="title != null">title,</if>
+            <if test="submissionRequired != null">submission_required,</if>
+
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="courseId != null">#{courseId},</if>
+            <if test="name != null">#{name},</if>
+            <if test="description != null">#{description},</if>
+            <if test="orderIndex != null">#{orderIndex},</if>
+            <if test="title != null">#{title},</if>
+            <if test="submissionRequired != null">#{submissionRequired},</if>
+
+        </trim>
+    </insert>
+
+    <update id="updateById" parameterType="com.coursistant.lms.module.file.entity.Folder">
+        update Folder
+        <set>
+            <if test="courseId != null">course_id = #{courseId},</if>
+            <if test="name != null">name = #{name},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="orderIndex != null">order_index = #{orderIndex},</if>
+            <if test="title != null">title = #{title},</if>
+            <if test="submissionRequired != null">submission_required = #{submissionRequired},</if>
+
+        </set>
+        where id = #{id}
+    </update>
+
+    <!-- 查询某个课程下的所有 Folder（Lecture） -->
+    <select id="selectByCourseId" resultType="com.coursistant.lms.module.file.entity.Folder">
+        select
+        <include refid="Base_Column_List"/>
+        from Folder
+        where course_id = #{courseId}
+        order by order_index asc, id asc
+    </select>
+
+
+    <delete id="deleteById">
+        delete from Folder where id = #{id}
+    </delete>
+
+</mapper>

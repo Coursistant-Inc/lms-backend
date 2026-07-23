@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.coursistant.lms.module.assignment.repository.GroupMemberMapper">
+
+    <sql id="Base_Column_List">
+        id, group_id, course_id, user_id
+    </sql>
+
+    <insert id="insert" parameterType="com.coursistant.lms.module.assignment.entity.GroupMember" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO GroupMember (group_id, course_id, user_id)
+        VALUES (#{groupId}, #{courseId}, #{userId})
+    </insert>
+
+    <delete id="deleteById" parameterType="int">
+        DELETE FROM GroupMember WHERE id = #{id}
+    </delete>
+
+    <delete id="deleteByGroupId" parameterType="int">
+        DELETE FROM GroupMember WHERE group_id = #{groupId}
+    </delete>
+
+    <select id="selectByGroupId" resultType="com.coursistant.lms.module.assignment.entity.GroupMember">
+        SELECT <include refid="Base_Column_List"/>
+        FROM GroupMember
+        WHERE group_id = #{groupId}
+    </select>
+
+    <select id="selectByGroupIdAndUserId" resultType="com.coursistant.lms.module.assignment.entity.GroupMember">
+        SELECT <include refid="Base_Column_List"/>
+        FROM GroupMember
+        WHERE group_id = #{groupId} AND user_id = #{userId}
+    </select>
+
+    <select id="selectAll" resultType="com.coursistant.lms.module.assignment.entity.GroupMember">
+        select
+        <include refid="Base_Column_List" />
+        from GroupMember
+        <where>
+            <if test="id != null">AND id = #{id}</if>
+            <if test="groupId != null">AND group_id = #{groupId}</if>
+            <if test="courseId != null">AND course_id = #{courseId}</if>
+            <if test="userId != null">AND user_id = #{userId}</if>
+        </where>
+    </select>
+
+
+    <select id="selectGroupIdByCourseIdAndUserId"
+            parameterType="map"
+            resultType="int">
+        SELECT group_id
+        FROM GroupMember
+        WHERE course_id = #{courseId}
+          AND user_id = #{userId}
+    </select>
+
+
+</mapper>
