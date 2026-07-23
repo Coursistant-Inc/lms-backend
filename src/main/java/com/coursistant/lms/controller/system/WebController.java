@@ -15,7 +15,7 @@ import com.coursistant.lms.service.user.UserService;
 import com.coursistant.lms.utils.TokenUtils;
 import com.coursistant.lms.utils.TimeZoneUtils;
 import com.coursistant.lms.annotation.RequiresPermission;
-import com.coursistant.lms.v2.common.ApiResponse;
+import com.coursistant.lms.common.ApiResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;

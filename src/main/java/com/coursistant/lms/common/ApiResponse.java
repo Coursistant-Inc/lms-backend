@@ -1,4 +1,4 @@
-package com.coursistant.lms.v2.common;
+package com.coursistant.lms.common;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
