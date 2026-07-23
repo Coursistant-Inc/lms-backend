@@ -2,6 +2,12 @@ package com.coursistant.lms.shared.exception;
 
 import com.coursistant.lms.shared.enums.ResultCodeEnum;
 
+/**
+ * Legacy business exception for the old Result response style.
+ * Replaced by {@link com.coursistant.lms.shared.api.ApiException}.
+ * Delete after all modules are migrated to the new API style
+ * (also remove the CustomException handler in ApiExceptionHandler).
+ */
 public class CustomException extends RuntimeException {
     private String code;
     private String msg;

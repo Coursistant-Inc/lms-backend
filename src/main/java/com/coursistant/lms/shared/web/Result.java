@@ -2,6 +2,11 @@ package com.coursistant.lms.shared.web;
 
 import com.coursistant.lms.shared.enums.ResultCodeEnum;
 
+/**
+ * Legacy API response wrapper (always HTTP 200).
+ * Replaced by {@link com.coursistant.lms.shared.api.ApiResponse}.
+ * Delete after all modules are migrated to the new API style.
+ */
 public class Result {
     private String code;
     private String msg;

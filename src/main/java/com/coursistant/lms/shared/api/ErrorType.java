@@ -1,0 +1,54 @@
+package com.coursistant.lms.shared.api;
+
+import org.springframework.http.HttpStatus;
+
+public enum ErrorType {
+
+    // --- Generic ---
+    SUCCESS(HttpStatus.OK, "Success"),
+    BAD_REQUEST(HttpStatus.BAD_REQUEST, "Invalid request data"),
+    UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "Authentication required"),
+    FORBIDDEN(HttpStatus.FORBIDDEN, "Access denied"),
+    NOT_FOUND(HttpStatus.NOT_FOUND, "Resource not found"),
+    CONFLICT(HttpStatus.CONFLICT, "Resource conflict"),
+    TOO_MANY_REQUESTS(HttpStatus.TOO_MANY_REQUESTS, "Too many requests"),
+    INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Internal server error"),
+
+    // --- Auth: User ---
+    USER_ALREADY_EXISTS(HttpStatus.CONFLICT, "Username Already Exists"),
+    USER_NOT_FOUND(HttpStatus.NOT_FOUND, "User Does Not Exist"),
+    INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "Invalid email or password"),
+    ACCOUNT_LOCKED(HttpStatus.LOCKED, "Account is locked"),
+
+    // --- Auth: Token ---
+    INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "Invalid Access Token"),
+    REFRESH_TOKEN_INVALID(HttpStatus.UNAUTHORIZED, "Refresh Token Validation Failed"),
+    TOKEN_CREATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "Error When Creating Token"),
+
+    // --- Auth: Params ---
+    PARAM_MISSING(HttpStatus.BAD_REQUEST, "Parameter Missing"),
+    INVALID_PASSWORD(HttpStatus.BAD_REQUEST, "Incorrect Original Password"),
+    INVALID_VERIFICATION_CODE(HttpStatus.BAD_REQUEST, "Incorrect Verification Code"),
+    ACCESS_DENIED(HttpStatus.FORBIDDEN, "No Permission to Perform This Action"),
+    INVITATION_NOT_FOUND(HttpStatus.BAD_REQUEST, "Invitation Not Exist");
+
+    private final HttpStatus httpStatus;
+    private final String defaultMessage;
+
+    ErrorType(HttpStatus httpStatus, String defaultMessage) {
+        this.httpStatus = httpStatus;
+        this.defaultMessage = defaultMessage;
+    }
+
+    public Integer getStatusCode() {
+        return httpStatus.value();
+    }
+
+    public HttpStatus getHttpStatus() {
+        return httpStatus;
+    }
+
+    public String getDefaultMessage() {
+        return defaultMessage;
+    }
+}

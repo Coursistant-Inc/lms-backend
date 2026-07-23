@@ -15,10 +15,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.coursistant.lms.shared.web.Result;
+import com.coursistant.lms.shared.api.ApiResponse;
 import com.coursistant.lms.module.user.entity.User;
 import com.coursistant.lms.module.user.service.UserService;
-import com.coursistant.lms.module.chat.entity.Query;
 
 /**
  * 用户前端操作接口
@@ -46,11 +45,11 @@ public class UserController {
      * Add a new user
      */
     @PostMapping("/add")
-    public Result add(@RequestBody User user) {
+    public ApiResponse<Void> add(@RequestBody User user) {
         logRequest("add", user.toString());
         userService.add(user);
         logResponse("add", user.toString());
-        return Result.success();
+        return ApiResponse.success();
     }
 
     /**
@@ -58,11 +57,11 @@ public class UserController {
      * Delete a user by ID
      */
     @DeleteMapping("/delete/{id}")
-    public Result deleteById(@PathVariable Integer id) {
+    public ApiResponse<Void> deleteById(@PathVariable Integer id) {
         logRequest("deleteById", id.toString());
         userService.deleteById(id);
         logResponse("deleteById", id.toString());
-        return Result.success();
+        return ApiResponse.success();
     }
 
     /**
@@ -70,11 +69,11 @@ public class UserController {
      * Batch delete users
      */
     @DeleteMapping("/delete/batch")
-    public Result deleteBatch(@RequestBody List<Integer> ids) {
+    public ApiResponse<Void> deleteBatch(@RequestBody List<Integer> ids) {
         logRequest("deleteBatch", ids.toString());
         userService.deleteBatch(ids);
         logResponse("deleteBatch", ids.toString());
-        return Result.success();
+        return ApiResponse.success();
     }
 
     /**
@@ -82,11 +81,11 @@ public class UserController {
      * Update a user
      */
     @PutMapping("/update")
-    public Result updateById(@RequestBody User user) {
+    public ApiResponse<Void> updateById(@RequestBody User user) {
         logRequest("updateById", user.toString());
         userService.updateById(user);
         logResponse("updateById", user.toString());
-        return Result.success();
+        return ApiResponse.success();
     }
 
     /**
@@ -94,11 +93,11 @@ public class UserController {
      * Query a user by ID
      */
     @GetMapping("/selectById/{id}")
-    public Result selectById(@PathVariable Integer id) {
+    public ApiResponse<User> selectById(@PathVariable Integer id) {
         logRequest("selectById", id.toString());
         User user = userService.selectById(id);
         logResponse("selectById", user.toString());
-        return Result.success(user);
+        return ApiResponse.success(user);
     }
 
     /**
@@ -106,11 +105,11 @@ public class UserController {
      * Query all users
      */
     @GetMapping("/selectAll")
-    public Result selectAll(User user) {
+    public ApiResponse<List<User>> selectAll(User user) {
         logRequest("selectAll", user.toString());
         List<User> list = userService.selectAll(user);
         logResponse("selectAll", null);
-        return Result.success(list);
+        return ApiResponse.success(list);
     }
 
 
@@ -119,19 +118,18 @@ public class UserController {
      * Query all teachers
      */
     @GetMapping("/selectTeachers")
-    public Result selectHeaders() {
+    public ApiResponse<List<User>> selectHeaders() {
         logRequest("selectTeachers", "request received");
         List<User> list = userService.selectTeachers();
         logResponse("selectTeachers", "null");
-        return Result.success(list);
+        return ApiResponse.success(list);
     }
 
     @PostMapping("/nameChange")
-    public Result nameChangeRequest(@RequestParam("currentName") String currentName, @RequestParam("newName") String newName, @RequestParam("userId") Integer userId)
+    public ApiResponse<String> nameChangeRequest(@RequestParam("currentName") String currentName, @RequestParam("newName") String newName, @RequestParam("userId") Integer userId)
     {
         userService.updateName(currentName, newName, userId);
-        // return "Your request has been received. You will be notified once a decision has been taken";
-        return Result.success("Your request has been received. You will be notified once a decision has been taken");
+        return ApiResponse.success("Your request has been received. You will be notified once a decision has been taken");
     }
 
     // This method should be accessible only to university admins
@@ -146,10 +144,10 @@ public class UserController {
      * Mark user's must_change_password as false
      */
     @PutMapping("/markPasswordChanged/{id}")
-    public Result markPasswordChanged(@PathVariable Integer id) {
+    public ApiResponse<Void> markPasswordChanged(@PathVariable Integer id) {
         logRequest("markPasswordChanged", id.toString());
         userService.markPasswordChanged(id);
         logResponse("markPasswordChanged", "User " + id + " must_change_password set to false");
-        return Result.success();
+        return ApiResponse.success();
     }
 }

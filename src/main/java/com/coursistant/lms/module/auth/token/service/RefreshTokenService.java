@@ -1,9 +1,9 @@
 package com.coursistant.lms.module.auth.token.service;
 
-import com.coursistant.lms.shared.enums.ResultCodeEnum;
+import com.coursistant.lms.shared.api.ErrorType;
+import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.module.auth.token.dto.RefreshResult;
 import com.coursistant.lms.module.auth.token.entity.RefreshToken;
-import com.coursistant.lms.shared.exception.CustomException;
 import com.coursistant.lms.module.auth.token.repository.RefreshTokenMapper;
 import com.coursistant.lms.shared.security.TokenUtils;
 import org.slf4j.Logger;
@@ -121,12 +121,12 @@ public class RefreshTokenService {
             if (dbToken == null) {
                 log.warn("Refresh token not found, possible token reuse attack: {}", token.substring(0, Math.min(8, token.length())));
             }
-            throw new CustomException(ResultCodeEnum.REFRESH_TOKEN_CHECK_ERROR);
+            throw new ApiException(ErrorType.REFRESH_TOKEN_INVALID, "Refresh Token Validation Failed");
         }
 
         RefreshToken dbToken = refreshTokenMapper.selectByToken(token);
         if (dbToken == null) {
-            throw new CustomException(ResultCodeEnum.REFRESH_TOKEN_CHECK_ERROR);
+            throw new ApiException(ErrorType.REFRESH_TOKEN_INVALID, "Refresh Token Validation Failed");
         }
 
         Integer userId = dbToken.getUserId();

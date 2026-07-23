@@ -3,8 +3,9 @@ package com.coursistant.lms.module.auth.session.controller;
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.StrUtil;
 import com.coursistant.lms.module.auth.token.service.RefreshTokenService;
-import com.coursistant.lms.shared.web.Result;
-import com.coursistant.lms.shared.enums.ResultCodeEnum;
+import com.coursistant.lms.shared.api.ApiResponse;
+import com.coursistant.lms.shared.api.ErrorType;
+import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.shared.enums.RoleEnum;
 import com.coursistant.lms.module.user.entity.Account;
 import com.coursistant.lms.module.auth.admin.dto.PasswordDTO;
@@ -56,15 +57,15 @@ public class WebController {
 
 
     @GetMapping("/")
-    public Result hello() {
-        return Result.success("访问成功"); // Access successful
+    public ApiResponse<String> hello() {
+        return ApiResponse.success("访问成功");
     }
 
     @PostMapping("/login")
-    public Result login(@RequestBody Account account, HttpServletResponse response) {
+    public ApiResponse<Account> login(@RequestBody Account account, HttpServletResponse response) {
         if (ObjectUtil.isEmpty(account.getEmail()) || ObjectUtil.isEmpty(account.getPassword())
                 || ObjectUtil.isEmpty(account.getRole())) {
-            return Result.error(ResultCodeEnum.PARAM_LOST_ERROR);
+            throw new ApiException(ErrorType.PARAM_MISSING, "Parameter Missing");
         }
 
         Account dbAccount = null;
@@ -75,9 +76,8 @@ public class WebController {
             dbAccount = userService.login(account);
         }
 
-        // TODO: Error handling
         if (dbAccount == null) {
-            return Result.error(ResultCodeEnum.PARAM_LOST_ERROR);
+            throw new ApiException(ErrorType.PARAM_MISSING, "Parameter Missing");
         }
 
         if (ObjectUtil.isNotEmpty(dbAccount.getRefreshToken())) {
@@ -94,40 +94,35 @@ public class WebController {
         dbAccount.setRefreshToken(null);
 
         try {
-            // 1. 确保 RocketChat 用户存在
             rocketChatAuthService.ensureUserExists(
                     dbAccount.getEmail(),
                     account.getPassword(),
                     dbAccount.getName()
             );
 
-            // 2. 创建 RocketChat token
             Map<String, String> rcToken = rocketChatAuthService.createTokenForUser(dbAccount.getEmail());
 
-            // 3. 保存到 dbAccount
             dbAccount.setRocketChatToken(rcToken.get("authToken"));
             dbAccount.setRocketChatUserId(rcToken.get("userId"));
 
-            // System.out.println("✅ RocketChat token created for: " + dbAccount.getEmail());
-            log.info("✅ RocketChat token created for: {}", dbAccount.getEmail());
+            log.info("RocketChat token created for: {}", dbAccount.getEmail());
 
         } catch (Exception e) {
-            log.warn("⚠️ RocketChat login failed: {}", e.getMessage());
+            log.warn("RocketChat login failed: {}", e.getMessage());
         }
 
-        return Result.success(dbAccount);
+        return ApiResponse.success(dbAccount);
     }
 
     @PostMapping("/refresh-token")
-    public Result refreshToken(HttpServletRequest request, HttpServletResponse response) {
-        // IP rate limiting: max 10 requests per minute
+    public ApiResponse<String> refreshToken(HttpServletRequest request, HttpServletResponse response) {
         String rateLimitKey = "ratelimit:refresh:" + request.getRemoteAddr();
         Long count = stringRedisTemplate.opsForValue().increment(rateLimitKey);
         if (count != null && count == 1) {
             stringRedisTemplate.expire(rateLimitKey, 60, TimeUnit.SECONDS);
         }
         if (count != null && count > 10) {
-            return Result.error("429", "Too many requests, please try again later");
+            throw new ApiException(ErrorType.TOO_MANY_REQUESTS, "Too many requests, please try again later");
         }
 
         String refreshToken = null;
@@ -142,7 +137,7 @@ public class WebController {
         }
 
         if (StrUtil.isBlank(refreshToken)) {
-            return Result.error(ResultCodeEnum.REFRESH_TOKEN_CHECK_ERROR);
+            throw new ApiException(ErrorType.REFRESH_TOKEN_INVALID, "Refresh Token Validation Failed");
         }
 
         RefreshResult result = refreshTokenService.getNewAccessToken(refreshToken);
@@ -156,12 +151,12 @@ public class WebController {
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, newCookie.toString());
 
-        return Result.success(result.getAccessToken());
+        return ApiResponse.success(result.getAccessToken());
     }
 
 
     @PostMapping("/logout")
-    public Result logout(HttpServletRequest request, HttpServletResponse response) {
+    public ApiResponse<Void> logout(HttpServletRequest request, HttpServletResponse response) {
         Integer userId = (Integer) request.getAttribute("userId");
         String role = (String) request.getAttribute("userRole");
 
@@ -172,17 +167,17 @@ public class WebController {
                 .maxAge(0).sameSite("Lax").build();
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
 
-        return Result.success();
+        return ApiResponse.success();
     }
 
     /**
      * 注册 // Register
      */
     @PostMapping("/register")
-    public Result register(@RequestBody Account account) {
+    public ApiResponse<Account> register(@RequestBody Account account) {
         if (StrUtil.isBlank(account.getPassword()) || StrUtil.isBlank(account.getEmail())
                 || ObjectUtil.isEmpty(account.getRole())) {
-            return Result.error(ResultCodeEnum.PARAM_LOST_ERROR);
+            throw new ApiException(ErrorType.PARAM_MISSING, "Parameter Missing");
         }
 
         if (RoleEnum.ADMIN.name().equals(account.getRole())) {
@@ -194,33 +189,33 @@ public class WebController {
             account.setAccessToken(TokenUtils.createAccessToken(account.getId(), RoleEnum.USER.name()));
         }
 
-        return Result.success(account);
+        return ApiResponse.success(account);
     }
 
     /**
      * 发送邮箱验证码 // Send email verification code register
      */
     @PostMapping("/sendRegisterEmailVerification")
-    public Result sendRegisterEmailVerification(String email) {
+    public ApiResponse<Void> sendRegisterEmailVerification(String email) {
         userService.sendEmailVerificationCode(email, "register");
-        return Result.success();
+        return ApiResponse.success();
     }
 
     /**
      * 校验邮箱验证码 // Validate email verification code
      */
     @PostMapping("/validateRegisterEmailVerification")
-    public Result validateRegisterEmailVerification(@RequestParam("email") String email,
+    public ApiResponse<Void> validateRegisterEmailVerification(@RequestParam("email") String email,
                                                     @RequestParam("code") String code) {
         userService.validateEmailVerificationCode(email, code);
-        return Result.success();
+        return ApiResponse.success();
     }
 
 
     @PostMapping("/sendResetEmailVerification")
-    public Result sendResetEmailVerification(String email) {
+    public ApiResponse<Void> sendResetEmailVerification(String email) {
         userService.sendEmailVerificationCode(email, "reset");
-        return Result.success();
+        return ApiResponse.success();
     }
 
 
@@ -228,18 +223,18 @@ public class WebController {
      * 修改密码 // Update password
      */
     @PutMapping("/updatePassword")
-    public Result updatePassword(@RequestBody PasswordDTO account) {
+    public ApiResponse<Void> updatePassword(@RequestBody PasswordDTO account) {
         if ("update".equals(account.getType())) {
             if (StrUtil.isBlank(account.getEmail()) || StrUtil.isBlank(account.getPassword())
                     || ObjectUtil.isEmpty(account.getNewPassword())) {
-                return Result.error(ResultCodeEnum.PARAM_LOST_ERROR);
+                throw new ApiException(ErrorType.PARAM_MISSING, "Parameter Missing");
             }
         } else if ("reset".equals(account.getType())) {
             if (StrUtil.isBlank(account.getEmail()) || ObjectUtil.isEmpty(account.getNewPassword())) {
-                return Result.error(ResultCodeEnum.PARAM_LOST_ERROR);
+                throw new ApiException(ErrorType.PARAM_MISSING, "Parameter Missing");
             }
         } else {
-            return Result.error(ResultCodeEnum.PARAM_LOST_ERROR);
+            throw new ApiException(ErrorType.PARAM_MISSING, "Parameter Missing");
         }
         if (RoleEnum.ADMIN.name().equals(account.getRole())) {
             adminService.updatePassword(account);
@@ -247,18 +242,18 @@ public class WebController {
         if (RoleEnum.USER.name().equals(account.getRole())) {
             userService.updatePassword(account);
         }
-        return Result.success();
+        return ApiResponse.success();
     }
 
     @PostMapping("/resetPasswordValidation")
-    public Result resetPasswordValidation(@RequestBody PasswordDTO account) {
+    public ApiResponse<String> resetPasswordValidation(@RequestBody PasswordDTO account) {
 
         if (StrUtil.isBlank(account.getEmail()) || StrUtil.isBlank(account.getCode())) {
-            return Result.error(ResultCodeEnum.PARAM_LOST_ERROR);
+            throw new ApiException(ErrorType.PARAM_MISSING, "Parameter Missing");
         }
         String token = userService.resetPasswordValidation(account);
 
-        return Result.success(token);
+        return ApiResponse.success(token);
     }
 
     /**
@@ -266,7 +261,7 @@ public class WebController {
      */
     @RequiresPermission("chatbot:interact")
     @PostMapping(value = "/query", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public Result query(@RequestParam(value = "file", required = false) MultipartFile file,
+    public ApiResponse<Query> query(@RequestParam(value = "file", required = false) MultipartFile file,
                         @RequestParam("courseId") Integer courseId,
                         @RequestParam("query") String query,
                         @RequestParam("dialogueId") Integer dialogueId,
@@ -277,21 +272,17 @@ public class WebController {
 
         try {
             if (file != null && !file.isEmpty()) {
-                // 1️⃣ 生成日期目录 // Generate date-based directory
                 String datePath = new SimpleDateFormat("yyyy/MM/dd").format(new Date());
-                String baseDir = "/home/ubuntu/SpringBoot/saved_images/query_images"; // 设定存储路径 // Set storage path
-                //String baseDir = "C:\\Users\\Charlottejas\\Desktop\\Jerry\\项目脚手架\\manager\\"; // 设定存储路径
+                String baseDir = "/home/ubuntu/SpringBoot/saved_images/query_images";
                 String uploadDir = baseDir + datePath + "/";
                 File dir = new File(uploadDir);
                 if (!dir.exists() && !dir.mkdirs()) {
                     throw new RuntimeException("Failed to create directory: " + uploadDir);
                 }
 
-                // 2️⃣ 生成唯一文件名 // Generate a unique file name
                 String fileName = System.currentTimeMillis() + "_" + file.getOriginalFilename();
                 File destFile = new File(uploadDir + fileName);
 
-                // 3️⃣ 先手动存储文件，避免 `Tomcat` 清除临时文件 // Manually store the file to prevent `Tomcat` from clearing temporary files
                 file.transferTo(destFile);
                 savedFilePath = destFile.getAbsolutePath();
 
@@ -299,10 +290,8 @@ public class WebController {
             }
         } catch (Exception e) {
             log.error("Error saving file: {}", e.getMessage());
-
         }
 
-        // 记录请求日志，包含文件存储路径 // Log request, including file storage path
         log.info("Start {}: {}", "query", String.format("filePath=%s, courseId=%s, query=%s, dialogueId=%d",
                 savedFilePath, courseId, query, dialogueId));
         Query re_query;
@@ -314,7 +303,7 @@ public class WebController {
             re_query = coursistanceService.query(null, courseId, query, dialogueId, userId, zone);
         }
         log.info("End {}: {}", "query", re_query.toString());
-        return Result.success(re_query);
+        return ApiResponse.success(re_query);
     }
 
 

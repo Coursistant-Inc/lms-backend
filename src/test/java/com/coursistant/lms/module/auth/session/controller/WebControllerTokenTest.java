@@ -7,6 +7,7 @@ import com.coursistant.lms.module.groupchat.service.RocketChatAuthService;
 import com.coursistant.lms.module.auth.admin.service.AdminService;
 import com.coursistant.lms.module.auth.token.service.RefreshTokenService;
 import com.coursistant.lms.module.user.service.UserService;
+import com.coursistant.lms.shared.api.ApiExceptionHandler;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -53,7 +54,9 @@ class WebControllerTokenTest {
 
     @BeforeEach
     void setUp() {
-        mockMvc = MockMvcBuilders.standaloneSetup(webController).build();
+        mockMvc = MockMvcBuilders.standaloneSetup(webController)
+                .setControllerAdvice(new ApiExceptionHandler())
+                .build();
         lenient().when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
     }
 
@@ -67,7 +70,8 @@ class WebControllerTokenTest {
                         .cookie(new Cookie("refreshToken", "old-refresh"))
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value("200"))
+                .andExpect(jsonPath("$.status").value(200))
+                .andExpect(jsonPath("$.code").value("SUCCESS"))
                 .andExpect(jsonPath("$.data").value("new-access-token"))
                 .andReturn();
 
@@ -79,12 +83,13 @@ class WebControllerTokenTest {
     }
 
     @Test
-    void refreshToken_noCookie_returns4016() throws Exception {
+    void refreshToken_noCookie_returns401() throws Exception {
         when(valueOperations.increment(startsWith("ratelimit:refresh:"))).thenReturn(1L);
 
         mockMvc.perform(post("/refresh-token").accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value("4016"));
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.code").value("REFRESH_TOKEN_INVALID"));
     }
 
     @Test
@@ -94,9 +99,10 @@ class WebControllerTokenTest {
         mockMvc.perform(post("/refresh-token")
                         .cookie(new Cookie("refreshToken", "any"))
                         .accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value("429"))
-                .andExpect(jsonPath("$.msg").value("Too many requests, please try again later"));
+                .andExpect(status().is(429))
+                .andExpect(jsonPath("$.status").value(429))
+                .andExpect(jsonPath("$.code").value("TOO_MANY_REQUESTS"))
+                .andExpect(jsonPath("$.message").value("Too many requests, please try again later"));
 
         verifyNoInteractions(refreshTokenService);
     }
@@ -108,7 +114,8 @@ class WebControllerTokenTest {
                         .requestAttr("userRole", "USER")
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value("200"))
+                .andExpect(jsonPath("$.status").value(200))
+                .andExpect(jsonPath("$.code").value("SUCCESS"))
                 .andReturn();
 
         verify(refreshTokenService).deleteByUserId(42, "USER");

@@ -1,13 +1,12 @@
 package com.coursistant.lms.module.auth.admin.controller;
 
-import com.coursistant.lms.shared.web.Result;
+import com.coursistant.lms.shared.api.ApiResponse;
 import com.coursistant.lms.module.auth.admin.entity.Admin;
 import com.coursistant.lms.module.auth.admin.service.AdminService;
 import org.springframework.web.bind.annotation.*;
 import jakarta.annotation.Resource;
 import java.util.List;
 import java.util.logging.Logger;
-import com.coursistant.lms.module.chat.entity.Query;
 
 /**
  * 管理员前端操作接口
@@ -35,11 +34,11 @@ public class AdminController {
      * Add new admin
      */
     @PostMapping("/add")
-    public Result add(@RequestBody Admin admin) {
+    public ApiResponse<Void> add(@RequestBody Admin admin) {
         logRequest("add", admin.toString());
         adminService.add(admin);
         logResponse("add", admin.toString());
-        return Result.success();
+        return ApiResponse.success();
     }
 
     /**
@@ -47,11 +46,11 @@ public class AdminController {
      * Delete by ID
      */
     @DeleteMapping("/delete/{id}")
-    public Result deleteById(@PathVariable Integer id) {
+    public ApiResponse<Void> deleteById(@PathVariable Integer id) {
         logRequest("deleteById", id.toString());
         adminService.deleteById(id);
         logResponse("deleteById", id.toString());
-        return Result.success();
+        return ApiResponse.success();
     }
 
     /**
@@ -59,11 +58,11 @@ public class AdminController {
      * Batch delete
      */
     @DeleteMapping("/delete/batch")
-    public Result deleteBatch(@RequestBody List<Integer> ids) {
+    public ApiResponse<Void> deleteBatch(@RequestBody List<Integer> ids) {
         logRequest("deleteBatch", ids.toString());
         adminService.deleteBatch(ids);
         logResponse("deleteBatch", ids.toString());
-        return Result.success();
+        return ApiResponse.success();
     }
 
     /**
@@ -71,11 +70,11 @@ public class AdminController {
      * Update admin details
      */
     @PutMapping("/update")
-    public Result updateById(@RequestBody Admin admin) {
+    public ApiResponse<Void> updateById(@RequestBody Admin admin) {
         logRequest("updateById", admin.toString());
         adminService.updateById(admin);
         logResponse("updateById", admin.toString());
-        return Result.success();
+        return ApiResponse.success();
     }
 
     /**
@@ -83,11 +82,11 @@ public class AdminController {
      * Query by ID
      */
     @GetMapping("/selectById/{id}")
-    public Result selectById(@PathVariable Integer id) {
+    public ApiResponse<Admin> selectById(@PathVariable Integer id) {
         logRequest("selectById", id.toString());
         Admin admin = adminService.selectById(id);
         logResponse("selectById", admin.toString());
-        return Result.success(admin);
+        return ApiResponse.success(admin);
     }
 
     /**
@@ -95,11 +94,11 @@ public class AdminController {
      * Query all admins
      */
     @GetMapping("/selectAll")
-    public Result selectAll(Admin admin) {
+    public ApiResponse<List<Admin>> selectAll(Admin admin) {
         logRequest("selectAll", admin.toString());
         List<Admin> list = adminService.selectAll(admin);
         logResponse("selectAll", null);
-        return Result.success(list);
+        return ApiResponse.success(list);
     }
 
 

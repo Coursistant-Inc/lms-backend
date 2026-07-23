@@ -2,11 +2,11 @@ package com.coursistant.lms.module.auth.admin.service;
 
 import cn.hutool.core.util.ObjectUtil;
 import com.coursistant.lms.module.auth.admin.dto.PasswordDTO;
-import com.coursistant.lms.shared.exception.CustomException;
+import com.coursistant.lms.shared.api.ApiException;
+import com.coursistant.lms.shared.api.ErrorType;
 import com.coursistant.lms.module.auth.admin.repository.AdminMapper;
 import com.coursistant.lms.module.auth.token.service.RefreshTokenService;
 import com.coursistant.lms.shared.web.Constants;
-import com.coursistant.lms.shared.enums.ResultCodeEnum;
 import com.coursistant.lms.shared.enums.RoleEnum;
 import com.coursistant.lms.module.user.entity.Account;
 import com.coursistant.lms.module.auth.admin.entity.Admin;
@@ -64,7 +64,7 @@ public class AdminService {
     public void add(Admin admin) {
         Admin dbAdmin = adminMapper.selectByEmail(admin.getEmail());
         if (ObjectUtil.isNotNull(dbAdmin)) {
-            throw new CustomException(ResultCodeEnum.USER_EXIST_ERROR);
+            throw new ApiException(ErrorType.USER_ALREADY_EXISTS, "Username Already Exists");
         }
         if (ObjectUtil.isEmpty(admin.getPassword())) {
             admin.setEncryptPassword(Constants.USER_DEFAULT_PASSWORD);
@@ -130,7 +130,7 @@ public class AdminService {
         // 如果缓存不存在，从数据库查询 // If cache does not exist, query from the database
         admin = adminMapper.selectById(id);
         if (ObjectUtil.isNull(admin)) {
-            throw new CustomException(ResultCodeEnum.USER_NOT_EXIST_ERROR);
+            throw new ApiException(ErrorType.USER_NOT_FOUND, "User Does Not Exist");
         }
         // 将结果存入 Redis，并设置过期时间 // Store result in Redis with expiration time
         generalRedisTemplate.opsForValue().set(cacheKey, admin, CACHE_EXPIRE_TIME, TimeUnit.SECONDS);
@@ -181,7 +181,7 @@ public class AdminService {
 
         // 检查是否被锁定 // Check if the account is locked
         if (Boolean.TRUE.equals(generalRedisTemplate.hasKey(lockKey))) {
-            throw new CustomException("6001", "Your account is locked. Please try again later.");
+            throw new ApiException(ErrorType.ACCOUNT_LOCKED, "Your account is locked. Please try again later.");
         }
 
         // 尝试从 Redis 缓存中获取用户信息 // Try to retrieve user information from Redis cache
@@ -195,7 +195,7 @@ public class AdminService {
         }
         // 如果用户不存在 // If the user does not exist
         if (ObjectUtil.isNull(dbAdmin)) {
-            throw new CustomException(ResultCodeEnum.USER_NOT_EXIST_ERROR);
+            throw new ApiException(ErrorType.USER_NOT_FOUND, "User Does Not Exist");
         }
 
         // 将用户信息存入 Redis 缓存，设置过期时间 // Store user information in Redis cache with expiration time
@@ -210,12 +210,12 @@ public class AdminService {
 
             // 判断锁定条件 // Check lock conditions
             if (attempts >= 6) {
-                long lockTime = (attempts < 10) ? 60 : 600; // 第 6 次锁 1 分钟，超过 10 次锁 10 分钟 // Lock for 1 minute on 6th attempt, 10 minutes after 10 attempts
+                long lockTime = (attempts < 10) ? 60 : 600;
                 generalRedisTemplate.opsForValue().set(lockKey, "LOCKED", lockTime, TimeUnit.SECONDS);
-                throw new CustomException("6002", "Your account is locked. Please try again in " + (lockTime / 60) + " minutes.");
+                throw new ApiException(ErrorType.ACCOUNT_LOCKED, "Your account is locked. Please try again in " + (lockTime / 60) + " minutes.");
             }
 
-            throw new CustomException("6003", "Invalid email or password. Remaining attempts: " + (6 - attempts));
+            throw new ApiException(ErrorType.INVALID_CREDENTIALS, "Invalid email or password. Remaining attempts: " + (6 - attempts));
         }
 
         // 登录成功后，清除登录尝试限制和锁定状态 // Upon successful login, clear login attempt restrictions and lock status
@@ -249,11 +249,11 @@ public class AdminService {
     public void updatePassword(PasswordDTO account) {
         Admin dbAdmin = adminMapper.selectByEmail(account.getEmail());
         if (ObjectUtil.isNull(dbAdmin)) {
-            throw new CustomException(ResultCodeEnum.USER_NOT_EXIST_ERROR);
+            throw new ApiException(ErrorType.USER_NOT_FOUND, "User Does Not Exist");
         }
         if ("reset".equals(account.getType())) {
             if (!PasswordEncoderUtil.matches(account.getPassword(), dbAdmin.getPassword())) {
-                throw new CustomException(ResultCodeEnum.PARAM_PASSWORD_ERROR);
+                throw new ApiException(ErrorType.INVALID_PASSWORD, "Incorrect Original Password");
             }
         }
         // 加密新密码然后设置 // Encrypt new password and set it

@@ -1,5 +1,10 @@
 package com.coursistant.lms.shared.enums;
 
+/**
+ * Legacy business error codes for the old Result response style.
+ * Replaced by {@link com.coursistant.lms.shared.api.ErrorType}.
+ * Delete after all modules are migrated to the new API style.
+ */
 public enum ResultCodeEnum {
 
     /**

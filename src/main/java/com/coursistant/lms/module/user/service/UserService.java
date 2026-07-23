@@ -1,22 +1,19 @@
 package com.coursistant.lms.module.user.service;
 
 import cn.hutool.core.util.ObjectUtil;
-import com.coursistant.lms.shared.exception.CustomException;
+import com.coursistant.lms.shared.api.ApiException;
+import com.coursistant.lms.shared.api.ErrorType;
 import com.coursistant.lms.module.groupchat.service.RocketChatAuthService;
 import com.coursistant.lms.module.auth.token.service.RefreshTokenService;
 import com.coursistant.lms.shared.util.EmailUtil;
 
 import com.coursistant.lms.shared.enums.AdminEnums;
 import com.coursistant.lms.shared.enums.LevelEnum;
-import com.coursistant.lms.shared.enums.ResultCodeEnum;
 import com.coursistant.lms.shared.enums.RoleEnum;
 import com.coursistant.lms.module.user.entity.Account;
 import com.coursistant.lms.module.auth.admin.dto.PasswordDTO;
 import com.coursistant.lms.module.user.entity.User;
-import com.coursistant.lms.shared.exception.CustomException;
 import com.coursistant.lms.module.user.repository.UserMapper;
-import com.coursistant.lms.module.auth.token.service.RefreshTokenService;
-import com.coursistant.lms.shared.util.EmailUtil;
 import com.coursistant.lms.shared.util.PasswordEncoderUtil;
 import com.coursistant.lms.shared.security.TokenUtils;
 import org.springframework.beans.BeanUtils;
@@ -26,13 +23,11 @@ import java.util.concurrent.CompletableFuture;
 
 import jakarta.annotation.Resource;
 import java.util.List;
-import java.util.Map;
 import java.util.Random;
 import java.util.ArrayList;
 import java.util.stream.Collectors;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
-import cn.hutool.core.util.ObjectUtil;
 
 /**
  * User业务处理 // User business processing
@@ -77,12 +72,12 @@ public class UserService {
     public void add(User user) {
         User dbUser = userMapper.selectByEmail(user.getEmail());
         if (ObjectUtil.isNotNull(dbUser)) {
-            throw new CustomException(ResultCodeEnum.USER_EXIST_ERROR);
+            throw new ApiException(ErrorType.USER_ALREADY_EXISTS, "Username Already Exists");
         }
         
         // 加密密码
         if (ObjectUtil.isEmpty(user.getPassword())) {
-            throw new CustomException(ResultCodeEnum.PARAM_LOST_ERROR);
+            throw new ApiException(ErrorType.PARAM_MISSING, "Parameter Missing");
         }
         user.setEncryptPassword(user.getPassword());
         
@@ -149,7 +144,7 @@ public class UserService {
         // 如果缓存不存在，从数据库查询 // If cache does not exist, query from the database
         user = userMapper.selectById(id);
         if (ObjectUtil.isNull(user)) {
-            throw new CustomException(ResultCodeEnum.USER_NOT_EXIST_ERROR);
+            throw new ApiException(ErrorType.USER_NOT_FOUND, "User Does Not Exist");
         }
 
         // 将结果存入 Redis，并设置过期时间 // Store result in Redis with expiration time
@@ -227,7 +222,7 @@ public class UserService {
         String lockKey = "user:login:lock:" + account.getEmail();
 
         if (Boolean.TRUE.equals(generalRedisTemplate.hasKey(lockKey))) {
-            throw new CustomException("6001", "Your account is locked. Please try again later.");
+            throw new ApiException(ErrorType.ACCOUNT_LOCKED, "Your account is locked. Please try again later.");
         }
 
         Account dbUser;
@@ -239,7 +234,7 @@ public class UserService {
         }
 
         if (ObjectUtil.isNull(dbUser)) {
-            throw new CustomException(ResultCodeEnum.USER_NOT_EXIST_ERROR);
+            throw new ApiException(ErrorType.USER_NOT_FOUND, "User Does Not Exist");
         }
 
         if (!PasswordEncoderUtil.matches(account.getPassword(), dbUser.getPassword())) {
@@ -250,10 +245,10 @@ public class UserService {
             if (attempts >= 6) {
                 long lockTime = (attempts < 10) ? 60 : 600;
                 generalRedisTemplate.opsForValue().set(lockKey, "LOCKED", lockTime, TimeUnit.SECONDS);
-                throw new CustomException("6002", "Your account is locked. Please try again in " + (lockTime / 60) + " minutes.");
+                throw new ApiException(ErrorType.ACCOUNT_LOCKED, "Your account is locked. Please try again in " + (lockTime / 60) + " minutes.");
             }
 
-            throw new CustomException("6003", "Invalid email or password. Remaining attempts: " + (6 - attempts));
+            throw new ApiException(ErrorType.INVALID_CREDENTIALS, "Invalid email or password. Remaining attempts: " + (6 - attempts));
         }
 
         generalRedisTemplate.opsForValue().set(cacheKey, dbUser, 3600, TimeUnit.SECONDS);
@@ -310,7 +305,7 @@ public class UserService {
             return dbUser;
             
         } catch (Exception e) {
-            throw new CustomException("4815", "Error When Creating Token: " + e.getMessage());
+            throw new ApiException(ErrorType.TOKEN_CREATION_FAILED, "Error When Creating Token: " + e.getMessage());
         }
     }
 
@@ -333,13 +328,13 @@ public class UserService {
         } else if ("Z4G2MZ1XO1".equals(invitation)) {
             user.setInvitation("Teaching Class");
         } else {
-            throw new CustomException(ResultCodeEnum.INVITATION_NOT_EXIST_ERROR);
+            throw new ApiException(ErrorType.INVITATION_NOT_FOUND, "Invitation Not Exist");
         }
 
         // 检查用户是否已存在
         User dbUser = userMapper.selectByEmail(user.getEmail());
         if (ObjectUtil.isNotNull(dbUser)) {
-            throw new CustomException(ResultCodeEnum.USER_EXIST_ERROR);
+            throw new ApiException(ErrorType.USER_ALREADY_EXISTS, "Username Already Exists");
         }
 
         // ⭐ 设置默认值
@@ -402,7 +397,7 @@ public class UserService {
         String cachedCode = (String) generalRedisTemplate.opsForValue().get(redisKey);
 
         if (ObjectUtil.isEmpty(cachedCode) || !cachedCode.equals(verificationCode)) {
-            throw new CustomException(ResultCodeEnum.VERIFICATION_CODE_ERROR);
+            throw new ApiException(ErrorType.INVALID_VERIFICATION_CODE, "Incorrect Verification Code");
         }
     }
 
@@ -417,11 +412,11 @@ public class UserService {
     public void updatePassword(PasswordDTO account) {
         User dbUser = userMapper.selectByEmail(account.getEmail());
         if (ObjectUtil.isNull(dbUser)) {
-            throw new CustomException(ResultCodeEnum.USER_NOT_EXIST_ERROR);
+            throw new ApiException(ErrorType.USER_NOT_FOUND, "User Does Not Exist");
         }
         if (!"reset".equals(account.getType())){
             if (!PasswordEncoderUtil.matches(account.getPassword(), dbUser.getPassword())) {
-                throw new CustomException(ResultCodeEnum.PARAM_PASSWORD_ERROR);
+                throw new ApiException(ErrorType.INVALID_PASSWORD, "Incorrect Original Password");
             }
         }
 
@@ -444,12 +439,12 @@ public class UserService {
         String cachedCode = (String) generalRedisTemplate.opsForValue().get(redisKey);
 
         if (ObjectUtil.isEmpty(cachedCode) || !cachedCode.equals(account.getCode())) {
-            throw new CustomException(ResultCodeEnum.VERIFICATION_CODE_ERROR);
+            throw new ApiException(ErrorType.INVALID_VERIFICATION_CODE, "Incorrect Verification Code");
         }
         //check user exist or not
         User dbUser = userMapper.selectByEmail(account.getEmail());
         if (ObjectUtil.isNull(dbUser)) {
-            throw new CustomException(ResultCodeEnum.USER_NOT_EXIST_ERROR);
+            throw new ApiException(ErrorType.USER_NOT_FOUND, "User Does Not Exist");
         }
         String token = TokenUtils.createAccessToken(dbUser.getId(), RoleEnum.USER.name());
 
@@ -471,21 +466,21 @@ public class UserService {
     public void sendEmailVerificationCode(String email, String type) {
         email = email.trim().toLowerCase();
         if (ObjectUtil.isEmpty(email)) {
-            throw new CustomException(ResultCodeEnum.PARAM_LOST_ERROR);
+            throw new ApiException(ErrorType.PARAM_MISSING, "Parameter Missing");
         }
 
         if ("register".equals(type)) {
             User dbUser = userMapper.selectByEmail(email);
             if (ObjectUtil.isNotNull(dbUser)) {
-                throw new CustomException(ResultCodeEnum.USER_EXIST_ERROR);
+                throw new ApiException(ErrorType.USER_ALREADY_EXISTS, "Username Already Exists");
             }
         } else if ("reset".equals(type)) {
             User dbUser = userMapper.selectByEmail(email);
             if (ObjectUtil.isNull(dbUser)) {
-                throw new CustomException(ResultCodeEnum.USER_NOT_EXIST_ERROR);
+                throw new ApiException(ErrorType.USER_NOT_FOUND, "User Does Not Exist");
             }
         } else {
-            throw new CustomException(ResultCodeEnum.PARAM_ERROR); // 类型错误
+            throw new ApiException(ErrorType.BAD_REQUEST, "Invalid request data");
         }
 
 
@@ -540,7 +535,7 @@ public class UserService {
 
         if (!role.equals("ADMIN"))
         {
-            throw new CustomException(ResultCodeEnum.INVALID_ACCESS_ERROR);
+            throw new ApiException(ErrorType.ACCESS_DENIED, "No Permission to Perform This Action");
         }
         
         if (decision.equals(AdminEnums.APPROVED)|| decision.equals(AdminEnums.DENIED))
@@ -550,7 +545,7 @@ public class UserService {
 
         else
         {
-            throw new CustomException(ResultCodeEnum.PARAM_ERROR);
+            throw new ApiException(ErrorType.BAD_REQUEST, "Invalid request data");
         }
 
     }

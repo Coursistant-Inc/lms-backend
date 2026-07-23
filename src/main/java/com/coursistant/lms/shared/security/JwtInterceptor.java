@@ -1,10 +1,10 @@
 package com.coursistant.lms.shared.security;
 
 import com.auth0.jwt.interfaces.DecodedJWT;
-import com.coursistant.lms.shared.enums.ResultCodeEnum;
+import com.coursistant.lms.shared.api.ErrorType;
+import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.shared.enums.RoleEnum;
 import com.coursistant.lms.module.user.entity.Account;
-import com.coursistant.lms.shared.exception.CustomException;
 import com.coursistant.lms.module.auth.admin.service.AdminService;
 import com.coursistant.lms.module.user.service.UserService;
 import com.coursistant.lms.shared.security.JwtParserUtil;
@@ -44,7 +44,7 @@ public class JwtInterceptor implements HandlerInterceptor {
 
         String authHeader = request.getHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            throw new CustomException(ResultCodeEnum.TOKEN_INVALID_ERROR);
+            throw new ApiException(ErrorType.INVALID_TOKEN, "Invalid Access Token");
         }
 
         String token = authHeader.substring(7);
@@ -54,7 +54,7 @@ public class JwtInterceptor implements HandlerInterceptor {
         String role = jwt.getClaim("role").asString();
 
         if (userId == null || role == null) {
-            throw new CustomException(ResultCodeEnum.TOKEN_INVALID_ERROR);
+            throw new ApiException(ErrorType.INVALID_TOKEN, "Invalid Access Token");
         }
 
         String cacheKey = "user:active:" + userId;
@@ -67,7 +67,7 @@ public class JwtInterceptor implements HandlerInterceptor {
                 account = userService.selectById(userId);
             }
             if (account == null) {
-                throw new CustomException(ResultCodeEnum.USER_NOT_EXIST_ERROR);
+                throw new ApiException(ErrorType.USER_NOT_FOUND, "User Does Not Exist");
             }
             stringRedisTemplate.opsForValue().set(cacheKey, "1", 5, TimeUnit.MINUTES);
         }

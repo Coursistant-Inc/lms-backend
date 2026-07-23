@@ -1,5 +1,6 @@
 package com.coursistant.lms.module.user.entity;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 
 @Data
@@ -21,6 +22,7 @@ public class Account {
     /** 密码
      * Password
      */
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String password;
 
     /** 角色标识
@@ -31,6 +33,7 @@ public class Account {
     /** 新密码
      * New password
      */
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String newPassword;
 
     /** 头像

@@ -3,9 +3,9 @@ package com.coursistant.lms.shared.security;
 import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.coursistant.lms.shared.security.JwtInterceptor;
-import com.coursistant.lms.shared.enums.ResultCodeEnum;
+import com.coursistant.lms.shared.api.ErrorType;
+import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.module.user.entity.User;
-import com.coursistant.lms.shared.exception.CustomException;
 import com.coursistant.lms.module.auth.admin.service.AdminService;
 import com.coursistant.lms.module.user.service.UserService;
 import com.coursistant.lms.shared.security.JwtParserUtil;
@@ -107,9 +107,9 @@ class JwtInterceptorTest {
     void preHandle_noAuthHeader_throwsTokenInvalid() {
         request.setRequestURI("/api/courses");
 
-        CustomException ex = assertThrows(CustomException.class,
+        ApiException ex = assertThrows(ApiException.class,
                 () -> jwtInterceptor.preHandle(request, response, new Object()));
-        assertEquals(ResultCodeEnum.TOKEN_INVALID_ERROR.code, ex.getCode());
+        assertEquals(ErrorType.INVALID_TOKEN, ex.getErrorType());
     }
 
     @Test
@@ -117,9 +117,9 @@ class JwtInterceptorTest {
         request.setRequestURI("/api/courses");
         request.addHeader("Authorization", "Token abc");
 
-        CustomException ex = assertThrows(CustomException.class,
+        ApiException ex = assertThrows(ApiException.class,
                 () -> jwtInterceptor.preHandle(request, response, new Object()));
-        assertEquals(ResultCodeEnum.TOKEN_INVALID_ERROR.code, ex.getCode());
+        assertEquals(ErrorType.INVALID_TOKEN, ex.getErrorType());
     }
 
     @Test
@@ -135,9 +135,9 @@ class JwtInterceptorTest {
         when(stringRedisTemplate.hasKey("user:active:99")).thenReturn(false);
         when(userService.selectById(99)).thenReturn(null);
 
-        CustomException ex = assertThrows(CustomException.class,
+        ApiException ex = assertThrows(ApiException.class,
                 () -> jwtInterceptor.preHandle(request, response, new Object()));
-        assertEquals(ResultCodeEnum.USER_NOT_EXIST_ERROR.code, ex.getCode());
+        assertEquals(ErrorType.USER_NOT_FOUND, ex.getErrorType());
     }
 
     @Test

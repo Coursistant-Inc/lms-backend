@@ -1,9 +1,9 @@
 package com.coursistant.lms.module.auth.token.service;
 
-import com.coursistant.lms.shared.enums.ResultCodeEnum;
+import com.coursistant.lms.shared.api.ErrorType;
+import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.module.auth.token.dto.RefreshResult;
 import com.coursistant.lms.module.auth.token.entity.RefreshToken;
-import com.coursistant.lms.shared.exception.CustomException;
 import com.coursistant.lms.module.auth.token.repository.RefreshTokenMapper;
 import com.coursistant.lms.module.auth.token.service.RefreshTokenService;
 import com.coursistant.lms.shared.security.TokenUtils;
@@ -100,9 +100,9 @@ class RefreshTokenServiceTest {
         when(valueOperations.get("refresh:used:" + badToken)).thenReturn(null);
         when(refreshTokenMapper.selectByToken(badToken)).thenReturn(null);
 
-        CustomException ex = assertThrows(CustomException.class,
+        ApiException ex = assertThrows(ApiException.class,
                 () -> refreshTokenService.getNewAccessToken(badToken));
-        assertEquals(ResultCodeEnum.REFRESH_TOKEN_CHECK_ERROR.code, ex.getCode());
+        assertEquals(ErrorType.REFRESH_TOKEN_INVALID, ex.getErrorType());
     }
 
     @Test
