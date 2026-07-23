@@ -16,6 +16,9 @@ server:
 
 # 数据库配置
 spring:
+  jackson:
+    default-property-inclusion: NON_NULL
+
   config:
     import: optional:file:.env[.properties]
 
@@ -72,6 +75,34 @@ spring:
       max-lifetime: 1800000
       connection-timeout: 10000
       leak-detection-threshold: 30000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+        implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyJpaCompliantImpl
+    open-in-view: false
+    show-sql: true
+    properties:
+      hibernate:
+        default_schema: lms
+        format_sql: true
+        current_session_context_class: org.springframework.orm.hibernate5.SpringSessionContext
+        use_sql_comments: true
+        jdbc:
+          batch_size: 20
+        order_inserts: true
+        order_updates: true
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 0
+    validate-on-migrate: true
+    ignore-migration-patterns: '*:ignored'
+    locations: classpath:db/migration
+    table: flyway_schema_history
 
   servlet:
     multipart:

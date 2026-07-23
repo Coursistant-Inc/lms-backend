@@ -1,0 +1,4 @@
+ALTER TABLE nw_assignment
+ADD COLUMN grade_published TINYINT DEFAULT 0,
+ADD COLUMN submission_required TINYINT DEFAULT 1,
+ADD COLUMN is_group TINYINT DEFAULT 0;

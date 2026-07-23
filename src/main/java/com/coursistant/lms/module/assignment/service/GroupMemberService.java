@@ -141,6 +141,10 @@ public class GroupMemberService {
         }
     }
 
+    public Integer selectGroupIdByCourseIdAndUserId(Integer courseId, Integer userId) {
+        return groupMemberMapper.selectGroupIdByCourseIdAndUserId(courseId, userId);
+    }
+
     private void checkGroupMemberLimit(Integer groupId, Assignment assignment){
         int groupSize = assignment.getGroupSize();
         if (ObjectUtil.isEmpty(groupSize)){
