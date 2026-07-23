@@ -139,12 +139,6 @@ api:
     url: ${API_BASE_URL}
 
 
-rocketchat:
-  url: ${ROCKETCHAT_URL}  # 你的 RocketChat 地址
-  admin:
-    username: ${ROCKETCHAT_ADMIN_USERNAME}  # 管理员用户名
-    password: ${ROCKETCHAT_ADMIN_PASSWORD}  # 管理员密码
-
 token:
   access-expire-hours: 2
   refresh-expire-days: 30

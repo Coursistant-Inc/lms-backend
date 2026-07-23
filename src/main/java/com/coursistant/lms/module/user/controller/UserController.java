@@ -7,6 +7,7 @@ import jakarta.annotation.Resource;
 
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -20,11 +21,10 @@ import com.coursistant.lms.module.user.entity.User;
 import com.coursistant.lms.module.user.service.UserService;
 
 /**
- * 用户前端操作接口
  * User frontend operation API
  **/
 @RestController
-@RequestMapping("/user")
+@RequestMapping("/v1/users")
 public class UserController {
 
     @Resource
@@ -40,11 +40,7 @@ public class UserController {
         logger.info(() -> String.format("End %s: %s", methodName, response));
     }
 
-    /**
-     * 新增
-     * Add a new user
-     */
-    @PostMapping("/add")
+    @PostMapping
     public ApiResponse<Void> add(@RequestBody User user) {
         logRequest("add", user.toString());
         userService.add(user);
@@ -52,11 +48,7 @@ public class UserController {
         return ApiResponse.success();
     }
 
-    /**
-     * 删除
-     * Delete a user by ID
-     */
-    @DeleteMapping("/delete/{id}")
+    @DeleteMapping("/{id}")
     public ApiResponse<Void> deleteById(@PathVariable Integer id) {
         logRequest("deleteById", id.toString());
         userService.deleteById(id);
@@ -64,11 +56,7 @@ public class UserController {
         return ApiResponse.success();
     }
 
-    /**
-     * 批量删除
-     * Batch delete users
-     */
-    @DeleteMapping("/delete/batch")
+    @DeleteMapping("/batch")
     public ApiResponse<Void> deleteBatch(@RequestBody List<Integer> ids) {
         logRequest("deleteBatch", ids.toString());
         userService.deleteBatch(ids);
@@ -76,23 +64,16 @@ public class UserController {
         return ApiResponse.success();
     }
 
-    /**
-     * 修改
-     * Update a user
-     */
-    @PutMapping("/update")
-    public ApiResponse<Void> updateById(@RequestBody User user) {
+    @PutMapping("/{id}")
+    public ApiResponse<Void> updateById(@PathVariable Integer id, @RequestBody User user) {
+        user.setId(id);
         logRequest("updateById", user.toString());
         userService.updateById(user);
         logResponse("updateById", user.toString());
         return ApiResponse.success();
     }
 
-    /**
-     * 根据ID查询
-     * Query a user by ID
-     */
-    @GetMapping("/selectById/{id}")
+    @GetMapping("/{id}")
     public ApiResponse<User> selectById(@PathVariable Integer id) {
         logRequest("selectById", id.toString());
         User user = userService.selectById(id);
@@ -101,49 +82,43 @@ public class UserController {
     }
 
     /**
-     * 查询所有
-     * Query all users
+     * List users. Pass role=teacher to return teachers only.
      */
-    @GetMapping("/selectAll")
-    public ApiResponse<List<User>> selectAll(User user) {
-        logRequest("selectAll", user.toString());
+    @GetMapping
+    public ApiResponse<List<User>> selectAll(
+            User user,
+            @RequestParam(value = "role", required = false) String role) {
+        if ("teacher".equalsIgnoreCase(role)) {
+            logRequest("selectTeachers", "role=teacher");
+            List<User> list = userService.selectTeachers();
+            logResponse("selectTeachers", "null");
+            return ApiResponse.success(list);
+        }
+        logRequest("selectAll", user != null ? user.toString() : "null");
         List<User> list = userService.selectAll(user);
         logResponse("selectAll", null);
         return ApiResponse.success(list);
     }
 
-
-    /**
-     * 查询教师
-     * Query all teachers
-     */
-    @GetMapping("/selectTeachers")
-    public ApiResponse<List<User>> selectHeaders() {
-        logRequest("selectTeachers", "request received");
-        List<User> list = userService.selectTeachers();
-        logResponse("selectTeachers", "null");
-        return ApiResponse.success(list);
-    }
-
-    @PostMapping("/nameChange")
-    public ApiResponse<String> nameChangeRequest(@RequestParam("currentName") String currentName, @RequestParam("newName") String newName, @RequestParam("userId") Integer userId)
-    {
+    @PostMapping("/{userId}/name-change-requests")
+    public ApiResponse<String> nameChangeRequest(
+            @PathVariable Integer userId,
+            @RequestParam("currentName") String currentName,
+            @RequestParam("newName") String newName) {
         userService.updateName(currentName, newName, userId);
         return ApiResponse.success("Your request has been received. You will be notified once a decision has been taken");
     }
 
-    // This method should be accessible only to university admins
-    @PostMapping("/reviewNameChange")
-    public void reviewNameChangeRequest(@RequestParam("decision") String decision, @RequestParam("userId") Integer userId, @RequestParam("adminId") Integer adminId)
-    {
+    @PostMapping("/{userId}/name-change-requests/review")
+    public ApiResponse<Void> reviewNameChangeRequest(
+            @PathVariable Integer userId,
+            @RequestParam("decision") String decision,
+            @RequestParam("adminId") Integer adminId) {
         userService.reviewNameChangeRequest(decision, userId, adminId);
+        return ApiResponse.success();
     }
 
-    /**
-     * 标记用户已修改密码
-     * Mark user's must_change_password as false
-     */
-    @PutMapping("/markPasswordChanged/{id}")
+    @PatchMapping("/{id}/password-status")
     public ApiResponse<Void> markPasswordChanged(@PathVariable Integer id) {
         logRequest("markPasswordChanged", id.toString());
         userService.markPasswordChanged(id);

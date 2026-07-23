@@ -3,7 +3,6 @@ package com.coursistant.lms.module.user.service;
 import cn.hutool.core.util.ObjectUtil;
 import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.shared.api.ErrorType;
-import com.coursistant.lms.module.groupchat.service.RocketChatAuthService;
 import com.coursistant.lms.module.auth.token.service.RefreshTokenService;
 import com.coursistant.lms.shared.util.EmailUtil;
 
@@ -19,7 +18,6 @@ import com.coursistant.lms.shared.security.TokenUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
-import java.util.concurrent.CompletableFuture;
 
 import jakarta.annotation.Resource;
 import java.util.List;
@@ -50,9 +48,6 @@ public class UserService {
 
     @Resource
     private EmailUtil emailUtil; // 注入 EmailUtil // Inject EmailUtil
-
-    @Resource
-    private RocketChatAuthService rocketChatAuthService;
 
     // 缓存过期时间（秒） // Cache expiration time (seconds)
     private static final long CACHE_EXPIRE_TIME = 300;
@@ -255,45 +250,6 @@ public class UserService {
         generalRedisTemplate.delete(loginAttemptsKey);
         generalRedisTemplate.delete(lockKey);
 
-        // ⭐⭐⭐ 异步同步 RocketChat 用户和课程频道 ⭐⭐⭐
-        final Integer userId = dbUser.getId();
-        final String userEmail = dbUser.getEmail();
-        final String userName = dbUser.getName();
-        final String userPassword = account.getPassword();
-        
-        CompletableFuture.runAsync(() -> {
-            try {
-                System.out.println("======================================");
-                System.out.println("🚀 Starting RocketChat sync (ASYNC)");
-                System.out.println("   Email: " + userEmail);
-                System.out.println("   Name: " + userName);
-                System.out.println("   UserID: " + userId);
-                System.out.println("======================================");
-                
-                // ✅ 自动创建用户、激活、加入课程频道
-                rocketChatAuthService.ensureUserExistsAndJoinCourses(
-                    userEmail,
-                    userPassword,
-                    userName,
-                    userId.longValue()
-                );
-                
-                System.out.println("======================================");
-                System.out.println("✅ ✅ ✅ RocketChat sync completed!");
-                System.out.println("   User: " + userEmail);
-                System.out.println("======================================");
-                
-            } catch (Exception e) {
-                System.err.println("======================================");
-                System.err.println("❌ ❌ ❌ RocketChat sync FAILED!");
-                System.err.println("   User: " + userEmail);
-                System.err.println("   Error: " + e.getMessage());
-                e.printStackTrace();
-                System.err.println("======================================");
-                // 不抛出异常，不影响登录流程
-            }
-        });
-
         try {
             String token = TokenUtils.createAccessToken(dbUser.getId(), RoleEnum.USER.name());
             dbUser.setAccessToken(token);
@@ -349,40 +305,6 @@ public class UserService {
         // ⭐ 先加密密码并插入 LMS 数据库
         user.setEncryptPassword(account.getPassword());
         userMapper.insert(user);
-
-        // ⭐⭐⭐ 异步在 RocketChat 创建用户（不阻塞注册流程）⭐⭐⭐
-        final Integer userId = user.getId();
-        final String userEmail = account.getEmail();
-        final String userPassword = account.getPassword();
-        final String userName = user.getName() != null ? user.getName() : account.getEmail().split("@")[0];
-        
-        CompletableFuture.runAsync(() -> {
-            try {
-                System.out.println("======================================");
-                System.out.println("🚀 Creating RocketChat user (ASYNC)");
-                System.out.println("   Email: " + userEmail);
-                System.out.println("======================================");
-                
-                rocketChatAuthService.ensureUserExistsAndJoinCourses(
-                    userEmail,
-                    userPassword,
-                    userName,
-                    userId.longValue()
-                );
-                
-                System.out.println("✅ User created in RocketChat: " + userEmail);
-                System.out.println("======================================");
-                
-            } catch (Exception e) {
-                System.err.println("======================================");
-                System.err.println("⚠️ Failed to create user in RocketChat");
-                System.err.println("   Email: " + userEmail);
-                System.err.println("   Error: " + e.getMessage());
-                e.printStackTrace();
-                System.err.println("======================================");
-                // 不阻止注册流程
-            }
-        });
 
         // 清理缓存
         clearUserAllCache();

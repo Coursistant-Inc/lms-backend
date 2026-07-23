@@ -139,15 +139,4 @@ class JwtInterceptorTest {
                 () -> jwtInterceptor.preHandle(request, response, new Object()));
         assertEquals(ErrorType.USER_NOT_FOUND, ex.getErrorType());
     }
-
-    @Test
-    void preHandle_rocketchatPath_skipsAuth() {
-        request.setRequestURI("/api/rocketchat/login");
-
-        boolean result = jwtInterceptor.preHandle(request, response, new Object());
-
-        assertTrue(result);
-        verifyNoInteractions(jwtParserUtil);
-        verifyNoInteractions(stringRedisTemplate);
-    }
 }

@@ -3,7 +3,6 @@ package com.coursistant.lms.module.auth.session.controller;
 import com.coursistant.lms.module.auth.session.controller.WebController;
 import com.coursistant.lms.module.auth.token.dto.RefreshResult;
 import com.coursistant.lms.module.chat.service.CoursistanceService;
-import com.coursistant.lms.module.groupchat.service.RocketChatAuthService;
 import com.coursistant.lms.module.auth.admin.service.AdminService;
 import com.coursistant.lms.module.auth.token.service.RefreshTokenService;
 import com.coursistant.lms.module.user.service.UserService;
@@ -41,8 +40,6 @@ class WebControllerTokenTest {
     @Mock
     private RefreshTokenService refreshTokenService;
     @Mock
-    private RocketChatAuthService rocketChatAuthService;
-    @Mock
     private StringRedisTemplate stringRedisTemplate;
     @Mock
     private ValueOperations<String, String> valueOperations;
@@ -66,7 +63,7 @@ class WebControllerTokenTest {
         when(refreshTokenService.getNewAccessToken("old-refresh"))
                 .thenReturn(new RefreshResult("new-access-token", "new-refresh-token"));
 
-        MvcResult result = mockMvc.perform(post("/refresh-token")
+        MvcResult result = mockMvc.perform(post("/v1/auth/refresh-token")
                         .cookie(new Cookie("refreshToken", "old-refresh"))
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
@@ -86,7 +83,7 @@ class WebControllerTokenTest {
     void refreshToken_noCookie_returns401() throws Exception {
         when(valueOperations.increment(startsWith("ratelimit:refresh:"))).thenReturn(1L);
 
-        mockMvc.perform(post("/refresh-token").accept(MediaType.APPLICATION_JSON))
+        mockMvc.perform(post("/v1/auth/refresh-token").accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.status").value(401))
                 .andExpect(jsonPath("$.code").value("REFRESH_TOKEN_INVALID"));
@@ -96,7 +93,7 @@ class WebControllerTokenTest {
     void refreshToken_rateLimitExceeded_returns429() throws Exception {
         when(valueOperations.increment(startsWith("ratelimit:refresh:"))).thenReturn(11L);
 
-        mockMvc.perform(post("/refresh-token")
+        mockMvc.perform(post("/v1/auth/refresh-token")
                         .cookie(new Cookie("refreshToken", "any"))
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().is(429))
@@ -109,7 +106,7 @@ class WebControllerTokenTest {
 
     @Test
     void logout_validAuth_clearsTokenAndCookie() throws Exception {
-        MvcResult result = mockMvc.perform(post("/logout")
+        MvcResult result = mockMvc.perform(post("/v1/auth/logout")
                         .requestAttr("userId", 42)
                         .requestAttr("userRole", "USER")
                         .accept(MediaType.APPLICATION_JSON))

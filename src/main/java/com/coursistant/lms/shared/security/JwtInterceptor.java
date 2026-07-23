@@ -36,12 +36,6 @@ public class JwtInterceptor implements HandlerInterceptor {
 
     @Override
     public boolean preHandle(HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull Object handler) {
-        String path = request.getRequestURI();
-        if (path.contains("/rocketchat/")) {
-            log.debug("RocketChat path, skipping JWT check: {}", path);
-            return true;
-        }
-
         String authHeader = request.getHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             throw new ApiException(ErrorType.INVALID_TOKEN, "Invalid Access Token");

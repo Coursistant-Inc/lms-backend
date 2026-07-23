@@ -20,26 +20,21 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(jwtInterceptor).addPathPatterns("/**")
-                .excludePathPatterns("/")  // 允许访问首页 / Allow access to the homepage
-                .excludePathPatterns("/login")  // 允许登录 / Allow login
-                .excludePathPatterns("/register")  // 允许注册 / Allow registration
-                .excludePathPatterns("/files/**")  // 允许访问静态资源 / Allow access to static resources
-                .excludePathPatterns("/swagger-ui/**")  // 允许 Swagger UI / Allow Swagger UI
-                .excludePathPatterns("/swagger-ui.html")  // 允许 Swagger UI / Allow Swagger UI
-                .excludePathPatterns("/v3/api-docs/**")  // 允许 API 文档 / Allow API documentation
-                .excludePathPatterns("/login/oauth2/**") // Allow third party verification path
-                .excludePathPatterns("/thirdParty/**") //Allow third party login path
-                .excludePathPatterns("/sendRegisterEmailVerification") // 允许发送邮件验证 / Allow sending email verification
-                .excludePathPatterns("/sendResetEmailVerification") // 允许发送邮件验证 / Allow sending email verification
-                .excludePathPatterns("/refresh-token")
-                .excludePathPatterns("/validateRegisterEmailVerification")
-                .excludePathPatterns("/resetPasswordValidation") // 允许发送邮件验证 / Allow sending email verification
+                .excludePathPatterns("/v1")
+                .excludePathPatterns("/v1/auth/login")
+                .excludePathPatterns("/v1/auth/register")
+                .excludePathPatterns("/v1/auth/refresh-token")
+                .excludePathPatterns("/v1/auth/email-verifications/**")
+                .excludePathPatterns("/v1/auth/password-resets/**")
+                .excludePathPatterns("/files/**")
+                .excludePathPatterns("/swagger-ui/**")
+                .excludePathPatterns("/swagger-ui.html")
+                .excludePathPatterns("/v3/api-docs/**")
+                .excludePathPatterns("/login/oauth2/**")
+                .excludePathPatterns("/thirdParty/**")
                 .excludePathPatterns("/sales")
-                .excludePathPatterns("/login/oauth2/**")        // ✅ OAuth 回调（Google 重定向回来）
                 .excludePathPatterns("/oauth2/authorization/**")
         ;
-
-
     }
 
     @Bean

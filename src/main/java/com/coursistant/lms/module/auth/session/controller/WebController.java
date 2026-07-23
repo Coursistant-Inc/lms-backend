@@ -21,7 +21,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import com.coursistant.lms.module.groupchat.service.RocketChatAuthService;
 
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.Cookie;
@@ -34,10 +33,13 @@ import org.springframework.http.ResponseCookie;
 import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.time.ZoneId;
 
+/**
+ * Auth session endpoints under /v1/auth.
+ * Health check is at /v1; /query is kept at root until moved to chat module.
+ */
 @Slf4j
 @RestController
 public class WebController {
@@ -51,17 +53,14 @@ public class WebController {
     @Resource
     private RefreshTokenService refreshTokenService;
     @Resource
-    private RocketChatAuthService rocketChatAuthService;
-    @Resource
     private StringRedisTemplate stringRedisTemplate;
 
-
-    @GetMapping("/")
+    @GetMapping("/v1")
     public ApiResponse<String> hello() {
         return ApiResponse.success("访问成功");
     }
 
-    @PostMapping("/login")
+    @PostMapping("/v1/auth/login")
     public ApiResponse<Account> login(@RequestBody Account account, HttpServletResponse response) {
         if (ObjectUtil.isEmpty(account.getEmail()) || ObjectUtil.isEmpty(account.getPassword())
                 || ObjectUtil.isEmpty(account.getRole())) {
@@ -93,28 +92,10 @@ public class WebController {
 
         dbAccount.setRefreshToken(null);
 
-        try {
-            rocketChatAuthService.ensureUserExists(
-                    dbAccount.getEmail(),
-                    account.getPassword(),
-                    dbAccount.getName()
-            );
-
-            Map<String, String> rcToken = rocketChatAuthService.createTokenForUser(dbAccount.getEmail());
-
-            dbAccount.setRocketChatToken(rcToken.get("authToken"));
-            dbAccount.setRocketChatUserId(rcToken.get("userId"));
-
-            log.info("RocketChat token created for: {}", dbAccount.getEmail());
-
-        } catch (Exception e) {
-            log.warn("RocketChat login failed: {}", e.getMessage());
-        }
-
         return ApiResponse.success(dbAccount);
     }
 
-    @PostMapping("/refresh-token")
+    @PostMapping("/v1/auth/refresh-token")
     public ApiResponse<String> refreshToken(HttpServletRequest request, HttpServletResponse response) {
         String rateLimitKey = "ratelimit:refresh:" + request.getRemoteAddr();
         Long count = stringRedisTemplate.opsForValue().increment(rateLimitKey);
@@ -154,8 +135,7 @@ public class WebController {
         return ApiResponse.success(result.getAccessToken());
     }
 
-
-    @PostMapping("/logout")
+    @PostMapping("/v1/auth/logout")
     public ApiResponse<Void> logout(HttpServletRequest request, HttpServletResponse response) {
         Integer userId = (Integer) request.getAttribute("userId");
         String role = (String) request.getAttribute("userRole");
@@ -170,10 +150,7 @@ public class WebController {
         return ApiResponse.success();
     }
 
-    /**
-     * 注册 // Register
-     */
-    @PostMapping("/register")
+    @PostMapping("/v1/auth/register")
     public ApiResponse<Account> register(@RequestBody Account account) {
         if (StrUtil.isBlank(account.getPassword()) || StrUtil.isBlank(account.getEmail())
                 || ObjectUtil.isEmpty(account.getRole())) {
@@ -192,37 +169,26 @@ public class WebController {
         return ApiResponse.success(account);
     }
 
-    /**
-     * 发送邮箱验证码 // Send email verification code register
-     */
-    @PostMapping("/sendRegisterEmailVerification")
+    @PostMapping("/v1/auth/email-verifications/register")
     public ApiResponse<Void> sendRegisterEmailVerification(String email) {
         userService.sendEmailVerificationCode(email, "register");
         return ApiResponse.success();
     }
 
-    /**
-     * 校验邮箱验证码 // Validate email verification code
-     */
-    @PostMapping("/validateRegisterEmailVerification")
+    @PostMapping("/v1/auth/email-verifications/register/validate")
     public ApiResponse<Void> validateRegisterEmailVerification(@RequestParam("email") String email,
                                                     @RequestParam("code") String code) {
         userService.validateEmailVerificationCode(email, code);
         return ApiResponse.success();
     }
 
-
-    @PostMapping("/sendResetEmailVerification")
+    @PostMapping("/v1/auth/email-verifications/reset")
     public ApiResponse<Void> sendResetEmailVerification(String email) {
         userService.sendEmailVerificationCode(email, "reset");
         return ApiResponse.success();
     }
 
-
-    /**
-     * 修改密码 // Update password
-     */
-    @PutMapping("/updatePassword")
+    @PutMapping("/v1/auth/password")
     public ApiResponse<Void> updatePassword(@RequestBody PasswordDTO account) {
         if ("update".equals(account.getType())) {
             if (StrUtil.isBlank(account.getEmail()) || StrUtil.isBlank(account.getPassword())
@@ -245,7 +211,7 @@ public class WebController {
         return ApiResponse.success();
     }
 
-    @PostMapping("/resetPasswordValidation")
+    @PostMapping("/v1/auth/password-resets/validate")
     public ApiResponse<String> resetPasswordValidation(@RequestBody PasswordDTO account) {
 
         if (StrUtil.isBlank(account.getEmail()) || StrUtil.isBlank(account.getCode())) {
@@ -257,7 +223,7 @@ public class WebController {
     }
 
     /**
-     * 处理查询请求 // Handle query request
+     * Chat query — kept at /query until moved to chat module.
      */
     @RequiresPermission("chatbot:interact")
     @PostMapping(value = "/query", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -305,6 +271,4 @@ public class WebController {
         log.info("End {}: {}", "query", re_query.toString());
         return ApiResponse.success(re_query);
     }
-
-
 }

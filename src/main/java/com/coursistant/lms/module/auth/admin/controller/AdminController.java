@@ -9,11 +9,10 @@ import java.util.List;
 import java.util.logging.Logger;
 
 /**
- * 管理员前端操作接口
  * Admin frontend operation API
  **/
 @RestController
-@RequestMapping("/admin")
+@RequestMapping("/v1/admins")
 public class AdminController {
 
     @Resource
@@ -29,11 +28,7 @@ public class AdminController {
         logger.info(() -> String.format("End %s: %s", methodName, response));
     }
 
-    /**
-     * 新增
-     * Add new admin
-     */
-    @PostMapping("/add")
+    @PostMapping
     public ApiResponse<Void> add(@RequestBody Admin admin) {
         logRequest("add", admin.toString());
         adminService.add(admin);
@@ -41,11 +36,7 @@ public class AdminController {
         return ApiResponse.success();
     }
 
-    /**
-     * 删除
-     * Delete by ID
-     */
-    @DeleteMapping("/delete/{id}")
+    @DeleteMapping("/{id}")
     public ApiResponse<Void> deleteById(@PathVariable Integer id) {
         logRequest("deleteById", id.toString());
         adminService.deleteById(id);
@@ -53,11 +44,7 @@ public class AdminController {
         return ApiResponse.success();
     }
 
-    /**
-     * 批量删除
-     * Batch delete
-     */
-    @DeleteMapping("/delete/batch")
+    @DeleteMapping("/batch")
     public ApiResponse<Void> deleteBatch(@RequestBody List<Integer> ids) {
         logRequest("deleteBatch", ids.toString());
         adminService.deleteBatch(ids);
@@ -65,23 +52,16 @@ public class AdminController {
         return ApiResponse.success();
     }
 
-    /**
-     * 修改
-     * Update admin details
-     */
-    @PutMapping("/update")
-    public ApiResponse<Void> updateById(@RequestBody Admin admin) {
+    @PutMapping("/{id}")
+    public ApiResponse<Void> updateById(@PathVariable Integer id, @RequestBody Admin admin) {
+        admin.setId(id);
         logRequest("updateById", admin.toString());
         adminService.updateById(admin);
         logResponse("updateById", admin.toString());
         return ApiResponse.success();
     }
 
-    /**
-     * 根据ID查询
-     * Query by ID
-     */
-    @GetMapping("/selectById/{id}")
+    @GetMapping("/{id}")
     public ApiResponse<Admin> selectById(@PathVariable Integer id) {
         logRequest("selectById", id.toString());
         Admin admin = adminService.selectById(id);
@@ -89,17 +69,11 @@ public class AdminController {
         return ApiResponse.success(admin);
     }
 
-    /**
-     * 查询所有
-     * Query all admins
-     */
-    @GetMapping("/selectAll")
+    @GetMapping
     public ApiResponse<List<Admin>> selectAll(Admin admin) {
         logRequest("selectAll", admin.toString());
         List<Admin> list = adminService.selectAll(admin);
         logResponse("selectAll", null);
         return ApiResponse.success(list);
     }
-
-
 }

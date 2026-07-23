@@ -69,7 +69,4 @@ public class Account {
     private String verification;
 
     private String type;
-
-    transient private String rocketChatToken;
-    transient private String rocketChatUserId;
 }
