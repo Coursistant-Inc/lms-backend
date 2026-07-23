@@ -4,7 +4,6 @@ import com.coursistant.lms.shared.web.Result;
 import com.coursistant.lms.shared.enums.ResultCodeEnum;
 import com.coursistant.lms.module.assignment.entity.AssignmentGroup;
 import com.coursistant.lms.module.assignment.service.AssignmentGroupService;
-import com.coursistant.lms.shared.security.RequiresPermission;
 import com.coursistant.lms.shared.security.TokenUtils;
 import com.coursistant.lms.module.user.entity.Account;
 import org.springframework.web.bind.annotation.*;
@@ -29,84 +28,72 @@ public class AssignmentGroupController {
 
     // private static final Logger logger = Logger.getLogger(AssignmentGroupController.class.getName());
 
-    @RequiresPermission("assignment:manage")
     @PostMapping("/add")
     public Result add(@RequestBody AssignmentGroup group) {
         assignmentGroupService.add(group);
         return Result.success();
     }
 
-    @RequiresPermission("assignment:manage")
     @PutMapping("/update")
     public Result update(@RequestBody AssignmentGroup group) {
         assignmentGroupService.updateById(group);
         return Result.success();
     }
 
-    @RequiresPermission("assignment:manage")
     @DeleteMapping("/delete/{id}")
     public Result delete(@PathVariable Integer id) {
         assignmentGroupService.deleteById(id);
         return Result.success();
     }
 
-    @RequiresPermission("assignment:view")
     @GetMapping("/selectById/{id}")
     public Result selectById(@PathVariable Integer id) {
         AssignmentGroup group = assignmentGroupService.selectById(id);
         return Result.success(group);
     }
 
-    @RequiresPermission("assignment:view")
     @GetMapping("/selectAll")
     public Result selectAll(AssignmentGroup group) {
         List<AssignmentGroup> list = assignmentGroupService.selectAll(group);
         return Result.success(list);
     }
 
-    @RequiresPermission("assignment:view")
     @GetMapping("/selectByAssignment/{assignmentId}")
     public Result selectByAssignment(@PathVariable Integer assignmentId) {
         List<AssignmentGroup> list = assignmentGroupService.selectByAssignmentId(assignmentId);
         return Result.success(list);
     }
 
-    @RequiresPermission("assignment:view")
     @GetMapping("/selectByCourse/{courseId}")
     public Result selectByCourse(@PathVariable Integer courseId) {
         List<AssignmentGroup> list = assignmentGroupService.selectByCourseId(courseId);
         return Result.success(list);
     }
 
-    @RequiresPermission("assignment:view")
     @GetMapping("/selectByCourseAndAssignment")
     public Result selectByCourseAndAssignment(@RequestParam Integer courseId, @RequestParam Integer assignmentId) {
         List<AssignmentGroup> list = assignmentGroupService.selectByCourseIdAndAssignmentId(courseId, assignmentId);
         return Result.success(list);
     }
 
-    @RequiresPermission("assignment:view")
     @GetMapping("/membersByCourseAndAssignment")
     public Result getMembersByCourseAndAssignment(@RequestParam Integer courseId, @RequestParam Integer assignmentId) {
         List<GroupMemberDetail> members = assignmentGroupService.getAllGroupMembersByCourseAndAssignment(courseId, assignmentId);
         return Result.success(members);
     }
 
-    @RequiresPermission("assignment:view")
     @GetMapping("/allMembersByCourseAndAssignment")
     public Result getAllMembersByCourseAndAssignment(@RequestParam Integer courseId, @RequestParam Integer assignmentId) {
         List<GroupMemberDetail> allMembers = assignmentGroupService.getAllMembersByCourseAndAssignment(courseId, assignmentId);
         return Result.success(allMembers);
     }
 
-    @RequiresPermission("assignment:view")
     @GetMapping("/membersByGroupId/{groupId}")
     public Result getMembersByGroupId(@PathVariable Integer groupId) {
         List<GroupMemberDetail> members = assignmentGroupService.getGroupMembersById(groupId);
         return Result.success(members);
     }
 
-    @RequiresPermission("assignment:view")
     @GetMapping("/groupsWithDetails")
     public Result getGroupsWithDetails(@RequestParam Integer courseId, @RequestParam Integer assignmentId) {
         List<AssignmentGroup> groups = assignmentGroupService.selectByCourseIdAndAssignmentId(courseId, assignmentId);
@@ -120,14 +107,12 @@ public class AssignmentGroupController {
         return Result.success(groups);
     }
 
-    @RequiresPermission("assignment:view")
     @GetMapping("/availableGroups")
     public Result getAvailableGroups(@RequestParam Integer courseId, @RequestParam Integer assignmentId) {
         List<AssignmentGroup> list = assignmentGroupService.getAvailableGroups(courseId, assignmentId);
         return Result.success(list);
     }
 
-    @RequiresPermission("assignment:manage")
     @PostMapping("/autoGenerate")
     public Result autoGenerate(@RequestBody Map<String, Object> params) {
         Account loginUser = TokenUtils.getCurrentUser();
@@ -142,7 +127,6 @@ public class AssignmentGroupController {
         return Result.success("Auto grouping completed.");
     }
 
-    @RequiresPermission("assignment:view")  // 使用已存在的权限
     @PostMapping("/createByStudent")
     public Result createByStudent(@RequestBody Map<String, Object> params) {
         Account loginUser = TokenUtils.getCurrentUser();
@@ -164,7 +148,6 @@ public class AssignmentGroupController {
         return Result.success("Group created successfully.");
     }
 
-    @RequiresPermission("assignment:view")  // 使用已存在的权限
     @PostMapping("/join")
     public Result joinGroup(@RequestBody Map<String, Object> params) {
         Account loginUser = TokenUtils.getCurrentUser();
@@ -192,7 +175,6 @@ public class AssignmentGroupController {
         }
     }
 
-    @RequiresPermission("assignment:view")  // 使用已存在的权限
     @PostMapping("/leave")
     public Result leaveGroup(@RequestBody Map<String, Object> params) {
         Account loginUser = TokenUtils.getCurrentUser();
@@ -211,7 +193,6 @@ public class AssignmentGroupController {
         return Result.success("Left group successfully.");
     }
 
-    @RequiresPermission("assignment:manage")
     @PostMapping("/debug/createTestData")
     public Result createTestData(@RequestBody Map<String, Object> params) {
         Integer courseId = (Integer) params.get("courseId");
@@ -244,7 +225,6 @@ public class AssignmentGroupController {
         }
     }
 
-    @RequiresPermission("assignment:view")
     @GetMapping("/debug/checkDatabase")
     public Result checkDatabase(@RequestParam Integer courseId, @RequestParam Integer assignmentId) {
         try {
@@ -281,7 +261,6 @@ public class AssignmentGroupController {
      * API: /api/grouping/teacher/add
      * assignmentId: 可以是作业ID、周期ID或-1表示通用周期
      */
-    @RequiresPermission("assignment:manage")
     @PostMapping("/teacher/add")
     public Result createGroupByTeacher(@RequestBody Map<String, Object> params) {
         Account loginUser = TokenUtils.getCurrentUser();
@@ -338,7 +317,6 @@ public class AssignmentGroupController {
      * API: /api/grouping/teacher/addStudent
      * assignmentId: 可以是作业ID、周期ID或-1表示通用周期
      */
-    @RequiresPermission("assignment:manage")
     @PostMapping("/teacher/addStudent")
     public Result addStudentToGroup(@RequestBody Map<String, Object> params) {
         Account loginUser = TokenUtils.getCurrentUser();
@@ -377,7 +355,6 @@ public class AssignmentGroupController {
      * API: /api/grouping/teacher/deleteStudent
      * assignmentId: 可以是作业ID、周期ID或-1表示通用周期
      */
-    @RequiresPermission("assignment:manage")
     @DeleteMapping("/teacher/deleteStudent")
     public Result deleteStudentFromGroup(@RequestBody Map<String, Object> params) {
         Account loginUser = TokenUtils.getCurrentUser();
@@ -416,7 +393,6 @@ public class AssignmentGroupController {
      * API: /api/grouping/teacher/delete
      * assignmentId: 可以是作业ID、周期ID或-1表示通用周期
      */
-    @RequiresPermission("assignment:manage")
     @DeleteMapping("/teacher/delete")
     public Result deleteGroup(@RequestBody Map<String, Object> params) {
         Account loginUser = TokenUtils.getCurrentUser();

@@ -3,7 +3,6 @@ package com.coursistant.lms.module.assignment.controller;
 import com.coursistant.lms.shared.web.Result;
 import com.coursistant.lms.module.assignment.entity.GroupMember;
 import com.coursistant.lms.module.assignment.service.GroupMemberService;
-import com.coursistant.lms.shared.security.RequiresPermission;
 
 import cn.hutool.core.util.ObjectUtil;
 
@@ -28,14 +27,12 @@ public class GroupMemberController {
     //private static final Logger logger = Logger.getLogger(GroupMemberController.class.getName());
 
 
-    @RequiresPermission("assignment:manage")
     @DeleteMapping("/deleteByGroup/{groupId}")
     public Result deleteByGroup(@PathVariable Integer groupId) {
         groupMemberService.deleteByGroupId(groupId);
         return Result.success();
     }
 
-    @RequiresPermission("assignment:view")
     @GetMapping("/selectByGroup/{groupId}")
     public Result selectByGroup(@PathVariable Integer groupId) {
         List<GroupMember> list = groupMemberService.selectByGroupId(groupId);
@@ -43,7 +40,6 @@ public class GroupMemberController {
     }
 
 
-    @RequiresPermission("assignment:manage")
     @PostMapping("/addMemberById")
     public Result addMemberByEmail(@RequestBody Map<String, Object> params) {
         Integer groupId = (Integer) params.get("groupId");
@@ -57,7 +53,6 @@ public class GroupMemberController {
         return Result.success("Member added successfully");
     }
 
-    @RequiresPermission("assignment:view")
     @DeleteMapping("/selfRemove")
     public Result selfRemove(@RequestBody Map<String, Object> params) {
         Integer groupId = (Integer) params.get("groupId");
@@ -70,7 +65,6 @@ public class GroupMemberController {
         return Result.success("You have left the group.");
     }
 
-    @RequiresPermission("assignment:manage")
     @DeleteMapping("/removeMember")
     public Result removeMember(@RequestBody Map<String, Object> params) {
         Integer groupId = (Integer) params.get("groupId");
@@ -83,7 +77,6 @@ public class GroupMemberController {
         return Result.success("Member removed.");
     }
 
-    @RequiresPermission("assignment:view")
     @GetMapping("/selectWithCount/{groupId}")
     public Result selectWithCount(@PathVariable Integer groupId) {
         List<GroupMember> list = groupMemberService.selectByGroupId(groupId);

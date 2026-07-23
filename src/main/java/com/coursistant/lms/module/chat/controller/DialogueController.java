@@ -4,7 +4,6 @@ import com.coursistant.lms.shared.web.Result;
 import com.coursistant.lms.module.chat.entity.Dialogue;
 import com.coursistant.lms.module.chat.service.DialogueService;
 import com.coursistant.lms.shared.util.TimeZoneUtils;
-import com.coursistant.lms.shared.security.RequiresPermission;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.annotation.Resource;
@@ -38,7 +37,6 @@ public class DialogueController {
      * 新增对话
      * Add a new dialogue
      */
-    @RequiresPermission("chatbot:interact")
     @PostMapping("/add")
     public Result add(@RequestBody Dialogue dialogue,
                       @RequestHeader(value = "X-Timezone", required = true) String timezone) {
@@ -53,7 +51,6 @@ public class DialogueController {
      * 软删除对话
      * Soft delete a dialogue
      */
-    @RequiresPermission("chatbot:interact")
     @PostMapping("/softDelete/{id}")
     public Result softDelete(@PathVariable Integer id) {
         logRequest("add", id.toString());
@@ -66,7 +63,6 @@ public class DialogueController {
      * 根据 ID 删除对话
      * Delete a dialogue by ID
      */
-    @RequiresPermission("chatbot:interact")
     @DeleteMapping("/delete/{id}")
     public Result deleteById(@PathVariable Integer id) {
         logRequest("deleteById", id.toString());
@@ -79,7 +75,6 @@ public class DialogueController {
      * 批量删除对话
      * Batch delete dialogues
      */
-    @RequiresPermission("chatbot:interact")
     @DeleteMapping("/delete/batch")
     public Result deleteBatch(@RequestBody List<Integer> ids) {
         logRequest("deleteBatch", ids.toString());
@@ -92,7 +87,6 @@ public class DialogueController {
      * 更新对话
      * Update a dialogue
      */
-    @RequiresPermission("chatbot:interact")
     @PutMapping("/update")
     public Result updateById(@RequestBody Dialogue dialogue,
                              @RequestHeader(value = "X-Timezone", required = false) String timezone) {
@@ -107,7 +101,6 @@ public class DialogueController {
      * 根据 ID 查询对话
      * Query a dialogue by ID
      */
-    @RequiresPermission("chatbot:interact")
     @GetMapping("/selectById/{id}")
     public Result selectById(@PathVariable Integer id,
                              @RequestHeader(value = "X-Timezone", required = false) String timezone) {
@@ -122,7 +115,6 @@ public class DialogueController {
      * 根据用户 ID 查询对话
      * Query dialogues by user ID
      */
-    @RequiresPermission("chatbot:interact")
     @GetMapping("/selectByUserId/{id}")
     public Result selectByUserId(@PathVariable Integer id,
                                  @RequestHeader(value = "X-Timezone", required = false) String timezone) {
@@ -137,7 +129,6 @@ public class DialogueController {
      * 根据用户 ID 和关键字查询对话
      * Query dialogues by user ID and keyword
      */
-    @RequiresPermission("chatbot:interact")
     @GetMapping("/selectByUserIdAndKeyword")
     public Result selectByUserIdAndKeyword(@RequestParam("userId") Integer userId,
                                            @RequestParam(value = "keyword") String keyword,
@@ -153,7 +144,6 @@ public class DialogueController {
      * 查询所有对话
      * Query all dialogues
      */
-    @RequiresPermission("chatbot:interact")
     @GetMapping("/selectAll")
     public Result selectAll(Dialogue dialogue,
                             @RequestHeader(value = "X-Timezone", required = false) String timezone) {

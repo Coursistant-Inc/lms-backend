@@ -6,7 +6,6 @@ import com.coursistant.lms.module.assignment.dto.AssignmentSubmissionDTO;
 import com.coursistant.lms.module.assignment.service.AssignmentService;
 import com.coursistant.lms.module.assignment.service.AssignmentSubmissionService;
 import com.coursistant.lms.shared.util.TimeZoneUtils;
-import com.coursistant.lms.shared.security.RequiresPermission;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -45,7 +44,6 @@ public class AssignmentSubmissionController {
      * 新增
      * Add a new assignmentSubmission
      */
-    @RequiresPermission("assignment:submit")
     @PostMapping("/add")
     public Result add(@RequestBody AssignmentSubmission assignmentSubmission,
 
@@ -59,7 +57,6 @@ public class AssignmentSubmissionController {
         return Result.success(data);
     }
 
-    @RequiresPermission("assignment:submit")
     @PostMapping("/addAsGroup")
     public Result addAsGroup(@RequestBody AssignmentSubmission assignmentSubmission,
                       @RequestHeader(value = "X-Timezone", required = false) String timezone) {
@@ -76,7 +73,6 @@ public class AssignmentSubmissionController {
      * 根据 ID 删除书签
      * Delete a assignmentSubmission by ID
      */
-    @RequiresPermission("assignment:submit")
     @DeleteMapping("/delete/{id}")
     public Result deleteById(@PathVariable Integer id) {
         logRequest("deleteById", id.toString());
@@ -89,7 +85,6 @@ public class AssignmentSubmissionController {
      * 批量删除书签
      * Batch delete assignmentSubmissions
      */
-    @RequiresPermission("assignment:submit")
     @DeleteMapping("/delete/batch")
     public Result deleteBatch(@RequestBody List<Integer> ids) {
         logRequest("deleteBatch", ids.toString());
@@ -102,7 +97,6 @@ public class AssignmentSubmissionController {
      * 更新书签
      * Update a assignmentSubmission
      */
-    @RequiresPermission("assignment:manage")
     @PutMapping("/update")
     public Result updateById(@RequestBody AssignmentSubmission assignmentSubmission) {
         logRequest("updateById", assignmentSubmission.toString());
@@ -115,7 +109,6 @@ public class AssignmentSubmissionController {
      * 更新
      * Update grade
      */
-    @RequiresPermission("assignment:manage")
     @PutMapping("/updateGrade")
     public Result updateGradeById(@RequestBody AssignmentSubmission assignmentSubmission) {
         logRequest("updateById", assignmentSubmission.toString());
@@ -124,7 +117,6 @@ public class AssignmentSubmissionController {
         return Result.success();
     }
 
-    @RequiresPermission("assignment:manage")
     @PutMapping("/updateGroupGrade")
     public Result updateGroupGradeById(@RequestBody AssignmentSubmission assignmentSubmission) {
         logRequest("updateGroupGradeById", assignmentSubmission.toString());
@@ -137,7 +129,6 @@ public class AssignmentSubmissionController {
      * 根据 ID 查询书签
      * Query a assignmentSubmission by ID
      */
-    @RequiresPermission("assignment:submit")
     @GetMapping("/selectById/{id}")
     public Result selectById(@PathVariable Integer id,
                              @RequestHeader(value = "X-Timezone", required = false) String timezone) {
@@ -152,7 +143,6 @@ public class AssignmentSubmissionController {
      * 查询所有书签
      * Query all assignmentSubmissions
      */
-    @RequiresPermission("assignment:submit")
     @GetMapping("/selectAll")
     public Result selectAll(AssignmentSubmission assignmentSubmission,
                             @RequestHeader(value = "X-Timezone", required = false) String timezone){
@@ -167,7 +157,6 @@ public class AssignmentSubmissionController {
      * 查询学生在课程下的最终提交记录
      * Query all final assignment submissions for a student in a specific course
      */
-    @RequiresPermission("assignment:submit")
     @GetMapping("/selectFinalByUserAndCourse")
     public Result selectFinalByUserAndCourse(@RequestParam Integer courseId,
                                              @RequestParam Integer studentId,
@@ -185,7 +174,6 @@ public class AssignmentSubmissionController {
      * 查询指定 assignmentId + studentId 的最终提交
      * Get the final submission by assignmentId and studentId
      */
-    @RequiresPermission("assignment:submit")
     @GetMapping("/selectFinalByUser")
     public Result selectFinalByUser(@RequestParam("assignmentId") Integer assignmentId,
                                     @RequestParam("studentId") Integer studentId,
@@ -201,7 +189,6 @@ public class AssignmentSubmissionController {
      * 查询指定 assignmentId + groupId 的最终提交
      * Get the final submission by assignmentId and groupId
      */
-    @RequiresPermission("assignment:submit")
     @GetMapping("/selectGroupFinalByUser")
     public Result selectGroupFinalByUser(@RequestParam("assignmentId") Integer assignmentId,
                                          @RequestParam("studentId") Integer studentId,
@@ -219,7 +206,6 @@ public class AssignmentSubmissionController {
      * 发送提交成功的通知邮件
      * Send submission confirmation email
      */
-    @RequiresPermission("assignment:submit")
     @PostMapping("/sendSubmissionEmail/{submissionId}")
     public Result sendSubmissionEmail(@PathVariable("submissionId") Integer submissionId) {
         logRequest("sendSubmissionEmail", "submissionId=" + submissionId);

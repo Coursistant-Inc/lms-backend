@@ -5,7 +5,6 @@ import com.coursistant.lms.module.file.service.DiskFilesService;
 import com.coursistant.lms.module.file.service.SubmissionFileService;
 import com.coursistant.lms.shared.web.Result;
 import com.coursistant.lms.module.file.entity.SubmissionFile;
-import com.coursistant.lms.shared.security.RequiresPermission;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -40,7 +39,6 @@ public class SubmissionFileController {
         logger.info(() -> String.format("End %s: %s", methodName, response));
     }
 
-    @RequiresPermission("assignment:submit")
     @PostMapping("/add")
     public Result add(@RequestBody SubmissionFile submissionFile) {
         logRequest("add", submissionFile.toString());
@@ -51,7 +49,6 @@ public class SubmissionFileController {
         return Result.success(data);
     }
 
-    @RequiresPermission("assignment:submit")
     @DeleteMapping("/delete/{id}")
     public Result deleteById(@PathVariable Integer id) {
         logRequest("deleteById", id.toString());
@@ -60,7 +57,6 @@ public class SubmissionFileController {
         return Result.success();
     }
 
-    @RequiresPermission("assignment:submit")
     @DeleteMapping("/delete/batch")
     public Result deleteBatch(@RequestBody List<Integer> ids) {
         logRequest("deleteBatch", ids.toString());
@@ -69,7 +65,6 @@ public class SubmissionFileController {
         return Result.success();
     }
 
-    @RequiresPermission("assignment:submit")
     @PutMapping("/update")
     public Result update(@RequestBody SubmissionFile submissionFile) {
         logRequest("update", submissionFile.toString());
@@ -78,7 +73,6 @@ public class SubmissionFileController {
         return Result.success();
     }
 
-    @RequiresPermission("assignment:submit")
     @GetMapping("/selectById/{id}")
     public Result selectById(@PathVariable Integer id) {
         logRequest("selectById", id.toString());
@@ -87,7 +81,6 @@ public class SubmissionFileController {
         return Result.success(submissionFile);
     }
 
-    @RequiresPermission("assignment:submit")
     @GetMapping("/selectAll")
     public Result selectAll(SubmissionFile submissionFile) {
         logRequest("selectAll", submissionFile != null ? submissionFile.toString() : "null");
@@ -96,7 +89,6 @@ public class SubmissionFileController {
         return Result.success(list);
     }
 
-    @RequiresPermission("assignment:submit")
     @GetMapping("/selectBySubmissionId/{submissionId}")
     public Result selectBySubmissionId(@PathVariable Integer submissionId) {
         logRequest("selectBySubmissionId", submissionId.toString());
@@ -105,7 +97,6 @@ public class SubmissionFileController {
         return Result.success(list);
     }
 
-    @RequiresPermission("assignment:submit")
     @DeleteMapping("/deleteBySubmissionId/{submissionId}")
     public Result deleteBySubmissionId(@PathVariable Integer submissionId) {
         logRequest("deleteBySubmissionId", submissionId.toString());
@@ -117,7 +108,6 @@ public class SubmissionFileController {
     /**
      * Upload a file and create a SubmissionFile entry (type = file)
      */
-    @RequiresPermission("assignment:submit")
     @PostMapping("/addWithFile")
     public Result addWithFile(@RequestParam("file") MultipartFile file,
                               @RequestParam(value = "submissionId", required = false) Integer submissionId,

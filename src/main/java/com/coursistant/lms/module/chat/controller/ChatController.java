@@ -4,7 +4,6 @@ import com.coursistant.lms.shared.web.Result;
 import com.coursistant.lms.module.chat.entity.Chat;
 import com.coursistant.lms.module.chat.service.ChatService;
 import com.coursistant.lms.shared.util.TimeZoneUtils;
-import com.coursistant.lms.shared.security.RequiresPermission;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.annotation.Resource;
@@ -37,7 +36,6 @@ public class ChatController {
      * 新增聊天记录
      * Add a new chat record
      */
-    @RequiresPermission("chatbot:interact")
     @PostMapping("/add")
     public Result add(@RequestBody Chat chat,
                       @RequestHeader(value = "X-Timezone", required = false) String timezone) {
@@ -52,7 +50,6 @@ public class ChatController {
      * 软删除聊天记录
      * Soft delete a chat record
      */
-    @RequiresPermission("chatbot:interact")
     @PostMapping("/softDelete/{id}")
     public Result softDelete(@PathVariable Integer id) {
         logRequest("add", id.toString());
@@ -65,7 +62,6 @@ public class ChatController {
      * 根据 ID 删除聊天记录
      * Delete a chat record by ID
      */
-    @RequiresPermission("chatbot:interact")
     @DeleteMapping("/delete/{id}")
     public Result deleteById(@PathVariable Integer id) {
         logRequest("deleteById", id.toString());
@@ -78,7 +74,6 @@ public class ChatController {
      * 批量删除聊天记录
      * Batch delete chat records
      */
-    @RequiresPermission("chatbot:interact")
     @DeleteMapping("/delete/batch")
     public Result deleteBatch(@RequestBody List<Integer> ids) {
         logRequest("deleteBatch", ids.toString());
@@ -91,7 +86,6 @@ public class ChatController {
      * 更新聊天记录
      * Update a chat record
      */
-    @RequiresPermission("chatbot:interact")
     @PutMapping("/update")
     public Result updateById(@RequestBody Chat chat,
                              @RequestHeader(value = "X-Timezone", required = false) String timezone) {
@@ -106,7 +100,6 @@ public class ChatController {
      * 根据 ID 查询聊天记录
      * Query a chat record by ID
      */
-    @RequiresPermission("chatbot:interact")
     @GetMapping("/selectById/{id}")
     public Result selectById(@PathVariable Integer id,
                              @RequestHeader(value = "X-Timezone", required = false) String timezone) {
@@ -121,7 +114,6 @@ public class ChatController {
      * 查询所有聊天记录
      * Query all chat records
      */
-    @RequiresPermission("chatbot:interact")
     @GetMapping("/selectAll")
     public Result selectAll(Chat chat,
                             @RequestHeader(value = "X-Timezone", required = false) String timezone) {

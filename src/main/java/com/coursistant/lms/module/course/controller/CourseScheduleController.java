@@ -3,7 +3,6 @@ package com.coursistant.lms.module.course.controller;
 import com.coursistant.lms.shared.web.Result;
 import com.coursistant.lms.module.course.entity.CourseSchedule;
 import com.coursistant.lms.module.course.service.CourseScheduleService;
-import com.coursistant.lms.shared.security.RequiresPermission;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.annotation.Resource;
@@ -37,7 +36,6 @@ public class CourseScheduleController {
      * 新增排课
      * Add a new course schedule
      */
-    @RequiresPermission("course:manage")
     @PostMapping("/add")
     public Result add(@RequestBody CourseSchedule courseSchedule) {
         logRequest("add", courseSchedule.toString());
@@ -50,7 +48,6 @@ public class CourseScheduleController {
      * 删除排课记录
      * Delete a schedule by ID
      */
-    @RequiresPermission("course:manage")
     @DeleteMapping("/delete/{id}")
     public Result deleteById(@PathVariable Integer id) {
         logRequest("deleteById", id.toString());
@@ -63,7 +60,6 @@ public class CourseScheduleController {
      * 批量删除排课记录
      * Batch delete schedules
      */
-    @RequiresPermission("course:manage")
     @DeleteMapping("/delete/batch")
     public Result deleteBatch(@RequestBody List<Integer> ids) {
         logRequest("deleteBatch", ids.toString());
@@ -76,7 +72,6 @@ public class CourseScheduleController {
      * 修改排课记录
      * Update a course schedule
      */
-    @RequiresPermission("course:manage")
     @PutMapping("/update")
     public Result updateById(@RequestBody CourseSchedule courseSchedule) {
         logRequest("updateById", courseSchedule.toString());
@@ -89,7 +84,6 @@ public class CourseScheduleController {
      * 根据 ID 查询排课记录
      * Query a schedule by ID
      */
-    @RequiresPermission("course:view")
     @GetMapping("/selectById/{id}")
     public Result selectById(@PathVariable Integer id) {
         logRequest("selectById", id.toString());
@@ -102,7 +96,6 @@ public class CourseScheduleController {
      * 查询所有排课记录
      * Query all schedules
      */
-    @RequiresPermission("course:view")
     @GetMapping("/selectAll")
     public Result selectAll(CourseSchedule condition) {
         logRequest("selectAll", condition != null ? condition.toString() : "null");

@@ -16,7 +16,6 @@ import com.coursistant.lms.module.auth.admin.service.AdminService;
 import com.coursistant.lms.module.user.service.UserService;
 import com.coursistant.lms.shared.security.TokenUtils;
 import com.coursistant.lms.shared.util.TimeZoneUtils;
-import com.coursistant.lms.shared.security.RequiresPermission;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
@@ -225,7 +224,6 @@ public class WebController {
     /**
      * Chat query — kept at /query until moved to chat module.
      */
-    @RequiresPermission("chatbot:interact")
     @PostMapping(value = "/query", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ApiResponse<Query> query(@RequestParam(value = "file", required = false) MultipartFile file,
                         @RequestParam("courseId") Integer courseId,

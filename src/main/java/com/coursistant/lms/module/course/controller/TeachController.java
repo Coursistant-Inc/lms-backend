@@ -3,7 +3,6 @@ package com.coursistant.lms.module.course.controller;
 import com.coursistant.lms.shared.web.Result;
 import com.coursistant.lms.module.course.entity.Teach;
 import com.coursistant.lms.module.course.service.TeachService;
-import com.coursistant.lms.shared.security.RequiresPermission;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.annotation.Resource;
@@ -36,7 +35,6 @@ public class TeachController {
      * 新增
      * Add a new teaching record
      */
-    @RequiresPermission("course:manage")
     @PostMapping("/add")
     public Result add(@RequestBody Teach teach) {
         logRequest("add", teach.toString());
@@ -49,7 +47,6 @@ public class TeachController {
      * 删除
      * Delete a teaching record by ID
      */
-    @RequiresPermission("course:manage")
     @DeleteMapping("/delete/{id}")
     public Result deleteById(@PathVariable Integer id) {
         logRequest("deleteById", id.toString());
@@ -62,7 +59,6 @@ public class TeachController {
      * 批量删除
      * Batch delete teaching records
      */
-    @RequiresPermission("course:manage")
     @DeleteMapping("/delete/batch")
     public Result deleteBatch(@RequestBody List<Integer> ids) {
         logRequest("deleteBatch", ids.toString());
@@ -75,7 +71,6 @@ public class TeachController {
      * 修改
      * Update a teaching record
      */
-    @RequiresPermission("course:manage")
     @PutMapping("/update")
     public Result updateById(@RequestBody Teach teach) {
         logRequest("updateById", teach.toString());
@@ -88,7 +83,6 @@ public class TeachController {
      * 根据ID查询
      * Query a teaching record by ID
      */
-    @RequiresPermission("course:view")
     @GetMapping("/selectById/{id}")
     public Result selectById(@PathVariable Integer id) {
         logRequest("selectById", id.toString());
@@ -101,7 +95,6 @@ public class TeachController {
      * 查询所有
      * Query all teaching records
      */
-    @RequiresPermission("course:view")
     @GetMapping("/selectAll")
     public Result selectAll(Teach teach) {
         logRequest("selectAll", teach != null ? teach.toString() : "null");
