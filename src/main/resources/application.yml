@@ -3,9 +3,9 @@ server:
   port: 8080
   forward-headers-strategy: framework
   servlet:
-    context-path: /api
-    encoding:
-      enabled: false
+      context-path: /api
+      encoding:
+        enabled: false
 
 
 
@@ -16,44 +16,41 @@ server:
 
 # 数据库配置
 spring:
-  jackson:
-    default-property-inclusion: NON_NULL
-
   config:
     import: optional:file:.env[.properties]
 
   security:
-    oauth2:
-      client:
-        registration:
-          google:
-            client-id: ${GOOGLE_CLIENT_ID}
-            client-secret: ${GOOGLE_CLIENT_SECRET}
-            redirect-uri: https://usc.xlearnedu.com/login/oauth2/code/google
-          microsoft:
-            client-id: ${MICROSOFT_CLIENT_ID}
-            client-secret: ${MICROSOFT_CLIENT_SECRET}
-            authorization-grant-type: authorization_code
-            scope: openid, profile, email
-            redirect-uri: https://usc.xlearnedu.com/login/oauth2/code/microsoft
-            client-name: Microsoft
-            provider: microsoft
-          facebook:
-            client-id: ${FACEBOOK_CLIENT_ID}
-            client-secret: ${FACEBOOK_CLIENT_SECRET}
-            redirect-uri: https://usc.xlearnedu.com/login/oauth2/code/facebook
-
-        provider:
-          google:
-            token-uri: https://oauth2.googleapis.com/token
-            user-info-uri: https://www.googleapis.com/oauth2/v3/userinfo
-          microsoft:
-            authorization-uri: https://login.microsoftonline.com/common/oauth2/v2.0/authorize
-            token-uri: https://login.microsoftonline.com/common/oauth2/v2.0/token
-            user-info-uri: https://graph.microsoft.com/oidc/userinfo
-            user-name-attribute: sub
-            jwk-set-uri: https://login.microsoftonline.com/common/discovery/v2.0/keys
-
+      oauth2:
+        client:
+          registration:
+            google:
+              client-id: ${GOOGLE_CLIENT_ID}
+              client-secret: ${GOOGLE_CLIENT_SECRET}
+              redirect-uri: https://usc.xlearnedu.com/login/oauth2/code/google
+            microsoft:
+              client-id: ${MICROSOFT_CLIENT_ID}
+              client-secret: ${MICROSOFT_CLIENT_SECRET}
+              authorization-grant-type: authorization_code
+              scope: openid, profile, email
+              redirect-uri: https://usc.xlearnedu.com/login/oauth2/code/microsoft
+              client-name: Microsoft
+              provider: microsoft
+            facebook:
+              client-id: ${FACEBOOK_CLIENT_ID}
+              client-secret: ${FACEBOOK_CLIENT_SECRET}
+              redirect-uri: https://usc.xlearnedu.com/login/oauth2/code/facebook
+              
+          provider:
+            google:
+              token-uri: https://oauth2.googleapis.com/token
+              user-info-uri: https://www.googleapis.com/oauth2/v3/userinfo
+            microsoft:
+              authorization-uri: https://login.microsoftonline.com/common/oauth2/v2.0/authorize
+              token-uri: https://login.microsoftonline.com/common/oauth2/v2.0/token
+              user-info-uri: https://graph.microsoft.com/oidc/userinfo
+              user-name-attribute: sub
+              jwk-set-uri: https://login.microsoftonline.com/common/discovery/v2.0/keys
+    
   linkedin:
     client-id: ${LINKEDIN_CLIENT_ID}
     client-secret: ${LINKEDIN_CLIENT_SECRET}
@@ -61,12 +58,12 @@ spring:
     token-url: https://www.linkedin.com/oauth/v2/accessToken
     auth-url: https://www.linkedin.com/oauth/v2/authorization
     scope: openid profile email
-
+              
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
-    url: jdbc:mysql://localhost:3306/lms?useUnicode=true&characterEncoding=utf-8&allowMultiQueries=true&useSSL=false&serverTimezone=GMT%2b8&allowPublicKeyRetrieval=true
+    url: jdbc:mysql://44.237.189.188:3306/lms?useUnicode=true&characterEncoding=utf-8&allowMultiQueries=true&useSSL=false&serverTimezone=GMT%2b8&allowPublicKeyRetrieval=true
 
     hikari:
       maximum-pool-size: 32
@@ -75,34 +72,6 @@ spring:
       max-lifetime: 1800000
       connection-timeout: 10000
       leak-detection-threshold: 30000
-
-  jpa:
-    hibernate:
-      ddl-auto: validate
-      naming:
-        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
-        implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyJpaCompliantImpl
-    open-in-view: false
-    show-sql: true
-    properties:
-      hibernate:
-        default_schema: lms
-        format_sql: true
-        current_session_context_class: org.springframework.orm.hibernate5.SpringSessionContext
-        use_sql_comments: true
-        jdbc:
-          batch_size: 20
-        order_inserts: true
-        order_updates: true
-
-  flyway:
-    enabled: true
-    baseline-on-migrate: true
-    baseline-version: 0
-    validate-on-migrate: true
-    ignore-migration-patterns: '*:ignored'
-    locations: classpath:db/migration
-    table: flyway_schema_history
 
   servlet:
     multipart:
@@ -140,16 +109,16 @@ mybatis:
     map-underscore-to-camel-case: true
 
 mail:
-  host: mail.privateemail.com  # 你的邮件服务器
-  port: 587
-  username: ${MAIL_USERNAME}  # 你的邮箱
-  password: ${MAIL_PASSWORD}  # 你的邮箱授权码
-  properties:
-    mail:
-      smtp:
-        auth: true
-        starttls:
-          enable: true
+    host: mail.privateemail.com  # 你的邮件服务器
+    port: 587
+    username: ${MAIL_USERNAME}  # 你的邮箱
+    password: ${MAIL_PASSWORD}  # 你的邮箱授权码
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
 
 # 分页
 pagehelper:
