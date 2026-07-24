@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.serializer.Jackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
@@ -82,6 +83,19 @@ public class RedisConfig {
         return createRedisTemplate(createLettuceConnectionFactory(5));
     }
 
+
+    /**
+     * 幂等系统 StringRedisTemplate（数据库 2）
+     * Idempotency StringRedisTemplate (db2)
+     */
+    @Bean(name = "idempotencyStringRedisTemplate")
+    public StringRedisTemplate idempotencyStringRedisTemplate() {
+        LettuceConnectionFactory factory = createLettuceConnectionFactory(2);
+        StringRedisTemplate template = new StringRedisTemplate();
+        template.setConnectionFactory(factory);
+        template.afterPropertiesSet();
+        return template;
+    }
 
     @Bean(name = "refreshTokenRedisTemplate")
     public RedisTemplate<String, Object> refreshTokenRedisTemplate() {

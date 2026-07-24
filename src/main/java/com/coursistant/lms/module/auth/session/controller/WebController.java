@@ -16,6 +16,7 @@ import com.coursistant.lms.module.chat.service.CoursistanceService;
 import com.coursistant.lms.module.auth.admin.service.AdminService;
 import com.coursistant.lms.module.user.service.UserService;
 import com.coursistant.lms.shared.util.TimeZoneUtils;
+import com.coursistant.lms.shared.idempotency.Idempotent;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
@@ -176,6 +177,7 @@ public class WebController {
         return ApiResponse.success();
     }
 
+    @Idempotent
     @PutMapping("/v1/auth/password")
     public ApiResponse<Void> updatePassword(@RequestBody PasswordDTO account) {
         if (!"update".equals(account.getType())) {

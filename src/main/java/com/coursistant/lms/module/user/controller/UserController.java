@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.coursistant.lms.shared.api.ApiResponse;
+import com.coursistant.lms.shared.idempotency.Idempotent;
 import com.coursistant.lms.module.user.entity.User;
 import com.coursistant.lms.module.user.service.UserService;
 
@@ -40,6 +41,7 @@ public class UserController {
         logger.info(() -> String.format("End %s: %s", methodName, response));
     }
 
+    @Idempotent
     @PostMapping
     public ApiResponse<Void> add(@RequestBody User user) {
         logRequest("add", user.toString());

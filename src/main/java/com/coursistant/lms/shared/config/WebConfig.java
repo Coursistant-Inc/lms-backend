@@ -1,8 +1,11 @@
 package com.coursistant.lms.shared.config;
 
+import com.coursistant.lms.shared.idempotency.IdempotencyFilter;
+import com.coursistant.lms.shared.idempotency.IdempotencyInterceptor;
 import com.coursistant.lms.shared.security.JwtInterceptor;
 
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.Ordered;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
@@ -16,6 +19,12 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Resource
     private JwtInterceptor jwtInterceptor;
+
+    @Resource
+    private IdempotencyInterceptor idempotencyInterceptor;
+
+    @Resource
+    private IdempotencyFilter idempotencyFilter;
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
@@ -34,6 +43,31 @@ public class WebConfig implements WebMvcConfigurer {
                 .excludePathPatterns("/thirdParty/**")
                 .excludePathPatterns("/oauth2/authorization/**")
         ;
+
+        registry.addInterceptor(idempotencyInterceptor).addPathPatterns("/**")
+                .excludePathPatterns("/v1")
+                .excludePathPatterns("/v1/auth/login")
+                .excludePathPatterns("/v1/auth/register")
+                .excludePathPatterns("/v1/auth/refresh-token")
+                .excludePathPatterns("/v1/auth/email-verifications/**")
+                .excludePathPatterns("/v1/auth/password-resets/**")
+                .excludePathPatterns("/files/**")
+                .excludePathPatterns("/swagger-ui/**")
+                .excludePathPatterns("/swagger-ui.html")
+                .excludePathPatterns("/v3/api-docs/**")
+                .excludePathPatterns("/login/oauth2/**")
+                .excludePathPatterns("/thirdParty/**")
+                .excludePathPatterns("/oauth2/authorization/**")
+        ;
+    }
+
+    @Bean
+    public FilterRegistrationBean<IdempotencyFilter> idempotencyFilterRegistration() {
+        FilterRegistrationBean<IdempotencyFilter> registration = new FilterRegistrationBean<>();
+        registration.setFilter(idempotencyFilter);
+        registration.addUrlPatterns("/*");
+        registration.setOrder(Ordered.HIGHEST_PRECEDENCE);
+        return registration;
     }
 
     @Bean
