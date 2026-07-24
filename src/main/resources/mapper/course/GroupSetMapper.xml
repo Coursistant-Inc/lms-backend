@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.coursistant.lms.module.course.group.repository.GroupSetMapper">
+
+    <sql id="Base_Column_List">
+        id,
+        course_id AS courseId,
+        name,
+        default_capacity AS defaultCapacity,
+        join_opens_at AS joinOpensAt,
+        join_closes_at AS joinClosesAt,
+        locked,
+        created_at AS createdAt,
+        updated_at AS updatedAt
+    </sql>
+
+    <insert id="insert" parameterType="com.coursistant.lms.module.course.group.entity.GroupSet"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO group_set (
+            course_id, name, default_capacity, join_opens_at, join_closes_at, locked
+        ) VALUES (
+            #{courseId}, #{name}, #{defaultCapacity}, #{joinOpensAt}, #{joinClosesAt}, #{locked}
+        )
+    </insert>
+
+    <update id="updateById" parameterType="com.coursistant.lms.module.course.group.entity.GroupSet">
+        UPDATE group_set
+        <set>
+            <if test="name != null">name = #{name},</if>
+            <if test="defaultCapacity != null">default_capacity = #{defaultCapacity},</if>
+            <if test="joinOpensAt != null">join_opens_at = #{joinOpensAt},</if>
+            <if test="joinClosesAt != null">join_closes_at = #{joinClosesAt},</if>
+            <if test="locked != null">locked = #{locked},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateAll" parameterType="com.coursistant.lms.module.course.group.entity.GroupSet">
+        UPDATE group_set
+        SET name = #{name},
+            default_capacity = #{defaultCapacity},
+            join_opens_at = #{joinOpensAt},
+            join_closes_at = #{joinClosesAt},
+            locked = #{locked}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM group_set WHERE id = #{id}
+    </delete>
+
+    <select id="selectById" resultType="com.coursistant.lms.module.course.group.entity.GroupSet">
+        SELECT <include refid="Base_Column_List"/>
+        FROM group_set
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectByCourseId" resultType="com.coursistant.lms.module.course.group.entity.GroupSet">
+        SELECT <include refid="Base_Column_List"/>
+        FROM group_set
+        WHERE course_id = #{courseId}
+        ORDER BY id ASC
+    </select>
+
+</mapper>

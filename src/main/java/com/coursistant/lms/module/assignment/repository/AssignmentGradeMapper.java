@@ -35,6 +35,9 @@ public interface AssignmentGradeMapper {
     AssignmentGrade selectByAssignmentIdAndStudentUserId(@Param("assignmentId") Integer assignmentId,
                                                          @Param("studentUserId") Integer studentUserId);
 
+    AssignmentGrade selectByAssignmentIdAndGroupId(@Param("assignmentId") Integer assignmentId,
+                                                   @Param("groupId") Integer groupId);
+
     List<AssignmentGrade> selectByAssignmentId(@Param("assignmentId") Integer assignmentId);
 
     int countByAssignmentId(@Param("assignmentId") Integer assignmentId);

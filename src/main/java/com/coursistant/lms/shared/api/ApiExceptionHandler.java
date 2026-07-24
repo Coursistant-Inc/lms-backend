@@ -20,7 +20,9 @@ public class ApiExceptionHandler {
     public ResponseEntity<ApiResponse<Object>> handleApiException(ApiException e) {
         ErrorType errorType = e.getErrorType();
         log.warn("ApiException: {} - {}", errorType.name(), e.getDisplayMessage());
-        ApiResponse<Object> body = ApiResponse.error(errorType, e.getDisplayMessage());
+        ApiResponse<Object> body = e.getData() != null
+                ? ApiResponse.error(errorType, e.getDisplayMessage(), e.getData())
+                : ApiResponse.error(errorType, e.getDisplayMessage());
         return ResponseEntity.status(errorType.getHttpStatus()).body(body);
     }
 

@@ -5,8 +5,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * Create payload for an Individual assignment. {@code dueAt}/{@code lateUntil} are wall-clock
- * times in the caller's {@code X-Timezone} and are converted to UTC before persisting.
+ * Create payload. {@code dueAt}/{@code lateUntil} are wall-clock times in the caller's
+ * {@code X-Timezone} and are converted to UTC before persisting.
+ * Group assignments require {@code submissionType=Group} and a {@code groupSetId}.
  */
 public class CreateAssignmentRequest {
 
@@ -18,6 +19,8 @@ public class CreateAssignmentRequest {
     private List<String> allowedFileTypes;
     private Long maxFileSizeBytes;
     private Integer maxFileCount;
+    private String submissionType;
+    private Integer groupSetId;
 
     public String getTitle() {
         return title;
@@ -81,5 +84,21 @@ public class CreateAssignmentRequest {
 
     public void setMaxFileCount(Integer maxFileCount) {
         this.maxFileCount = maxFileCount;
+    }
+
+    public String getSubmissionType() {
+        return submissionType;
+    }
+
+    public void setSubmissionType(String submissionType) {
+        this.submissionType = submissionType;
+    }
+
+    public Integer getGroupSetId() {
+        return groupSetId;
+    }
+
+    public void setGroupSetId(Integer groupSetId) {
+        this.groupSetId = groupSetId;
     }
 }

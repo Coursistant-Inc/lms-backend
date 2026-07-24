@@ -56,6 +56,13 @@ public class AssignmentNotificationService {
                 assignment.getCourseId(), assignment.getId(), studentUserId, versionNo, submittedAt));
     }
 
+    public void notifyGroupSubmissionReplaced(Assignment assignment, Integer groupId, Integer submitterUserId,
+                                              Integer versionNo) {
+        runSafely(() -> log.info(
+                "Notify GROUP_SUBMISSION_REPLACED: courseId={}, assignmentId={}, groupId={}, submitterUserId={}, versionNo={}",
+                assignment.getCourseId(), assignment.getId(), groupId, submitterUserId, versionNo));
+    }
+
     public void notifyGradesReleased(Assignment assignment, List<Integer> studentUserIds) {
         runSafely(() -> log.info("Notify grades released: courseId={}, assignmentId={}, recipients={}",
                 assignment.getCourseId(), assignment.getId(), size(studentUserIds)));

@@ -63,6 +63,24 @@ public enum ErrorType {
     WEEK_NOT_FOUND(HttpStatus.NOT_FOUND, "Course week does not exist"),
     MATERIAL_NOT_FOUND(HttpStatus.NOT_FOUND, "Course material does not exist"),
     WEEK_NOT_EMPTY(HttpStatus.CONFLICT, "Week still contains materials"),
+    ANNOUNCEMENT_GONE(HttpStatus.GONE, "Content no longer available"),
+    ANNOUNCEMENT_DELETE_CONFIRM_REQUIRED(HttpStatus.CONFLICT, "Confirmation required to delete announcement"),
+
+    // --- Group ---
+    GROUP_SET_NOT_FOUND(HttpStatus.NOT_FOUND, "Group set does not exist"),
+    GROUP_NOT_FOUND(HttpStatus.NOT_FOUND, "Group does not exist"),
+    GROUP_NOT_EMPTY(HttpStatus.CONFLICT, "Group is not empty"),
+    GROUP_SET_NOT_EMPTY(HttpStatus.CONFLICT, "Group set is not empty"),
+    GROUP_CAPACITY_FULL(HttpStatus.CONFLICT, "Group just filled up"),
+    GROUP_ALREADY_IN_SET(HttpStatus.CONFLICT, "Student is already in a group in this set"),
+    GROUP_WINDOW_CLOSED(HttpStatus.CONFLICT, "Group join window is closed"),
+    GROUP_LOCKED(HttpStatus.CONFLICT, "Group set is locked"),
+    GROUP_ACADEMIC_HOLD(HttpStatus.CONFLICT, "Group membership change is blocked by academic hold"),
+    GROUP_CAPACITY_CONFIRM_REQUIRED(HttpStatus.CONFLICT, "Confirmation required to exceed group capacity"),
+    GROUP_ACADEMIC_CONFIRM_REQUIRED(HttpStatus.CONFLICT, "Confirmation required due to academic impact"),
+    GROUP_SET_IN_USE(HttpStatus.CONFLICT, "Group set is referenced by an assignment"),
+    GROUP_HAS_SUBMISSIONS(HttpStatus.CONFLICT, "Group has assignment submissions and cannot be deleted"),
+    NO_GROUP_MEMBERSHIP(HttpStatus.CONFLICT, "You must join or be assigned to a group before submitting"),
 
     // --- Course Content Files ---
     FILE_TOO_LARGE(HttpStatus.BAD_REQUEST, "File exceeds the maximum allowed size"),
@@ -73,6 +91,7 @@ public enum ErrorType {
     // --- Assignment ---
     ASSIGNMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "Assignment does not exist"),
     ASSIGNMENT_TYPE_LOCKED(HttpStatus.CONFLICT, "Assignment type is locked"),
+    ASSIGNMENT_GROUP_SET_REQUIRED(HttpStatus.CONFLICT, "Group assignment requires a linked group set"),
     ASSIGNMENT_HAS_SUBMISSIONS(HttpStatus.CONFLICT, "Assignment already has submissions"),
     ASSIGNMENT_DUE_SHORTEN_CONFIRM_REQUIRED(HttpStatus.CONFLICT, "Confirmation required to shorten due date"),
     ASSIGNMENT_FILE_CONSTRAINT_INVALID(HttpStatus.BAD_REQUEST, "Invalid assignment file constraints"),

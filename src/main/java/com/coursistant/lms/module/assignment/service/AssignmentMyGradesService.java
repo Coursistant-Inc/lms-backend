@@ -3,12 +3,16 @@ package com.coursistant.lms.module.assignment.service;
 import com.coursistant.lms.module.assignment.dto.MyGradeResponse;
 import com.coursistant.lms.module.assignment.entity.Assignment;
 import com.coursistant.lms.module.assignment.entity.AssignmentGrade;
+import com.coursistant.lms.module.assignment.entity.AssignmentGradeReleaseRecipient;
 import com.coursistant.lms.module.assignment.entity.AssignmentSubmission;
 import com.coursistant.lms.module.assignment.entity.AssignmentSubmissionVersion;
 import com.coursistant.lms.module.assignment.repository.AssignmentGradeMapper;
+import com.coursistant.lms.module.assignment.repository.AssignmentGradeReleaseRecipientMapper;
 import com.coursistant.lms.module.assignment.repository.AssignmentMapper;
 import com.coursistant.lms.module.assignment.repository.AssignmentSubmissionMapper;
 import com.coursistant.lms.module.assignment.repository.AssignmentSubmissionVersionMapper;
+import com.coursistant.lms.module.course.group.entity.GroupMembership;
+import com.coursistant.lms.module.course.group.repository.GroupMembershipMapper;
 import com.coursistant.lms.shared.api.ErrorType;
 import jakarta.annotation.Resource;
 import org.slf4j.Logger;
@@ -58,6 +62,12 @@ public class AssignmentMyGradesService {
     @Resource
     private AssignmentResponseAssembler assignmentResponseAssembler;
 
+    @Resource
+    private AssignmentGradeReleaseRecipientMapper assignmentGradeReleaseRecipientMapper;
+
+    @Resource
+    private GroupMembershipMapper groupMembershipMapper;
+
     public List<MyGradeResponse> listMyGrades(Integer courseId, Integer userId, String timezoneHeader) {
         assignmentAccessService.requireCourse(courseId);
         assignmentAccessService.requireStudentMember(courseId, userId);
@@ -82,6 +92,10 @@ public class AssignmentMyGradesService {
     }
 
     private MyGradeResponse toMyGrade(Assignment assignment, Integer userId, ZoneId zone, LocalDateTime now) {
+        if (AssignmentAccessService.SUBMISSION_TYPE_GROUP.equals(assignment.getSubmissionType())) {
+            return toMyGroupGrade(assignment, userId, zone, now);
+        }
+
         MyGradeResponse response = new MyGradeResponse();
         response.setAssignmentId(assignment.getId());
         response.setAssignmentTitle(assignment.getTitle());
@@ -129,9 +143,86 @@ public class AssignmentMyGradesService {
         return response;
     }
 
+    private MyGradeResponse toMyGroupGrade(Assignment assignment, Integer userId, ZoneId zone, LocalDateTime now) {
+        MyGradeResponse response = new MyGradeResponse();
+        response.setAssignmentId(assignment.getId());
+        response.setAssignmentTitle(assignment.getTitle());
+        response.setTitle(assignment.getTitle());
+        response.setPointsPossible(assignment.getPointsPossible());
+        response.setDueAt(assignment.getDueAt());
+        response.setDueAtLocal(assignmentTimeSupport.toZone(assignment.getDueAt(), zone));
+        response.setItemType("Group");
+
+        AssignmentSubmissionVersion version = null;
+        GroupMembership membership = assignment.getGroupSetId() == null ? null
+                : groupMembershipMapper.selectByGroupSetIdAndUserId(assignment.getGroupSetId(), userId);
+        if (membership != null) {
+            version = currentVersionOfGroup(assignment.getId(), membership.getGroupId());
+        }
+
+        // Snapshot visibility: released grade is visible only if this student is on the release recipient list.
+        AssignmentGradeReleaseRecipient recipient = assignmentGradeReleaseRecipientMapper
+                .selectByAssignmentIdAndStudentUserId(assignment.getId(), userId);
+        AssignmentGrade releasedGrade = null;
+        if (recipient != null) {
+            AssignmentGrade grade = assignmentGradeMapper.selectById(recipient.getGradeId());
+            if (grade != null && AssignmentGradingService.GRADE_RELEASED.equals(grade.getStatus())) {
+                releasedGrade = grade;
+                if (version == null && grade.getSubmissionVersionId() != null) {
+                    version = assignmentSubmissionVersionMapper.selectById(grade.getSubmissionVersionId());
+                }
+            }
+        }
+
+        response.setSubmittedAt(version == null ? null : version.getSubmittedAt());
+        response.setVersionNo(version == null ? null : version.getVersionNo());
+        response.setSubmissionStatus(submissionStatusCalculator.calculate(assignment.getDueAt(),
+                assignment.getLateUntil(), now,
+                version == null ? null : version.getSubmittedAt(),
+                version == null ? null : version.getUsedGraceBuffer(),
+                List.of()));
+
+        boolean released = releasedGrade != null;
+        response.setReleased(released);
+        if (released) {
+            response.setGradeDisplay("Released");
+            response.setScore(releasedGrade.getScore());
+            response.setPointsEarned(releasedGrade.getScore());
+            response.setFeedbackHtml(releasedGrade.getFeedbackHtml());
+            boolean hasTextFeedback = releasedGrade.getFeedbackHtml() != null
+                    && !releasedGrade.getFeedbackHtml().isBlank();
+            response.setHasFeedback(hasTextFeedback);
+            response.setReleasedAt(releasedGrade.getReleasedAt());
+            boolean hasAnnotated = releasedGrade.getAnnotatedObjectKey() != null;
+            response.setHasAnnotatedFile(hasAnnotated);
+            if (hasAnnotated) {
+                response.setAnnotatedOriginalName(releasedGrade.getAnnotatedOriginalName());
+                response.setAnnotatedFileUrl(assignmentResponseAssembler.absoluteUrl(
+                        "/v2/courses/" + assignment.getCourseId() + "/assignments/" + assignment.getId()
+                                + "/groups/" + releasedGrade.getGroupId() + "/grade/annotated-file"));
+            }
+        } else if (SubmissionStatusCalculator.NOT_SUBMITTED_CLOSED.equals(response.getSubmissionStatus())) {
+            response.setGradeDisplay("DashClosed");
+            response.setHasFeedback(false);
+        } else {
+            response.setGradeDisplay("NotGradedYet");
+            response.setHasFeedback(false);
+        }
+        return response;
+    }
+
     private AssignmentSubmissionVersion currentVersionOf(Integer assignmentId, Integer userId) {
         AssignmentSubmission submission =
                 assignmentSubmissionMapper.selectByAssignmentIdAndOwnerUserId(assignmentId, userId);
+        if (submission == null || submission.getCurrentVersionId() == null) {
+            return null;
+        }
+        return assignmentSubmissionVersionMapper.selectById(submission.getCurrentVersionId());
+    }
+
+    private AssignmentSubmissionVersion currentVersionOfGroup(Integer assignmentId, Integer groupId) {
+        AssignmentSubmission submission =
+                assignmentSubmissionMapper.selectByAssignmentIdAndGroupId(assignmentId, groupId);
         if (submission == null || submission.getCurrentVersionId() == null) {
             return null;
         }

@@ -8,6 +8,7 @@
         id,
         assignment_id AS assignmentId,
         student_user_id AS studentUserId,
+        group_id AS groupId,
         submission_version_id AS submissionVersionId,
         rubric_version_id AS rubricVersionId,
         score,
@@ -31,6 +32,7 @@
         INSERT INTO assignment_grade (
             assignment_id,
             student_user_id,
+            group_id,
             submission_version_id,
             rubric_version_id,
             score,
@@ -49,6 +51,7 @@
         ) VALUES (
             #{assignmentId},
             #{studentUserId},
+            #{groupId},
             #{submissionVersionId},
             #{rubricVersionId},
             #{score},
@@ -72,6 +75,7 @@
         INSERT INTO assignment_grade (
             assignment_id,
             student_user_id,
+            group_id,
             submission_version_id,
             rubric_version_id,
             score,
@@ -90,6 +94,7 @@
         ) VALUES (
             #{assignmentId},
             #{studentUserId},
+            #{groupId},
             #{submissionVersionId},
             #{rubricVersionId},
             #{score},
@@ -175,12 +180,20 @@
         WHERE assignment_id = #{assignmentId} AND student_user_id = #{studentUserId}
     </select>
 
+    <select id="selectByAssignmentIdAndGroupId"
+            resultType="com.coursistant.lms.module.assignment.entity.AssignmentGrade">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM assignment_grade
+        WHERE assignment_id = #{assignmentId} AND group_id = #{groupId}
+    </select>
+
     <select id="selectByAssignmentId" resultType="com.coursistant.lms.module.assignment.entity.AssignmentGrade">
         SELECT
         <include refid="Base_Column_List"/>
         FROM assignment_grade
         WHERE assignment_id = #{assignmentId}
-        ORDER BY student_user_id
+        ORDER BY COALESCE(student_user_id, group_id)
     </select>
 
     <select id="countByAssignmentId" resultType="int">

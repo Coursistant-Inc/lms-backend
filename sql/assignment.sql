@@ -29,10 +29,7 @@ CREATE TABLE IF NOT EXISTS assignment (
   CONSTRAINT chk_assignment_max_count CHECK (max_file_count >= 1 AND max_file_count <= 10),
   CONSTRAINT chk_assignment_max_size CHECK (max_file_size_bytes >= 1 AND max_file_size_bytes <= 104857600),
   CONSTRAINT chk_assignment_late_until CHECK (late_until IS NULL OR late_until >= due_at),
-  CONSTRAINT chk_assignment_group_set CHECK (
-    (submission_type = 'Individual' AND group_set_id IS NULL)
-    OR (submission_type <> 'Individual')
-  )
+  CONSTRAINT fk_assignment_group_set FOREIGN KEY (group_set_id) REFERENCES group_set (id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS assignment_attachment (
@@ -92,16 +89,20 @@ CREATE TABLE IF NOT EXISTS assignment_audit_log (
 CREATE TABLE IF NOT EXISTS assignment_submission (
   id INT NOT NULL AUTO_INCREMENT,
   assignment_id INT NOT NULL,
-  owner_user_id INT NOT NULL,
+  owner_user_id INT NULL,
+  group_id INT NULL,
   current_version_id INT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   UNIQUE KEY uk_assignment_submission_owner (assignment_id, owner_user_id),
+  UNIQUE KEY uk_assignment_submission_group (assignment_id, group_id),
   KEY idx_assignment_submission_assignment (assignment_id),
   KEY idx_assignment_submission_owner (owner_user_id),
+  KEY idx_assignment_submission_group (group_id),
   CONSTRAINT fk_assignment_submission_assignment FOREIGN KEY (assignment_id) REFERENCES assignment (id) ON DELETE CASCADE,
-  CONSTRAINT fk_assignment_submission_owner FOREIGN KEY (owner_user_id) REFERENCES user (id) ON DELETE RESTRICT
+  CONSTRAINT fk_assignment_submission_owner FOREIGN KEY (owner_user_id) REFERENCES user (id) ON DELETE RESTRICT,
+  CONSTRAINT fk_assignment_submission_group FOREIGN KEY (group_id) REFERENCES course_group (id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS assignment_submission_version (
@@ -109,6 +110,7 @@ CREATE TABLE IF NOT EXISTS assignment_submission_version (
   submission_id INT NOT NULL,
   assignment_id INT NOT NULL,
   owner_user_id INT NOT NULL,
+  actual_submitter_user_id INT NOT NULL,
   version_no INT NOT NULL,
   submitted_at DATETIME NOT NULL,
   used_grace_buffer TINYINT(1) NOT NULL DEFAULT 0,
@@ -119,7 +121,8 @@ CREATE TABLE IF NOT EXISTS assignment_submission_version (
   KEY idx_assignment_submission_version_assignment (assignment_id),
   CONSTRAINT fk_assignment_submission_version_submission FOREIGN KEY (submission_id) REFERENCES assignment_submission (id) ON DELETE CASCADE,
   CONSTRAINT fk_assignment_submission_version_assignment FOREIGN KEY (assignment_id) REFERENCES assignment (id) ON DELETE CASCADE,
-  CONSTRAINT fk_assignment_submission_version_owner FOREIGN KEY (owner_user_id) REFERENCES user (id) ON DELETE RESTRICT
+  CONSTRAINT fk_assignment_submission_version_owner FOREIGN KEY (owner_user_id) REFERENCES user (id) ON DELETE RESTRICT,
+  CONSTRAINT fk_assignment_submission_version_submitter FOREIGN KEY (actual_submitter_user_id) REFERENCES user (id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 ALTER TABLE assignment_submission
@@ -173,7 +176,8 @@ CREATE TABLE IF NOT EXISTS assignment_submission_staging_file (
 CREATE TABLE IF NOT EXISTS assignment_grade (
   id INT NOT NULL AUTO_INCREMENT,
   assignment_id INT NOT NULL,
-  student_user_id INT NOT NULL,
+  student_user_id INT NULL,
+  group_id INT NULL,
   submission_version_id INT NULL,
   rubric_version_id INT NULL,
   score DECIMAL(10, 2) NOT NULL,
@@ -192,12 +196,31 @@ CREATE TABLE IF NOT EXISTS assignment_grade (
   ai_provenance_json JSON NULL,
   PRIMARY KEY (id),
   UNIQUE KEY uk_assignment_grade_student (assignment_id, student_user_id),
+  UNIQUE KEY uk_assignment_grade_group (assignment_id, group_id),
   KEY idx_assignment_grade_assignment (assignment_id),
   KEY idx_assignment_grade_student (student_user_id),
+  KEY idx_assignment_grade_group (group_id),
   CONSTRAINT fk_assignment_grade_assignment FOREIGN KEY (assignment_id) REFERENCES assignment (id) ON DELETE CASCADE,
   CONSTRAINT fk_assignment_grade_student FOREIGN KEY (student_user_id) REFERENCES user (id) ON DELETE RESTRICT,
+  CONSTRAINT fk_assignment_grade_group FOREIGN KEY (group_id) REFERENCES course_group (id) ON DELETE RESTRICT,
   CONSTRAINT fk_assignment_grade_version FOREIGN KEY (submission_version_id) REFERENCES assignment_submission_version (id) ON DELETE SET NULL,
   CONSTRAINT fk_assignment_grade_rubric FOREIGN KEY (rubric_version_id) REFERENCES assignment_rubric_version (id) ON DELETE SET NULL,
   CONSTRAINT fk_assignment_grade_entered_by FOREIGN KEY (entered_by) REFERENCES user (id) ON DELETE RESTRICT,
   CONSTRAINT fk_assignment_grade_edited_by FOREIGN KEY (edited_by) REFERENCES user (id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS assignment_grade_release_recipient (
+  id INT NOT NULL AUTO_INCREMENT,
+  grade_id INT NOT NULL,
+  assignment_id INT NOT NULL,
+  group_id INT NOT NULL,
+  student_user_id INT NOT NULL,
+  released_at DATETIME NOT NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_grade_release_recipient (grade_id, student_user_id),
+  KEY idx_grade_release_recipient_student (assignment_id, student_user_id),
+  CONSTRAINT fk_grade_release_recipient_grade FOREIGN KEY (grade_id) REFERENCES assignment_grade (id) ON DELETE CASCADE,
+  CONSTRAINT fk_grade_release_recipient_assignment FOREIGN KEY (assignment_id) REFERENCES assignment (id) ON DELETE CASCADE,
+  CONSTRAINT fk_grade_release_recipient_group FOREIGN KEY (group_id) REFERENCES course_group (id) ON DELETE RESTRICT,
+  CONSTRAINT fk_grade_release_recipient_student FOREIGN KEY (student_user_id) REFERENCES user (id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

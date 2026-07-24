@@ -27,6 +27,11 @@ public interface EnrollmentMapper {
      */
     List<Enrollment> selectActiveStudentsByCourseId(@Param("courseId") Integer courseId);
 
+    /**
+     * All active enrollments for a course (Instructor / TA / Student).
+     */
+    List<Enrollment> selectActiveByCourseId(@Param("courseId") Integer courseId);
+
     int countByCourseId(@Param("courseId") Integer courseId);
 
     int countActiveInstructorsByCourseId(@Param("courseId") Integer courseId);

@@ -3,6 +3,7 @@ package com.coursistant.lms.module.assignment.service;
 import com.coursistant.lms.module.assignment.dto.GradeResponse;
 import com.coursistant.lms.module.assignment.dto.GradeTransitionResponse;
 import com.coursistant.lms.module.assignment.dto.GradeTransitionSkip;
+import com.coursistant.lms.module.assignment.dto.GroupMemberSummary;
 import com.coursistant.lms.module.assignment.dto.GradingRosterItemResponse;
 import com.coursistant.lms.module.assignment.dto.GradingRosterResponse;
 import com.coursistant.lms.module.assignment.dto.GradingViewResponse;
@@ -13,7 +14,9 @@ import com.coursistant.lms.module.assignment.entity.AssignmentGrade;
 import com.coursistant.lms.module.assignment.entity.AssignmentSubmission;
 import com.coursistant.lms.module.assignment.entity.AssignmentSubmissionFile;
 import com.coursistant.lms.module.assignment.entity.AssignmentSubmissionVersion;
+import com.coursistant.lms.module.assignment.entity.AssignmentGradeReleaseRecipient;
 import com.coursistant.lms.module.assignment.repository.AssignmentGradeMapper;
+import com.coursistant.lms.module.assignment.repository.AssignmentGradeReleaseRecipientMapper;
 import com.coursistant.lms.module.assignment.repository.AssignmentMapper;
 import com.coursistant.lms.module.assignment.repository.AssignmentSubmissionFileMapper;
 import com.coursistant.lms.module.assignment.repository.AssignmentSubmissionMapper;
@@ -22,6 +25,11 @@ import com.coursistant.lms.module.course.course.entity.Course;
 import com.coursistant.lms.module.course.enrollment.entity.Enrollment;
 import com.coursistant.lms.module.course.enrollment.repository.EnrollmentMapper;
 import com.coursistant.lms.module.course.enrollment.service.CoursePermissionService;
+import com.coursistant.lms.module.course.group.entity.CourseGroup;
+import com.coursistant.lms.module.course.group.entity.GroupMembership;
+import com.coursistant.lms.module.course.group.repository.CourseGroupMapper;
+import com.coursistant.lms.module.course.group.repository.GroupMembershipMapper;
+import com.coursistant.lms.module.course.group.service.GroupAccessService;
 import com.coursistant.lms.module.user.account.entity.User;
 import com.coursistant.lms.module.user.account.repository.UserMapper;
 import com.coursistant.lms.shared.api.ErrorType;
@@ -112,16 +120,31 @@ public class AssignmentGradingService {
     @Resource
     private AssignmentNotificationService assignmentNotificationService;
 
+    @Resource
+    private AssignmentGradeReleaseRecipientMapper assignmentGradeReleaseRecipientMapper;
+
+    @Resource
+    private CourseGroupMapper courseGroupMapper;
+
+    @Resource
+    private GroupMembershipMapper groupMembershipMapper;
+
+    @Resource
+    private GroupAccessService groupAccessService;
+
     // ---------------------------------------------------------------- roster
 
     /**
-     * Roster of active Students with their submission state and grade state. TAs and the
-     * Instructor are never listed: they are graders, not gradees.
+     * Individual: active Students. Group: every group in the linked set (including unsubmitted).
      */
     public GradingRosterResponse getRoster(Integer courseId, Integer assignmentId, Integer userId) {
         Course course = assignmentAccessService.requireCourse(courseId);
         assignmentAccessService.requireCanGrade(courseId, userId);
         Assignment assignment = requireAssignment(courseId, assignmentId, userId);
+
+        if (AssignmentAccessService.SUBMISSION_TYPE_GROUP.equals(assignment.getSubmissionType())) {
+            return getGroupRoster(course, assignment, userId);
+        }
 
         LocalDateTime now = assignmentTimeSupport.nowUtc();
         List<Enrollment> students = activeStudents(courseId);
@@ -148,7 +171,6 @@ public class AssignmentGradingService {
             GradingRosterItemResponse item = buildRosterItem(assignment, student.getUserId(),
                     gradesByStudent.get(student.getUserId()), now);
             response.getItems().add(item);
-
             if (SubmissionStatusCalculator.SUBMITTED.equals(item.getSubmissionStatus())) {
                 submitted++;
             } else if (SubmissionStatusCalculator.SUBMITTED_LATE.equals(item.getSubmissionStatus())) {
@@ -167,6 +189,62 @@ public class AssignmentGradingService {
             }
         }
 
+        response.setSubmittedCount(submitted);
+        response.setLateCount(late);
+        response.setNotSubmittedCount(notSubmitted);
+        response.setUngradedCount(ungraded);
+        response.setEnteredCount(entered);
+        response.setReleasedCount(released);
+        return response;
+    }
+
+    private GradingRosterResponse getGroupRoster(Course course, Assignment assignment, Integer userId) {
+        LocalDateTime now = assignmentTimeSupport.nowUtc();
+        groupAccessService.requireGroupSetInCourse(course.getId(), assignment.getGroupSetId());
+        List<CourseGroup> groups = courseGroupMapper.selectByGroupSetId(assignment.getGroupSetId());
+        if (groups == null) {
+            throw AssignmentErrors.fail(log, course.getId(), assignment.getId(), userId, ErrorType.INTERNAL_ERROR,
+                    "Group roster query returned null");
+        }
+        Map<Integer, AssignmentGrade> gradesByGroup = gradesByGroup(assignment.getId());
+
+        GradingRosterResponse response = new GradingRosterResponse();
+        response.setAssignmentId(assignment.getId());
+        response.setAssignmentTitle(assignment.getTitle());
+        response.setPointsPossible(assignment.getPointsPossible());
+        response.setDueAt(assignment.getDueAt());
+        response.setLateUntil(assignment.getLateUntil());
+        response.setTotalStudents(groups.size());
+        response.setGradingWritable(assignmentAccessService.isGradingWritable(course));
+        response.setGradingWritableUntil(assignmentAccessService.gradingWritableUntil(course));
+
+        int submitted = 0;
+        int late = 0;
+        int notSubmitted = 0;
+        int ungraded = 0;
+        int entered = 0;
+        int released = 0;
+
+        for (CourseGroup group : groups) {
+            GradingRosterItemResponse item = buildGroupRosterItem(assignment, group,
+                    gradesByGroup.get(group.getId()), now);
+            response.getItems().add(item);
+            if (SubmissionStatusCalculator.SUBMITTED.equals(item.getSubmissionStatus())) {
+                submitted++;
+            } else if (SubmissionStatusCalculator.SUBMITTED_LATE.equals(item.getSubmissionStatus())) {
+                submitted++;
+                late++;
+            } else {
+                notSubmitted++;
+            }
+            if (GRADE_RELEASED.equals(item.getGradeStatus())) {
+                released++;
+            } else if (GRADE_ENTERED.equals(item.getGradeStatus())) {
+                entered++;
+            } else {
+                ungraded++;
+            }
+        }
         response.setSubmittedCount(submitted);
         response.setLateCount(late);
         response.setNotSubmittedCount(notSubmitted);
@@ -253,6 +331,7 @@ public class AssignmentGradingService {
         AssignmentGrade grade = new AssignmentGrade();
         grade.setAssignmentId(assignmentId);
         grade.setStudentUserId(studentUserId);
+        grade.setGroupId(null);
         grade.setScore(score);
         grade.setSubmissionVersionId(firstNonNull(body.getSubmissionVersionId(),
                 currentVersion == null ? null : currentVersion.getId(),
@@ -366,6 +445,76 @@ public class AssignmentGradingService {
                 grade.getAnnotatedContentType(), true, courseId, assignmentId, userId);
     }
 
+    @Transactional
+    public GradeResponse uploadGroupAnnotatedFile(Integer courseId, Integer assignmentId, Integer groupId,
+                                                  Integer userId, MultipartFile file) {
+        assignmentAccessService.requireGradingWritable(courseId, userId);
+        Assignment assignment = requireAssignment(courseId, assignmentId, userId);
+        requireGroupAssignment(courseId, assignmentId, userId, assignment);
+        requireGroupInRoster(courseId, assignment, groupId, userId);
+        assignmentFilePolicy.validateAnnotatedFile(file);
+
+        AssignmentGrade existing = requireGroupGrade(courseId, assignmentId, groupId, userId);
+        String previousKey = existing.getAnnotatedObjectKey();
+
+        String objectKey = assignmentFilePolicy.annotatedGroupKey(courseId, assignmentId, groupId,
+                file.getOriginalFilename());
+        assignmentStorageService.upload(objectKey, file, courseId, assignmentId, userId);
+
+        AssignmentGrade patch = new AssignmentGrade();
+        patch.setId(existing.getId());
+        patch.setAnnotatedObjectKey(objectKey);
+        patch.setAnnotatedOriginalName(assignmentFilePolicy.sanitizeFilename(file.getOriginalFilename()));
+        patch.setAnnotatedContentType(file.getContentType());
+        patch.setAnnotatedSizeBytes(file.getSize());
+        patch.setEditedBy(userId);
+        assignmentGradeMapper.updateById(patch);
+
+        assignmentAuditService.write(courseId, assignmentId, userId,
+                AssignmentAuditService.GRADE_ANNOTATED_FILE_UPLOADED,
+                Map.of("groupId", groupId, "originalName",
+                        String.valueOf(patch.getAnnotatedOriginalName())));
+
+        if (previousKey != null && !previousKey.equals(objectKey)) {
+            assignmentStorageService.deleteQuietly(previousKey);
+        }
+        return toGradeResponse(assignment, requireGroupGrade(courseId, assignmentId, groupId, userId));
+    }
+
+    /**
+     * Staff may always read. Students may read only when the grade is Released and they appear
+     * on that grade's release-recipient snapshot (joiners after release must not inherit access).
+     */
+    public ResponseEntity<InputStreamResource> downloadGroupAnnotatedFile(Integer courseId, Integer assignmentId,
+                                                                          Integer groupId, Integer userId) {
+        assignmentAccessService.requireCourse(courseId);
+        boolean staff = assignmentAccessService.canGrade(courseId, userId);
+        if (!staff) {
+            assignmentAccessService.requireActiveMember(courseId, userId);
+        }
+        Assignment assignment = requireAssignmentForReader(courseId, assignmentId, userId, !staff);
+        requireGroupAssignment(courseId, assignmentId, userId, assignment);
+        requireGroupInRoster(courseId, assignment, groupId, userId);
+
+        AssignmentGrade grade = assignmentGradeMapper.selectByAssignmentIdAndGroupId(assignmentId, groupId);
+        if (grade == null) {
+            throw AssignmentErrors.fail(log, courseId, assignmentId, userId, ErrorType.GRADE_NOT_FOUND,
+                    "No grade for this group");
+        }
+        if (!staff) {
+            if (!GRADE_RELEASED.equals(grade.getStatus()) || !isReleaseRecipient(grade.getId(), userId)) {
+                throw AssignmentErrors.fail(log, courseId, assignmentId, userId, ErrorType.GRADE_NOT_FOUND,
+                        "This grade has not been released yet");
+            }
+        }
+        if (grade.getAnnotatedObjectKey() == null) {
+            throw AssignmentErrors.fail(log, courseId, assignmentId, userId, ErrorType.NOT_FOUND,
+                    "No annotated file for this grade");
+        }
+        return assignmentStorageService.stream(grade.getAnnotatedObjectKey(), grade.getAnnotatedOriginalName(),
+                grade.getAnnotatedContentType(), true, courseId, assignmentId, userId);
+    }
+
     // ------------------------------------------------- release / retract
 
     @Transactional
@@ -373,9 +522,19 @@ public class AssignmentGradingService {
         assignmentAccessService.requireReleaseWritable(courseId, userId);
         Assignment assignment = requireAssignment(courseId, assignmentId, userId);
 
+        if (AssignmentAccessService.SUBMISSION_TYPE_GROUP.equals(assignment.getSubmissionType())) {
+            List<Integer> groupIds = new ArrayList<>();
+            for (AssignmentGrade grade : grades(assignmentId)) {
+                if (GRADE_ENTERED.equals(grade.getStatus()) && grade.getGroupId() != null) {
+                    groupIds.add(grade.getGroupId());
+                }
+            }
+            return applyGroupRelease(assignment, courseId, assignmentId, userId, groupIds);
+        }
+
         List<Integer> studentUserIds = new ArrayList<>();
         for (AssignmentGrade grade : grades(assignmentId)) {
-            if (GRADE_ENTERED.equals(grade.getStatus())) {
+            if (GRADE_ENTERED.equals(grade.getStatus()) && grade.getStudentUserId() != null) {
                 studentUserIds.add(grade.getStudentUserId());
             }
         }
@@ -389,6 +548,16 @@ public class AssignmentGradingService {
         Assignment assignment = requireAssignment(courseId, assignmentId, userId);
         requireSelection(courseId, assignmentId, userId, studentUserIds);
         return applyRelease(assignment, courseId, assignmentId, userId, studentUserIds);
+    }
+
+    @Transactional
+    public GradeTransitionResponse releaseGroups(Integer courseId, Integer assignmentId, Integer userId,
+                                                 List<Integer> groupIds) {
+        assignmentAccessService.requireReleaseWritable(courseId, userId);
+        Assignment assignment = requireAssignment(courseId, assignmentId, userId);
+        requireGroupAssignment(courseId, assignmentId, userId, assignment);
+        requireGroupSelection(courseId, assignmentId, userId, groupIds);
+        return applyGroupRelease(assignment, courseId, assignmentId, userId, groupIds);
     }
 
     /**
@@ -426,6 +595,126 @@ public class AssignmentGradingService {
         return response;
     }
 
+    @Transactional
+    public GradeTransitionResponse retractGroups(Integer courseId, Integer assignmentId, Integer userId,
+                                                 List<Integer> groupIds) {
+        assignmentAccessService.requireReleaseWritable(courseId, userId);
+        Assignment assignment = requireAssignment(courseId, assignmentId, userId);
+        requireGroupAssignment(courseId, assignmentId, userId, assignment);
+        requireGroupSelection(courseId, assignmentId, userId, groupIds);
+
+        GradeTransitionResponse response = new GradeTransitionResponse();
+        for (Integer groupId : groupIds) {
+            AssignmentGrade grade = assignmentGradeMapper.selectByAssignmentIdAndGroupId(assignmentId, groupId);
+            if (grade == null) {
+                response.getSkipped().add(GradeTransitionSkip.forGroup(groupId, GRADE_UNGRADED));
+                continue;
+            }
+            if (!GRADE_RELEASED.equals(grade.getStatus())) {
+                response.getSkipped().add(GradeTransitionSkip.forGroup(groupId, grade.getStatus()));
+                continue;
+            }
+            assignmentGradeReleaseRecipientMapper.deleteByGradeId(grade.getId());
+            assignmentGradeMapper.updateStatus(grade.getId(), GRADE_ENTERED, null, userId);
+            response.getChangedGroupIds().add(groupId);
+        }
+        response.setChangedCount(response.getChangedGroupIds().size());
+        if (response.getChangedCount() > 0) {
+            assignmentAuditService.write(courseId, assignmentId, userId, AssignmentAuditService.GRADES_RETRACTED,
+                    Map.of("groupIds", response.getChangedGroupIds()));
+        }
+        return response;
+    }
+
+    @Transactional
+    public GradeResponse upsertGroupGrade(Integer courseId, Integer assignmentId, Integer groupId, Integer userId,
+                                          UpsertGradeRequest body) {
+        assignmentAccessService.requireGradingWritable(courseId, userId);
+        Assignment assignment = requireAssignment(courseId, assignmentId, userId);
+        requireGroupAssignment(courseId, assignmentId, userId, assignment);
+        requireGroupInRoster(courseId, assignment, groupId, userId);
+        if (body == null) {
+            throw AssignmentErrors.fail(log, courseId, assignmentId, userId, ErrorType.PARAM_MISSING,
+                    "Request body is required");
+        }
+        BigDecimal score = body.getScore();
+        if (score == null) {
+            throw AssignmentErrors.fail(log, courseId, assignmentId, userId, ErrorType.PARAM_MISSING,
+                    "score is required; delete-to-ungrade is not supported");
+        }
+        if (score.compareTo(BigDecimal.ZERO) < 0 || score.compareTo(assignment.getPointsPossible()) > 0) {
+            throw AssignmentErrors.fail(log, courseId, assignmentId, userId, ErrorType.GRADE_SCORE_OUT_OF_RANGE,
+                    "score must be between 0 and " + assignment.getPointsPossible());
+        }
+
+        AssignmentGrade existing = assignmentGradeMapper.selectByAssignmentIdAndGroupId(assignmentId, groupId);
+        LocalDateTime now = assignmentTimeSupport.nowUtc();
+        AssignmentSubmissionVersion currentVersion = currentVersionOfGroup(assignmentId, groupId);
+
+        AssignmentGrade grade = new AssignmentGrade();
+        grade.setAssignmentId(assignmentId);
+        grade.setGroupId(groupId);
+        grade.setStudentUserId(null);
+        grade.setScore(score);
+        grade.setSubmissionVersionId(firstNonNull(body.getSubmissionVersionId(),
+                currentVersion == null ? null : currentVersion.getId(),
+                existing == null ? null : existing.getSubmissionVersionId()));
+        grade.setRubricVersionId(firstNonNull(body.getRubricVersionId(),
+                assignment.getCurrentRubricVersionId(),
+                existing == null ? null : existing.getRubricVersionId()));
+        grade.setFeedbackHtml(body.getFeedbackHtml() != null
+                ? body.getFeedbackHtml()
+                : (existing == null ? null : existing.getFeedbackHtml()));
+        grade.setAnnotatedObjectKey(existing == null ? null : existing.getAnnotatedObjectKey());
+        grade.setAnnotatedOriginalName(existing == null ? null : existing.getAnnotatedOriginalName());
+        grade.setAnnotatedContentType(existing == null ? null : existing.getAnnotatedContentType());
+        grade.setAnnotatedSizeBytes(existing == null ? null : existing.getAnnotatedSizeBytes());
+        grade.setStatus(existing == null ? GRADE_ENTERED : existing.getStatus());
+        grade.setReleasedAt(existing == null ? null : existing.getReleasedAt());
+        grade.setEnteredBy(existing == null ? userId : existing.getEnteredBy());
+        grade.setEnteredAt(existing == null ? now : existing.getEnteredAt());
+        grade.setEditedBy(userId);
+        grade.setAiAssisted(body.getAiAssisted() != null
+                ? body.getAiAssisted()
+                : (existing != null && Boolean.TRUE.equals(existing.getAiAssisted())));
+        grade.setAiProvenanceJson(body.getAiProvenanceJson() != null
+                ? body.getAiProvenanceJson()
+                : (existing == null ? null : existing.getAiProvenanceJson()));
+        assignmentGradeMapper.upsert(grade);
+
+        assignmentAuditService.write(courseId, assignmentId, userId, AssignmentAuditService.GRADE_UPSERTED,
+                Map.of("groupId", groupId, "score", score, "status", grade.getStatus(),
+                        "created", existing == null));
+        return toGradeResponse(assignment, requireGroupGrade(courseId, assignmentId, groupId, userId));
+    }
+
+    public GradingViewResponse getGroupGradingView(Integer courseId, Integer assignmentId, Integer groupId,
+                                                   Integer userId, String timezoneHeader) {
+        Course course = assignmentAccessService.requireCourse(courseId);
+        assignmentAccessService.requireCanGrade(courseId, userId);
+        Assignment assignment = requireAssignment(courseId, assignmentId, userId);
+        requireGroupAssignment(courseId, assignmentId, userId, assignment);
+        CourseGroup group = requireGroupInRoster(courseId, assignment, groupId, userId);
+
+        ZoneId zone = assignmentTimeSupport.zoneOrUtc(timezoneHeader);
+        LocalDateTime now = assignmentTimeSupport.nowUtc();
+        AssignmentGrade grade = assignmentGradeMapper.selectByAssignmentIdAndGroupId(assignmentId, groupId);
+
+        GradingViewResponse response = new GradingViewResponse();
+        response.setAssignmentId(assignmentId);
+        response.setAssignmentTitle(assignment.getTitle());
+        response.setStudent(buildGroupRosterItem(assignment, group, grade, now));
+        response.setGradingWritable(assignmentAccessService.isGradingWritable(course));
+        response.setVersions(assignmentSubmissionService.versionHistoryForGroup(assignment, groupId, zone));
+        AssignmentSubmissionVersion currentVersion = currentVersionOfGroup(assignmentId, groupId);
+        response.setCurrentVersion(submissionResponseAssembler.toVersionResponse(assignment, currentVersion, zone, true));
+        response.setRubric(assignmentRubricService.toResponse(assignment));
+        if (grade != null) {
+            response.setGrade(toGradeResponse(assignment, grade));
+        }
+        return response;
+    }
+
     private GradeTransitionResponse applyRelease(Assignment assignment, Integer courseId, Integer assignmentId,
                                                  Integer userId, List<Integer> studentUserIds) {
         LocalDateTime now = assignmentTimeSupport.nowUtc();
@@ -455,6 +744,57 @@ public class AssignmentGradingService {
                     () -> assignmentNotificationService.notifyGradesReleased(assignment, notified));
         }
         return response;
+    }
+
+    private GradeTransitionResponse applyGroupRelease(Assignment assignment, Integer courseId, Integer assignmentId,
+                                                      Integer userId, List<Integer> groupIds) {
+        LocalDateTime now = assignmentTimeSupport.nowUtc();
+        GradeTransitionResponse response = new GradeTransitionResponse();
+        List<Integer> notified = new ArrayList<>();
+
+        for (Integer groupId : groupIds) {
+            AssignmentGrade grade = assignmentGradeMapper.selectByAssignmentIdAndGroupId(assignmentId, groupId);
+            if (grade == null) {
+                response.getSkipped().add(GradeTransitionSkip.forGroup(groupId, GRADE_UNGRADED));
+                continue;
+            }
+            if (!GRADE_ENTERED.equals(grade.getStatus())) {
+                // Already-released grades are not re-released (joiners must not inherit).
+                response.getSkipped().add(GradeTransitionSkip.forGroup(groupId, grade.getStatus()));
+                continue;
+            }
+            assignmentGradeMapper.updateStatus(grade.getId(), GRADE_RELEASED, now, userId);
+            rewriteReleaseSnapshot(grade, groupId, now);
+            response.getChangedGroupIds().add(groupId);
+            for (GroupMembership member : groupMembershipMapper.selectByGroupId(groupId)) {
+                notified.add(member.getUserId());
+            }
+        }
+        response.setChangedCount(response.getChangedGroupIds().size());
+        if (response.getChangedCount() > 0) {
+            assignmentAuditService.write(courseId, assignmentId, userId, AssignmentAuditService.GRADES_RELEASED,
+                    Map.of("groupIds", response.getChangedGroupIds()));
+            assignmentNotificationService.afterCommit(
+                    () -> assignmentNotificationService.notifyGradesReleased(assignment, notified));
+        }
+        return response;
+    }
+
+    private void rewriteReleaseSnapshot(AssignmentGrade grade, Integer groupId, LocalDateTime releasedAt) {
+        assignmentGradeReleaseRecipientMapper.deleteByGradeId(grade.getId());
+        List<GroupMembership> members = groupMembershipMapper.selectByGroupId(groupId);
+        if (members == null) {
+            return;
+        }
+        for (GroupMembership member : members) {
+            AssignmentGradeReleaseRecipient recipient = new AssignmentGradeReleaseRecipient();
+            recipient.setGradeId(grade.getId());
+            recipient.setAssignmentId(grade.getAssignmentId());
+            recipient.setGroupId(groupId);
+            recipient.setStudentUserId(member.getUserId());
+            recipient.setReleasedAt(releasedAt);
+            assignmentGradeReleaseRecipientMapper.insert(recipient);
+        }
     }
 
     // ------------------------------------------------------------- internals
@@ -510,11 +850,58 @@ public class AssignmentGradingService {
         return item;
     }
 
+    private GradingRosterItemResponse buildGroupRosterItem(Assignment assignment, CourseGroup group,
+                                                           AssignmentGrade grade, LocalDateTime now) {
+        GradingRosterItemResponse item = new GradingRosterItemResponse();
+        item.setGroupId(group.getId());
+        item.setGroupName(group.getName());
+        List<GroupMemberSummary> members = groupMemberSummaries(group.getId());
+        item.setMembers(members);
+        item.setMemberCount(members.size());
+
+        AssignmentSubmission submission = assignmentSubmissionMapper
+                .selectByAssignmentIdAndGroupId(assignment.getId(), group.getId());
+        AssignmentSubmissionVersion version = null;
+        if (submission != null) {
+            item.setSubmissionId(submission.getId());
+            if (submission.getCurrentVersionId() != null) {
+                version = assignmentSubmissionVersionMapper.selectById(submission.getCurrentVersionId());
+            }
+        }
+        if (version != null) {
+            item.setSubmissionVersionId(version.getId());
+            item.setVersionNo(version.getVersionNo());
+            item.setSubmittedAt(version.getSubmittedAt());
+            item.setUsedGraceBuffer(version.getUsedGraceBuffer());
+            item.setActualSubmitterUserId(version.getActualSubmitterUserId());
+            List<AssignmentSubmissionFile> files =
+                    assignmentSubmissionFileMapper.selectBySubmissionVersionId(version.getId());
+            item.setFileCount(files == null ? 0 : files.size());
+        }
+        // Group status ignores personal staging.
+        item.setSubmissionStatus(submissionStatusCalculator.calculate(assignment.getDueAt(), assignment.getLateUntil(),
+                now,
+                version == null ? null : version.getSubmittedAt(),
+                version == null ? null : version.getUsedGraceBuffer(),
+                List.of()));
+
+        if (grade == null) {
+            item.setGradeStatus(GRADE_UNGRADED);
+        } else {
+            item.setGradeStatus(grade.getStatus());
+            item.setScore(grade.getScore());
+            item.setReleasedAt(grade.getReleasedAt());
+            item.setHasAnnotatedFile(grade.getAnnotatedObjectKey() != null);
+        }
+        return item;
+    }
+
     private GradeResponse toGradeResponse(Assignment assignment, AssignmentGrade grade) {
         GradeResponse response = new GradeResponse();
         response.setId(grade.getId());
         response.setAssignmentId(grade.getAssignmentId());
         response.setStudentUserId(grade.getStudentUserId());
+        response.setGroupId(grade.getGroupId());
         response.setSubmissionVersionId(grade.getSubmissionVersionId());
         response.setRubricVersionId(grade.getRubricVersionId());
         response.setScore(grade.getScore());
@@ -526,9 +913,12 @@ public class AssignmentGradingService {
         response.setAnnotatedContentType(grade.getAnnotatedContentType());
         response.setAnnotatedSizeBytes(grade.getAnnotatedSizeBytes());
         if (grade.getAnnotatedObjectKey() != null) {
-            response.setAnnotatedFileUrl(assignmentResponseAssembler.absoluteUrl(
-                    "/v2/courses/" + assignment.getCourseId() + "/assignments/" + assignment.getId()
-                            + "/grades/" + grade.getStudentUserId() + "/annotated-file"));
+            String annotatedPath = grade.getGroupId() != null
+                    ? "/v2/courses/" + assignment.getCourseId() + "/assignments/" + assignment.getId()
+                    + "/groups/" + grade.getGroupId() + "/grade/annotated-file"
+                    : "/v2/courses/" + assignment.getCourseId() + "/assignments/" + assignment.getId()
+                    + "/students/" + grade.getStudentUserId() + "/grade/annotated-file";
+            response.setAnnotatedFileUrl(assignmentResponseAssembler.absoluteUrl(annotatedPath));
         }
         response.setEnteredBy(grade.getEnteredBy());
         response.setEnteredAt(grade.getEnteredAt());
@@ -539,6 +929,45 @@ public class AssignmentGradingService {
         return response;
     }
 
+    private boolean isReleaseRecipient(Integer gradeId, Integer studentUserId) {
+        if (gradeId == null || studentUserId == null) {
+            return false;
+        }
+        List<AssignmentGradeReleaseRecipient> recipients =
+                assignmentGradeReleaseRecipientMapper.selectByGradeId(gradeId);
+        if (recipients == null) {
+            return false;
+        }
+        for (AssignmentGradeReleaseRecipient recipient : recipients) {
+            if (studentUserId.equals(recipient.getStudentUserId())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private List<GroupMemberSummary> groupMemberSummaries(Integer groupId) {
+        List<GroupMemberSummary> result = new ArrayList<>();
+        if (groupId == null) {
+            return result;
+        }
+        List<GroupMembership> memberships = groupMembershipMapper.selectByGroupId(groupId);
+        if (memberships == null) {
+            return result;
+        }
+        for (GroupMembership membership : memberships) {
+            GroupMemberSummary summary = new GroupMemberSummary();
+            summary.setUserId(membership.getUserId());
+            User user = userMapper.selectById(membership.getUserId());
+            if (user != null) {
+                summary.setName(user.getName());
+                summary.setEmail(user.getEmail());
+            }
+            result.add(summary);
+        }
+        return result;
+    }
+
     private AssignmentSubmissionVersion currentVersionOf(Integer assignmentId, Integer studentUserId) {
         AssignmentSubmission submission = assignmentSubmissionMapper
                 .selectByAssignmentIdAndOwnerUserId(assignmentId, studentUserId);
@@ -546,6 +975,45 @@ public class AssignmentGradingService {
             return null;
         }
         return assignmentSubmissionVersionMapper.selectById(submission.getCurrentVersionId());
+    }
+
+    private AssignmentSubmissionVersion currentVersionOfGroup(Integer assignmentId, Integer groupId) {
+        AssignmentSubmission submission = assignmentSubmissionMapper
+                .selectByAssignmentIdAndGroupId(assignmentId, groupId);
+        if (submission == null || submission.getCurrentVersionId() == null) {
+            return null;
+        }
+        return assignmentSubmissionVersionMapper.selectById(submission.getCurrentVersionId());
+    }
+
+    private void requireGroupAssignment(Integer courseId, Integer assignmentId, Integer userId, Assignment assignment) {
+        if (!AssignmentAccessService.SUBMISSION_TYPE_GROUP.equals(assignment.getSubmissionType())) {
+            throw AssignmentErrors.fail(log, courseId, assignmentId, userId, ErrorType.BAD_REQUEST,
+                    "This endpoint is only for Group assignments");
+        }
+    }
+
+    private CourseGroup requireGroupInRoster(Integer courseId, Assignment assignment, Integer groupId, Integer userId) {
+        if (assignment.getGroupSetId() == null || groupId == null) {
+            throw AssignmentErrors.fail(log, courseId, assignment.getId(), userId, ErrorType.NOT_IN_GRADING_ROSTER,
+                    "Group " + groupId + " is not in the grading roster");
+        }
+        return groupAccessService.requireGroupInSet(courseId, assignment.getGroupSetId(), groupId);
+    }
+
+    private AssignmentGrade requireGroupGrade(Integer courseId, Integer assignmentId, Integer groupId, Integer userId) {
+        AssignmentGrade grade = assignmentGradeMapper.selectByAssignmentIdAndGroupId(assignmentId, groupId);
+        if (grade == null) {
+            throw AssignmentErrors.fail(log, courseId, assignmentId, userId, ErrorType.GRADE_NOT_FOUND, null);
+        }
+        return grade;
+    }
+
+    private void requireGroupSelection(Integer courseId, Integer assignmentId, Integer userId, List<Integer> groupIds) {
+        if (groupIds == null || groupIds.isEmpty()) {
+            throw AssignmentErrors.fail(log, courseId, assignmentId, userId, ErrorType.PARAM_MISSING,
+                    "groupIds is required");
+        }
     }
 
     private void requireInRoster(Integer courseId, Integer assignmentId, Integer studentUserId, Integer userId) {
@@ -606,9 +1074,21 @@ public class AssignmentGradingService {
     private Map<Integer, AssignmentGrade> gradesByStudent(Integer assignmentId) {
         Map<Integer, AssignmentGrade> byStudent = new LinkedHashMap<>();
         for (AssignmentGrade grade : grades(assignmentId)) {
-            byStudent.put(grade.getStudentUserId(), grade);
+            if (grade.getStudentUserId() != null) {
+                byStudent.put(grade.getStudentUserId(), grade);
+            }
         }
         return byStudent;
+    }
+
+    private Map<Integer, AssignmentGrade> gradesByGroup(Integer assignmentId) {
+        Map<Integer, AssignmentGrade> byGroup = new LinkedHashMap<>();
+        for (AssignmentGrade grade : grades(assignmentId)) {
+            if (grade.getGroupId() != null) {
+                byGroup.put(grade.getGroupId(), grade);
+            }
+        }
+        return byGroup;
     }
 
     private List<Enrollment> activeStudents(Integer courseId) {

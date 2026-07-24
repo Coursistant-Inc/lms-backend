@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.coursistant.lms.module.course.group.repository.GroupMembershipMapper">
+
+    <sql id="Base_Column_List">
+        id,
+        group_id AS groupId,
+        group_set_id AS groupSetId,
+        course_id AS courseId,
+        user_id AS userId,
+        joined_at AS joinedAt,
+        added_by_type AS addedByType,
+        added_by_user_id AS addedByUserId,
+        created_at AS createdAt,
+        updated_at AS updatedAt
+    </sql>
+
+    <insert id="insert" parameterType="com.coursistant.lms.module.course.group.entity.GroupMembership"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO group_membership (
+            group_id, group_set_id, course_id, user_id, joined_at, added_by_type, added_by_user_id
+        ) VALUES (
+            #{groupId}, #{groupSetId}, #{courseId}, #{userId}, #{joinedAt}, #{addedByType}, #{addedByUserId}
+        )
+    </insert>
+
+    <update id="updateById" parameterType="com.coursistant.lms.module.course.group.entity.GroupMembership">
+        UPDATE group_membership
+        SET group_id = #{groupId},
+            joined_at = #{joinedAt},
+            added_by_type = #{addedByType},
+            added_by_user_id = #{addedByUserId}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM group_membership WHERE id = #{id}
+    </delete>
+
+    <delete id="deleteByCourseIdAndUserId">
+        DELETE FROM group_membership
+        WHERE course_id = #{courseId} AND user_id = #{userId}
+    </delete>
+
+    <select id="selectById" resultType="com.coursistant.lms.module.course.group.entity.GroupMembership">
+        SELECT <include refid="Base_Column_List"/>
+        FROM group_membership
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectByGroupSetIdAndUserId"
+            resultType="com.coursistant.lms.module.course.group.entity.GroupMembership">
+        SELECT <include refid="Base_Column_List"/>
+        FROM group_membership
+        WHERE group_set_id = #{groupSetId} AND user_id = #{userId}
+    </select>
+
+    <select id="selectByGroupId" resultType="com.coursistant.lms.module.course.group.entity.GroupMembership">
+        SELECT <include refid="Base_Column_List"/>
+        FROM group_membership
+        WHERE group_id = #{groupId}
+        ORDER BY joined_at ASC, id ASC
+    </select>
+
+    <select id="selectByGroupSetId" resultType="com.coursistant.lms.module.course.group.entity.GroupMembership">
+        SELECT <include refid="Base_Column_List"/>
+        FROM group_membership
+        WHERE group_set_id = #{groupSetId}
+        ORDER BY group_id ASC, joined_at ASC, id ASC
+    </select>
+
+    <select id="selectByCourseIdAndUserId"
+            resultType="com.coursistant.lms.module.course.group.entity.GroupMembership">
+        SELECT <include refid="Base_Column_List"/>
+        FROM group_membership
+        WHERE course_id = #{courseId} AND user_id = #{userId}
+    </select>
+
+    <select id="countByGroupId" resultType="int">
+        SELECT COUNT(*) FROM group_membership WHERE group_id = #{groupId}
+    </select>
+
+    <select id="countByGroupSetId" resultType="int">
+        SELECT COUNT(*) FROM group_membership WHERE group_set_id = #{groupSetId}
+    </select>
+
+</mapper>

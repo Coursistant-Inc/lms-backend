@@ -100,7 +100,12 @@ public class AssignmentGradingController {
                                                         @PathVariable Integer courseId,
                                                         @PathVariable Integer assignmentId,
                                                         @RequestBody GradeStudentSelectionRequest body) {
-        return ApiResponse.success(assignmentGradingService.release(courseId, assignmentId, currentUserId(request),
+        Integer userId = currentUserId(request);
+        if (body != null && body.getGroupIds() != null && !body.getGroupIds().isEmpty()) {
+            return ApiResponse.success(assignmentGradingService.releaseGroups(courseId, assignmentId, userId,
+                    body.getGroupIds()));
+        }
+        return ApiResponse.success(assignmentGradingService.release(courseId, assignmentId, userId,
                 body == null ? null : body.getStudentUserIds()));
     }
 
@@ -110,8 +115,53 @@ public class AssignmentGradingController {
                                                         @PathVariable Integer courseId,
                                                         @PathVariable Integer assignmentId,
                                                         @RequestBody GradeStudentSelectionRequest body) {
-        return ApiResponse.success(assignmentGradingService.retract(courseId, assignmentId, currentUserId(request),
+        Integer userId = currentUserId(request);
+        if (body != null && body.getGroupIds() != null && !body.getGroupIds().isEmpty()) {
+            return ApiResponse.success(assignmentGradingService.retractGroups(courseId, assignmentId, userId,
+                    body.getGroupIds()));
+        }
+        return ApiResponse.success(assignmentGradingService.retract(courseId, assignmentId, userId,
                 body == null ? null : body.getStudentUserIds()));
+    }
+
+    @GetMapping("/groups/{groupId}/grading")
+    public ApiResponse<GradingViewResponse> getGroupGradingView(HttpServletRequest request,
+                                                                @PathVariable Integer courseId,
+                                                                @PathVariable Integer assignmentId,
+                                                                @PathVariable Integer groupId,
+                                                                @RequestHeader(value = "X-Timezone", required = false)
+                                                                String timezone) {
+        return ApiResponse.success(assignmentGradingService.getGroupGradingView(courseId, assignmentId, groupId,
+                currentUserId(request), timezone));
+    }
+
+    @PutMapping("/groups/{groupId}/grade")
+    public ApiResponse<GradeResponse> upsertGroupGrade(HttpServletRequest request,
+                                                       @PathVariable Integer courseId,
+                                                       @PathVariable Integer assignmentId,
+                                                       @PathVariable Integer groupId,
+                                                       @RequestBody UpsertGradeRequest body) {
+        return ApiResponse.success(assignmentGradingService.upsertGroupGrade(courseId, assignmentId, groupId,
+                currentUserId(request), body));
+    }
+
+    @PostMapping(value = "/groups/{groupId}/grade/annotated-file", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<GradeResponse> uploadGroupAnnotatedFile(HttpServletRequest request,
+                                                               @PathVariable Integer courseId,
+                                                               @PathVariable Integer assignmentId,
+                                                               @PathVariable Integer groupId,
+                                                               @RequestParam("file") MultipartFile file) {
+        return ApiResponse.success(assignmentGradingService.uploadGroupAnnotatedFile(courseId, assignmentId, groupId,
+                currentUserId(request), file));
+    }
+
+    @GetMapping("/groups/{groupId}/grade/annotated-file")
+    public ResponseEntity<InputStreamResource> downloadGroupAnnotatedFile(HttpServletRequest request,
+                                                                          @PathVariable Integer courseId,
+                                                                          @PathVariable Integer assignmentId,
+                                                                          @PathVariable Integer groupId) {
+        return assignmentGradingService.downloadGroupAnnotatedFile(courseId, assignmentId, groupId,
+                currentUserId(request));
     }
 
     private Integer currentUserId(HttpServletRequest request) {

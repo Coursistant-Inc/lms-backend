@@ -25,6 +25,7 @@ public class AssignmentAccessService {
     public static final String STATE_PUBLISHED = "Published";
     public static final String COURSE_STATE_ARCHIVED = "Archived";
     public static final String SUBMISSION_TYPE_INDIVIDUAL = "Individual";
+    public static final String SUBMISSION_TYPE_GROUP = "Group";
 
     /** Staff may keep grading an archived course for this many days after {@code archivedAt}. */
     public static final int ARCHIVE_GRADING_DAYS = 30;

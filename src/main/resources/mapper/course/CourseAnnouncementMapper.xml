@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.coursistant.lms.module.course.announcement.repository.CourseAnnouncementMapper">
+
+    <sql id="Base_Column_List">
+        id,
+        course_id AS courseId,
+        title,
+        body_html AS bodyHtml,
+        author_user_id AS authorUserId,
+        author_name AS authorName,
+        posted_at AS postedAt,
+        edited_at AS editedAt,
+        created_at AS createdAt,
+        updated_at AS updatedAt
+    </sql>
+
+    <insert id="insert" parameterType="com.coursistant.lms.module.course.announcement.entity.CourseAnnouncement"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO course_announcement (
+            course_id, title, body_html, author_user_id, author_name, posted_at, edited_at
+        ) VALUES (
+            #{courseId}, #{title}, #{bodyHtml}, #{authorUserId}, #{authorName}, #{postedAt}, #{editedAt}
+        )
+    </insert>
+
+    <update id="updateById" parameterType="com.coursistant.lms.module.course.announcement.entity.CourseAnnouncement">
+        UPDATE course_announcement
+        <set>
+            <if test="title != null">title = #{title},</if>
+            <if test="bodyHtml != null">body_html = #{bodyHtml},</if>
+            <if test="editedAt != null">edited_at = #{editedAt},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM course_announcement WHERE id = #{id}
+    </delete>
+
+    <select id="selectById" resultType="com.coursistant.lms.module.course.announcement.entity.CourseAnnouncement">
+        SELECT <include refid="Base_Column_List"/>
+        FROM course_announcement
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectSummariesByCourseId"
+            resultType="com.coursistant.lms.module.course.announcement.dto.AnnouncementSummaryResponse">
+        SELECT
+            a.id,
+            a.course_id AS courseId,
+            c.course_code AS courseCode,
+            a.title,
+            a.author_user_id AS authorUserId,
+            a.author_name AS authorName,
+            a.posted_at AS postedAt,
+            a.edited_at AS editedAt,
+            CASE WHEN r.user_id IS NULL THEN 0 ELSE 1 END AS `read`
+        FROM course_announcement a
+        INNER JOIN course c ON c.id = a.course_id
+        LEFT JOIN course_announcement_read r
+            ON r.announcement_id = a.id AND r.user_id = #{userId}
+        WHERE a.course_id = #{courseId}
+        ORDER BY a.posted_at DESC, a.id DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="selectRecentForUser"
+            resultType="com.coursistant.lms.module.course.announcement.dto.AnnouncementSummaryResponse">
+        SELECT
+            a.id,
+            a.course_id AS courseId,
+            c.course_code AS courseCode,
+            a.title,
+            a.author_user_id AS authorUserId,
+            a.author_name AS authorName,
+            a.posted_at AS postedAt,
+            a.edited_at AS editedAt,
+            CASE WHEN r.user_id IS NULL THEN 0 ELSE 1 END AS `read`
+        FROM course_announcement a
+        INNER JOIN enrollment e
+            ON e.course_id = a.course_id AND e.user_id = #{userId} AND e.active = 1
+        INNER JOIN course c ON c.id = a.course_id
+        LEFT JOIN course_announcement_read r
+            ON r.announcement_id = a.id AND r.user_id = #{userId}
+        ORDER BY a.posted_at DESC, a.id DESC
+        LIMIT #{limit}
+    </select>
+</mapper>

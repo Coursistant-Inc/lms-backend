@@ -119,6 +119,18 @@
         WHERE assignment_id = #{assignmentId}
     </select>
 
+    <select id="countSubmissionVersionsByAssignmentId" resultType="int">
+        SELECT COUNT(*)
+        FROM assignment_submission_version
+        WHERE assignment_id = #{assignmentId}
+    </select>
+
+    <select id="countByGroupSetId" resultType="int">
+        SELECT COUNT(*)
+        FROM assignment
+        WHERE group_set_id = #{groupSetId}
+    </select>
+
     <select id="countGradesByAssignmentId" resultType="int">
         SELECT COUNT(*)
         FROM assignment_grade
@@ -140,6 +152,12 @@
     <update id="updateLateUntil">
         UPDATE assignment
         SET late_until = #{lateUntil}
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateGroupSetId">
+        UPDATE assignment
+        SET group_set_id = #{groupSetId}
         WHERE id = #{id}
     </update>
 

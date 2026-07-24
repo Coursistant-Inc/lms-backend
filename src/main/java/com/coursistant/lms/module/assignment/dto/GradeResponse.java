@@ -15,6 +15,7 @@ public class GradeResponse {
     private Integer id;
     private Integer assignmentId;
     private Integer studentUserId;
+    private Integer groupId;
     private Integer submissionVersionId;
     private Integer rubricVersionId;
     private BigDecimal score;
@@ -55,6 +56,14 @@ public class GradeResponse {
 
     public void setStudentUserId(Integer studentUserId) {
         this.studentUserId = studentUserId;
+    }
+
+    public Integer getGroupId() {
+        return groupId;
+    }
+
+    public void setGroupId(Integer groupId) {
+        this.groupId = groupId;
     }
 
     public Integer getSubmissionVersionId() {

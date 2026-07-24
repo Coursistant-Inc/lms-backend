@@ -15,6 +15,12 @@ public class SubmissionResponse {
     private Integer submissionId;
     private Integer assignmentId;
     private Integer ownerUserId;
+    private Integer groupId;
+    private String groupName;
+    private List<GroupMemberSummary> members;
+    private Integer actualSubmitterUserId;
+    /** Null when eligible; {@code NO_GROUP_MEMBERSHIP} when the viewer has no group. */
+    private String submissionEligibility;
     private String submissionStatus;
     private LocalDateTime dueAt;
     private LocalDateTime lateUntil;
@@ -57,6 +63,46 @@ public class SubmissionResponse {
 
     public void setOwnerUserId(Integer ownerUserId) {
         this.ownerUserId = ownerUserId;
+    }
+
+    public Integer getGroupId() {
+        return groupId;
+    }
+
+    public void setGroupId(Integer groupId) {
+        this.groupId = groupId;
+    }
+
+    public String getGroupName() {
+        return groupName;
+    }
+
+    public void setGroupName(String groupName) {
+        this.groupName = groupName;
+    }
+
+    public List<GroupMemberSummary> getMembers() {
+        return members;
+    }
+
+    public void setMembers(List<GroupMemberSummary> members) {
+        this.members = members;
+    }
+
+    public Integer getActualSubmitterUserId() {
+        return actualSubmitterUserId;
+    }
+
+    public void setActualSubmitterUserId(Integer actualSubmitterUserId) {
+        this.actualSubmitterUserId = actualSubmitterUserId;
+    }
+
+    public String getSubmissionEligibility() {
+        return submissionEligibility;
+    }
+
+    public void setSubmissionEligibility(String submissionEligibility) {
+        this.submissionEligibility = submissionEligibility;
     }
 
     public String getSubmissionStatus() {

@@ -14,6 +14,8 @@ import com.coursistant.lms.module.course.enrollment.entity.Enrollment;
 import com.coursistant.lms.module.course.enrollment.entity.EnrollmentAuditLog;
 import com.coursistant.lms.module.course.enrollment.repository.EnrollmentAuditLogMapper;
 import com.coursistant.lms.module.course.enrollment.repository.EnrollmentMapper;
+import com.coursistant.lms.module.course.group.entity.GroupMembershipAudit;
+import com.coursistant.lms.module.course.group.service.GroupMembershipService;
 import com.coursistant.lms.module.user.account.entity.User;
 import com.coursistant.lms.module.user.account.repository.UserMapper;
 import com.coursistant.lms.shared.api.ApiException;
@@ -23,6 +25,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -61,6 +64,10 @@ public class EnrollmentService {
 
     @Resource
     private EmailUtil emailUtil;
+
+    @Lazy
+    @Resource
+    private GroupMembershipService groupMembershipService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -187,6 +194,8 @@ public class EnrollmentService {
         patch.setId(enrollment.getId());
         patch.setActive(false);
         enrollmentMapper.updateById(patch);
+        groupMembershipService.endGroupMembershipsOnEnrollmentDeactivated(
+                courseId, userId, GroupMembershipAudit.ACTOR_ADMIN, adminId);
         writeAudit(courseId, userId, ACTOR_TYPE_ADMIN, adminId, "DEACTIVATE", null);
         return toMemberResponse(requireEnrollmentById(enrollment.getId()));
     }
@@ -212,6 +221,8 @@ public class EnrollmentService {
         patch.setId(enrollment.getId());
         patch.setActive(false);
         enrollmentMapper.updateById(patch);
+        groupMembershipService.endGroupMembershipsOnEnrollmentDeactivated(
+                courseId, userId, GroupMembershipAudit.ACTOR_USER, actorId);
         writeAudit(courseId, userId, ACTOR_TYPE_USER, actorId, "DEACTIVATE", null);
         return toMemberResponse(requireEnrollmentById(enrollment.getId()));
     }

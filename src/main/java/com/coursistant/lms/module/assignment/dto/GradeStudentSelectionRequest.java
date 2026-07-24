@@ -8,6 +8,7 @@ import java.util.List;
 public class GradeStudentSelectionRequest {
 
     private List<Integer> studentUserIds;
+    private List<Integer> groupIds;
 
     public List<Integer> getStudentUserIds() {
         return studentUserIds;
@@ -15,5 +16,13 @@ public class GradeStudentSelectionRequest {
 
     public void setStudentUserIds(List<Integer> studentUserIds) {
         this.studentUserIds = studentUserIds;
+    }
+
+    public List<Integer> getGroupIds() {
+        return groupIds;
+    }
+
+    public void setGroupIds(List<Integer> groupIds) {
+        this.groupIds = groupIds;
     }
 }

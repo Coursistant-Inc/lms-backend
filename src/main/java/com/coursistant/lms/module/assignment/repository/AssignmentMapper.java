@@ -30,10 +30,21 @@ public interface AssignmentMapper {
 
     int countSubmissionsByAssignmentId(@Param("assignmentId") Integer assignmentId);
 
+    /**
+     * Submitted versions, not submission heads: the delete / unpublish guards must react to
+     * "someone handed something in", which is a version.
+     */
+    int countSubmissionVersionsByAssignmentId(@Param("assignmentId") Integer assignmentId);
+
+    int countByGroupSetId(@Param("groupSetId") Integer groupSetId);
+
     int countGradesByAssignmentId(@Param("assignmentId") Integer assignmentId);
 
     int updateCurrentRubricVersionId(@Param("id") Integer id,
                                      @Param("currentRubricVersionId") Integer currentRubricVersionId);
 
     int updateState(@Param("id") Integer id, @Param("state") String state);
+
+    /** Always writes group_set_id, including {@code null} when switching to Individual. */
+    int updateGroupSetId(@Param("id") Integer id, @Param("groupSetId") Integer groupSetId);
 }

@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.coursistant.lms.module.assignment.repository.AssignmentGradeReleaseRecipientMapper">
+
+    <sql id="Base_Column_List">
+        id,
+        grade_id AS gradeId,
+        assignment_id AS assignmentId,
+        group_id AS groupId,
+        student_user_id AS studentUserId,
+        released_at AS releasedAt
+    </sql>
+
+    <insert id="insert" parameterType="com.coursistant.lms.module.assignment.entity.AssignmentGradeReleaseRecipient"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO assignment_grade_release_recipient (
+            grade_id,
+            assignment_id,
+            group_id,
+            student_user_id,
+            released_at
+        ) VALUES (
+            #{gradeId},
+            #{assignmentId},
+            #{groupId},
+            #{studentUserId},
+            #{releasedAt}
+        )
+    </insert>
+
+    <delete id="deleteByGradeId">
+        DELETE FROM assignment_grade_release_recipient
+        WHERE grade_id = #{gradeId}
+    </delete>
+
+    <select id="selectByGradeId"
+            resultType="com.coursistant.lms.module.assignment.entity.AssignmentGradeReleaseRecipient">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM assignment_grade_release_recipient
+        WHERE grade_id = #{gradeId}
+        ORDER BY student_user_id
+    </select>
+
+    <select id="selectByAssignmentIdAndStudentUserId"
+            resultType="com.coursistant.lms.module.assignment.entity.AssignmentGradeReleaseRecipient">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM assignment_grade_release_recipient
+        WHERE assignment_id = #{assignmentId} AND student_user_id = #{studentUserId}
+        LIMIT 1
+    </select>
+
+    <select id="countByGradeId" resultType="int">
+        SELECT COUNT(*)
+        FROM assignment_grade_release_recipient
+        WHERE grade_id = #{gradeId}
+    </select>
+
+</mapper>

@@ -19,6 +19,7 @@ public class GradeTransitionResponse {
 
     private int changedCount;
     private List<Integer> changedStudentUserIds = new ArrayList<>();
+    private List<Integer> changedGroupIds = new ArrayList<>();
     private List<GradeTransitionSkip> skipped = new ArrayList<>();
 
     public int getChangedCount() {
@@ -45,6 +46,14 @@ public class GradeTransitionResponse {
 
     public void setChangedStudentUserIds(List<Integer> changedStudentUserIds) {
         this.changedStudentUserIds = changedStudentUserIds;
+    }
+
+    public List<Integer> getChangedGroupIds() {
+        return changedGroupIds;
+    }
+
+    public void setChangedGroupIds(List<Integer> changedGroupIds) {
+        this.changedGroupIds = changedGroupIds;
     }
 
     public List<GradeTransitionSkip> getSkipped() {

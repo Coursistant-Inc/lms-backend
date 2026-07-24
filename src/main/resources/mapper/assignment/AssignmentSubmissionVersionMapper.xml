@@ -9,6 +9,7 @@
         submission_id AS submissionId,
         assignment_id AS assignmentId,
         owner_user_id AS ownerUserId,
+        actual_submitter_user_id AS actualSubmitterUserId,
         version_no AS versionNo,
         submitted_at AS submittedAt,
         used_grace_buffer AS usedGraceBuffer,
@@ -21,6 +22,7 @@
             submission_id,
             assignment_id,
             owner_user_id,
+            actual_submitter_user_id,
             version_no,
             submitted_at,
             used_grace_buffer
@@ -28,6 +30,7 @@
             #{submissionId},
             #{assignmentId},
             #{ownerUserId},
+            #{actualSubmitterUserId},
             #{versionNo},
             #{submittedAt},
             #{usedGraceBuffer}

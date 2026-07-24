@@ -28,6 +28,11 @@ import com.coursistant.lms.module.assignment.repository.AssignmentSubmissionStag
 import com.coursistant.lms.module.assignment.repository.AssignmentSubmissionVersionMapper;
 import com.coursistant.lms.module.course.enrollment.entity.Enrollment;
 import com.coursistant.lms.module.course.enrollment.repository.EnrollmentMapper;
+import com.coursistant.lms.module.course.group.entity.CourseGroup;
+import com.coursistant.lms.module.course.group.entity.GroupMembership;
+import com.coursistant.lms.module.course.group.repository.CourseGroupMapper;
+import com.coursistant.lms.module.course.group.repository.GroupMembershipMapper;
+import com.coursistant.lms.module.course.group.service.GroupAccessService;
 import com.coursistant.lms.shared.api.ErrorType;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
@@ -92,6 +97,15 @@ public class AssignmentService {
 
     @Resource
     private AssignmentAccessService assignmentAccessService;
+
+    @Resource
+    private GroupAccessService groupAccessService;
+
+    @Resource
+    private GroupMembershipMapper groupMembershipMapper;
+
+    @Resource
+    private CourseGroupMapper courseGroupMapper;
 
     @Resource
     private AssignmentFilePolicy assignmentFilePolicy;
@@ -192,9 +206,12 @@ public class AssignmentService {
             item.setTimezoneLabel(zone.getId());
             item.setSubmissionType(assignment.getSubmissionType());
             if (!staffView) {
-                AssignmentSubmissionVersion version = currentVersionOf(assignment.getId(), userId);
-                List<LocalDateTime> stagingCreatedAts =
-                        assignmentSubmissionService.activeStagingCreatedAts(assignment.getId(), userId, now);
+                AssignmentSubmissionVersion version = resolveCurrentVersion(assignment, userId);
+                boolean groupAssignment = AssignmentAccessService.SUBMISSION_TYPE_GROUP.equals(
+                        assignment.getSubmissionType());
+                List<LocalDateTime> stagingCreatedAts = groupAssignment
+                        ? List.of()
+                        : assignmentSubmissionService.activeStagingCreatedAts(assignment.getId(), userId, now);
                 item.setSubmissionStatus(submissionStatusCalculator.calculate(
                         assignment.getDueAt(),
                         assignment.getLateUntil(),
@@ -225,8 +242,7 @@ public class AssignmentService {
     // ----------------------------------------------------------------- write
 
     /**
-     * Creates a Draft, Individual assignment. Tier-1 has no group assignments, so
-     * {@code submissionType} is fixed and {@code groupSetId} stays null.
+     * Creates a Draft assignment. Individual is the default; Group requires {@code groupSetId}.
      */
     @Transactional
     public AssignmentResponse create(Integer courseId, Integer userId, String timezoneHeader,
@@ -249,6 +265,9 @@ public class AssignmentService {
         LocalDateTime lateUntil = assignmentTimeSupport.toUtc(body.getLateUntil(), zone);
         requireLateUntilAfterDue(courseId, null, userId, dueAt, lateUntil);
 
+        String submissionType = normalizeSubmissionType(courseId, null, userId, body.getSubmissionType());
+        Integer groupSetId = resolveGroupSetId(courseId, null, userId, submissionType, body.getGroupSetId());
+
         Assignment assignment = new Assignment();
         assignment.setCourseId(courseId);
         assignment.setTitle(title);
@@ -256,8 +275,8 @@ public class AssignmentService {
         assignment.setPointsPossible(points);
         assignment.setDueAt(dueAt);
         assignment.setLateUntil(lateUntil);
-        assignment.setSubmissionType(AssignmentAccessService.SUBMISSION_TYPE_INDIVIDUAL);
-        assignment.setGroupSetId(null);
+        assignment.setSubmissionType(submissionType);
+        assignment.setGroupSetId(groupSetId);
         assignment.setAllowedFileTypes(assignmentFilePolicy.toAllowedTypesJson(body.getAllowedFileTypes()));
         assignment.setMaxFileSizeBytes(body.getMaxFileSizeBytes());
         assignment.setMaxFileCount(body.getMaxFileCount());
@@ -266,7 +285,8 @@ public class AssignmentService {
         assignmentMapper.insert(assignment);
 
         assignmentAuditService.write(courseId, assignment.getId(), userId, AssignmentAuditService.ASSIGNMENT_CREATED,
-                Map.of("title", title, "state", AssignmentAccessService.STATE_DRAFT));
+                Map.of("title", title, "state", AssignmentAccessService.STATE_DRAFT,
+                        "submissionType", submissionType));
 
         return buildStaffResponse(requireAssignment(courseId, assignment.getId(), userId), zone,
                 activeStudents(courseId).size());
@@ -282,14 +302,39 @@ public class AssignmentService {
         }
         ZoneId zone = assignmentTimeSupport.requireZone(timezoneHeader);
 
-        if (body.getSubmissionType() != null && !body.getSubmissionType().equals(existing.getSubmissionType())) {
+        boolean typeOrSetTouched = body.getSubmissionType() != null || body.getGroupSetId() != null;
+        if (typeOrSetTouched && assignmentMapper.countSubmissionVersionsByAssignmentId(assignmentId) >= 1) {
             throw AssignmentErrors.fail(log, courseId, assignmentId, userId, ErrorType.ASSIGNMENT_TYPE_LOCKED,
-                    "submissionType cannot be changed after creation");
+                    "submissionType and groupSetId cannot be changed after a submission version exists");
         }
 
         Assignment patch = new Assignment();
         patch.setId(assignmentId);
         Map<String, Object> auditDetail = new LinkedHashMap<>();
+        Integer resolvedGroupSetId = null;
+        boolean clearGroupSetId = false;
+
+        if (typeOrSetTouched) {
+            String nextType = body.getSubmissionType() != null
+                    ? normalizeSubmissionType(courseId, assignmentId, userId, body.getSubmissionType())
+                    : existing.getSubmissionType();
+            Integer requestedSetId = body.getGroupSetId() != null ? body.getGroupSetId() : existing.getGroupSetId();
+            if (AssignmentAccessService.SUBMISSION_TYPE_INDIVIDUAL.equals(nextType)) {
+                resolvedGroupSetId = null;
+                clearGroupSetId = true;
+            } else {
+                resolvedGroupSetId = resolveGroupSetId(courseId, assignmentId, userId, nextType, requestedSetId);
+            }
+            if (!nextType.equals(existing.getSubmissionType())) {
+                patch.setSubmissionType(nextType);
+                auditDetail.put("submissionTypeFrom", existing.getSubmissionType());
+                auditDetail.put("submissionTypeTo", nextType);
+            }
+            if (!java.util.Objects.equals(resolvedGroupSetId, existing.getGroupSetId())) {
+                auditDetail.put("groupSetIdFrom", existing.getGroupSetId());
+                auditDetail.put("groupSetIdTo", resolvedGroupSetId);
+            }
+        }
 
         if (body.getTitle() != null) {
             patch.setTitle(requireText(courseId, assignmentId, userId, body.getTitle(), "title"));
@@ -358,6 +403,10 @@ public class AssignmentService {
             assignmentMapper.updateLateUntil(assignmentId, null);
             auditDetail.put("lateUntilCleared", true);
         }
+        if (typeOrSetTouched && (clearGroupSetId || resolvedGroupSetId != null
+                || !java.util.Objects.equals(resolvedGroupSetId, existing.getGroupSetId()))) {
+            assignmentMapper.updateGroupSetId(assignmentId, resolvedGroupSetId);
+        }
 
         assignmentAuditService.write(courseId, assignmentId, userId, AssignmentAuditService.ASSIGNMENT_UPDATED, auditDetail);
         if (shortening) {
@@ -389,6 +438,15 @@ public class AssignmentService {
         ZoneId zone = assignmentTimeSupport.zoneOrUtc(timezoneHeader);
         if (AssignmentAccessService.STATE_PUBLISHED.equals(assignment.getState())) {
             return buildStaffResponse(assignment, zone, activeStudents(courseId).size());
+        }
+
+        if (AssignmentAccessService.SUBMISSION_TYPE_GROUP.equals(assignment.getSubmissionType())) {
+            if (assignment.getGroupSetId() == null) {
+                throw AssignmentErrors.fail(log, courseId, assignmentId, userId,
+                        ErrorType.ASSIGNMENT_GROUP_SET_REQUIRED,
+                        "Group assignment requires a linked group set before publish");
+            }
+            groupAccessService.requireGroupSetInCourse(courseId, assignment.getGroupSetId());
         }
 
         assignmentMapper.updateState(assignmentId, AssignmentAccessService.STATE_PUBLISHED);
@@ -607,17 +665,31 @@ public class AssignmentService {
 
     private AssignmentResponse buildStudentResponse(Assignment assignment, ZoneId zone, Integer userId,
                                                     LocalDateTime now, boolean submitFrozen) {
-        AssignmentSubmissionVersion version = currentVersionOf(assignment.getId(), userId);
-        List<LocalDateTime> stagingCreatedAts =
+        boolean groupAssignment = AssignmentAccessService.SUBMISSION_TYPE_GROUP.equals(assignment.getSubmissionType());
+        GroupMembership membership = null;
+        CourseGroup group = null;
+        if (groupAssignment && assignment.getGroupSetId() != null) {
+            membership = groupMembershipMapper.selectByGroupSetIdAndUserId(assignment.getGroupSetId(), userId);
+            if (membership != null) {
+                group = courseGroupMapper.selectById(membership.getGroupId());
+            }
+        }
+
+        AssignmentSubmissionVersion version = resolveCurrentVersion(assignment, userId);
+        List<LocalDateTime> personalStaging =
                 assignmentSubmissionService.activeStagingCreatedAts(assignment.getId(), userId, now);
+        // Group status must not fork on personal staging; Individual still uses it.
+        List<LocalDateTime> statusStagingAts = groupAssignment ? List.of() : personalStaging;
 
         String status = submissionStatusCalculator.calculate(assignment.getDueAt(), assignment.getLateUntil(), now,
                 version == null ? null : version.getSubmittedAt(),
                 version == null ? null : version.getUsedGraceBuffer(),
-                stagingCreatedAts);
+                statusStagingAts);
         boolean windowOpen = submissionStatusCalculator.isWindowOpen(assignment.getDueAt(), assignment.getLateUntil(), now);
-        boolean accepting = !submitFrozen && submissionStatusCalculator.acceptSubmit(assignment.getDueAt(),
-                assignment.getLateUntil(), now, stagingCreatedAts);
+        boolean noGroupMembership = groupAssignment && membership == null;
+        boolean accepting = !noGroupMembership && !submitFrozen
+                && submissionStatusCalculator.acceptSubmit(assignment.getDueAt(),
+                assignment.getLateUntil(), now, personalStaging);
 
         AssignmentGrade grade = assignmentGradeMapper.selectByAssignmentIdAndStudentUserId(assignment.getId(), userId);
         ReceiptSummaryResponse receipt = null;
@@ -629,7 +701,7 @@ public class AssignmentService {
             receipt = assignmentResponseAssembler.toReceiptSummary(receiptEntity, files);
         }
 
-        return assignmentResponseAssembler.toStudentResponse(
+        AssignmentResponse response = assignmentResponseAssembler.toStudentResponse(
                 assignment,
                 zone,
                 requireList(assignmentAttachmentMapper.selectByAssignmentId(assignment.getId()),
@@ -641,9 +713,19 @@ public class AssignmentService {
                 version == null ? null : version.getUsedGraceBuffer(),
                 windowOpen,
                 accepting,
-                stagingCreatedAts.size(),
+                personalStaging.size(),
                 grade,
                 receipt);
+        if (groupAssignment) {
+            if (membership != null) {
+                response.setGroupId(membership.getGroupId());
+                response.setGroupName(group == null ? null : group.getName());
+            } else {
+                response.setSubmissionEligibility("NO_GROUP_MEMBERSHIP");
+                response.setAcceptingSubmissions(false);
+            }
+        }
+        return response;
     }
 
     private AssignmentRubricVersion currentRubric(Assignment assignment) {
@@ -662,11 +744,66 @@ public class AssignmentService {
         return assignmentSubmissionVersionMapper.selectById(submission.getCurrentVersionId());
     }
 
+    /**
+     * Individual: owner submission. Group: the viewer's current membership group's submission.
+     */
+    private AssignmentSubmissionVersion resolveCurrentVersion(Assignment assignment, Integer userId) {
+        if (assignment == null || userId == null) {
+            return null;
+        }
+        if (!AssignmentAccessService.SUBMISSION_TYPE_GROUP.equals(assignment.getSubmissionType())) {
+            return currentVersionOf(assignment.getId(), userId);
+        }
+        if (assignment.getGroupSetId() == null) {
+            return null;
+        }
+        GroupMembership membership =
+                groupMembershipMapper.selectByGroupSetIdAndUserId(assignment.getGroupSetId(), userId);
+        if (membership == null) {
+            return null;
+        }
+        AssignmentSubmission submission = assignmentSubmissionMapper
+                .selectByAssignmentIdAndGroupId(assignment.getId(), membership.getGroupId());
+        if (submission == null || submission.getCurrentVersionId() == null) {
+            return null;
+        }
+        return assignmentSubmissionVersionMapper.selectById(submission.getCurrentVersionId());
+    }
+
     private void requireNoSubmissions(Integer courseId, Integer assignmentId, Integer userId, String action) {
-        if (assignmentMapper.countSubmissionsByAssignmentId(assignmentId) > 0) {
+        if (assignmentMapper.countSubmissionVersionsByAssignmentId(assignmentId) > 0) {
             throw AssignmentErrors.fail(log, courseId, assignmentId, userId, ErrorType.ASSIGNMENT_HAS_SUBMISSIONS,
                     "Cannot " + action + " an assignment that already has submissions");
         }
+    }
+
+    private String normalizeSubmissionType(Integer courseId, Integer assignmentId, Integer userId, String raw) {
+        if (raw == null || raw.isBlank()) {
+            return AssignmentAccessService.SUBMISSION_TYPE_INDIVIDUAL;
+        }
+        if (AssignmentAccessService.SUBMISSION_TYPE_INDIVIDUAL.equals(raw)
+                || AssignmentAccessService.SUBMISSION_TYPE_GROUP.equals(raw)) {
+            return raw;
+        }
+        throw AssignmentErrors.fail(log, courseId, assignmentId, userId, ErrorType.BAD_REQUEST,
+                "submissionType must be Individual or Group");
+    }
+
+    private Integer resolveGroupSetId(Integer courseId, Integer assignmentId, Integer userId,
+                                      String submissionType, Integer groupSetId) {
+        if (AssignmentAccessService.SUBMISSION_TYPE_INDIVIDUAL.equals(submissionType)) {
+            if (groupSetId != null) {
+                throw AssignmentErrors.fail(log, courseId, assignmentId, userId, ErrorType.BAD_REQUEST,
+                        "Individual assignments cannot link a group set");
+            }
+            return null;
+        }
+        if (groupSetId == null) {
+            throw AssignmentErrors.fail(log, courseId, assignmentId, userId, ErrorType.ASSIGNMENT_GROUP_SET_REQUIRED,
+                    "Group assignment requires a linked group set");
+        }
+        groupAccessService.requireGroupSetInCourse(courseId, groupSetId);
+        return groupSetId;
     }
 
     /**

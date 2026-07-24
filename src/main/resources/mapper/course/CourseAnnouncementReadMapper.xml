@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.coursistant.lms.module.course.announcement.repository.CourseAnnouncementReadMapper">
+
+    <insert id="insertIgnore" parameterType="com.coursistant.lms.module.course.announcement.entity.CourseAnnouncementRead">
+        INSERT IGNORE INTO course_announcement_read (announcement_id, user_id, read_at)
+        VALUES (#{announcementId}, #{userId}, #{readAt})
+    </insert>
+
+    <select id="selectByAnnouncementAndUser"
+            resultType="com.coursistant.lms.module.course.announcement.entity.CourseAnnouncementRead">
+        SELECT
+            announcement_id AS announcementId,
+            user_id AS userId,
+            read_at AS readAt
+        FROM course_announcement_read
+        WHERE announcement_id = #{announcementId} AND user_id = #{userId}
+    </select>
+</mapper>

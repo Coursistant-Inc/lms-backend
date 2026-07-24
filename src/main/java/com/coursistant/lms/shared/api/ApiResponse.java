@@ -44,6 +44,10 @@ public class ApiResponse<T> {
         return new ApiResponse<>(errorType.getStatusCode(), errorType.name(), null, customMessage);
     }
 
+    public static <T> ApiResponse<T> error(ErrorType errorType, String customMessage, T data) {
+        return new ApiResponse<>(errorType.getStatusCode(), errorType.name(), data, customMessage);
+    }
+
     public Integer getStatus() {
         return status;
     }

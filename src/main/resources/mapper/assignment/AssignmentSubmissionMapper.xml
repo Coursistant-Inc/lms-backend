@@ -8,6 +8,7 @@
         id,
         assignment_id AS assignmentId,
         owner_user_id AS ownerUserId,
+        group_id AS groupId,
         current_version_id AS currentVersionId,
         created_at AS createdAt,
         updated_at AS updatedAt
@@ -18,10 +19,12 @@
         INSERT INTO assignment_submission (
             assignment_id,
             owner_user_id,
+            group_id,
             current_version_id
         ) VALUES (
             #{assignmentId},
             #{ownerUserId},
+            #{groupId},
             #{currentVersionId}
         )
     </insert>
@@ -49,6 +52,14 @@
         WHERE assignment_id = #{assignmentId} AND owner_user_id = #{ownerUserId}
     </select>
 
+    <select id="selectByAssignmentIdAndGroupId"
+            resultType="com.coursistant.lms.module.assignment.entity.AssignmentSubmission">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM assignment_submission
+        WHERE assignment_id = #{assignmentId} AND group_id = #{groupId}
+    </select>
+
     <update id="updateCurrentVersionId">
         UPDATE assignment_submission
         SET current_version_id = #{currentVersionId}
@@ -59,6 +70,19 @@
         SELECT COUNT(*)
         FROM assignment_submission
         WHERE assignment_id = #{assignmentId}
+    </select>
+
+    <select id="countByGroupId" resultType="int">
+        SELECT COUNT(*)
+        FROM assignment_submission
+        WHERE group_id = #{groupId}
+    </select>
+
+    <select id="countVersionsByGroupId" resultType="int">
+        SELECT COUNT(*)
+        FROM assignment_submission_version v
+        INNER JOIN assignment_submission s ON s.id = v.submission_id
+        WHERE s.group_id = #{groupId}
     </select>
 
 </mapper>

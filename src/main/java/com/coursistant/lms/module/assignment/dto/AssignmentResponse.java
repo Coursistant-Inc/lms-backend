@@ -57,6 +57,10 @@ public class AssignmentResponse {
 
     // --- Student view ---
     private String submissionStatus;
+    private Integer groupId;
+    private String groupName;
+    /** Null when eligible; {@code NO_GROUP_MEMBERSHIP} when the viewer has no group on a Group assignment. */
+    private String submissionEligibility;
     private LocalDateTime submittedAt;
     private Integer versionNo;
     private Boolean usedGraceBuffer;
@@ -313,6 +317,30 @@ public class AssignmentResponse {
 
     public void setSubmissionStatus(String submissionStatus) {
         this.submissionStatus = submissionStatus;
+    }
+
+    public Integer getGroupId() {
+        return groupId;
+    }
+
+    public void setGroupId(Integer groupId) {
+        this.groupId = groupId;
+    }
+
+    public String getGroupName() {
+        return groupName;
+    }
+
+    public void setGroupName(String groupName) {
+        this.groupName = groupName;
+    }
+
+    public String getSubmissionEligibility() {
+        return submissionEligibility;
+    }
+
+    public void setSubmissionEligibility(String submissionEligibility) {
+        this.submissionEligibility = submissionEligibility;
     }
 
     public LocalDateTime getSubmittedAt() {

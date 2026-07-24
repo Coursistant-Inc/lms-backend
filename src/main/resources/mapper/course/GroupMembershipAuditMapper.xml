@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.coursistant.lms.module.course.group.repository.GroupMembershipAuditMapper">
+
+    <insert id="insert" parameterType="com.coursistant.lms.module.course.group.entity.GroupMembershipAudit"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO group_membership_audit (
+            tenant_id, course_id, group_set_id, group_id, target_user_id,
+            actor_type, actor_user_id, action, before_json, after_json, detail_json
+        ) VALUES (
+            #{tenantId}, #{courseId}, #{groupSetId}, #{groupId}, #{targetUserId},
+            #{actorType}, #{actorUserId}, #{action}, #{beforeJson}, #{afterJson}, #{detailJson}
+        )
+    </insert>
+
+    <select id="selectByCourseId"
+            resultType="com.coursistant.lms.module.course.group.entity.GroupMembershipAudit">
+        SELECT
+            id,
+            tenant_id AS tenantId,
+            course_id AS courseId,
+            group_set_id AS groupSetId,
+            group_id AS groupId,
+            target_user_id AS targetUserId,
+            actor_type AS actorType,
+            actor_user_id AS actorUserId,
+            action,
+            before_json AS beforeJson,
+            after_json AS afterJson,
+            detail_json AS detailJson,
+            created_at AS createdAt
+        FROM group_membership_audit
+        WHERE course_id = #{courseId}
+        ORDER BY id ASC
+    </select>
+
+    <select id="selectByGroupSetId"
+            resultType="com.coursistant.lms.module.course.group.entity.GroupMembershipAudit">
+        SELECT
+            id,
+            tenant_id AS tenantId,
+            course_id AS courseId,
+            group_set_id AS groupSetId,
+            group_id AS groupId,
+            target_user_id AS targetUserId,
+            actor_type AS actorType,
+            actor_user_id AS actorUserId,
+            action,
+            before_json AS beforeJson,
+            after_json AS afterJson,
+            detail_json AS detailJson,
+            created_at AS createdAt
+        FROM group_membership_audit
+        WHERE group_set_id = #{groupSetId}
+        ORDER BY id ASC
+    </select>
+
+    <select id="countByGroupSetIdAndTargetUserId" resultType="int">
+        SELECT COUNT(*)
+        FROM group_membership_audit
+        WHERE group_set_id = #{groupSetId} AND target_user_id = #{targetUserId}
+    </select>
+
+</mapper>

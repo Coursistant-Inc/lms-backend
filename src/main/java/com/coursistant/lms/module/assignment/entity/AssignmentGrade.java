@@ -10,6 +10,7 @@ public class AssignmentGrade implements Serializable {
     private Integer id;
     private Integer assignmentId;
     private Integer studentUserId;
+    private Integer groupId;
     private Integer submissionVersionId;
     private Integer rubricVersionId;
     private BigDecimal score;
@@ -49,6 +50,14 @@ public class AssignmentGrade implements Serializable {
 
     public void setStudentUserId(Integer studentUserId) {
         this.studentUserId = studentUserId;
+    }
+
+    public Integer getGroupId() {
+        return groupId;
+    }
+
+    public void setGroupId(Integer groupId) {
+        this.groupId = groupId;
     }
 
     public Integer getSubmissionVersionId() {

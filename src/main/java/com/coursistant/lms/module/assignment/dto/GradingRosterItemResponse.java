@@ -4,10 +4,11 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
- * One row of the grading roster. The roster contains active Students only; TAs and the
- * Instructor are never graded.
+ * One row of the grading roster. Individual assignments list students; Group assignments list
+ * groups (with members / actual submitter).
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class GradingRosterItemResponse {
@@ -15,6 +16,11 @@ public class GradingRosterItemResponse {
     private Integer studentUserId;
     private String studentName;
     private String studentEmail;
+    private Integer groupId;
+    private String groupName;
+    private Integer memberCount;
+    private List<GroupMemberSummary> members;
+    private Integer actualSubmitterUserId;
     private String submissionStatus;
     private Integer submissionId;
     private Integer submissionVersionId;
@@ -50,6 +56,46 @@ public class GradingRosterItemResponse {
 
     public void setStudentEmail(String studentEmail) {
         this.studentEmail = studentEmail;
+    }
+
+    public Integer getGroupId() {
+        return groupId;
+    }
+
+    public void setGroupId(Integer groupId) {
+        this.groupId = groupId;
+    }
+
+    public String getGroupName() {
+        return groupName;
+    }
+
+    public void setGroupName(String groupName) {
+        this.groupName = groupName;
+    }
+
+    public Integer getMemberCount() {
+        return memberCount;
+    }
+
+    public void setMemberCount(Integer memberCount) {
+        this.memberCount = memberCount;
+    }
+
+    public List<GroupMemberSummary> getMembers() {
+        return members;
+    }
+
+    public void setMembers(List<GroupMemberSummary> members) {
+        this.members = members;
+    }
+
+    public Integer getActualSubmitterUserId() {
+        return actualSubmitterUserId;
+    }
+
+    public void setActualSubmitterUserId(Integer actualSubmitterUserId) {
+        this.actualSubmitterUserId = actualSubmitterUserId;
     }
 
     public String getSubmissionStatus() {

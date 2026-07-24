@@ -20,6 +20,7 @@ public class PatchAssignmentRequest {
     private Long maxFileSizeBytes;
     private Integer maxFileCount;
     private String submissionType;
+    private Integer groupSetId;
     private Boolean confirmShortenDueDate;
 
     public String getTitle() {
@@ -100,6 +101,14 @@ public class PatchAssignmentRequest {
 
     public void setSubmissionType(String submissionType) {
         this.submissionType = submissionType;
+    }
+
+    public Integer getGroupSetId() {
+        return groupSetId;
+    }
+
+    public void setGroupSetId(Integer groupSetId) {
+        this.groupSetId = groupSetId;
     }
 
     public Boolean getConfirmShortenDueDate() {

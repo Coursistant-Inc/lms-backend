@@ -10,6 +10,8 @@ public class AssignmentSubmissionVersion implements Serializable {
     private Integer submissionId;
     private Integer assignmentId;
     private Integer ownerUserId;
+    /** Who pressed Submit. For a group submission this is the acting member, not the group. */
+    private Integer actualSubmitterUserId;
     private Integer versionNo;
     private LocalDateTime submittedAt;
     private Boolean usedGraceBuffer;
@@ -45,6 +47,14 @@ public class AssignmentSubmissionVersion implements Serializable {
 
     public void setOwnerUserId(Integer ownerUserId) {
         this.ownerUserId = ownerUserId;
+    }
+
+    public Integer getActualSubmitterUserId() {
+        return actualSubmitterUserId;
+    }
+
+    public void setActualSubmitterUserId(Integer actualSubmitterUserId) {
+        this.actualSubmitterUserId = actualSubmitterUserId;
     }
 
     public Integer getVersionNo() {

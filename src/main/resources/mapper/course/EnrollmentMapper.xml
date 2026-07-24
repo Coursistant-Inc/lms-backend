@@ -104,6 +104,15 @@
         ORDER BY user_id ASC
     </select>
 
+    <select id="selectActiveByCourseId" resultType="com.coursistant.lms.module.course.enrollment.entity.Enrollment">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM enrollment
+        WHERE course_id = #{courseId}
+          AND active = 1
+        ORDER BY FIELD(course_role, 'Instructor', 'TA', 'Student'), user_id ASC
+    </select>
+
     <select id="countByCourseId" resultType="int">
         SELECT COUNT(*)
         FROM enrollment

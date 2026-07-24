@@ -95,6 +95,29 @@ public class CoursePermissionService {
         return ROLE_TA.equals(enrollment.getCourseRole()) && Boolean.TRUE.equals(enrollment.getCanPostAnnouncements());
     }
 
+    /**
+     * Requires Instructor, or TA with {@code canPostAnnouncements}.
+     */
+    public void requireCanPostAnnouncements(Integer courseId, Integer userId) {
+        if (!canPostAnnouncements(courseId, userId)) {
+            throw new ApiException(ErrorType.ACCESS_DENIED, "Not permitted to post announcements");
+        }
+    }
+
+    /**
+     * Mutate (edit/delete) an announcement: Instructor may mutate any; author may mutate own
+     * only while still {@link #canPostAnnouncements}.
+     */
+    public void requireCanMutateAnnouncement(Integer courseId, Integer userId, Integer authorUserId) {
+        if (isInstructor(courseId, userId)) {
+            return;
+        }
+        if (userId != null && userId.equals(authorUserId) && canPostAnnouncements(courseId, userId)) {
+            return;
+        }
+        throw new ApiException(ErrorType.ACCESS_DENIED, "Not permitted to modify this announcement");
+    }
+
     public boolean canManageGroups(Integer courseId, Integer userId) {
         Enrollment enrollment = findActiveEnrollment(courseId, userId);
         if (enrollment == null) {
@@ -104,6 +127,15 @@ public class CoursePermissionService {
             return true;
         }
         return ROLE_TA.equals(enrollment.getCourseRole()) && Boolean.TRUE.equals(enrollment.getCanManageGroups());
+    }
+
+    /**
+     * Requires Instructor, or TA with {@code canManageGroups}.
+     */
+    public void requireCanManageGroups(Integer courseId, Integer userId) {
+        if (!canManageGroups(courseId, userId)) {
+            throw new ApiException(ErrorType.ACCESS_DENIED, "Not permitted to manage groups");
+        }
     }
 
     public boolean canManageCourseEvents(Integer courseId, Integer userId) {

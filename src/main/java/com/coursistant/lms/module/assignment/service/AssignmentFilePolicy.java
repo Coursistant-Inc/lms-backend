@@ -66,6 +66,10 @@ public class AssignmentFilePolicy {
         return buildKey("assignment/" + courseId + "/" + assignmentId + "/annotated/" + studentUserId, originalName);
     }
 
+    public String annotatedGroupKey(Integer courseId, Integer assignmentId, Integer groupId, String originalName) {
+        return buildKey("assignment/" + courseId + "/" + assignmentId + "/annotated/groups/" + groupId, originalName);
+    }
+
     private String buildKey(String prefix, String originalName) {
         String extension = extensionOf(originalName);
         String unique = UUID.randomUUID().toString().replace("-", "");
