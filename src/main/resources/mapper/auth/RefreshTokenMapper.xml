@@ -11,7 +11,7 @@
 
     <!-- 插入 refresh token（动态） -->
     <insert id="insert" parameterType="com.coursistant.lms.module.auth.token.entity.RefreshToken" useGeneratedKeys="true" keyProperty="id">
-        insert into RefreshToken
+        insert into refresh_tokens
         <trim prefix="(" suffix=")" suffixOverrides=",">
             <if test="userId != null">user_id,</if>
             <if test="token != null">token,</if>
@@ -36,7 +36,7 @@
 
     <!-- 更新 refresh token -->
     <update id="updateById" parameterType="com.coursistant.lms.module.auth.token.entity.RefreshToken">
-        update RefreshToken
+        update refresh_tokens
         <set>
             <if test="userId != null">user_id = #{userId},</if>
             <if test="token != null">token = #{token},</if>
@@ -50,7 +50,7 @@
     </update>
 
     <select id="selectByUserIdAndRoleOrderByCreateTime" resultType="com.coursistant.lms.module.auth.token.entity.RefreshToken">
-        SELECT * FROM RefreshToken
+        SELECT * FROM refresh_tokens
         WHERE user_id = #{userId} AND role = #{role}
         ORDER BY created_time ASC
     </select>
@@ -58,24 +58,24 @@
 
     <!-- 删除 by ID -->
     <delete id="deleteById">
-        delete from RefreshToken where id = #{id}
+        delete from refresh_tokens where id = #{id}
     </delete>
 
     <!-- 删除 by userId -->
     <delete id="deleteByUserId">
-        delete from RefreshToken where user_id = #{userId}
+        delete from refresh_tokens where user_id = #{userId}
     </delete>
 
     <!-- 删除所有过期 token（定时任务用） -->
     <delete id="deleteExpiredTokens">
-        delete from RefreshToken where expire_time &lt; now()
+        delete from refresh_tokens where expire_time &lt; now()
     </delete>
 
     <!-- 查询 by ID -->
     <select id="selectById" resultType="com.coursistant.lms.module.auth.token.entity.RefreshToken">
         select
         <include refid="Base_Column_List" />
-        from RefreshToken
+        from refresh_tokens
         where id = #{id}
     </select>
 
@@ -83,7 +83,7 @@
     <select id="selectByUserId" resultType="com.coursistant.lms.module.auth.token.entity.RefreshToken">
         select
         <include refid="Base_Column_List" />
-        from RefreshToken
+        from refresh_tokens
         where user_id = #{userId}
         order by created_time desc
         limit 1
@@ -93,7 +93,7 @@
     <select id="selectByToken" resultType="com.coursistant.lms.module.auth.token.entity.RefreshToken">
         select
         <include refid="Base_Column_List" />
-        from RefreshToken
+        from refresh_tokens
         where token = #{token}
     </select>
 
@@ -101,7 +101,7 @@
     <select id="selectAllByUserId" resultType="com.coursistant.lms.module.auth.token.entity.RefreshToken">
         select
         <include refid="Base_Column_List" />
-        from RefreshToken
+        from refresh_tokens
         where user_id = #{userId}
         order by created_time desc
     </select>

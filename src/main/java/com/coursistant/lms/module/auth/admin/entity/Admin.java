@@ -157,12 +157,10 @@ public class Admin extends Account implements Serializable {
         this.email = email;
     }
 
-    @Override
     public String getInvitation() {
         return invitation;
     }
 
-    @Override
     public void setInvitation(String invitation) {
         this.invitation = invitation;
     }

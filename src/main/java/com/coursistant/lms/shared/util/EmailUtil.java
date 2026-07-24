@@ -4,8 +4,8 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Component;
 
-import com.coursistant.lms.shared.enums.ResultCodeEnum;
-import com.coursistant.lms.shared.exception.CustomException;
+import com.coursistant.lms.shared.api.ApiException;
+import com.coursistant.lms.shared.api.ErrorType;
 
 import jakarta.annotation.Resource;
 import jakarta.mail.MessagingException;
@@ -32,7 +32,7 @@ public class EmailUtil {
             helper.setText(content, false);
             mailSender.send(message);
         } catch (MessagingException e) {
-            throw new CustomException(ResultCodeEnum.EMAIL_NOT_SEND_ERROR);
+            throw new ApiException(ErrorType.EMAIL_SEND_FAILED);
         }
     }
 

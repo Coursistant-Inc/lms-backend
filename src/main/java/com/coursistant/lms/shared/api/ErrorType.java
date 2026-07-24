@@ -30,7 +30,15 @@ public enum ErrorType {
     INVALID_PASSWORD(HttpStatus.BAD_REQUEST, "Incorrect Original Password"),
     INVALID_VERIFICATION_CODE(HttpStatus.BAD_REQUEST, "Incorrect Verification Code"),
     ACCESS_DENIED(HttpStatus.FORBIDDEN, "No Permission to Perform This Action"),
-    INVITATION_NOT_FOUND(HttpStatus.BAD_REQUEST, "Invitation Not Exist");
+    INVITATION_NOT_FOUND(HttpStatus.BAD_REQUEST, "Invitation Not Exist"),
+
+    // --- Auth: Verification ---
+    INVALID_PASSWORD_FORMAT(HttpStatus.BAD_REQUEST, "Password does not meet requirements"),
+    VERIFICATION_CODE_EXPIRED(HttpStatus.BAD_REQUEST, "Verification code expired"),
+    VERIFICATION_ATTEMPTS_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "Too many incorrect attempts"),
+    VERIFICATION_RESEND_COOLDOWN(HttpStatus.TOO_MANY_REQUESTS, "Please wait before requesting a new code"),
+    VERIFICATION_HOURLY_LIMIT(HttpStatus.TOO_MANY_REQUESTS, "Hourly verification limit reached"),
+    EMAIL_SEND_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to send email");
 
     private final HttpStatus httpStatus;
     private final String defaultMessage;

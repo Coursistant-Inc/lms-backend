@@ -1,10 +1,13 @@
 package com.coursistant.lms.module.user.service;
 
 import cn.hutool.core.util.ObjectUtil;
+import cn.hutool.core.util.StrUtil;
 import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.shared.api.ErrorType;
+import com.coursistant.lms.module.auth.session.dto.AuthResult;
 import com.coursistant.lms.module.auth.token.service.RefreshTokenService;
 import com.coursistant.lms.shared.util.EmailUtil;
+import com.coursistant.lms.shared.util.PasswordValidator;
 
 import com.coursistant.lms.shared.enums.LevelEnum;
 import com.coursistant.lms.shared.enums.RoleEnum;
@@ -23,7 +26,6 @@ import java.util.List;
 import java.util.Random;
 import java.util.ArrayList;
 import java.util.stream.Collectors;
-import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -41,24 +43,10 @@ public class UserService {
     @Resource(name = "generalRedisTemplate")
     private RedisTemplate<String, Object> generalRedisTemplate;
 
-    @Resource(name = "userAllRedisTemplate")
-    private RedisTemplate<String, Object> userAllRedisTemplate;
-
-
     @Resource
-    private EmailUtil emailUtil; // 注入 EmailUtil // Inject EmailUtil
+    private EmailUtil emailUtil;
 
-    // 缓存过期时间（秒） // Cache expiration time (seconds)
     private static final long CACHE_EXPIRE_TIME = 300;
-
-    /**
-     * 清空 userAll 数据库 // Clear the userAll database
-     */
-    public void clearUserAllCache() {
-        Objects.requireNonNull(userAllRedisTemplate.getConnectionFactory()).getConnection().flushDb();
-    }
-
-
 
     /**
      * 新增 // Add a new user
@@ -68,13 +56,13 @@ public class UserService {
         if (ObjectUtil.isNotNull(dbUser)) {
             throw new ApiException(ErrorType.USER_ALREADY_EXISTS, "Username Already Exists");
         }
-        
-        // 加密密码
+
         if (ObjectUtil.isEmpty(user.getPassword())) {
             throw new ApiException(ErrorType.PARAM_MISSING, "Parameter Missing");
         }
+        PasswordValidator.validate(user.getPassword());
         user.setEncryptPassword(user.getPassword());
-        
+
         if (ObjectUtil.isEmpty(user.getName())) {
             user.setName(user.getUsername());
         }
@@ -84,9 +72,6 @@ public class UserService {
 
         user.setRole(RoleEnum.USER.name());
         userMapper.insert(user);
-
-        // 清理相关缓存
-        clearUserAllCache();
     }
 
     /**
@@ -94,9 +79,6 @@ public class UserService {
      */
     public void deleteById(Integer id) {
         userMapper.deleteById(id);
-
-        // 清理相关缓存 // Clear related caches
-        clearUserAllCache();
         generalRedisTemplate.delete("user:" + id);
     }
 
@@ -108,7 +90,6 @@ public class UserService {
             userMapper.deleteById(id);
             generalRedisTemplate.delete("user:" + id);
         }
-        clearUserAllCache();
     }
 
     /**
@@ -116,9 +97,6 @@ public class UserService {
      */
     public void updateById(User user) {
         userMapper.updateById(user);
-
-        // 清理相关缓存 // Clear related caches
-        clearUserAllCache();
         generalRedisTemplate.delete("user:" + user.getId());
         generalRedisTemplate.delete("user:email:" + user.getEmail());
     }
@@ -129,19 +107,16 @@ public class UserService {
     public User selectById(Integer id) {
         String cacheKey = "user:" + id;
 
-        // 从 Redis 获取缓存 // Get from Redis cache
         User user = (User) generalRedisTemplate.opsForValue().get(cacheKey);
         if (user != null) {
             return user;
         }
 
-        // 如果缓存不存在，从数据库查询 // If cache does not exist, query from the database
         user = userMapper.selectById(id);
         if (ObjectUtil.isNull(user)) {
             throw new ApiException(ErrorType.USER_NOT_FOUND, "User Does Not Exist");
         }
 
-        // 将结果存入 Redis，并设置过期时间 // Store result in Redis with expiration time
         generalRedisTemplate.opsForValue().set(cacheKey, user, CACHE_EXPIRE_TIME, TimeUnit.SECONDS);
         return user;
     }
@@ -149,23 +124,21 @@ public class UserService {
     /**
      * 查询所有 // Select all users
      */
+    @SuppressWarnings("unchecked")
     public List<User> selectAll(User user) {
         String cacheKey = "user:all";
         if (user != null) {
             cacheKey += user.toString();
         }
 
-        // 从 Redis 获取缓存 // Get from Redis cache
-        List<User> users = (List<User>) userAllRedisTemplate.opsForValue().get(cacheKey);
+        List<User> users = (List<User>) generalRedisTemplate.opsForValue().get(cacheKey);
         if (users != null) {
-            System.out.println("from cache: " + cacheKey);
             return users;
         }
 
-        // 如果缓存不存在，从数据库查询 // If cache does not exist, query from the database
         users = userMapper.selectAll(user);
         if (users != null && !users.isEmpty()) {
-            userAllRedisTemplate.opsForValue().set(cacheKey, users, CACHE_EXPIRE_TIME, TimeUnit.SECONDS);
+            generalRedisTemplate.opsForValue().set(cacheKey, users, CACHE_EXPIRE_TIME, TimeUnit.SECONDS);
         }
         return users;
     }
@@ -173,31 +146,27 @@ public class UserService {
     /**
      * 批量查询用户 // Batch select users by IDs
      */
+    @SuppressWarnings("unchecked")
     public List<User> selectUsersByIds(List<Integer> userIds) {
         if (userIds == null || userIds.isEmpty()) {
             return new ArrayList<>();
         }
 
-        // 创建缓存键 // Create cache key
         String cacheKey = "users:batch:" + userIds.stream()
                 .sorted()
                 .map(String::valueOf)
                 .collect(Collectors.joining(","));
 
-        // 从 Redis 获取缓存 // Get from Redis cache
         List<User> users = (List<User>) generalRedisTemplate.opsForValue().get(cacheKey);
         if (users != null) {
-            System.out.println("from cache: " + cacheKey);
             return users;
         }
 
-        // 如果缓存不存在，从数据库查询 // If cache does not exist, query from database
         users = userMapper.selectUsersByIds(userIds);
         if (users == null) {
             users = new ArrayList<>();
         }
 
-        // 将结果存入 Redis，并设置过期时间 // Store result in Redis with expiration time
         if (!users.isEmpty()) {
             generalRedisTemplate.opsForValue().set(cacheKey, users, CACHE_EXPIRE_TIME, TimeUnit.SECONDS);
         }
@@ -205,12 +174,10 @@ public class UserService {
         return users;
     }
 
-
-
     /**
      * 登录 / User login
      */
-    public Account login(Account account) {
+    public AuthResult login(Account account) {
         String cacheKey = "user:email:" + account.getEmail();
         String loginAttemptsKey = "user:login:attempts:" + account.getEmail();
         String lockKey = "user:login:lock:" + account.getEmail();
@@ -239,10 +206,12 @@ public class UserService {
             if (attempts >= 6) {
                 long lockTime = (attempts < 10) ? 60 : 600;
                 generalRedisTemplate.opsForValue().set(lockKey, "LOCKED", lockTime, TimeUnit.SECONDS);
-                throw new ApiException(ErrorType.ACCOUNT_LOCKED, "Your account is locked. Please try again in " + (lockTime / 60) + " minutes.");
+                throw new ApiException(ErrorType.ACCOUNT_LOCKED,
+                        "Your account is locked. Please try again in " + (lockTime / 60) + " minutes.");
             }
 
-            throw new ApiException(ErrorType.INVALID_CREDENTIALS, "Invalid email or password. Remaining attempts: " + (6 - attempts));
+            throw new ApiException(ErrorType.INVALID_CREDENTIALS,
+                    "Invalid email or password. Remaining attempts: " + (6 - attempts));
         }
 
         generalRedisTemplate.opsForValue().set(cacheKey, dbUser, 3600, TimeUnit.SECONDS);
@@ -250,128 +219,144 @@ public class UserService {
         generalRedisTemplate.delete(lockKey);
 
         try {
-            String token = TokenUtils.createAccessToken(dbUser.getId(), RoleEnum.USER.name());
-            dbUser.setAccessToken(token);
-
+            String accessToken = TokenUtils.createAccessToken(dbUser.getId(), RoleEnum.USER.name());
             String refreshToken = refreshTokenService.createAndStoreRefreshToken(dbUser.getId(), dbUser.getRole());
-            dbUser.setRefreshToken(refreshToken);
-
-            dbUser.setPassword(null);
-            return dbUser;
-            
+            return toAuthResult(dbUser, accessToken, refreshToken);
+        } catch (ApiException e) {
+            throw e;
         } catch (Exception e) {
             throw new ApiException(ErrorType.TOKEN_CREATION_FAILED, "Error When Creating Token: " + e.getMessage());
         }
     }
 
-
     /**
      * 注册 / Register
      */
-    public void register(Account account) {
+    public AuthResult register(Account account) {
+        if (StrUtil.isBlank(account.getEmail())) {
+            throw new ApiException(ErrorType.PARAM_MISSING, "Parameter Missing");
+        }
+        String email = account.getEmail().trim().toLowerCase();
+
+        String verifiedKey = "email:verified:register:" + email;
+        if (!Boolean.TRUE.equals(generalRedisTemplate.hasKey(verifiedKey))) {
+            throw new ApiException(ErrorType.INVALID_VERIFICATION_CODE, "Email not verified");
+        }
+
+        PasswordValidator.validate(account.getPassword());
+
+        if (StrUtil.isBlank(account.getName())) {
+            throw new ApiException(ErrorType.PARAM_MISSING, "Display name is required");
+        }
+
+        User existing = userMapper.selectByEmail(email);
+        if (existing != null) {
+            throw new ApiException(ErrorType.BAD_REQUEST, "Registration failed");
+        }
+
         User user = new User();
         BeanUtils.copyProperties(account, user);
-
-        // check invitation code
-        String invitation = user.getInvitation();
-        if ("PZMWXN4UUO".equals(invitation)) {
-            user.setInvitation("Local Student");
-        } else if ("YK0AU47BZ1".equals(invitation)) {
-            user.setInvitation("International Student");
-        } else if ("OPH31E5TOK".equals(invitation)) {
-            user.setInvitation("Developer");
-        } else if ("Z4G2MZ1XO1".equals(invitation)) {
-            user.setInvitation("Teaching Class");
-        } else {
-            throw new ApiException(ErrorType.INVITATION_NOT_FOUND, "Invitation Not Exist");
-        }
-
-        // 检查用户是否已存在
-        User dbUser = userMapper.selectByEmail(user.getEmail());
-        if (ObjectUtil.isNotNull(dbUser)) {
-            throw new ApiException(ErrorType.USER_ALREADY_EXISTS, "Username Already Exists");
-        }
-
-        // ⭐ 设置默认值
-        if (ObjectUtil.isEmpty(user.getName())) {
-            user.setName(user.getUsername());
-        }
-        if (ObjectUtil.isEmpty(user.getLevel())) {
-            user.setLevel(LevelEnum.STUDENT.level);
-        }
+        user.setEmail(email);
+        user.setLevel(LevelEnum.STUDENT.level);
         user.setRole(RoleEnum.USER.name());
-
-        // ⭐ 先加密密码并插入 LMS 数据库
+        if (StrUtil.isBlank(user.getUsername())) {
+            user.setUsername(email.split("@")[0]);
+        }
         user.setEncryptPassword(account.getPassword());
         userMapper.insert(user);
 
-        // 清理缓存
-        clearUserAllCache();
-        generalRedisTemplate.delete("email:verification:register:" + account.getEmail());
+        generalRedisTemplate.delete(verifiedKey);
+
+        String accessToken = TokenUtils.createAccessToken(user.getId(), RoleEnum.USER.name());
+        String refreshToken = refreshTokenService.createAndStoreRefreshToken(user.getId(), RoleEnum.USER.name());
+        return toAuthResult(user, accessToken, refreshToken);
     }
 
     /**
-     * VERIFICATION_CODE
+     * Validate email verification code and set verified mark.
      */
-    public void validateEmailVerificationCode(String email, String verificationCode) {
-        String redisKey = "email:verification:register:" + email;
-        String cachedCode = (String) generalRedisTemplate.opsForValue().get(redisKey);
-
-        if (ObjectUtil.isEmpty(cachedCode) || !cachedCode.equals(verificationCode)) {
-            throw new ApiException(ErrorType.INVALID_VERIFICATION_CODE, "Incorrect Verification Code");
+    public void validateEmailVerificationCode(String email, String code, String type) {
+        if (StrUtil.isBlank(email) || StrUtil.isBlank(code) || StrUtil.isBlank(type)) {
+            throw new ApiException(ErrorType.PARAM_MISSING, "Parameter Missing");
         }
+        email = email.trim().toLowerCase();
+
+        String attemptsKey = "email:verification:attempts:" + type + ":" + email;
+        Integer attempts = toInteger(generalRedisTemplate.opsForValue().get(attemptsKey));
+        if (attempts != null && attempts >= 5) {
+            throw new ApiException(ErrorType.VERIFICATION_ATTEMPTS_EXCEEDED);
+        }
+
+        String redisKey = "email:verification:" + type + ":" + email;
+        String cachedCode = (String) generalRedisTemplate.opsForValue().get(redisKey);
+        if (cachedCode == null) {
+            throw new ApiException(ErrorType.VERIFICATION_CODE_EXPIRED);
+        }
+        if (!cachedCode.equals(code)) {
+            int next = (attempts == null) ? 1 : attempts + 1;
+            generalRedisTemplate.opsForValue().set(attemptsKey, next, 10, TimeUnit.MINUTES);
+            throw new ApiException(ErrorType.INVALID_VERIFICATION_CODE);
+        }
+
+        generalRedisTemplate.delete(redisKey);
+        generalRedisTemplate.delete(attemptsKey);
+        generalRedisTemplate.opsForValue().set(
+                "email:verified:" + type + ":" + email, "true", 15, TimeUnit.MINUTES);
     }
 
-
-
-    
-
-
     /**
-     * 修改密码 Change Password
+     * 修改密码 Change Password (logged-in user updating password)
      */
     public void updatePassword(PasswordDTO account) {
         User dbUser = userMapper.selectByEmail(account.getEmail());
         if (ObjectUtil.isNull(dbUser)) {
             throw new ApiException(ErrorType.USER_NOT_FOUND, "User Does Not Exist");
         }
-        if (!"reset".equals(account.getType())){
+        if (!"reset".equals(account.getType())) {
             if (!PasswordEncoderUtil.matches(account.getPassword(), dbUser.getPassword())) {
                 throw new ApiException(ErrorType.INVALID_PASSWORD, "Incorrect Original Password");
             }
         }
 
-
+        PasswordValidator.validate(account.getNewPassword());
         String encryptedNewPassword = PasswordEncoderUtil.encodePassword(account.getNewPassword());
         dbUser.setPassword(encryptedNewPassword);
         dbUser.setMustChangePassword(false);
         userMapper.updateById(dbUser);
+
+        refreshTokenService.deleteByUserId(dbUser.getId(), dbUser.getRole());
 
         generalRedisTemplate.delete("user:email:" + account.getEmail());
         generalRedisTemplate.delete("user:" + dbUser.getId());
     }
 
     /**
-     * 修改密码 reset Password
+     * Reset password after email verification mark is set.
      */
-    public String resetPasswordValidation(PasswordDTO account) {
-        //check email
-        String redisKey = "email:verification:" + "reset"+":"+account.getEmail();
-        String cachedCode = (String) generalRedisTemplate.opsForValue().get(redisKey);
+    public void resetPassword(String email, String newPassword) {
+        email = email.trim().toLowerCase();
 
-        if (ObjectUtil.isEmpty(cachedCode) || !cachedCode.equals(account.getCode())) {
-            throw new ApiException(ErrorType.INVALID_VERIFICATION_CODE, "Incorrect Verification Code");
+        String verifiedKey = "email:verified:reset:" + email;
+        if (!Boolean.TRUE.equals(generalRedisTemplate.hasKey(verifiedKey))) {
+            throw new ApiException(ErrorType.INVALID_VERIFICATION_CODE, "Email not verified");
         }
-        //check user exist or not
-        User dbUser = userMapper.selectByEmail(account.getEmail());
-        if (ObjectUtil.isNull(dbUser)) {
-            throw new ApiException(ErrorType.USER_NOT_FOUND, "User Does Not Exist");
+
+        PasswordValidator.validate(newPassword);
+
+        User dbUser = userMapper.selectByEmail(email);
+        if (dbUser == null) {
+            throw new ApiException(ErrorType.BAD_REQUEST, "Password reset failed");
         }
-        String token = TokenUtils.createAccessToken(dbUser.getId(), RoleEnum.USER.name());
 
-        generalRedisTemplate.delete(redisKey);
+        dbUser.setPassword(PasswordEncoderUtil.encodePassword(newPassword));
+        dbUser.setMustChangePassword(false);
+        userMapper.updateById(dbUser);
 
-        return token;
+        refreshTokenService.deleteByUserId(dbUser.getId(), dbUser.getRole());
+
+        generalRedisTemplate.delete(verifiedKey);
+        generalRedisTemplate.delete("user:email:" + email);
+        generalRedisTemplate.delete("user:" + dbUser.getId());
     }
 
     /**
@@ -385,66 +370,103 @@ public class UserService {
      * 发送邮箱验证码 // Send email verification code
      */
     public void sendEmailVerificationCode(String email, String type) {
-        email = email.trim().toLowerCase();
         if (ObjectUtil.isEmpty(email)) {
             throw new ApiException(ErrorType.PARAM_MISSING, "Parameter Missing");
         }
+        email = email.trim().toLowerCase();
 
-        if ("register".equals(type)) {
-            User dbUser = userMapper.selectByEmail(email);
-            if (ObjectUtil.isNotNull(dbUser)) {
-                throw new ApiException(ErrorType.USER_ALREADY_EXISTS, "Username Already Exists");
-            }
-        } else if ("reset".equals(type)) {
-            User dbUser = userMapper.selectByEmail(email);
-            if (ObjectUtil.isNull(dbUser)) {
-                throw new ApiException(ErrorType.USER_NOT_FOUND, "User Does Not Exist");
-            }
-        } else {
+        if (!"register".equals(type) && !"reset".equals(type)) {
             throw new ApiException(ErrorType.BAD_REQUEST, "Invalid request data");
         }
 
-
-
-        // 生成 6 位随机验证码 //Generate a 6-digit random verification code
-        String verificationCode = String.format("%06d", new Random().nextInt(1000000));
-
-        // 存入 Redis，有效期 5 分钟 //Stored in Redis, valid for 5 minutes
-        String redisKey = "email:verification:" + type + ":" + email;
-        generalRedisTemplate.opsForValue().set(redisKey, verificationCode, 5, TimeUnit.MINUTES);
-
-        // 根据类型构建邮件内容
-        String subject;
-        String content;
-
-        if ("register".equals(type)) {
-            subject = "Registration Verification Code";
-            content = "Dear User,\n\n" +
-                    "Thank you for registering with Coursistant. Your verification code is: " + verificationCode + ".\n\n" +
-                    "This code is valid for 5 minutes. Please enter it promptly to complete your registration.\n\n" +
-                    "If you did not request this code, please ignore this email.\n\n" +
-                    "Best regards,\n" +
-                    "Coursistant Team";
-        } else {
-            subject = "Password Reset Verification Code";
-            content = "Dear User,\n\n" +
-                    "You have requested to reset your password. Your verification code is: " + verificationCode + ".\n\n" +
-                    "This code is valid for 5 minutes. Please use it promptly to complete your password reset.\n\n" +
-                    "If you did not request this code, please ignore this email.\n\n" +
-                    "Best regards,\n" +
-                    "Coursistant Team";
+        String cooldownKey = "email:verification:cooldown:" + type + ":" + email;
+        if (Boolean.TRUE.equals(generalRedisTemplate.hasKey(cooldownKey))) {
+            throw new ApiException(ErrorType.VERIFICATION_RESEND_COOLDOWN);
         }
 
-        // 发送邮件
+        String hourlyKey = "email:verification:hourly:" + type + ":" + email;
+        Integer hourlyCount = toInteger(generalRedisTemplate.opsForValue().get(hourlyKey));
+        if (hourlyCount != null && hourlyCount >= 5) {
+            throw new ApiException(ErrorType.VERIFICATION_HOURLY_LIMIT);
+        }
+
+        // Set cooldown + hourly counter BEFORE existence check (anti side-channel)
+        generalRedisTemplate.opsForValue().set(cooldownKey, "1", 60, TimeUnit.SECONDS);
+        if (hourlyCount == null) {
+            generalRedisTemplate.opsForValue().set(hourlyKey, 1, 1, TimeUnit.HOURS);
+        } else {
+            generalRedisTemplate.opsForValue().set(hourlyKey, hourlyCount + 1, 1, TimeUnit.HOURS);
+        }
+
+        User dbUser = userMapper.selectByEmail(email);
+        if ("register".equals(type) && dbUser != null) {
+            return;
+        }
+        if ("reset".equals(type) && dbUser == null) {
+            return;
+        }
+
+        String verificationCode = String.format("%06d", new Random().nextInt(1000000));
+        String redisKey = "email:verification:" + type + ":" + email;
+        generalRedisTemplate.opsForValue().set(redisKey, verificationCode, 10, TimeUnit.MINUTES);
+
+        String subject;
+        String content;
+        if ("register".equals(type)) {
+            subject = "Registration Verification Code";
+            content = "Dear User,\n\n"
+                    + "Thank you for registering with Coursistant. Your verification code is: "
+                    + verificationCode + ".\n\n"
+                    + "This code is valid for 10 minutes. Please enter it promptly to complete your registration.\n\n"
+                    + "If you did not request this code, please ignore this email.\n\n"
+                    + "Best regards,\n"
+                    + "Coursistant Team";
+        } else {
+            subject = "Password Reset Verification Code";
+            content = "Dear User,\n\n"
+                    + "You have requested to reset your password. Your verification code is: "
+                    + verificationCode + ".\n\n"
+                    + "This code is valid for 10 minutes. Please use it promptly to complete your password reset.\n\n"
+                    + "If you did not request this code, please ignore this email.\n\n"
+                    + "Best regards,\n"
+                    + "Coursistant Team";
+        }
+
         emailUtil.sendEmail(email, subject, content);
     }
 
-    public String getUserLevel(Integer id)
-    {
+    public String getUserLevel(Integer id) {
         return userMapper.selectUserLevelById(id);
     }
 
     public void markPasswordChanged(Integer id) {
         userMapper.updateMustChangePassword(id, false);
+    }
+
+    private AuthResult toAuthResult(Account user, String accessToken, String refreshToken) {
+        AuthResult result = new AuthResult();
+        result.setUserId(user.getId());
+        result.setEmail(user.getEmail());
+        result.setName(user.getName());
+        result.setUsername(user.getUsername());
+        result.setRole(user.getRole());
+        result.setLevel(user.getLevel());
+        result.setAvatar(user.getAvatar());
+        result.setAccessToken(accessToken);
+        result.setRefreshToken(refreshToken);
+        return result;
+    }
+
+    private Integer toInteger(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Integer integer) {
+            return integer;
+        }
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        return Integer.parseInt(value.toString());
     }
 }

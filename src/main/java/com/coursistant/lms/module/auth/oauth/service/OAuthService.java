@@ -27,6 +27,7 @@ import com.coursistant.lms.shared.web.Result;
 import com.coursistant.lms.shared.enums.ResultCodeEnum;
 import com.coursistant.lms.shared.enums.RoleEnum;
 import com.coursistant.lms.module.user.entity.Account;
+import com.coursistant.lms.module.auth.session.dto.AuthResult;
 import com.coursistant.lms.module.auth.oauth.entity.LinkedInUserInfo;
 import com.coursistant.lms.module.user.entity.User;
 import com.coursistant.lms.module.auth.oauth.dto.LinkedInDTO;
@@ -345,9 +346,17 @@ public class OAuthService {
             dbUser.setName(name);
             result = Result.error(ResultCodeEnum.USER_NOT_EXIST_ERROR, dbUser);
         } else {
-            dbUser.setAccessToken(TokenUtils.createAccessToken(dbUser.getId(), RoleEnum.USER.name()));
-
-            result = Result.success(dbUser);
+            String accessToken = TokenUtils.createAccessToken(dbUser.getId(), RoleEnum.USER.name());
+            AuthResult authResult = new AuthResult();
+            authResult.setUserId(dbUser.getId());
+            authResult.setEmail(dbUser.getEmail());
+            authResult.setName(dbUser.getName());
+            authResult.setUsername(dbUser.getUsername());
+            authResult.setRole(dbUser.getRole());
+            authResult.setLevel(dbUser.getLevel());
+            authResult.setAvatar(dbUser.getAvatar());
+            authResult.setAccessToken(accessToken);
+            result = Result.success(authResult);
         }
 
         return result;

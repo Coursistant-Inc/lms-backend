@@ -8,6 +8,7 @@ import com.coursistant.lms.module.auth.admin.repository.AdminMapper;
 import com.coursistant.lms.module.auth.token.service.RefreshTokenService;
 import com.coursistant.lms.shared.web.Constants;
 import com.coursistant.lms.shared.enums.RoleEnum;
+import com.coursistant.lms.module.auth.session.dto.AuthResult;
 import com.coursistant.lms.module.user.entity.Account;
 import com.coursistant.lms.module.auth.admin.entity.Admin;
 import com.coursistant.lms.shared.util.PasswordEncoderUtil;
@@ -170,7 +171,7 @@ public class AdminService {
     /**
      * 登录 // Admin login
      */
-    public Account login(Account account) {
+    public AuthResult login(Account account) {
 
         // Redis 缓存键 // Redis cache keys
         String cacheKey = "admin:email:" + account.getEmail(); // 用户缓存键 // User cache key
@@ -223,12 +224,19 @@ public class AdminService {
         generalRedisTemplate.delete(lockKey);
 
         String accessToken = TokenUtils.createAccessToken(dbAdmin.getId(), RoleEnum.ADMIN.name());
-        dbAdmin.setAccessToken(accessToken);
+        String refreshToken = refreshTokenService.createAndStoreRefreshToken(dbAdmin.getId(), dbAdmin.getRole());
 
-        String refreshToken=refreshTokenService.createAndStoreRefreshToken(dbAdmin.getId(),dbAdmin.getRole());
-        dbAdmin.setRefreshToken(refreshToken);
-
-        return dbAdmin;
+        AuthResult result = new AuthResult();
+        result.setUserId(dbAdmin.getId());
+        result.setEmail(dbAdmin.getEmail());
+        result.setName(dbAdmin.getName());
+        result.setUsername(dbAdmin.getUsername());
+        result.setRole(dbAdmin.getRole());
+        result.setLevel(dbAdmin.getLevel());
+        result.setAvatar(dbAdmin.getAvatar());
+        result.setAccessToken(accessToken);
+        result.setRefreshToken(refreshToken);
+        return result;
     }
 
 

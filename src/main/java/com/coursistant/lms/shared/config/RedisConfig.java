@@ -49,16 +49,6 @@ public class RedisConfig {
 
 
     /**
-     * 用户所有数据的 RedisTemplate（数据库 2）
-     * User All RedisTemplate (db2)
-     */
-    @Bean(name = "userAllRedisTemplate")
-    public RedisTemplate<String, Object> userAllRedisTemplate() {
-        return createRedisTemplate(createLettuceConnectionFactory(2));
-    }
-
-
-    /**
      * 课程所有数据的 RedisTemplate（数据库 3）
      * Course All RedisTemplate (db3)
      */

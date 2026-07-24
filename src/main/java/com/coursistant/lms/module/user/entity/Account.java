@@ -41,18 +41,6 @@ public class Account {
      */
     private String avatar;
 
-    /** 邀请码
-     * Invitation code
-     */
-    private String invitation;
-
-    /** 认证 Token
-     * Authentication token
-     */
-    private String accessToken;
-
-    private String refreshToken;
-
     /** 等级
      * Level
      */

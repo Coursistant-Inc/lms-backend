@@ -9,12 +9,12 @@ import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.shared.enums.RoleEnum;
 import com.coursistant.lms.module.user.entity.Account;
 import com.coursistant.lms.module.auth.admin.dto.PasswordDTO;
+import com.coursistant.lms.module.auth.session.dto.AuthResult;
 import com.coursistant.lms.module.auth.token.dto.RefreshResult;
 import com.coursistant.lms.module.chat.entity.Query;
 import com.coursistant.lms.module.chat.service.CoursistanceService;
 import com.coursistant.lms.module.auth.admin.service.AdminService;
 import com.coursistant.lms.module.user.service.UserService;
-import com.coursistant.lms.shared.security.TokenUtils;
 import com.coursistant.lms.shared.util.TimeZoneUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
@@ -60,38 +60,26 @@ public class WebController {
     }
 
     @PostMapping("/v1/auth/login")
-    public ApiResponse<Account> login(@RequestBody Account account, HttpServletResponse response) {
+    public ApiResponse<AuthResult> login(@RequestBody Account account, HttpServletResponse response) {
         if (ObjectUtil.isEmpty(account.getEmail()) || ObjectUtil.isEmpty(account.getPassword())
                 || ObjectUtil.isEmpty(account.getRole())) {
             throw new ApiException(ErrorType.PARAM_MISSING, "Parameter Missing");
         }
 
-        Account dbAccount = null;
+        AuthResult result = null;
         if (RoleEnum.ADMIN.name().equals(account.getRole())) {
-            dbAccount = adminService.login(account);
+            result = adminService.login(account);
         }
         if (RoleEnum.USER.name().equals(account.getRole())) {
-            dbAccount = userService.login(account);
+            result = userService.login(account);
         }
 
-        if (dbAccount == null) {
+        if (result == null) {
             throw new ApiException(ErrorType.PARAM_MISSING, "Parameter Missing");
         }
 
-        if (ObjectUtil.isNotEmpty(dbAccount.getRefreshToken())) {
-            ResponseCookie cookie = ResponseCookie.from("refreshToken", dbAccount.getRefreshToken())
-                    .httpOnly(true)
-                    .secure(true)
-                    .path("/")
-                    .maxAge(60 * 60 * 24 * 30)
-                    .sameSite("Lax")
-                    .build();
-            response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
-        }
-
-        dbAccount.setRefreshToken(null);
-
-        return ApiResponse.success(dbAccount);
+        setRefreshTokenCookie(response, result.getRefreshToken());
+        return ApiResponse.success(result);
     }
 
     @PostMapping("/v1/auth/refresh-token")
@@ -121,16 +109,7 @@ public class WebController {
         }
 
         RefreshResult result = refreshTokenService.getNewAccessToken(refreshToken);
-
-        ResponseCookie newCookie = ResponseCookie.from("refreshToken", result.getRefreshToken())
-                .httpOnly(true)
-                .secure(true)
-                .path("/")
-                .maxAge(60 * 60 * 24 * 30)
-                .sameSite("Lax")
-                .build();
-        response.addHeader(HttpHeaders.SET_COOKIE, newCookie.toString());
-
+        setRefreshTokenCookie(response, result.getRefreshToken());
         return ApiResponse.success(result.getAccessToken());
     }
 
@@ -150,22 +129,15 @@ public class WebController {
     }
 
     @PostMapping("/v1/auth/register")
-    public ApiResponse<Account> register(@RequestBody Account account) {
+    public ApiResponse<AuthResult> register(@RequestBody Account account, HttpServletResponse response) {
         if (StrUtil.isBlank(account.getPassword()) || StrUtil.isBlank(account.getEmail())
-                || ObjectUtil.isEmpty(account.getRole())) {
+                || StrUtil.isBlank(account.getName())) {
             throw new ApiException(ErrorType.PARAM_MISSING, "Parameter Missing");
         }
 
-        if (RoleEnum.ADMIN.name().equals(account.getRole())) {
-            adminService.register(account);
-            account.setAccessToken(TokenUtils.createAccessToken(account.getId(), RoleEnum.ADMIN.name()));
-        }
-        if (RoleEnum.USER.name().equals(account.getRole())) {
-            userService.register(account);
-            account.setAccessToken(TokenUtils.createAccessToken(account.getId(), RoleEnum.USER.name()));
-        }
-
-        return ApiResponse.success(account);
+        AuthResult result = userService.register(account);
+        setRefreshTokenCookie(response, result.getRefreshToken());
+        return ApiResponse.success(result);
     }
 
     @PostMapping("/v1/auth/email-verifications/register")
@@ -177,7 +149,7 @@ public class WebController {
     @PostMapping("/v1/auth/email-verifications/register/validate")
     public ApiResponse<Void> validateRegisterEmailVerification(@RequestParam("email") String email,
                                                     @RequestParam("code") String code) {
-        userService.validateEmailVerificationCode(email, code);
+        userService.validateEmailVerificationCode(email, code, "register");
         return ApiResponse.success();
     }
 
@@ -187,18 +159,20 @@ public class WebController {
         return ApiResponse.success();
     }
 
+    @PostMapping("/v1/auth/email-verifications/reset/validate")
+    public ApiResponse<Void> validateResetEmailVerification(@RequestParam("email") String email,
+                                                 @RequestParam("code") String code) {
+        userService.validateEmailVerificationCode(email, code, "reset");
+        return ApiResponse.success();
+    }
+
     @PutMapping("/v1/auth/password")
     public ApiResponse<Void> updatePassword(@RequestBody PasswordDTO account) {
-        if ("update".equals(account.getType())) {
-            if (StrUtil.isBlank(account.getEmail()) || StrUtil.isBlank(account.getPassword())
-                    || ObjectUtil.isEmpty(account.getNewPassword())) {
-                throw new ApiException(ErrorType.PARAM_MISSING, "Parameter Missing");
-            }
-        } else if ("reset".equals(account.getType())) {
-            if (StrUtil.isBlank(account.getEmail()) || ObjectUtil.isEmpty(account.getNewPassword())) {
-                throw new ApiException(ErrorType.PARAM_MISSING, "Parameter Missing");
-            }
-        } else {
+        if (!"update".equals(account.getType())) {
+            throw new ApiException(ErrorType.PARAM_MISSING, "Parameter Missing");
+        }
+        if (StrUtil.isBlank(account.getEmail()) || StrUtil.isBlank(account.getPassword())
+                || ObjectUtil.isEmpty(account.getNewPassword())) {
             throw new ApiException(ErrorType.PARAM_MISSING, "Parameter Missing");
         }
         if (RoleEnum.ADMIN.name().equals(account.getRole())) {
@@ -210,15 +184,13 @@ public class WebController {
         return ApiResponse.success();
     }
 
-    @PostMapping("/v1/auth/password-resets/validate")
-    public ApiResponse<String> resetPasswordValidation(@RequestBody PasswordDTO account) {
-
-        if (StrUtil.isBlank(account.getEmail()) || StrUtil.isBlank(account.getCode())) {
+    @PostMapping("/v1/auth/password-resets")
+    public ApiResponse<Void> resetPassword(@RequestBody PasswordDTO dto) {
+        if (StrUtil.isBlank(dto.getEmail()) || StrUtil.isBlank(dto.getNewPassword())) {
             throw new ApiException(ErrorType.PARAM_MISSING, "Parameter Missing");
         }
-        String token = userService.resetPasswordValidation(account);
-
-        return ApiResponse.success(token);
+        userService.resetPassword(dto.getEmail(), dto.getNewPassword());
+        return ApiResponse.success();
     }
 
     /**
@@ -268,5 +240,19 @@ public class WebController {
         }
         log.info("End {}: {}", "query", re_query.toString());
         return ApiResponse.success(re_query);
+    }
+
+    private void setRefreshTokenCookie(HttpServletResponse response, String refreshToken) {
+        if (StrUtil.isBlank(refreshToken)) {
+            return;
+        }
+        ResponseCookie cookie = ResponseCookie.from("refreshToken", refreshToken)
+                .httpOnly(true)
+                .secure(true)
+                .path("/")
+                .maxAge(60 * 60 * 24 * 30)
+                .sameSite("Lax")
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
     }
 }

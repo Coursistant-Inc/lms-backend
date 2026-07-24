@@ -177,12 +177,10 @@ public class User extends Account implements Serializable {
         }
     }
 
-    @Override
     public String getInvitation() {
         return invitation;
     }
 
-    @Override
     public void setInvitation(String invitation) {
         this.invitation = invitation;
     }
