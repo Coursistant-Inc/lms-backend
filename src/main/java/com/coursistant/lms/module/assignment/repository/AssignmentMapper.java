@@ -1,94 +1,39 @@
 package com.coursistant.lms.module.assignment.repository;
 
-import java.time.LocalDateTime;
-import java.util.List;
-
+import com.coursistant.lms.module.assignment.entity.Assignment;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
-import org.apache.ibatis.annotations.Select;
 
-import com.coursistant.lms.module.assignment.entity.Assignment;
-import com.coursistant.lms.module.assignment.dto.AssignmentDTO;
-import com.coursistant.lms.module.chat.entity.Query;
+import java.util.List;
 
-
-/**
- * 操作 Assignment 相关数据接口
- * Data access interface for Assignment-related operations
- */
 @Mapper
 public interface AssignmentMapper {
 
-    /**
-     * 新增 Assignment
-     * Insert a new Assignment
-     */
     int insert(Assignment assignment);
 
-    /**
-     * 根据 ID 删除 Assignment
-     * Delete an Assignment by ID
-     */
-    int deleteById(Integer id);
+    Assignment selectById(@Param("id") Integer id);
 
-    /**
-     * 根据 ID 更新 Assignment
-     * Update an Assignment by ID
-     */
+    List<Assignment> selectByCourseId(@Param("courseId") Integer courseId);
+
+    List<Assignment> selectByCourseIdAndState(@Param("courseId") Integer courseId, @Param("state") String state);
+
+    Assignment selectByCourseIdAndId(@Param("courseId") Integer courseId, @Param("id") Integer id);
+
     int updateById(Assignment assignment);
 
     /**
-     * 根据 ID 增加 Assignment Submission Number
-     * Increment the submission number by 1 in an Assignment by ID
+     * Always writes late_until, including {@code null} (the dynamic updateById skips nulls).
      */
-    int incrementSubNumById(Assignment assignment);
+    int updateLateUntil(@Param("id") Integer id, @Param("lateUntil") java.time.LocalDateTime lateUntil);
 
-    /**
-     * 根据 ID 查询 Assignment
-     * Query an Assignment by ID
-     */
-    Assignment selectById(Integer id);
+    int deleteById(@Param("id") Integer id);
 
-    /**
-     * 查询所有 Assignment（这里假设不带参数筛选）
-     * Query all Assignments (assuming no parameter filtering)
-     */
-    List<Assignment> selectAll(Assignment assignment);
+    int countSubmissionsByAssignmentId(@Param("assignmentId") Integer assignmentId);
 
-    /**
-     * 根据 user_id 查询 Assignment
-     * Query Assignments by user_id
-     */
-    @Select("SELECT * FROM assignment WHERE user_id = #{userId}")
-    List<Assignment> selectByUserId(Integer userId);
+    int countGradesByAssignmentId(@Param("assignmentId") Integer assignmentId);
 
-    List<AssignmentDTO> selectAssignmentsByCourseAndUserId(Integer userId,Integer courseId);
+    int updateCurrentRubricVersionId(@Param("id") Integer id,
+                                     @Param("currentRubricVersionId") Integer currentRubricVersionId);
 
-    /**
-     * 根据 course_id 查询 Assignment
-     * Query Assignments by course_id
-     */
-    @Select("SELECT * FROM assignment WHERE course_id = #{courseId}")
-    List<Assignment> selectByCourseId(Integer courseId);
-
-
-    List<Integer> selectIdsByCourse(@Param("courseId") Integer courseId);
-
-
-    /**
-     * 查询某学生在指定时间范围内所有课程的作业（用于日历展示）
-     */
-    List<Assignment> selectAssignmentsByUserAndTimeRange(@Param("userId") Integer userId,
-                                                         @Param("start") LocalDateTime start,
-                                                         @Param("end") LocalDateTime end);
-
-    void updateLastSelectedCourse(Integer userId,Integer courseId);
-
-
-
-
-
-
-
-
+    int updateState(@Param("id") Integer id, @Param("state") String state);
 }

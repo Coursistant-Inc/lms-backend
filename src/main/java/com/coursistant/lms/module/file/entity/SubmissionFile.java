@@ -2,8 +2,6 @@ package com.coursistant.lms.module.file.entity;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
-import com.coursistant.lms.module.assignment.entity.Assignment;
-import com.coursistant.lms.module.assignment.entity.AssignmentItem;
 
 /**
  * 公告实体类

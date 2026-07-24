@@ -15,6 +15,7 @@ public class Enrollment implements Serializable {
     private Boolean canManageGroups;
     private Boolean canManageCourseEvents;
     private Boolean active;
+    private Boolean assignmentSubmitFrozen;
     private LocalDateTime enrolledAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -89,6 +90,14 @@ public class Enrollment implements Serializable {
 
     public void setActive(Boolean active) {
         this.active = active;
+    }
+
+    public Boolean getAssignmentSubmitFrozen() {
+        return assignmentSubmitFrozen;
+    }
+
+    public void setAssignmentSubmitFrozen(Boolean assignmentSubmitFrozen) {
+        this.assignmentSubmitFrozen = assignmentSubmitFrozen;
     }
 
     public LocalDateTime getEnrolledAt() {

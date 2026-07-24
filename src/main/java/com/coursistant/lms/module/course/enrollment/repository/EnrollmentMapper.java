@@ -21,6 +21,12 @@ public interface EnrollmentMapper {
 
     List<Enrollment> selectActiveByUserId(@Param("userId") Integer userId);
 
+    /**
+     * Active Students only (TA/Instructor excluded), ordered by user_id ASC.
+     * Used as the assignment grading roster.
+     */
+    List<Enrollment> selectActiveStudentsByCourseId(@Param("courseId") Integer courseId);
+
     int countByCourseId(@Param("courseId") Integer courseId);
 
     int countActiveInstructorsByCourseId(@Param("courseId") Integer courseId);

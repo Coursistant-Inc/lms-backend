@@ -1,446 +1,505 @@
 package com.coursistant.lms.module.assignment.service;
-import com.coursistant.lms.module.chat.entity.Query;
-import com.coursistant.lms.module.file.entity.SubmissionFile;
-import com.coursistant.lms.module.user.account.entity.User;
 
-
-
-import cn.hutool.core.bean.BeanUtil;
-import cn.hutool.core.util.ObjectUtil;
-
-import com.coursistant.lms.shared.enums.ResultCodeEnum;
-import com.coursistant.lms.module.assignment.dto.AssignmentSubmissionDTO;
-import com.coursistant.lms.shared.exception.CustomException;
-import com.coursistant.lms.module.assignment.repository.AssignmentMapper;
-import com.coursistant.lms.module.assignment.repository.AssignmentSubmissionMapper;
-import com.coursistant.lms.module.assignment.repository.GroupMemberMapper;
-import com.coursistant.lms.module.assignment.repository.AssignmentItemMapper;
-import com.coursistant.lms.module.file.repository.DiskFilesMapper;
-import com.coursistant.lms.module.file.repository.SubmissionFileMapper;
-import com.coursistant.lms.module.user.account.repository.UserMapper;
-import com.coursistant.lms.module.file.service.SubmissionFileService;
-import com.coursistant.lms.shared.util.EmailUtil;
-import com.coursistant.lms.shared.util.TimeZoneUtils;
-import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
-
-import jakarta.annotation.Resource;
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.time.*;
-import java.time.format.DateTimeFormatter;
-import java.util.*;
-import java.util.stream.Collectors;
+import com.coursistant.lms.module.assignment.dto.StagingFileResponse;
+import com.coursistant.lms.module.assignment.dto.SubmissionResponse;
+import com.coursistant.lms.module.assignment.dto.SubmissionVersionResponse;
+import com.coursistant.lms.module.assignment.dto.SubmitAssignmentRequest;
 import com.coursistant.lms.module.assignment.entity.Assignment;
 import com.coursistant.lms.module.assignment.entity.AssignmentSubmission;
-import com.coursistant.lms.module.assignment.entity.GroupMember;
+import com.coursistant.lms.module.assignment.entity.AssignmentSubmissionFile;
+import com.coursistant.lms.module.assignment.entity.AssignmentSubmissionReceipt;
+import com.coursistant.lms.module.assignment.entity.AssignmentSubmissionStagingFile;
+import com.coursistant.lms.module.assignment.entity.AssignmentSubmissionVersion;
+import com.coursistant.lms.module.assignment.repository.AssignmentMapper;
+import com.coursistant.lms.module.assignment.repository.AssignmentSubmissionFileMapper;
+import com.coursistant.lms.module.assignment.repository.AssignmentSubmissionMapper;
+import com.coursistant.lms.module.assignment.repository.AssignmentSubmissionReceiptMapper;
+import com.coursistant.lms.module.assignment.repository.AssignmentSubmissionStagingFileMapper;
+import com.coursistant.lms.module.assignment.repository.AssignmentSubmissionVersionMapper;
+import com.coursistant.lms.module.course.enrollment.entity.Enrollment;
+import com.coursistant.lms.shared.api.ErrorType;
+import jakarta.annotation.Resource;
+import jakarta.servlet.http.HttpServletRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
+/**
+ * Student-facing submission flow.
+ *
+ * <p>Uploading is not submitting. Files first land in {@code assignment_submission_staging_file}
+ * with a {@code created_at} / {@code expires_at} pair; only POST .../submissions turns them into
+ * an immutable submission version with a receipt. The staging {@code created_at} is also what
+ * makes the grace buffer decidable: a student who had staged a file before the deadline may
+ * still press Submit for a few minutes afterwards without being marked late.</p>
+ */
 @Service
 public class AssignmentSubmissionService {
 
-    @Resource
-    private AssignmentSubmissionMapper assignmentSubmissionMapper;
+    private static final Logger log = LoggerFactory.getLogger(AssignmentSubmissionService.class);
 
-    @Resource
-    private UserMapper userMapper;
+    /** How long an unsubmitted upload stays usable. */
+    private static final int STAGING_TTL_HOURS = 24;
 
     @Resource
     private AssignmentMapper assignmentMapper;
 
     @Resource
-    private DiskFilesMapper diskFilesMapper;
-    @Resource
-    private GroupMemberMapper groupMemberMapper;
+    private AssignmentSubmissionMapper assignmentSubmissionMapper;
 
     @Resource
-    private SubmissionFileMapper submissionFileMapper;
+    private AssignmentSubmissionVersionMapper assignmentSubmissionVersionMapper;
 
     @Resource
-    private SubmissionFileService submissionFileService;
+    private AssignmentSubmissionFileMapper assignmentSubmissionFileMapper;
 
     @Resource
-    private AssignmentService assignmentService;
+    private AssignmentSubmissionStagingFileMapper assignmentSubmissionStagingFileMapper;
 
     @Resource
-    private EmailUtil emailUtil;
+    private AssignmentSubmissionReceiptMapper assignmentSubmissionReceiptMapper;
 
+    @Resource
+    private AssignmentAccessService assignmentAccessService;
 
+    @Resource
+    private AssignmentFilePolicy assignmentFilePolicy;
 
+    @Resource
+    private AssignmentStorageService assignmentStorageService;
 
-    public Integer add(AssignmentSubmission assignmentSubmission) {
-        int assignmentId = assignmentSubmission.getAssignmentId();
-        int studentId = assignmentSubmission.getStudentId();
-        ZoneId zone = ZoneId.of("UTC");
+    @Resource
+    private AssignmentTimeSupport assignmentTimeSupport;
 
-        // 查询该学生在该作业下已有提交
-        AssignmentSubmission qryItem = new AssignmentSubmission();
-        qryItem.setAssignmentId(assignmentId);
-        qryItem.setStudentId(studentId);
-        List<AssignmentSubmission> submissions = selectAll(qryItem, zone);
+    @Resource
+    private SubmissionStatusCalculator submissionStatusCalculator;
 
-        // 查询该作业允许的提交次数
-        Assignment toCheck = assignmentService.selectById(assignmentId, zone);
-        // 当前 UTC 时间是否晚于作业截止时间
-        ZonedDateTime nowUtc = ZonedDateTime.now(ZoneOffset.UTC);
-        ZonedDateTime dueTime = toCheck.getDue().atZone(ZoneOffset.UTC);
+    @Resource
+    private SubmissionResponseAssembler submissionResponseAssembler;
 
-        if (nowUtc.isAfter(dueTime)) {
-            assignmentSubmission.setLate(true);
-            Duration diff = Duration.between(nowUtc, dueTime).abs();
-            assignmentSubmission.setLateTime(diff.toString());
-            //throw new CustomException(ResultCodeEnum.SUBMISSION_DUE_EXPIRED_ERROR);
+    @Resource
+    private AssignmentResponseAssembler assignmentResponseAssembler;
+
+    @Resource
+    private AssignmentAuditService assignmentAuditService;
+
+    @Resource
+    private AssignmentNotificationService assignmentNotificationService;
+
+    // --------------------------------------------------------------- staging
+
+    /**
+     * Stores one or more files for a later Submit. Nothing here counts as a submission.
+     */
+    @Transactional
+    public List<StagingFileResponse> uploadStagingFiles(Integer courseId, Integer assignmentId, Integer userId,
+                                                        MultipartFile[] files) {
+        assignmentAccessService.requireStudentSubmitContext(courseId, userId);
+        Assignment assignment = requirePublishedAssignment(courseId, assignmentId, userId);
+        if (files == null || files.length == 0) {
+            throw AssignmentErrors.fail(log, courseId, assignmentId, userId, ErrorType.PARAM_MISSING,
+                    "At least one file is required");
         }
 
-        if (submissions.size() >= toCheck.getAllowedSubmissionTimes()) {
-            throw new CustomException(ResultCodeEnum.SUBMISSION_ATTEMPT_EXCEEDED_ERROR);
+        LocalDateTime now = assignmentTimeSupport.nowUtc();
+        List<AssignmentSubmissionStagingFile> active = activeStagingFiles(assignmentId, userId, now);
+        if (!submissionStatusCalculator.acceptSubmit(assignment.getDueAt(), assignment.getLateUntil(), now,
+                createdAts(active))) {
+            throw AssignmentErrors.fail(log, courseId, assignmentId, userId, ErrorType.SUBMISSION_WINDOW_CLOSED,
+                    "The submission window for this assignment is closed");
+        }
+        if (active.size() + files.length > assignment.getMaxFileCount()) {
+            throw AssignmentErrors.fail(log, courseId, assignmentId, userId, ErrorType.SUBMISSION_FILE_COUNT_EXCEEDED,
+                    "At most " + assignment.getMaxFileCount() + " file(s) may be staged for this assignment");
         }
 
-        // 将之前该学生的所有提交设为 is_final = false
-        assignmentSubmissionMapper.clearFinalFlag(assignmentId, studentId);
+        List<String> allowedTypes = assignmentFilePolicy.parseAllowedTypes(assignment.getAllowedFileTypes());
+        List<StagingFileResponse> created = new ArrayList<>();
+        for (MultipartFile file : files) {
+            assignmentFilePolicy.validateSubmissionFile(file, allowedTypes, assignment.getMaxFileSizeBytes());
+            String objectKey = assignmentFilePolicy.stagingKey(courseId, assignmentId, userId, file.getOriginalFilename());
+            String checksum = assignmentFilePolicy.checksumSha256(file);
+            assignmentStorageService.upload(objectKey, file, courseId, assignmentId, userId);
 
-        // 当前新提交设为 is_final = true
-        assignmentSubmission.setFinal(true);
-        assignmentSubmissionMapper.insert(assignmentSubmission);
+            AssignmentSubmissionStagingFile staging = new AssignmentSubmissionStagingFile();
+            staging.setAssignmentId(assignmentId);
+            staging.setOwnerUserId(userId);
+            staging.setObjectKey(objectKey);
+            staging.setOriginalName(assignmentFilePolicy.sanitizeFilename(file.getOriginalFilename()));
+            staging.setContentType(file.getContentType());
+            staging.setSizeBytes(file.getSize());
+            staging.setChecksumSha256(checksum);
+            staging.setConsumed(false);
+            staging.setCreatedAt(now);
+            staging.setExpiresAt(now.plusHours(STAGING_TTL_HOURS));
+            assignmentSubmissionStagingFileMapper.insert(staging);
 
-        // 如果是第一次提交，更新该作业的提交计数
-        if (submissions.isEmpty()) {
-            Assignment toUpdate = new Assignment();
-            toUpdate.setId(assignmentId);
-            assignmentService.incrementSubNumById(toUpdate);
+            created.add(submissionResponseAssembler.toStagingResponse(staging));
+        }
+        return created;
+    }
+
+    public List<StagingFileResponse> listStagingFiles(Integer courseId, Integer assignmentId, Integer userId) {
+        assignmentAccessService.requireActiveMember(courseId, userId);
+        requirePublishedAssignment(courseId, assignmentId, userId);
+        LocalDateTime now = assignmentTimeSupport.nowUtc();
+        return submissionResponseAssembler.toStagingResponses(activeStagingFiles(assignmentId, userId, now));
+    }
+
+    @Transactional
+    public void deleteStagingFile(Integer courseId, Integer assignmentId, Integer stagingFileId, Integer userId) {
+        assignmentAccessService.requireStudentSubmitContext(courseId, userId);
+        requirePublishedAssignment(courseId, assignmentId, userId);
+
+        AssignmentSubmissionStagingFile staging = assignmentSubmissionStagingFileMapper.selectById(stagingFileId);
+        if (staging == null
+                || !assignmentId.equals(staging.getAssignmentId())
+                || !userId.equals(staging.getOwnerUserId())
+                || Boolean.TRUE.equals(staging.getConsumed())) {
+            throw AssignmentErrors.fail(log, courseId, assignmentId, userId, ErrorType.STAGING_FILE_INVALID,
+                    "Staging file " + stagingFileId + " is not an active upload of this user");
+        }
+        assignmentSubmissionStagingFileMapper.deleteById(stagingFileId);
+        assignmentStorageService.deleteQuietly(staging.getObjectKey());
+    }
+
+    // ---------------------------------------------------------------- submit
+
+    /**
+     * Consumes staged files into a new immutable version and issues a receipt.
+     *
+     * <p>Whether the attempt is accepted, and whether it consumes the grace buffer, is decided
+     * from the {@code created_at} of the files actually being submitted — so selecting only files
+     * staged after the deadline cannot borrow an earlier upload's grace eligibility.</p>
+     */
+    @Transactional
+    public SubmissionResponse submit(Integer courseId, Integer assignmentId, Integer userId, String timezoneHeader,
+                                     SubmitAssignmentRequest body) {
+        assignmentAccessService.requireStudentSubmitContext(courseId, userId);
+        Assignment assignment = requirePublishedAssignment(courseId, assignmentId, userId);
+        ZoneId zone = assignmentTimeSupport.requireZone(timezoneHeader);
+        LocalDateTime now = assignmentTimeSupport.nowUtc();
+
+        List<AssignmentSubmissionStagingFile> active = activeStagingFiles(assignmentId, userId, now);
+        List<AssignmentSubmissionStagingFile> selected = selectStagingFiles(courseId, assignmentId, userId, active,
+                body == null ? null : body.getStagingFileIds());
+        if (selected.isEmpty()) {
+            throw AssignmentErrors.fail(log, courseId, assignmentId, userId, ErrorType.STAGING_FILE_INVALID,
+                    "No active staged files to submit");
+        }
+        if (selected.size() > assignment.getMaxFileCount()) {
+            throw AssignmentErrors.fail(log, courseId, assignmentId, userId, ErrorType.SUBMISSION_FILE_COUNT_EXCEEDED,
+                    "At most " + assignment.getMaxFileCount() + " file(s) may be submitted for this assignment");
         }
 
-        Integer result=assignmentSubmission.getId();
+        List<LocalDateTime> selectedCreatedAts = createdAts(selected);
+        if (!submissionStatusCalculator.acceptSubmit(assignment.getDueAt(), assignment.getLateUntil(), now,
+                selectedCreatedAts)) {
+            throw AssignmentErrors.fail(log, courseId, assignmentId, userId, ErrorType.SUBMISSION_WINDOW_CLOSED,
+                    "The submission window for this assignment is closed");
+        }
+        boolean usedGraceBuffer = submissionStatusCalculator.consumesGraceBuffer(assignment.getDueAt(),
+                assignment.getLateUntil(), now, selectedCreatedAts);
 
+        AssignmentSubmission submission = assignmentSubmissionMapper
+                .selectByAssignmentIdAndOwnerUserId(assignmentId, userId);
+        if (submission == null) {
+            submission = new AssignmentSubmission();
+            submission.setAssignmentId(assignmentId);
+            submission.setOwnerUserId(userId);
+            submission.setCurrentVersionId(null);
+            assignmentSubmissionMapper.insert(submission);
+        }
+
+        Integer maxVersionNo = assignmentSubmissionVersionMapper.selectMaxVersionNo(submission.getId());
+        int nextVersionNo = (maxVersionNo == null ? 0 : maxVersionNo) + 1;
+
+        AssignmentSubmissionVersion version = new AssignmentSubmissionVersion();
+        version.setSubmissionId(submission.getId());
+        version.setAssignmentId(assignmentId);
+        version.setOwnerUserId(userId);
+        version.setVersionNo(nextVersionNo);
+        version.setSubmittedAt(now);
+        version.setUsedGraceBuffer(usedGraceBuffer);
+        assignmentSubmissionVersionMapper.insert(version);
+
+        int sortOrder = 0;
+        for (AssignmentSubmissionStagingFile staging : selected) {
+            AssignmentSubmissionFile file = new AssignmentSubmissionFile();
+            file.setSubmissionVersionId(version.getId());
+            file.setObjectKey(staging.getObjectKey());
+            file.setOriginalName(staging.getOriginalName());
+            file.setContentType(staging.getContentType());
+            file.setSizeBytes(staging.getSizeBytes());
+            file.setChecksumSha256(staging.getChecksumSha256());
+            file.setSortOrder(sortOrder++);
+            assignmentSubmissionFileMapper.insert(file);
+            // The row is kept (not deleted) so the object it points at is never reaped.
+            assignmentSubmissionStagingFileMapper.updateConsumed(staging.getId(), true);
+        }
+
+        assignmentSubmissionMapper.updateCurrentVersionId(submission.getId(), version.getId());
+
+        AssignmentSubmissionReceipt receipt = new AssignmentSubmissionReceipt();
+        receipt.setSubmissionVersionId(version.getId());
+        receipt.setIssuedAt(now);
+        assignmentSubmissionReceiptMapper.insert(receipt);
+
+        Map<String, Object> auditDetail = new LinkedHashMap<>();
+        auditDetail.put("submissionId", submission.getId());
+        auditDetail.put("submissionVersionId", version.getId());
+        auditDetail.put("versionNo", nextVersionNo);
+        auditDetail.put("fileCount", selected.size());
+        auditDetail.put("usedGraceBuffer", usedGraceBuffer);
+        assignmentAuditService.write(courseId, assignmentId, userId, AssignmentAuditService.SUBMISSION_CREATED, auditDetail);
+
+        assignmentNotificationService.afterCommit(() -> assignmentNotificationService
+                .notifySubmissionReceived(assignment, userId, nextVersionNo, now));
+
+        return buildSubmissionResponse(assignment, userId, zone, assignmentTimeSupport.nowUtc());
+    }
+
+    // ------------------------------------------------------------------ read
+
+    public SubmissionResponse getMySubmission(HttpServletRequest request, Integer courseId, Integer assignmentId,
+                                              Integer userId, String timezoneHeader) {
+        Assignment assignment = assignmentAccessService.requireAssignmentReadable(request, courseId, assignmentId, userId);
+        ZoneId zone = assignmentTimeSupport.requireZone(timezoneHeader);
+        AssignmentSubmission submission = assignmentSubmissionMapper
+                .selectByAssignmentIdAndOwnerUserId(assignmentId, userId);
+        if (submission == null || submission.getCurrentVersionId() == null) {
+            throw AssignmentErrors.fail(log, courseId, assignmentId, userId, ErrorType.NOT_FOUND,
+                    "No formal submission yet");
+        }
+        return buildSubmissionResponse(assignment, userId, zone, assignmentTimeSupport.nowUtc());
+    }
+
+    public List<SubmissionVersionResponse> listMyVersions(HttpServletRequest request, Integer courseId,
+                                                          Integer assignmentId, Integer userId, String timezoneHeader) {
+        Assignment assignment = assignmentAccessService.requireAssignmentReadable(request, courseId, assignmentId, userId);
+        ZoneId zone = assignmentTimeSupport.requireZone(timezoneHeader);
+        return versionHistory(assignment, userId, zone);
+    }
+
+    /**
+     * Staff (or owner) version history for a specific submission head id.
+     */
+    public List<SubmissionVersionResponse> listVersions(HttpServletRequest request, Integer courseId,
+                                                        Integer assignmentId, Integer submissionId, Integer userId,
+                                                        String timezoneHeader) {
+        Assignment assignment = assignmentAccessService.requireAssignmentReadable(request, courseId, assignmentId, userId);
+        ZoneId zone = assignmentTimeSupport.requireZone(timezoneHeader);
+        AssignmentSubmission submission = assignmentSubmissionMapper.selectById(submissionId);
+        if (submission == null || !assignmentId.equals(submission.getAssignmentId())) {
+            throw AssignmentErrors.fail(log, courseId, assignmentId, userId, ErrorType.NOT_FOUND,
+                    "Submission " + submissionId + " does not belong to this assignment");
+        }
+        boolean owner = userId.equals(submission.getOwnerUserId());
+        if (!owner && !assignmentAccessService.isStaffViewer(request, courseId, userId)) {
+            throw AssignmentErrors.fail(log, courseId, assignmentId, userId, ErrorType.ACCESS_DENIED,
+                    "Only the submitter or course staff may read submission versions");
+        }
+        return versionHistory(assignment, submission.getOwnerUserId(), zone);
+    }
+
+    /**
+     * Version history for one student; also used by the grading view.
+     */
+    public List<SubmissionVersionResponse> versionHistory(Assignment assignment, Integer ownerUserId, ZoneId zone) {
+        AssignmentSubmission submission = assignmentSubmissionMapper
+                .selectByAssignmentIdAndOwnerUserId(assignment.getId(), ownerUserId);
+        List<SubmissionVersionResponse> result = new ArrayList<>();
+        if (submission == null) {
+            return result;
+        }
+        List<AssignmentSubmissionVersion> versions =
+                assignmentSubmissionVersionMapper.selectBySubmissionIdOrderByVersionDesc(submission.getId());
+        if (versions == null) {
+            throw AssignmentErrors.fail(log, assignment.getCourseId(), assignment.getId(), ownerUserId,
+                    ErrorType.INTERNAL_ERROR, "Submission version history query returned null");
+        }
+        for (AssignmentSubmissionVersion version : versions) {
+            result.add(submissionResponseAssembler.toVersionResponse(assignment, version, zone, true));
+        }
         return result;
-
     }
 
+    public ResponseEntity<InputStreamResource> streamSubmissionFile(HttpServletRequest request, Integer courseId,
+                                                                    Integer assignmentId, Integer submissionId,
+                                                                    Integer fileId, Integer userId, boolean attachment) {
+        assignmentAccessService.requireAssignmentReadable(request, courseId, assignmentId, userId);
 
-    //小组作业
-
-    public Integer addAsGroup(AssignmentSubmission assignmentSubmission) {
-        int assignmentId = assignmentSubmission.getAssignmentId();
-        int studentId = assignmentSubmission.getStudentId();
-        Assignment assignmentInfo= assignmentMapper.selectById(assignmentSubmission.getAssignmentId());
-        Integer courseId=assignmentInfo.getCourseId();
-        ZoneId zone = ZoneId.of("UTC");
-
-        // 查询该学生在该作业下已有提交
-
-        Integer groupId=groupMemberMapper.selectGroupIdByCourseIdAndUserId(courseId,studentId);
-
-        if (groupId == null) {
-            throw new CustomException(ResultCodeEnum.GROUP_NOT_EXIST_ERROR);
+        AssignmentSubmission submission = assignmentSubmissionMapper.selectById(submissionId);
+        if (submission == null || !assignmentId.equals(submission.getAssignmentId())) {
+            throw AssignmentErrors.fail(log, courseId, assignmentId, userId, ErrorType.NOT_FOUND,
+                    "Submission " + submissionId + " does not belong to this assignment");
+        }
+        boolean owner = userId.equals(submission.getOwnerUserId());
+        if (!owner && !assignmentAccessService.canGrade(courseId, userId)) {
+            throw AssignmentErrors.fail(log, courseId, assignmentId, userId, ErrorType.ACCESS_DENIED,
+                    "Only the submitter or grading staff may read submission files");
         }
 
-        List<GroupMember> members=groupMemberMapper.selectByGroupId(groupId);
+        AssignmentSubmissionFile file = assignmentSubmissionFileMapper.selectById(fileId);
+        if (file == null) {
+            throw AssignmentErrors.fail(log, courseId, assignmentId, userId, ErrorType.NOT_FOUND,
+                    "Submission file " + fileId + " does not exist");
+        }
+        AssignmentSubmissionVersion version = assignmentSubmissionVersionMapper.selectById(file.getSubmissionVersionId());
+        if (version == null || !submissionId.equals(version.getSubmissionId())) {
+            throw AssignmentErrors.fail(log, courseId, assignmentId, userId, ErrorType.NOT_FOUND,
+                    "Submission file " + fileId + " does not belong to this submission");
+        }
+        if (!attachment && !assignmentFilePolicy.isPreviewable(file.getContentType(), file.getOriginalName())) {
+            throw AssignmentErrors.fail(log, courseId, assignmentId, userId, ErrorType.UNSUPPORTED_FILE_TYPE,
+                    "Preview is only available for PDF and image files; use download instead");
+        }
+        return assignmentStorageService.stream(file.getObjectKey(), file.getOriginalName(), file.getContentType(),
+                attachment, courseId, assignmentId, userId);
+    }
 
+    // ------------------------------------------------------------- internals
 
-        List<AssignmentSubmission> submissions =new ArrayList<>();
-        for (GroupMember member:members){
-            AssignmentSubmission qryItem = new AssignmentSubmission();
-            qryItem.setAssignmentId(assignmentId);
-            qryItem.setStudentId(member.getUserId());
-            List<AssignmentSubmission> indiSubmissions = selectAll(qryItem, zone);
-            if (indiSubmissions!=null){
-                submissions.addAll(indiSubmissions);
+    private SubmissionResponse buildSubmissionResponse(Assignment assignment, Integer ownerUserId, ZoneId zone,
+                                                       LocalDateTime now) {
+        AssignmentSubmission submission = assignmentSubmissionMapper
+                .selectByAssignmentIdAndOwnerUserId(assignment.getId(), ownerUserId);
+        AssignmentSubmissionVersion currentVersion = null;
+        if (submission != null && submission.getCurrentVersionId() != null) {
+            currentVersion = assignmentSubmissionVersionMapper.selectById(submission.getCurrentVersionId());
+        }
+        List<AssignmentSubmissionStagingFile> active = activeStagingFiles(assignment.getId(), ownerUserId, now);
+        List<LocalDateTime> stagingCreatedAts = createdAts(active);
+
+        SubmissionResponse response = new SubmissionResponse();
+        response.setAssignmentId(assignment.getId());
+        response.setOwnerUserId(ownerUserId);
+        response.setSubmissionId(submission == null ? null : submission.getId());
+        response.setDueAt(assignment.getDueAt());
+        response.setLateUntil(assignment.getLateUntil());
+        response.setTimezone(zone == null ? null : zone.getId());
+        response.setDueAtLocal(assignmentTimeSupport.toZone(assignment.getDueAt(), zone));
+        response.setLateUntilLocal(assignmentTimeSupport.toZone(assignment.getLateUntil(), zone));
+        response.setMaxFileCount(assignment.getMaxFileCount());
+        response.setMaxFileSizeBytes(assignment.getMaxFileSizeBytes());
+        response.setAllowedFileTypes(assignmentFilePolicy.parseAllowedTypes(assignment.getAllowedFileTypes()));
+        response.setStagingFiles(submissionResponseAssembler.toStagingResponses(active));
+
+        response.setSubmissionStatus(submissionStatusCalculator.calculate(assignment.getDueAt(),
+                assignment.getLateUntil(), now,
+                currentVersion == null ? null : currentVersion.getSubmittedAt(),
+                currentVersion == null ? null : currentVersion.getUsedGraceBuffer(),
+                stagingCreatedAts));
+        response.setWindowOpen(submissionStatusCalculator.isWindowOpen(assignment.getDueAt(),
+                assignment.getLateUntil(), now));
+        response.setGraceWindowActive(submissionStatusCalculator.isGraceEligible(assignment.getDueAt(),
+                assignment.getLateUntil(), now, stagingCreatedAts));
+        boolean frozen = assignmentAccessService.isSubmitFrozen(assignment.getCourseId(), ownerUserId);
+        response.setSubmitFrozen(frozen);
+        response.setAcceptingSubmissions(!frozen && submissionStatusCalculator.acceptSubmit(assignment.getDueAt(),
+                assignment.getLateUntil(), now, stagingCreatedAts));
+
+        if (submission != null) {
+            Integer maxVersionNo = assignmentSubmissionVersionMapper.selectMaxVersionNo(submission.getId());
+            response.setTotalVersions(maxVersionNo == null ? 0 : maxVersionNo);
+        } else {
+            response.setTotalVersions(0);
+        }
+        response.setCurrentVersion(submissionResponseAssembler.toVersionResponse(assignment, currentVersion, zone, true));
+        if (currentVersion != null) {
+            response.setUsedGraceBuffer(currentVersion.getUsedGraceBuffer());
+            AssignmentSubmissionReceipt receiptEntity =
+                    assignmentSubmissionReceiptMapper.selectBySubmissionVersionId(currentVersion.getId());
+            List<AssignmentSubmissionFile> files =
+                    assignmentSubmissionFileMapper.selectBySubmissionVersionId(currentVersion.getId());
+            response.setReceipt(assignmentResponseAssembler.toReceiptSummary(receiptEntity, files));
+            if (Boolean.TRUE.equals(currentVersion.getUsedGraceBuffer())
+                    || !currentVersion.getSubmittedAt().isAfter(assignment.getDueAt())) {
+                response.setDeadlineOutcome("ON_TIME");
+            } else {
+                response.setDeadlineOutcome("LATE");
             }
-
         }
+        return response;
+    }
 
-
-
-        // 查询该作业允许的提交次数
-        Assignment toCheck = assignmentService.selectById(assignmentId, zone);
-        // 当前 UTC 时间是否晚于作业截止时间
-        ZonedDateTime nowUtc = ZonedDateTime.now(ZoneOffset.UTC);
-        ZonedDateTime dueTime = toCheck.getDue().atZone(ZoneOffset.UTC);
-
-        if (nowUtc.isAfter(dueTime)) {
-            assignmentSubmission.setLate(true);
-            Duration diff = Duration.between(nowUtc, dueTime).abs();
-            assignmentSubmission.setLateTime(diff.toString());
-            //throw new CustomException(ResultCodeEnum.SUBMISSION_DUE_EXPIRED_ERROR);
+    private List<AssignmentSubmissionStagingFile> selectStagingFiles(Integer courseId, Integer assignmentId,
+                                                                     Integer userId,
+                                                                     List<AssignmentSubmissionStagingFile> active,
+                                                                     List<Integer> requestedIds) {
+        if (requestedIds == null || requestedIds.isEmpty()) {
+            return active;
         }
-
-        /*
-        if (submissions.size() >= toCheck.getAllowedSubmissionTimes()) {
-            throw new CustomException(ResultCodeEnum.SUBMISSION_ATTEMPT_EXCEEDED_ERROR);
-        }*/
-
-        // 将之前该学生的所有提交设为 is_final = false
-        if (members != null && !members.isEmpty()) {
-            for (GroupMember member : members) {
-                assignmentSubmissionMapper.clearFinalFlag(assignmentId, member.getUserId());
+        Map<Integer, AssignmentSubmissionStagingFile> byId = new LinkedHashMap<>();
+        for (AssignmentSubmissionStagingFile staging : active) {
+            byId.put(staging.getId(), staging);
+        }
+        List<AssignmentSubmissionStagingFile> selected = new ArrayList<>();
+        for (Integer id : requestedIds) {
+            AssignmentSubmissionStagingFile staging = byId.get(id);
+            if (staging == null) {
+                throw AssignmentErrors.fail(log, courseId, assignmentId, userId, ErrorType.STAGING_FILE_INVALID,
+                        "Staging file " + id + " is missing, expired, or already consumed");
+            }
+            if (!selected.contains(staging)) {
+                selected.add(staging);
             }
         }
+        return selected;
+    }
 
+    /**
+     * Creation times of the student's unexpired, unconsumed staging files — the input the status
+     * calculator needs to decide grace-buffer eligibility.
+     */
+    public List<LocalDateTime> activeStagingCreatedAts(Integer assignmentId, Integer userId, LocalDateTime now) {
+        return createdAts(activeStagingFiles(assignmentId, userId, now));
+    }
 
-        // 当前新提交设为 is_final = true
-        assignmentSubmission.setFinal(true);
-        assignmentSubmission.setGroupId(groupId);
-        assignmentSubmissionMapper.insert(assignmentSubmission);
-
-        // 如果是第一次提交，更新该作业的提交计数
-        if (submissions.isEmpty()) {
-            Assignment toUpdate = new Assignment();
-            toUpdate.setId(assignmentId);
-            assignmentService.incrementSubNumById(toUpdate);
+    private List<AssignmentSubmissionStagingFile> activeStagingFiles(Integer assignmentId, Integer userId,
+                                                                     LocalDateTime now) {
+        List<AssignmentSubmissionStagingFile> rows = assignmentSubmissionStagingFileMapper
+                .selectByAssignmentIdAndOwnerUserIdAndNotConsumed(assignmentId, userId);
+        if (rows == null) {
+            throw AssignmentErrors.fail(log, null, assignmentId, userId, ErrorType.INTERNAL_ERROR,
+                    "Staging file query returned null");
         }
+        List<AssignmentSubmissionStagingFile> active = new ArrayList<>();
+        for (AssignmentSubmissionStagingFile row : rows) {
+            if (row.getExpiresAt() == null || !now.isAfter(row.getExpiresAt())) {
+                active.add(row);
+            }
+        }
+        return active;
+    }
 
-        Integer result=assignmentSubmission.getId();
-
+    private List<LocalDateTime> createdAts(List<AssignmentSubmissionStagingFile> stagingFiles) {
+        List<LocalDateTime> result = new ArrayList<>();
+        for (AssignmentSubmissionStagingFile stagingFile : stagingFiles) {
+            result.add(stagingFile.getCreatedAt());
+        }
         return result;
-
     }
 
     /**
-     * 删除
-     * Delete a assignmentSubmission by ID
+     * Students must never learn that a Draft assignment exists.
      */
-    public void deleteById(Integer id) {
-        assignmentSubmissionMapper.deleteById(id);
-        List<SubmissionFile> submissionFiles=submissionFileService.selectBySubmissionId(id);
-        if (ObjectUtil.isNotNull(submissionFiles)) {
-            for (int i=0;i< submissionFiles.size();i++){
-                submissionFileService.deleteById(submissionFiles.get(i).getId());
-            }
+    private Assignment requirePublishedAssignment(Integer courseId, Integer assignmentId, Integer userId) {
+        Assignment assignment = assignmentMapper.selectByCourseIdAndId(courseId, assignmentId);
+        if (assignment == null || !AssignmentAccessService.STATE_PUBLISHED.equals(assignment.getState())) {
+            throw AssignmentErrors.fail(log, courseId, assignmentId, userId, ErrorType.ASSIGNMENT_NOT_FOUND, null);
         }
+        return assignment;
     }
-
-    /**
-     * 批量删除
-     * Delete multiple assignmentSubmissions by IDs
-     */
-    public void deleteBatch(List<Integer> ids) {
-        for (Integer id : ids) {
-            deleteById(id);
-        }
-    }
-
-    /**
-     * 修改
-     * Update a assignmentSubmission by ID
-     */
-    public void updateById(AssignmentSubmission assignmentSubmission) {
-        assignmentSubmissionMapper.updateById(assignmentSubmission);
-
-    }
-    /**
-     * 修改成绩
-     * Update a assignmentSubmission by ID
-     */
-    public void updateGradeById(AssignmentSubmission assignmentSubmission) {
-        if (ObjectUtil.isNull(assignmentSubmission.getGrade())){
-            throw new CustomException(ResultCodeEnum.PARAM_LOST_ERROR);
-        }
-        assignmentSubmissionMapper.updateById(assignmentSubmission);
-        calculateStats(assignmentSubmission.getAssignmentId());
-
-    }
-
-    public void updateGroupGradeById(AssignmentSubmission assignmentSubmission) {
-        if (ObjectUtil.isNull(assignmentSubmission.getGrade())){
-            throw new CustomException(ResultCodeEnum.PARAM_LOST_ERROR);
-        }
-        assignmentSubmissionMapper.updateById(assignmentSubmission);
-        calculateStats(assignmentSubmission.getAssignmentId());
-        /*
-        Assignment assignmentInfo= assignmentMapper.selectById(assignmentSubmission.getAssignmentId());
-        Integer courseId=assignmentInfo.getCourseId();
-        int studentId = assignmentSubmission.getStudentId();
-
-        Integer groupId=groupMemberMapper.selectGroupIdByCourseIdAndUserId(courseId,studentId);
-
-        if (groupId == null) {
-            throw new CustomException(ResultCodeEnum.GROUP_NOT_EXIST_ERROR);
-        }
-
-        List<GroupMember> members=groupMemberMapper.selectByGroupId(groupId);
-
-        if (members != null && !members.isEmpty()) {
-            for (GroupMember member : members) {
-                assignmentSubmissionMapper.updateById(assignmentSubmission);
-            }
-        }*/
-
-
-
-    }
-
-    /**
-     * 更新作业成绩统计信息（最高分、最低分、平均分）
-     * Update score statistics (max, min, average) for a specific assignment
-     */
-
-    public void calculateStats(Integer assignmentId) {
-        List<AssignmentSubmission> submissions=assignmentSubmissionMapper.selectFinalGradedByAssignmentId(assignmentId);
-        if (submissions == null || submissions.isEmpty()) {
-            return;
-        }
-        // 提取所有非 null 的分数列表
-        List<BigDecimal> grades = submissions.stream()
-                .map(AssignmentSubmission::getGrade)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
-
-        if (grades.isEmpty()) {
-            return;
-        }
-
-        BigDecimal max = grades.stream().max(Comparator.naturalOrder()).get();
-        BigDecimal min = grades.stream().min(Comparator.naturalOrder()).get();
-        BigDecimal sum = grades.stream().reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal avg = sum.divide(BigDecimal.valueOf(grades.size()), 2, RoundingMode.HALF_UP);
-
-
-        Assignment updateInfo=new Assignment();
-        updateInfo.setLowestGrade(min);
-        updateInfo.setHighestGrade(max);
-        updateInfo.setAverageGrade(avg);
-        updateInfo.setId(assignmentId);
-
-        assignmentService.updateById(updateInfo,null);
-
-
-
-    }
-
-
-    /**
-     * 根据ID查询
-     * Query a assignmentSubmission by ID
-     */
-    public AssignmentSubmissionDTO selectById(Integer id, ZoneId timezone) {
-
-
-
-        AssignmentSubmission assignmentSubmission =assignmentSubmissionMapper.selectById(id);
-        assignmentSubmission.setDate(TimeZoneUtils.fromUtcLocalDateTime(assignmentSubmission.getDate(),timezone));
-        AssignmentSubmissionDTO DTO=new AssignmentSubmissionDTO();
-        if (ObjectUtil.isNull(DTO)) {
-            throw new CustomException(ResultCodeEnum.ASSIGNMENT_NOT_EXIST_ERROR);
-        }
-        BeanUtil.copyProperties(assignmentSubmission, DTO);
-        List<SubmissionFile> submissionFiles=submissionFileService.selectBySubmissionId(id);
-        DTO.setFiles(submissionFiles);
-
-        return DTO;
-    }
-
-    /**
-     * 查询所有
-     * Query all assignmentSubmissions
-     */
-    public List<AssignmentSubmission> selectAll(AssignmentSubmission assignmentSubmission1, ZoneId timezone) {
-
-        List<AssignmentSubmission> assignmentSubmissions = assignmentSubmissionMapper.selectAll(assignmentSubmission1);
-        for (AssignmentSubmission assignmentSubmission:assignmentSubmissions){
-            assignmentSubmission.setDate(TimeZoneUtils.fromUtcLocalDateTime(assignmentSubmission.getDate(),timezone));
-        }
-
-        return assignmentSubmissions;
-    }
-
-    public List<AssignmentSubmission> selectFinalByUserAndCourse(Integer courseId, Integer studentId, ZoneId timezone) {
-
-        List<Integer> assignmentIds = assignmentMapper.selectIdsByCourse(courseId);
-        if (assignmentIds == null || assignmentIds.isEmpty()) {
-            return Collections.emptyList();
-        }
-
-        List<AssignmentSubmission> assignmentSubmissions =
-                assignmentSubmissionMapper.selectFinalByAssignmentIdsAndStudent(assignmentIds, studentId);
-
-        for (AssignmentSubmission assignmentSubmission:assignmentSubmissions){
-            assignmentSubmission.setDate(TimeZoneUtils.fromUtcLocalDateTime(assignmentSubmission.getDate(),timezone));
-        }
-
-
-        return assignmentSubmissions;
-    }
-
-
-    public AssignmentSubmission selectFinalSubmissionByUserId(Integer assignmentId, Integer studentId, ZoneId timezone) {
-
-        AssignmentSubmission assignmentSubmission = assignmentSubmissionMapper.selectFinalByAssignmentIdAndUserId(assignmentId,studentId);
-        assignmentSubmission.setDate(TimeZoneUtils.fromUtcLocalDateTime(assignmentSubmission.getDate(),timezone));
-
-
-        return assignmentSubmission;
-    }
-
-    public AssignmentSubmission selectGroupFinalSubmissionByUserId(Integer assignmentId, Integer studentId, ZoneId timezone) {
-
-        Assignment assignmentInfo= assignmentMapper.selectById(assignmentId);
-        Integer courseId=assignmentInfo.getCourseId();
-        Integer groupId=groupMemberMapper.selectGroupIdByCourseIdAndUserId(courseId,studentId);
-        AssignmentSubmission assignmentSubmission = assignmentSubmissionMapper.selectFinalByAssignmentIdAndGroupId(assignmentId,groupId);
-        assignmentSubmission.setDate(TimeZoneUtils.fromUtcLocalDateTime(assignmentSubmission.getDate(),timezone));
-
-
-        return assignmentSubmission;
-    }
-
-
-    public void sendSubmissionEmail(Integer submissionId) {
-        AssignmentSubmission assignmentSubmission=assignmentSubmissionMapper.selectById(submissionId);
-        User student=userMapper.selectById(assignmentSubmission.getStudentId());
-        Assignment assignment=assignmentMapper.selectById(assignmentSubmission.getAssignmentId());
-        String courseName = "course " + assignment.getCourseId();
-        List<SubmissionFile> submissionFiles=submissionFileMapper.selectFileBySubmissionId(assignmentSubmission.getId());
-        List<String> fileNames=new ArrayList<>();
-        for  (SubmissionFile submissionFile:submissionFiles){
-            String fileName=diskFilesMapper.selectById(submissionFile.getFileId()).getName();
-            Double sizeKb = diskFilesMapper.selectById(submissionFile.getFileId()).getSize();
-
-            // 转换成 MB，保留两位小数
-            double sizeMb = sizeKb / 1024.0;
-            String sizeStr = String.format("%.2f MB", sizeMb);
-
-            // 拼接结果
-            String fileWithSize = fileName + " (" + sizeStr + ")";
-            fileNames.add(fileWithSize);
-        }
-
-        String studentName=student.getUsername();
-        String email=student.getEmail();
-        LocalDateTime utcTime=assignmentSubmission.getDate();
-        ZoneId laZone = ZoneId.of("America/Los_Angeles");
-        ZonedDateTime laTime = utcTime.atZone(ZoneOffset.UTC).withZoneSameInstant(laZone);
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMMM d, yyyy h:mm a z", Locale.ENGLISH);
-        String formatted = laTime.format(formatter);
-
-        // 拼接文件名列表
-        StringBuilder fileListBuilder = new StringBuilder();
-        for (String fileName : fileNames) {
-            if (fileListBuilder.length() > 0) {
-                fileListBuilder.append(", ");
-            }
-            fileListBuilder.append(fileName);
-        }
-        String filesList = fileListBuilder.toString();
-
-
-
-        // 组装邮件正文
-        String subject = "Submission Confirmation — " + assignment.getTitle()
-                + " (ID " + assignmentSubmission.getId() + ")";
-        String emailBody = ""
-                + "Hi " + studentName + ",\n\n"
-                + "This email confirms that your submission to " + assignment.getTitle() + " was successful.\n\n"
-                + "Submission ID: " + assignmentSubmission.getId() + "\n"
-                + "Received: " + formatted +"\n"
-                + "Course/Section: " + courseName + "\n"
-                + "File(s): " + filesList + "\n\n"
-                + "If you did not intend to submit, or you need to make changes, please check "
-                + "the assignment’s resubmission policy and deadline on the LMS page.\n\n"
-                + "Best regards,\n"
-                + "Coursistant xLearn Team";
-
-        emailUtil.sendEmail(email,subject,emailBody);
-
-    }
-
 }

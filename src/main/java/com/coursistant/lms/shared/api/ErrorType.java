@@ -68,7 +68,27 @@ public enum ErrorType {
     FILE_TOO_LARGE(HttpStatus.BAD_REQUEST, "File exceeds the maximum allowed size"),
     UNSUPPORTED_FILE_TYPE(HttpStatus.BAD_REQUEST, "Unsupported file type"),
     INVALID_LINK(HttpStatus.BAD_REQUEST, "Invalid link title or URL"),
-    NO_PREVIOUS_SYLLABUS_VERSION(HttpStatus.CONFLICT, "No previous syllabus version to restore");
+    NO_PREVIOUS_SYLLABUS_VERSION(HttpStatus.CONFLICT, "No previous syllabus version to restore"),
+
+    // --- Assignment ---
+    ASSIGNMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "Assignment does not exist"),
+    ASSIGNMENT_TYPE_LOCKED(HttpStatus.CONFLICT, "Assignment type is locked"),
+    ASSIGNMENT_HAS_SUBMISSIONS(HttpStatus.CONFLICT, "Assignment already has submissions"),
+    ASSIGNMENT_DUE_SHORTEN_CONFIRM_REQUIRED(HttpStatus.CONFLICT, "Confirmation required to shorten due date"),
+    ASSIGNMENT_FILE_CONSTRAINT_INVALID(HttpStatus.BAD_REQUEST, "Invalid assignment file constraints"),
+    RUBRIC_NOT_FOUND(HttpStatus.NOT_FOUND, "Rubric does not exist"),
+    RUBRIC_NO_PREVIOUS_VERSION(HttpStatus.NOT_FOUND, "No previous rubric version to restore"),
+    RUBRIC_REPLACE_CONFIRM_REQUIRED(HttpStatus.CONFLICT, "Confirmation required to replace rubric after grading"),
+    INVALID_TIMEZONE(HttpStatus.BAD_REQUEST, "Invalid or missing X-Timezone header"),
+    SUBMISSION_WINDOW_CLOSED(HttpStatus.CONFLICT, "Submission window is closed"),
+    SUBMISSION_FILE_COUNT_EXCEEDED(HttpStatus.BAD_REQUEST, "Too many submission files"),
+    STAGING_FILE_INVALID(HttpStatus.BAD_REQUEST, "Staging file is invalid or already consumed"),
+    SUBMISSION_FROZEN(HttpStatus.FORBIDDEN, "Assignment submission is frozen for this enrollment"),
+    NOT_IN_GRADING_ROSTER(HttpStatus.NOT_FOUND, "Student is not in the grading roster"),
+    GRADE_SCORE_OUT_OF_RANGE(HttpStatus.BAD_REQUEST, "Grade score is out of range"),
+    GRADE_NOT_FOUND(HttpStatus.NOT_FOUND, "Grade does not exist"),
+    STORAGE_FAILURE(HttpStatus.SERVICE_UNAVAILABLE, "Object storage operation failed"),
+    INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Internal server error");
 
     private final HttpStatus httpStatus;
     private final String defaultMessage;

@@ -4,7 +4,6 @@ import com.coursistant.lms.shared.web.Result;
 import com.coursistant.lms.shared.enums.ResultCodeEnum;
 import com.coursistant.lms.module.calendar.entity.CalendarDisplayEvent;
 import com.coursistant.lms.shared.exception.CustomException;
-import com.coursistant.lms.module.assignment.service.AssignmentService;
 import com.coursistant.lms.module.calendar.service.CalendarEventService;
 import com.coursistant.lms.shared.util.TimeZoneUtils;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -29,9 +28,6 @@ public class CalendarController {
 
     @Resource
     private CalendarEventService calendarEventService;
-
-    @Resource
-    private AssignmentService assignmentService;
 
     private static final Logger logger = Logger.getLogger(CalendarController.class.getName());
 
@@ -115,22 +111,15 @@ public class CalendarController {
         logRequest("selectUnifiedById", "Id=" + id + ", start=" + start + ", end=" + end + ", zone=" + timezone);
 
 
-        // CourseSchedule removed; only personal + assignment events remain
-        List<CalendarDisplayEvent> list = new ArrayList<>();
-        List<CalendarDisplayEvent> personalEvents = calendarEventService.selectDisplayEventsByUserAndTimeRange(id, start, end, zone);
-        if (type.equals("student")) {
-            list = assignmentService.selectAssignmentByUserAndTimeRange(id, start, end, zone);
-        } else if (!type.equals("teacher")) {
+        // Assignment module removed pending rewrite; return personal events only
+        if (!type.equals("student") && !type.equals("teacher")) {
             throw new CustomException(ResultCodeEnum.PARAM_ERROR);
         }
+        List<CalendarDisplayEvent> personalEvents = calendarEventService.selectDisplayEventsByUserAndTimeRange(id, start, end, zone);
 
-        List<CalendarDisplayEvent> allEvents = new ArrayList<>();
-        allEvents.addAll(personalEvents);
-        allEvents.addAll(list);
+        logResponse("selectUnifiedById", "size=" + personalEvents.size());
 
-        logResponse("selectUnifiedById", "size=" + allEvents.size());
-
-        return Result.success(allEvents);
+        return Result.success(personalEvents);
     }
 
     /**
@@ -145,8 +134,8 @@ public class CalendarController {
             @RequestHeader(value = "X-Timezone", required = false) String timezone) {
 
         logRequest("selectAssignmentsByUserAndTimeRange", "userId=" + id + ", start=" + start + ", end=" + end);
-        ZoneId zone= TimeZoneUtils.resolveZoneId(timezone);
-        List<CalendarDisplayEvent> list = assignmentService.selectAssignmentByUserAndTimeRange(id, start, end,zone);
+        // Assignment module removed pending rewrite; keep endpoint and return empty list
+        List<CalendarDisplayEvent> list = new ArrayList<>();
 
         logResponse("selectAssignmentsByUserAndTimeRange", "size=" + list.size());
 

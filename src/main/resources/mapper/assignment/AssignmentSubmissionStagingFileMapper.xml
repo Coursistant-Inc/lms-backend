@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.coursistant.lms.module.assignment.repository.AssignmentSubmissionStagingFileMapper">
+
+    <sql id="Base_Column_List">
+        id,
+        assignment_id AS assignmentId,
+        owner_user_id AS ownerUserId,
+        object_key AS objectKey,
+        original_name AS originalName,
+        content_type AS contentType,
+        size_bytes AS sizeBytes,
+        checksum_sha256 AS checksumSha256,
+        consumed,
+        created_at AS createdAt,
+        expires_at AS expiresAt
+    </sql>
+
+    <insert id="insert" parameterType="com.coursistant.lms.module.assignment.entity.AssignmentSubmissionStagingFile"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO assignment_submission_staging_file (
+            assignment_id,
+            owner_user_id,
+            object_key,
+            original_name,
+            content_type,
+            size_bytes,
+            checksum_sha256,
+            consumed,
+            created_at,
+            expires_at
+        ) VALUES (
+            #{assignmentId},
+            #{ownerUserId},
+            #{objectKey},
+            #{originalName},
+            #{contentType},
+            #{sizeBytes},
+            #{checksumSha256},
+            #{consumed},
+            #{createdAt},
+            #{expiresAt}
+        )
+    </insert>
+
+    <select id="selectById" resultType="com.coursistant.lms.module.assignment.entity.AssignmentSubmissionStagingFile">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM assignment_submission_staging_file
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectByAssignmentId"
+            resultType="com.coursistant.lms.module.assignment.entity.AssignmentSubmissionStagingFile">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM assignment_submission_staging_file
+        WHERE assignment_id = #{assignmentId}
+        ORDER BY id
+    </select>
+
+    <select id="selectByAssignmentIdAndOwnerUserIdAndNotConsumed"
+            resultType="com.coursistant.lms.module.assignment.entity.AssignmentSubmissionStagingFile">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM assignment_submission_staging_file
+        WHERE assignment_id = #{assignmentId}
+          AND owner_user_id = #{ownerUserId}
+          AND consumed = 0
+        ORDER BY id
+    </select>
+
+    <update id="updateConsumed">
+        UPDATE assignment_submission_staging_file
+        SET consumed = #{consumed}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM assignment_submission_staging_file
+        WHERE id = #{id}
+    </delete>
+
+</mapper>

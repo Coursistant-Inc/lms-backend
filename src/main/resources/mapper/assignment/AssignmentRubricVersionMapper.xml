@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.coursistant.lms.module.assignment.repository.AssignmentRubricVersionMapper">
+
+    <sql id="Base_Column_List">
+        id,
+        assignment_id AS assignmentId,
+        version_no AS versionNo,
+        object_key AS objectKey,
+        original_name AS originalName,
+        content_type AS contentType,
+        size_bytes AS sizeBytes,
+        uploaded_by AS uploadedBy,
+        created_at AS createdAt
+    </sql>
+
+    <insert id="insert" parameterType="com.coursistant.lms.module.assignment.entity.AssignmentRubricVersion"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO assignment_rubric_version (
+            assignment_id,
+            version_no,
+            object_key,
+            original_name,
+            content_type,
+            size_bytes,
+            uploaded_by
+        ) VALUES (
+            #{assignmentId},
+            #{versionNo},
+            #{objectKey},
+            #{originalName},
+            #{contentType},
+            #{sizeBytes},
+            #{uploadedBy}
+        )
+    </insert>
+
+    <select id="selectById" resultType="com.coursistant.lms.module.assignment.entity.AssignmentRubricVersion">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM assignment_rubric_version
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectByAssignmentIdOrderByVersionDesc"
+            resultType="com.coursistant.lms.module.assignment.entity.AssignmentRubricVersion">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM assignment_rubric_version
+        WHERE assignment_id = #{assignmentId}
+        ORDER BY version_no DESC
+    </select>
+
+    <select id="selectMaxVersionNo" resultType="java.lang.Integer">
+        SELECT MAX(version_no)
+        FROM assignment_rubric_version
+        WHERE assignment_id = #{assignmentId}
+    </select>
+
+</mapper>

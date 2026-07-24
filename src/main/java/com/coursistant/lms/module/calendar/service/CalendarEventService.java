@@ -23,7 +23,6 @@ import java.util.List;
 
 import java.time.LocalDateTime;
 import java.util.stream.Collectors;
-import com.coursistant.lms.module.assignment.entity.Assignment;
 import com.coursistant.lms.module.chat.entity.Query;
 
 /**

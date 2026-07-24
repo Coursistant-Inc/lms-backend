@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.coursistant.lms.module.assignment.repository.AssignmentGradeMapper">
+
+    <sql id="Base_Column_List">
+        id,
+        assignment_id AS assignmentId,
+        student_user_id AS studentUserId,
+        submission_version_id AS submissionVersionId,
+        rubric_version_id AS rubricVersionId,
+        score,
+        feedback_html AS feedbackHtml,
+        annotated_object_key AS annotatedObjectKey,
+        annotated_original_name AS annotatedOriginalName,
+        annotated_content_type AS annotatedContentType,
+        annotated_size_bytes AS annotatedSizeBytes,
+        status,
+        entered_by AS enteredBy,
+        entered_at AS enteredAt,
+        edited_by AS editedBy,
+        updated_at AS updatedAt,
+        released_at AS releasedAt,
+        ai_assisted AS aiAssisted,
+        ai_provenance_json AS aiProvenanceJson
+    </sql>
+
+    <insert id="insert" parameterType="com.coursistant.lms.module.assignment.entity.AssignmentGrade"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO assignment_grade (
+            assignment_id,
+            student_user_id,
+            submission_version_id,
+            rubric_version_id,
+            score,
+            feedback_html,
+            annotated_object_key,
+            annotated_original_name,
+            annotated_content_type,
+            annotated_size_bytes,
+            status,
+            entered_by,
+            entered_at,
+            edited_by,
+            released_at,
+            ai_assisted,
+            ai_provenance_json
+        ) VALUES (
+            #{assignmentId},
+            #{studentUserId},
+            #{submissionVersionId},
+            #{rubricVersionId},
+            #{score},
+            #{feedbackHtml},
+            #{annotatedObjectKey},
+            #{annotatedOriginalName},
+            #{annotatedContentType},
+            #{annotatedSizeBytes},
+            #{status},
+            #{enteredBy},
+            #{enteredAt},
+            #{editedBy},
+            #{releasedAt},
+            #{aiAssisted},
+            #{aiProvenanceJson}
+        )
+    </insert>
+
+    <insert id="upsert" parameterType="com.coursistant.lms.module.assignment.entity.AssignmentGrade"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO assignment_grade (
+            assignment_id,
+            student_user_id,
+            submission_version_id,
+            rubric_version_id,
+            score,
+            feedback_html,
+            annotated_object_key,
+            annotated_original_name,
+            annotated_content_type,
+            annotated_size_bytes,
+            status,
+            entered_by,
+            entered_at,
+            edited_by,
+            released_at,
+            ai_assisted,
+            ai_provenance_json
+        ) VALUES (
+            #{assignmentId},
+            #{studentUserId},
+            #{submissionVersionId},
+            #{rubricVersionId},
+            #{score},
+            #{feedbackHtml},
+            #{annotatedObjectKey},
+            #{annotatedOriginalName},
+            #{annotatedContentType},
+            #{annotatedSizeBytes},
+            #{status},
+            #{enteredBy},
+            #{enteredAt},
+            #{editedBy},
+            #{releasedAt},
+            #{aiAssisted},
+            #{aiProvenanceJson}
+        )
+        ON DUPLICATE KEY UPDATE
+            submission_version_id = VALUES(submission_version_id),
+            rubric_version_id = VALUES(rubric_version_id),
+            score = VALUES(score),
+            feedback_html = VALUES(feedback_html),
+            annotated_object_key = VALUES(annotated_object_key),
+            annotated_original_name = VALUES(annotated_original_name),
+            annotated_content_type = VALUES(annotated_content_type),
+            annotated_size_bytes = VALUES(annotated_size_bytes),
+            status = VALUES(status),
+            edited_by = VALUES(edited_by),
+            released_at = VALUES(released_at),
+            ai_assisted = VALUES(ai_assisted),
+            ai_provenance_json = VALUES(ai_provenance_json)
+    </insert>
+
+    <update id="updateById" parameterType="com.coursistant.lms.module.assignment.entity.AssignmentGrade">
+        UPDATE assignment_grade
+        <set>
+            <if test="submissionVersionId != null">submission_version_id = #{submissionVersionId},</if>
+            <if test="rubricVersionId != null">rubric_version_id = #{rubricVersionId},</if>
+            <if test="score != null">score = #{score},</if>
+            <if test="feedbackHtml != null">feedback_html = #{feedbackHtml},</if>
+            <if test="annotatedObjectKey != null">annotated_object_key = #{annotatedObjectKey},</if>
+            <if test="annotatedOriginalName != null">annotated_original_name = #{annotatedOriginalName},</if>
+            <if test="annotatedContentType != null">annotated_content_type = #{annotatedContentType},</if>
+            <if test="annotatedSizeBytes != null">annotated_size_bytes = #{annotatedSizeBytes},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="editedBy != null">edited_by = #{editedBy},</if>
+            <if test="releasedAt != null">released_at = #{releasedAt},</if>
+            <if test="aiAssisted != null">ai_assisted = #{aiAssisted},</if>
+            <if test="aiProvenanceJson != null">ai_provenance_json = #{aiProvenanceJson},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateStatus">
+        UPDATE assignment_grade
+        SET status = #{status},
+            released_at = #{releasedAt},
+            edited_by = #{editedBy}
+        WHERE id = #{id}
+    </update>
+
+    <update id="clearAnnotatedFile">
+        UPDATE assignment_grade
+        SET annotated_object_key = NULL,
+            annotated_original_name = NULL,
+            annotated_content_type = NULL,
+            annotated_size_bytes = NULL,
+            edited_by = #{editedBy}
+        WHERE id = #{id}
+    </update>
+
+    <select id="selectById" resultType="com.coursistant.lms.module.assignment.entity.AssignmentGrade">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM assignment_grade
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectByAssignmentIdAndStudentUserId"
+            resultType="com.coursistant.lms.module.assignment.entity.AssignmentGrade">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM assignment_grade
+        WHERE assignment_id = #{assignmentId} AND student_user_id = #{studentUserId}
+    </select>
+
+    <select id="selectByAssignmentId" resultType="com.coursistant.lms.module.assignment.entity.AssignmentGrade">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM assignment_grade
+        WHERE assignment_id = #{assignmentId}
+        ORDER BY student_user_id
+    </select>
+
+    <select id="countByAssignmentId" resultType="int">
+        SELECT COUNT(*)
+        FROM assignment_grade
+        WHERE assignment_id = #{assignmentId}
+    </select>
+
+</mapper>

@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.coursistant.lms.module.assignment.repository.AssignmentSubmissionVersionMapper">
+
+    <sql id="Base_Column_List">
+        id,
+        submission_id AS submissionId,
+        assignment_id AS assignmentId,
+        owner_user_id AS ownerUserId,
+        version_no AS versionNo,
+        submitted_at AS submittedAt,
+        used_grace_buffer AS usedGraceBuffer,
+        created_at AS createdAt
+    </sql>
+
+    <insert id="insert" parameterType="com.coursistant.lms.module.assignment.entity.AssignmentSubmissionVersion"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO assignment_submission_version (
+            submission_id,
+            assignment_id,
+            owner_user_id,
+            version_no,
+            submitted_at,
+            used_grace_buffer
+        ) VALUES (
+            #{submissionId},
+            #{assignmentId},
+            #{ownerUserId},
+            #{versionNo},
+            #{submittedAt},
+            #{usedGraceBuffer}
+        )
+    </insert>
+
+    <select id="selectById" resultType="com.coursistant.lms.module.assignment.entity.AssignmentSubmissionVersion">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM assignment_submission_version
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectBySubmissionIdOrderByVersionDesc"
+            resultType="com.coursistant.lms.module.assignment.entity.AssignmentSubmissionVersion">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM assignment_submission_version
+        WHERE submission_id = #{submissionId}
+        ORDER BY version_no DESC
+    </select>
+
+    <select id="selectMaxVersionNo" resultType="java.lang.Integer">
+        SELECT MAX(version_no)
+        FROM assignment_submission_version
+        WHERE submission_id = #{submissionId}
+    </select>
+
+</mapper>

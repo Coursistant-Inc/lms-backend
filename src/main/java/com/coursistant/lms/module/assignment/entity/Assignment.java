@@ -1,129 +1,29 @@
 package com.coursistant.lms.module.assignment.entity;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
-import org.springframework.format.annotation.DateTimeFormat;
-
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-/**
- * 公告实体类
- * Assignment Entity
- */
 public class Assignment implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    /** 公告 ID
-     * Assignment ID
-     */
     private Integer id;
-
-    /** 课程 ID
-     * Course ID
-     */
     private Integer courseId;
-
-    /** 用户 ID
-     * User ID
-     */
-    private Integer userId;
-
-    /** 公告内容
-     * Assignment title
-     */
     private String title;
-
-    /** 公告日期
-     * Assignment start and due
-     */
-    @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "UTC")
-    private LocalDateTime due;
-
-    @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "UTC")
-    private LocalDateTime start;
-
-
     private String description;
-
-    private String criteria;
-
-    /** 提交人数 */
-    private Integer submissionNum;
-
-    /** 允许提交次数 */
-    private Integer allowedSubmissionTimes;
-
-    /** 最高分 */
-    private BigDecimal highestGrade;
-
-    /** 最低分 */
-    private BigDecimal lowestGrade;
-
-    /** 平均分 */
-    private BigDecimal averageGrade;
-
-    /** 是否发布成绩（0-未发布，1-已发布） */
-    private Boolean gradePublish;
-
-    private String groupMode;
-
-    private Integer groupSize;
-
-    private Integer courseContentId;
-
-    private BigDecimal fullMark;
-
-
-    private Boolean isGroup;
-
-    private Boolean submissionRequired;
-
-
-
-
-
-    public Assignment() {}
-
-    @Override
-    public String toString() {
-        StringBuilder sb = new StringBuilder("{");
-
-        if (id != null) sb.append("\"id\":").append(id).append(",");
-        if (courseId != null) sb.append("\"courseId\":").append(courseId).append(",");
-        if (userId != null) sb.append("\"userId\":").append(userId).append(",");
-        if (title != null) sb.append("\"title\":\"").append(title).append("\",");
-        if (start != null) sb.append("\"start\":\"").append(start).append("\",");
-        if (due != null) sb.append("\"due\":\"").append(due).append("\",");
-        if (description != null) sb.append("\"description\":\"").append(description).append("\",");
-        if (criteria != null) sb.append("\"criteria\":\"").append(criteria).append("\",");
-
-        if (submissionNum != null) sb.append("\"submissionNum\":").append(submissionNum).append(",");
-        if (highestGrade != null) sb.append("\"highestGrade\":").append(highestGrade).append(",");
-        if (lowestGrade != null) sb.append("\"lowestGrade\":").append(lowestGrade).append(",");
-        if (averageGrade != null) sb.append("\"averageGrade\":").append(averageGrade).append(",");
-        if (gradePublish != null) sb.append("\"gradePublish\":").append(gradePublish).append(",");
-        if (fullMark != null) sb.append("\"fullMark\":").append(fullMark).append(",");
-        if (isGroup != null) sb.append("\"isGroup\":").append(isGroup).append(",");
-
-        if (sb.charAt(sb.length() - 1) == ',') {
-            sb.deleteCharAt(sb.length() - 1); // 去掉最后一个逗号
-        }
-
-        sb.append("}");
-        return sb.toString();
-    }
-
-
-    public Boolean getSubmissionRequired() {
-        return submissionRequired;
-    }
-
-    public void setSubmissionRequired(Boolean submissionRequired) {
-        this.submissionRequired = submissionRequired;
-    }
+    private BigDecimal pointsPossible;
+    private LocalDateTime dueAt;
+    private LocalDateTime lateUntil;
+    private String submissionType;
+    private Integer groupSetId;
+    private String allowedFileTypes;
+    private Long maxFileSizeBytes;
+    private Integer maxFileCount;
+    private String state;
+    private Integer currentRubricVersionId;
+    private Integer createdBy;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 
     public Integer getId() {
         return id;
@@ -141,14 +41,6 @@ public class Assignment implements Serializable {
         this.courseId = courseId;
     }
 
-    public Integer getUserId() {
-        return userId;
-    }
-
-    public void setUserId(Integer userId) {
-        this.userId = userId;
-    }
-
     public String getTitle() {
         return title;
     }
@@ -156,24 +48,6 @@ public class Assignment implements Serializable {
     public void setTitle(String title) {
         this.title = title;
     }
-
-    public LocalDateTime getDue() {
-        return due;
-    }
-
-    public void setDue(LocalDateTime due) {
-        this.due = due;
-    }
-
-    public LocalDateTime getStart() {
-        return start;
-    }
-
-    public void setStart(LocalDateTime start) {
-        this.start = start;
-    }
-
-
 
     public String getDescription() {
         return description;
@@ -183,99 +57,107 @@ public class Assignment implements Serializable {
         this.description = description;
     }
 
-    public BigDecimal getFullMark() {
-        return fullMark;
+    public BigDecimal getPointsPossible() {
+        return pointsPossible;
     }
 
-    public void setFullMark(BigDecimal fullMark) {
-        this.fullMark = fullMark;
+    public void setPointsPossible(BigDecimal pointsPossible) {
+        this.pointsPossible = pointsPossible;
     }
 
-    public String getCriteria() {
-        return criteria;
+    public LocalDateTime getDueAt() {
+        return dueAt;
     }
 
-    public void setCriteria(String criteria) {
-        this.criteria = criteria;
+    public void setDueAt(LocalDateTime dueAt) {
+        this.dueAt = dueAt;
     }
 
-    public Integer getSubmissionNum() {
-        return submissionNum;
+    public LocalDateTime getLateUntil() {
+        return lateUntil;
     }
 
-    public void setSubmissionNum(Integer submissionNum) {
-        this.submissionNum = submissionNum;
+    public void setLateUntil(LocalDateTime lateUntil) {
+        this.lateUntil = lateUntil;
     }
 
-    public Integer getAllowedSubmissionTimes() {
-        return allowedSubmissionTimes;
+    public String getSubmissionType() {
+        return submissionType;
     }
 
-    public void setAllowedSubmissionTimes(Integer allowedSubmissionTimes) {
-        this.allowedSubmissionTimes = allowedSubmissionTimes;
+    public void setSubmissionType(String submissionType) {
+        this.submissionType = submissionType;
     }
 
-    public BigDecimal getHighestGrade() {
-        return highestGrade;
+    public Integer getGroupSetId() {
+        return groupSetId;
     }
 
-    public void setHighestGrade(BigDecimal highestGrade) {
-        this.highestGrade = highestGrade;
+    public void setGroupSetId(Integer groupSetId) {
+        this.groupSetId = groupSetId;
     }
 
-    public BigDecimal getLowestGrade() {
-        return lowestGrade;
+    public String getAllowedFileTypes() {
+        return allowedFileTypes;
     }
 
-    public void setLowestGrade(BigDecimal lowestGrade) {
-        this.lowestGrade = lowestGrade;
+    public void setAllowedFileTypes(String allowedFileTypes) {
+        this.allowedFileTypes = allowedFileTypes;
     }
 
-    public BigDecimal getAverageGrade() {
-        return averageGrade;
+    public Long getMaxFileSizeBytes() {
+        return maxFileSizeBytes;
     }
 
-    public void setAverageGrade(BigDecimal averageGrade) {
-        this.averageGrade = averageGrade;
+    public void setMaxFileSizeBytes(Long maxFileSizeBytes) {
+        this.maxFileSizeBytes = maxFileSizeBytes;
     }
 
-    public Boolean getGradePublish() {
-        return gradePublish;
+    public Integer getMaxFileCount() {
+        return maxFileCount;
     }
 
-    public void setGradePublish(Boolean gradePublish) {
-        this.gradePublish = gradePublish;
+    public void setMaxFileCount(Integer maxFileCount) {
+        this.maxFileCount = maxFileCount;
     }
 
-    public String getGroupMode() {
-        return groupMode;
+    public String getState() {
+        return state;
     }
 
-    public void setGroupMode(String groupMode) {
-        this.groupMode = groupMode;
+    public void setState(String state) {
+        this.state = state;
     }
 
-    public Integer getGroupSize() {
-        return groupSize;
+    public Integer getCurrentRubricVersionId() {
+        return currentRubricVersionId;
     }
 
-    public void setGroupSize(Integer groupSize) {
-        this.groupSize = groupSize;
+    public void setCurrentRubricVersionId(Integer currentRubricVersionId) {
+        this.currentRubricVersionId = currentRubricVersionId;
     }
 
-    public Integer getCourseContentId() {
-        return courseContentId;
+    public Integer getCreatedBy() {
+        return createdBy;
     }
 
-    public void setCourseContentId(Integer courseContentId) {
-        this.courseContentId = courseContentId;
+    public void setCreatedBy(Integer createdBy) {
+        this.createdBy = createdBy;
     }
 
-    public Boolean getGroup() {
-        return isGroup;
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
     }
 
-    public void setGroup(Boolean group) {
-        isGroup = group;
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
     }
 }

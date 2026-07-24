@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.coursistant.lms.module.assignment.repository.AssignmentSubmissionReceiptMapper">
+
+    <sql id="Base_Column_List">
+        id,
+        submission_version_id AS submissionVersionId,
+        issued_at AS issuedAt,
+        created_at AS createdAt
+    </sql>
+
+    <insert id="insert" parameterType="com.coursistant.lms.module.assignment.entity.AssignmentSubmissionReceipt"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO assignment_submission_receipt (
+            submission_version_id,
+            issued_at
+        ) VALUES (
+            #{submissionVersionId},
+            #{issuedAt}
+        )
+    </insert>
+
+    <select id="selectById" resultType="com.coursistant.lms.module.assignment.entity.AssignmentSubmissionReceipt">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM assignment_submission_receipt
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectBySubmissionVersionId"
+            resultType="com.coursistant.lms.module.assignment.entity.AssignmentSubmissionReceipt">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM assignment_submission_receipt
+        WHERE submission_version_id = #{submissionVersionId}
+    </select>
+
+</mapper>

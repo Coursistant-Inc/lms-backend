@@ -1,7 +1,6 @@
 package com.coursistant.lms.module.quiz.dto;
 
 import java.util.List;
-import com.coursistant.lms.module.assignment.entity.Assignment;
 
 /**
  * 公告实体类

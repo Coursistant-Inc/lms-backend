@@ -4,7 +4,6 @@ package com.coursistant.lms.module.file.service;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.ObjectUtil;
 import com.coursistant.lms.shared.enums.ResultCodeEnum;
-import com.coursistant.lms.module.assignment.entity.AssignmentItem;
 import com.coursistant.lms.module.file.entity.SubmissionFile;
 import com.coursistant.lms.shared.exception.CustomException;
 import com.coursistant.lms.module.file.repository.SubmissionFileMapper;

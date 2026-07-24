@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.coursistant.lms.module.assignment.repository.AssignmentSubmissionFileMapper">
+
+    <sql id="Base_Column_List">
+        id,
+        submission_version_id AS submissionVersionId,
+        object_key AS objectKey,
+        original_name AS originalName,
+        content_type AS contentType,
+        size_bytes AS sizeBytes,
+        checksum_sha256 AS checksumSha256,
+        sort_order AS sortOrder,
+        created_at AS createdAt
+    </sql>
+
+    <insert id="insert" parameterType="com.coursistant.lms.module.assignment.entity.AssignmentSubmissionFile"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO assignment_submission_file (
+            submission_version_id,
+            object_key,
+            original_name,
+            content_type,
+            size_bytes,
+            checksum_sha256,
+            sort_order
+        ) VALUES (
+            #{submissionVersionId},
+            #{objectKey},
+            #{originalName},
+            #{contentType},
+            #{sizeBytes},
+            #{checksumSha256},
+            #{sortOrder}
+        )
+    </insert>
+
+    <select id="selectById" resultType="com.coursistant.lms.module.assignment.entity.AssignmentSubmissionFile">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM assignment_submission_file
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectBySubmissionVersionId"
+            resultType="com.coursistant.lms.module.assignment.entity.AssignmentSubmissionFile">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM assignment_submission_file
+        WHERE submission_version_id = #{submissionVersionId}
+        ORDER BY sort_order, id
+    </select>
+
+</mapper>

@@ -11,8 +11,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.coursistant.lms.shared.web.Result;
 import com.coursistant.lms.module.interaction.entity.Announcement;
-import com.coursistant.lms.module.assignment.dto.AssignmentDTO;
-import com.coursistant.lms.module.assignment.service.AssignmentService;
 import com.coursistant.lms.module.interaction.service.AnnouncementService;
 
 import jakarta.annotation.Resource;
@@ -22,16 +20,12 @@ import jakarta.annotation.Resource;
 public class HomepageController {
 
     @Resource
-    private AssignmentService assignmentService;
-
-    @Resource
     private AnnouncementService announcementService;
 
     @GetMapping("/courseAssignmentDetails/{userId}")
     public Result getAssignmentDetails(@PathVariable Integer userId, @RequestParam Integer courseId)
     {
-        List<AssignmentDTO> assignmentDetails = assignmentService.selectAssignmentsByCourseAndUserId(userId,courseId);
-        return Result.success(assignmentDetails);
+        return Result.success(Collections.emptyList());
     }
 
     @GetMapping("/announcement/{userId}")

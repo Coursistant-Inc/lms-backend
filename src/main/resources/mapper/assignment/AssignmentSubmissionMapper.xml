@@ -4,149 +4,61 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.coursistant.lms.module.assignment.repository.AssignmentSubmissionMapper">
 
-    <!-- 字段列表 // Base column list -->
     <sql id="Base_Column_List">
-        id, assignment_id, student_id, grader_id, date, status, grade, comment, is_final,is_late,late_time,group_id, student_comment
+        id,
+        assignment_id AS assignmentId,
+        owner_user_id AS ownerUserId,
+        current_version_id AS currentVersionId,
+        created_at AS createdAt,
+        updated_at AS updatedAt
     </sql>
 
-    <!-- 查询所有 AssignmentSubmission // Select all AssignmentSubmissions -->
-    <select id="selectAll" resultType="com.coursistant.lms.module.assignment.entity.AssignmentSubmission">
-        SELECT
-        <include refid="Base_Column_List" />
-        FROM assignment_submission
-        <where>
-            <if test="id != null"> AND id = #{id} </if>
-            <if test="assignmentId != null"> AND assignment_id = #{assignmentId} </if>
-            <if test="studentId != null"> AND student_id = #{studentId} </if>
-            <if test="graderId != null"> AND grader_id = #{graderId} </if>
-            <if test="groupId != null"> AND group_id = #{groupId} </if>
-            <if test="date != null"> AND date = #{date} </if>
-            <if test="status != null"> AND status = #{status} </if>
-            <if test="grade != null"> AND grade = #{grade} </if>
-            <if test="comment != null"> AND comment = #{comment} </if>
-            <if test="isFinal != null"> AND is_final = #{isFinal} </if>
-            <if test="isLate != null"> AND is_late = #{isLate} </if>
-            <if test="lateTime != null"> AND late_time = #{lateTime} </if>
-            <if test="studentComment != null"> AND student_comment = #{studentComment} </if>
-
-        </where>
-    </select>
-
-    <!-- 通过 ID 查询 AssignmentSubmission // Select AssignmentSubmission by ID -->
-    <select id="selectById" resultType="com.coursistant.lms.module.assignment.entity.AssignmentSubmission">
-        SELECT
-        <include refid="Base_Column_List" />
-        FROM assignment_submission
-        WHERE id = #{id}
-    </select>
-
-    <!-- 通过 ID 删除 AssignmentSubmission // Delete AssignmentSubmission by ID -->
-    <delete id="deleteById">
-        DELETE FROM assignment_submission
-        WHERE id = #{id}
-    </delete>
-
-    <!-- 插入新的 AssignmentSubmission // Insert a new AssignmentSubmission -->
-    <insert id="insert" parameterType="com.coursistant.lms.module.assignment.entity.AssignmentSubmission" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO assignment_submission
-        <trim prefix="(" suffix=")" suffixOverrides=",">
-            <if test="id != null">id,</if>
-            <if test="assignmentId != null">assignment_id,</if>
-            <if test="studentId != null">student_id,</if>
-            <if test="graderId != null">grader_id,</if>
-            <if test="groupId != null">group_id,</if>
-            <if test="status != null">status,</if>
-            <if test="grade != null">grade,</if>
-            <if test="comment != null">comment,</if>
-            <if test="isFinal != null">is_final,</if>
-            <if test="isLate != null">is_late,</if>
-            <if test="lateTime != null">late_time,</if>
-            <if test="studentComment != null">student_comment,</if>
-        </trim>
-        <trim prefix="VALUES (" suffix=")" suffixOverrides=",">
-            <if test="id != null">#{id},</if>
-            <if test="assignmentId != null">#{assignmentId},</if>
-            <if test="studentId != null">#{studentId},</if>
-            <if test="graderId != null">#{graderId},</if>
-            <if test="groupId != null">#{groupId},</if>
-            <if test="status != null">#{status},</if>
-            <if test="grade != null">#{grade},</if>
-            <if test="comment != null">#{comment},</if>
-            <if test="isFinal != null">#{isFinal},</if>
-            <if test="isLate != null">#{isLate},</if>
-            <if test="lateTime != null">#{lateTime},</if>
-            <if test="studentComment != null">#{studentComment},</if>
-        </trim>
+    <insert id="insert" parameterType="com.coursistant.lms.module.assignment.entity.AssignmentSubmission"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO assignment_submission (
+            assignment_id,
+            owner_user_id,
+            current_version_id
+        ) VALUES (
+            #{assignmentId},
+            #{ownerUserId},
+            #{currentVersionId}
+        )
     </insert>
 
-    <!-- 更新 AssignmentSubmission // Update assignment_submission -->
-    <update id="updateById" parameterType="com.coursistant.lms.module.assignment.entity.AssignmentSubmission">
-        UPDATE assignment_submission
-        <set>
-            <if test="assignmentId != null">assignment_id = #{assignmentId},</if>
-            <if test="studentId != null">student_id = #{studentId},</if>
-            <if test="graderId != null">grader_id = #{graderId},</if>
-            <if test="groupId != null">group_id = #{groupId},</if>
-            <if test="status != null">status = #{status},</if>
-            <if test="grade != null">grade = #{grade},</if>
-            <if test="comment != null">comment = #{comment},</if>
-            <if test="isFinal != null">is_final = #{isFinal},</if>
-            <if test="isLate != null">is_late = #{isLate},</if>
-            <if test="lateTime != null">late_time = #{lateTime},</if>
-            <if test="studentComment != null">student_comment = #{studentComment},</if>
+    <select id="selectById" resultType="com.coursistant.lms.module.assignment.entity.AssignmentSubmission">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM assignment_submission
+        WHERE id = #{id}
+    </select>
 
-        </set>
+    <select id="selectByAssignmentId" resultType="com.coursistant.lms.module.assignment.entity.AssignmentSubmission">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM assignment_submission
+        WHERE assignment_id = #{assignmentId}
+        ORDER BY owner_user_id
+    </select>
+
+    <select id="selectByAssignmentIdAndOwnerUserId"
+            resultType="com.coursistant.lms.module.assignment.entity.AssignmentSubmission">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM assignment_submission
+        WHERE assignment_id = #{assignmentId} AND owner_user_id = #{ownerUserId}
+    </select>
+
+    <update id="updateCurrentVersionId">
+        UPDATE assignment_submission
+        SET current_version_id = #{currentVersionId}
         WHERE id = #{id}
     </update>
 
-    <update id="clearFinalFlag">
-        UPDATE assignment_submission
-        SET is_final = false
-        WHERE assignment_id = #{assignmentId} AND student_id = #{studentId}
-    </update>
-
-    <select id="selectFinalGradedByAssignmentId" resultType="com.coursistant.lms.module.assignment.entity.AssignmentSubmission">
-        SELECT *
+    <select id="countByAssignmentId" resultType="int">
+        SELECT COUNT(*)
         FROM assignment_submission
         WHERE assignment_id = #{assignmentId}
-          AND is_final = 1
-          AND grade IS NOT NULL
     </select>
-
-
-    <!-- 查找指定 assignmentId + studentId，且 final = true 的记录 -->
-    <select id="selectFinalByAssignmentIdAndUserId" resultType="com.coursistant.lms.module.assignment.entity.AssignmentSubmission">
-        SELECT
-        <include refid="Base_Column_List" />
-        FROM assignment_submission
-        WHERE assignment_id = #{assignmentId}
-        AND student_id = #{studentId}
-        AND is_final = 1
-    </select>
-
-    <!-- 查找指定 assignmentId + groupId，且 final = true 的记录 -->
-    <select id="selectFinalByAssignmentIdAndGroupId" resultType="com.coursistant.lms.module.assignment.entity.AssignmentSubmission">
-        SELECT
-        <include refid="Base_Column_List" />
-        FROM assignment_submission
-        WHERE assignment_id = #{assignmentId}
-        AND group_id = #{groupId}
-        AND is_final = 1
-    </select>
-
-
-    <select id="selectFinalByAssignmentIdsAndStudent" resultType="com.coursistant.lms.module.assignment.entity.AssignmentSubmission">
-        SELECT *
-        FROM assignment_submission
-        WHERE student_id = #{studentId}
-        AND is_final = 1
-        AND assignment_id IN
-        <foreach collection="assignmentIds" item="id" open="(" separator="," close=")">
-            #{id}
-        </foreach>
-    </select>
-
-
-
 
 </mapper>

@@ -305,6 +305,9 @@ public class EnrollmentService {
         patch.setCanPostAnnouncements(request != null && Boolean.TRUE.equals(request.getCanPostAnnouncements()));
         patch.setCanManageGroups(request != null && Boolean.TRUE.equals(request.getCanManageGroups()));
         patch.setCanManageCourseEvents(request != null && Boolean.TRUE.equals(request.getCanManageCourseEvents()));
+        // A TA grades their former peers, so their own assignment submissions are frozen from
+        // here on. Revoking the TA role deliberately does not unfreeze it.
+        patch.setAssignmentSubmitFrozen(true);
         enrollmentMapper.updateById(patch);
 
         writeAudit(courseId, userId, ACTOR_TYPE_USER, actorId, "PROMOTED_TO_TA", toJson(request));

@@ -7,7 +7,6 @@ import java.io.Serializable;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import com.coursistant.lms.module.assignment.entity.Assignment;
 
 /**
  * 公告实体类

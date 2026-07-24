@@ -1,8 +1,5 @@
 package com.coursistant.lms.module.quiz.dto;
 
-import com.coursistant.lms.module.assignment.entity.Assignment;
-import com.coursistant.lms.module.assignment.entity.AssignmentFile;
-
 import java.util.List;
 
 /**
