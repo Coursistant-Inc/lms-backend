@@ -47,7 +47,10 @@ public enum ErrorType {
     IDEMPOTENCY_KEY_MISMATCH(HttpStatus.UNPROCESSABLE_ENTITY, "Idempotency-Key was reused with a different request body"),
 
     // --- Profile ---
-    INVALID_AVATAR_FILE(HttpStatus.BAD_REQUEST, "Invalid avatar file");
+    INVALID_AVATAR_FILE(HttpStatus.BAD_REQUEST, "Invalid avatar file"),
+
+    // --- Course ---
+    COURSE_NOT_FOUND(HttpStatus.NOT_FOUND, "Course does not exist");
 
     private final HttpStatus httpStatus;
     private final String defaultMessage;

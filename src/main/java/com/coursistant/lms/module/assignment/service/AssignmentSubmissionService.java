@@ -1,5 +1,4 @@
 package com.coursistant.lms.module.assignment.service;
-import com.coursistant.lms.module.course.entity.Course;
 import com.coursistant.lms.module.chat.entity.Query;
 import com.coursistant.lms.module.file.entity.SubmissionFile;
 import com.coursistant.lms.module.user.account.entity.User;
@@ -15,7 +14,6 @@ import com.coursistant.lms.shared.exception.CustomException;
 import com.coursistant.lms.module.assignment.repository.AssignmentMapper;
 import com.coursistant.lms.module.assignment.repository.AssignmentSubmissionMapper;
 import com.coursistant.lms.module.assignment.repository.GroupMemberMapper;
-import com.coursistant.lms.module.course.repository.CourseMapper;
 import com.coursistant.lms.module.assignment.repository.AssignmentItemMapper;
 import com.coursistant.lms.module.file.repository.DiskFilesMapper;
 import com.coursistant.lms.module.file.repository.SubmissionFileMapper;
@@ -46,9 +44,6 @@ public class AssignmentSubmissionService {
 
     @Resource
     private UserMapper userMapper;
-
-    @Resource
-    private CourseMapper courseMapper;
 
     @Resource
     private AssignmentMapper assignmentMapper;
@@ -393,7 +388,7 @@ public class AssignmentSubmissionService {
         AssignmentSubmission assignmentSubmission=assignmentSubmissionMapper.selectById(submissionId);
         User student=userMapper.selectById(assignmentSubmission.getStudentId());
         Assignment assignment=assignmentMapper.selectById(assignmentSubmission.getAssignmentId());
-        Course course=courseMapper.selectById(assignment.getCourseId());
+        String courseName = "course " + assignment.getCourseId();
         List<SubmissionFile> submissionFiles=submissionFileMapper.selectFileBySubmissionId(assignmentSubmission.getId());
         List<String> fileNames=new ArrayList<>();
         for  (SubmissionFile submissionFile:submissionFiles){
@@ -437,7 +432,7 @@ public class AssignmentSubmissionService {
                 + "This email confirms that your submission to " + assignment.getTitle() + " was successful.\n\n"
                 + "Submission ID: " + assignmentSubmission.getId() + "\n"
                 + "Received: " + formatted +"\n"
-                + "Course/Section: " + course.getName() + "\n"
+                + "Course/Section: " + courseName + "\n"
                 + "File(s): " + filesList + "\n\n"
                 + "If you did not intend to submit, or you need to make changes, please check "
                 + "the assignment’s resubmission policy and deadline on the LMS page.\n\n"

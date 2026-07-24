@@ -5,7 +5,6 @@ import com.coursistant.lms.module.assignment.entity.AssignmentFile;
 import com.coursistant.lms.module.quiz.entity.Quiz;
 
 import java.util.List;
-import com.coursistant.lms.module.course.entity.Course;
 
 /**
  * 公告实体类

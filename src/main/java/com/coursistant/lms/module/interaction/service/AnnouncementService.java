@@ -8,7 +8,6 @@ import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 
 import com.coursistant.lms.module.interaction.entity.Announcement;
-import com.coursistant.lms.module.course.entity.Course;
 import com.coursistant.lms.module.interaction.repository.AnnouncementMapper;
 import com.coursistant.lms.shared.util.TimeZoneUtils;
 import com.coursistant.lms.module.chat.entity.Query;
@@ -118,9 +117,12 @@ public class AnnouncementService {
         return announcementMapper.isAnnouncementRead(userId, announcementId, courseId);
     }
 
-    public List<Announcement> selectLatestAnnouncementByCourseId(List<Course> courseList)
+    public List<Announcement> selectLatestAnnouncementByCourseId(List<Integer> courseIds)
     {
-        return announcementMapper.selectLatestAnnouncementByCourseId(courseList);
+        if (courseIds == null || courseIds.isEmpty()) {
+            return List.of();
+        }
+        return announcementMapper.selectLatestAnnouncementByCourseId(courseIds);
     }
 
 }

@@ -6,7 +6,6 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
 
 import com.coursistant.lms.module.interaction.entity.Announcement;
-import com.coursistant.lms.module.course.entity.Course;
 import com.coursistant.lms.module.chat.entity.Query;
 
 
@@ -61,7 +60,7 @@ public interface AnnouncementMapper {
     @Select("SELECT * FROM Announcement WHERE course_id = #{courseId}")
     List<Announcement> selectByCourseId(Integer courseId);
 
-    List<Announcement> selectLatestAnnouncementByCourseId(List<Course> courseList);
+    List<Announcement> selectLatestAnnouncementByCourseId(List<Integer> courseIds);
 
     void readAnnouncement(Integer userId, Integer announcementId, Integer courseId);
 

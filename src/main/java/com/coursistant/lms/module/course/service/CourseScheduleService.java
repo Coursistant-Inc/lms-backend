@@ -15,7 +15,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import com.coursistant.lms.module.course.entity.Course;
 import com.coursistant.lms.module.course.entity.CourseSchedule;
 import com.coursistant.lms.module.course.entity.Learn;
 import com.coursistant.lms.module.course.entity.Teach;
@@ -30,8 +29,6 @@ public class CourseScheduleService {
 
     @Resource
     private CourseScheduleMapper courseScheduleMapper;
-    @Resource
-    private CourseService courseService;
     @Resource
     private LearnService learnService;
     @Resource
@@ -136,7 +133,7 @@ public class CourseScheduleService {
         List<CalendarDisplayEvent> result = new ArrayList<>();
 
         List<CourseSchedule> schedules = courseScheduleMapper.selectByCourseId(courseId);
-        Course dbcourse=courseService.selectById(courseId);
+        String courseTitle = "Course " + courseId;
 
         if (schedules == null || schedules.isEmpty()) {
             return result;
@@ -155,7 +152,7 @@ public class CourseScheduleService {
                 }
 
                 CalendarDisplayEvent event = new CalendarDisplayEvent();
-                event.setTitle(dbcourse.getName());
+                event.setTitle(courseTitle);
                 event.setStart(classStart);
                 event.setEnd(classEnd);
                 event.setAllDay(false);

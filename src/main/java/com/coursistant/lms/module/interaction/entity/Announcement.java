@@ -3,8 +3,6 @@ package com.coursistant.lms.module.interaction.entity;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.Date;
-import com.coursistant.lms.module.course.entity.Course;
-import com.coursistant.lms.module.user.account.entity.User;
 
 /**
  * 公告实体类

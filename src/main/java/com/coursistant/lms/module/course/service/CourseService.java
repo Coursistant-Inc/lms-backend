@@ -1,263 +1,182 @@
 package com.coursistant.lms.module.course.service;
 
-
-import cn.hutool.core.bean.BeanUtil;
-import cn.hutool.core.collection.CollUtil;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.concurrent.TimeUnit;
-
+import com.coursistant.lms.module.course.dto.CourseResponse;
+import com.coursistant.lms.module.course.dto.CreateCourseRequest;
+import com.coursistant.lms.module.course.dto.UpdateCourseRequest;
+import com.coursistant.lms.module.course.entity.Course;
+import com.coursistant.lms.module.course.repository.CourseMapper;
+import com.coursistant.lms.module.user.account.entity.User;
+import com.coursistant.lms.module.user.account.repository.UserMapper;
+import com.coursistant.lms.shared.api.ApiException;
+import com.coursistant.lms.shared.api.ErrorType;
 import jakarta.annotation.Resource;
-
-import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
-import com.coursistant.lms.shared.enums.ResultCodeEnum;
-import com.coursistant.lms.shared.enums.LevelEnum;
-import com.coursistant.lms.module.course.entity.Course;
-import com.coursistant.lms.module.course.dto.CourseDetailsDTO;
-import com.coursistant.lms.module.course.entity.CourseSchedule;
-import com.coursistant.lms.module.course.dto.CourseDTO;
-import com.coursistant.lms.module.course.entity.Teach;
-import com.coursistant.lms.module.user.account.entity.User;
-import com.coursistant.lms.shared.exception.CustomException;
-import com.coursistant.lms.module.course.repository.CourseMapper;
-import com.coursistant.lms.module.course.repository.CourseScheduleMapper;
-import com.coursistant.lms.module.course.repository.LearnMapper;
-import com.coursistant.lms.module.user.account.service.UserService;
-
-import cn.hutool.core.util.ObjectUtil;
-import com.coursistant.lms.module.chat.entity.Query;
-
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 
 @Service
 public class CourseService {
+
+    private static final int DEFAULT_TENANT_ID = 1;
+    private static final String STATE_ACTIVE = "Active";
+    private static final String STATE_ARCHIVED = "Archived";
 
     @Resource
     private CourseMapper courseMapper;
 
     @Resource
-    private LearnMapper learnMapper;
+    private UserMapper userMapper;
 
-    @Resource
-    private UserService userService;
+    public CourseResponse create(Integer creatorId, CreateCourseRequest request) {
+        validateCreate(request);
+        requireUser(request.getInstructorId());
 
+        Course course = new Course();
+        course.setTenantId(request.getTenantId() != null ? request.getTenantId() : DEFAULT_TENANT_ID);
+        course.setCourseCode(request.getCourseCode().trim());
+        course.setTitle(request.getTitle().trim());
+        course.setTermStartDate(request.getTermStartDate());
+        course.setTermEndDate(request.getTermEndDate());
+        course.setDescription(request.getDescription());
+        course.setLocation(request.getLocation());
+        course.setInstructorId(request.getInstructorId());
+        course.setState(STATE_ACTIVE);
+        course.setArchivedAt(null);
+        course.setCreatorId(creatorId);
 
-    @Resource
-    private TeachService teachService;
-
-    @Resource
-    private CourseScheduleMapper courseScheduleMapper;
-
-    @Resource(name = "generalRedisTemplate")
-    private RedisTemplate<String, Object> generalRedisTemplate;
-
-    @Resource(name = "courseAllRedisTemplate")
-    private RedisTemplate<String, Object> courseAllRedisTemplate;
-
-
-
-    // 缓存过期时间（秒） / Cache expiration time (seconds)
-    private static final long CACHE_EXPIRE_TIME = 300;
-
-    /**
-     * 清空 courseAll 数据库
-     * Clear the courseAll database
-     */
-    public void clearCourseAllCache() {
-        Objects.requireNonNull(courseAllRedisTemplate.getConnectionFactory())
-                .getConnection()
-                .flushDb();
-        System.out.println("Cleared all data from courseAll database.");
-    }
-
-
-
-    /**
-     * 新增
-     * Add a new course
-     */
-    public Integer add(Course course) {
         courseMapper.insert(course);
-        Teach teach=new Teach();
-        teach.setCourseId(course.getId());
-        teach.setUserId(course.getTeacherId());
-        teachService.add(teach);
-        // 清理相关缓存 / Clear related cache
-        clearCourseAllCache();
-        return course.getId();
+        return toResponse(requireCourse(course.getId()));
     }
 
-    /**
-     * 删除
-     * Delete a course by ID
-     */
-    public void deleteById(Integer id) {
-        courseMapper.deleteById(id);
-        // 清理相关缓存 / Clear related cache
-        clearCourseAllCache();
-        Teach teach=new Teach();
-        teach.setCourseId(id);
-        List<Teach> teaches=teachService.selectAll(teach);
-        for (Teach teach1:teaches){
-            teachService.deleteByCourseId(teach1.getCourseId());
+    public CourseResponse getById(Integer id) {
+        return toResponse(requireCourse(id));
+    }
+
+    public CourseResponse update(Integer id, UpdateCourseRequest request) {
+        Course existing = requireCourse(id);
+        if (request == null) {
+            throw new ApiException(ErrorType.BAD_REQUEST, "Request body is required");
         }
 
-        generalRedisTemplate.delete("course:" + id);
-    }
-
-    /**
-     * 批量删除
-     * Delete multiple courses by IDs
-     */
-    public void deleteBatch(List<Integer> ids) {
-        for (Integer id : ids) {
-            deleteById(id);
-            generalRedisTemplate.delete("course:" + id);
-        }
-        clearCourseAllCache();
-
-    }
-
-    /**
-     * 修改
-     * Update a course by ID
-     */
-    public void updateById(Course course) {
-        courseMapper.updateById(course);
-        // 清理相关缓存 / Clear related cache
-        clearCourseAllCache();
-
-        generalRedisTemplate.delete("course:" + course.getId());
-    }
-
-    /**
-     * 根据ID查询
-     * Query a course by ID
-     */
-    public Course selectById(Integer id) {
-        String cacheKey = "course:" + id;
-
-        // 从 Redis 获取缓存 / Get cache from Redis
-        Course course = (Course) generalRedisTemplate.opsForValue().get(cacheKey);
-        if (course != null) {
-            System.out.println("from cache: " + cacheKey);
-            return course;
+        LocalDate start = request.getTermStartDate() != null
+                ? request.getTermStartDate()
+                : existing.getTermStartDate();
+        LocalDate end = request.getTermEndDate() != null
+                ? request.getTermEndDate()
+                : existing.getTermEndDate();
+        if (start != null && end != null && end.isBefore(start)) {
+            throw new ApiException(ErrorType.BAD_REQUEST, "termEndDate must be on or after termStartDate");
         }
 
-        // 如果缓存不存在，从数据库查询 / If cache does not exist, query from database
-        course = courseMapper.selectById(id);
+        if (request.getInstructorId() != null) {
+            requireUser(request.getInstructorId());
+        }
+
+        Course patch = new Course();
+        patch.setId(id);
+        if (request.getCourseCode() != null) {
+            String code = request.getCourseCode().trim();
+            if (code.isEmpty()) {
+                throw new ApiException(ErrorType.BAD_REQUEST, "courseCode must not be blank");
+            }
+            patch.setCourseCode(code);
+        }
+        if (request.getTitle() != null) {
+            String title = request.getTitle().trim();
+            if (title.isEmpty()) {
+                throw new ApiException(ErrorType.BAD_REQUEST, "title must not be blank");
+            }
+            patch.setTitle(title);
+        }
+        patch.setTermStartDate(request.getTermStartDate());
+        patch.setTermEndDate(request.getTermEndDate());
+        patch.setDescription(request.getDescription());
+        patch.setLocation(request.getLocation());
+        patch.setInstructorId(request.getInstructorId());
+
+        courseMapper.updateById(patch);
+        return toResponse(requireCourse(id));
+    }
+
+    public void delete(Integer id) {
+        requireCourse(id);
+        try {
+            courseMapper.deleteById(id);
+        } catch (DataIntegrityViolationException e) {
+            throw new ApiException(ErrorType.CONFLICT, "Course cannot be deleted because it is still referenced");
+        }
+    }
+
+    public CourseResponse archive(Integer id) {
+        Course course = requireCourse(id);
+        if (STATE_ARCHIVED.equals(course.getState())) {
+            return toResponse(course);
+        }
+        courseMapper.archiveById(id, LocalDateTime.now(ZoneOffset.UTC));
+        return toResponse(requireCourse(id));
+    }
+
+    private void validateCreate(CreateCourseRequest request) {
+        if (request == null) {
+            throw new ApiException(ErrorType.BAD_REQUEST, "Request body is required");
+        }
+        if (request.getCourseCode() == null || request.getCourseCode().isBlank()) {
+            throw new ApiException(ErrorType.PARAM_MISSING, "courseCode is required");
+        }
+        if (request.getTitle() == null || request.getTitle().isBlank()) {
+            throw new ApiException(ErrorType.PARAM_MISSING, "title is required");
+        }
+        if (request.getTermStartDate() == null) {
+            throw new ApiException(ErrorType.PARAM_MISSING, "termStartDate is required");
+        }
+        if (request.getTermEndDate() == null) {
+            throw new ApiException(ErrorType.PARAM_MISSING, "termEndDate is required");
+        }
+        if (request.getInstructorId() == null) {
+            throw new ApiException(ErrorType.PARAM_MISSING, "instructorId is required");
+        }
+        if (request.getTermEndDate().isBefore(request.getTermStartDate())) {
+            throw new ApiException(ErrorType.BAD_REQUEST, "termEndDate must be on or after termStartDate");
+        }
+    }
+
+    private Course requireCourse(Integer id) {
+        if (id == null) {
+            throw new ApiException(ErrorType.BAD_REQUEST, "Course id is required");
+        }
+        Course course = courseMapper.selectById(id);
         if (course == null) {
-            throw new CustomException(ResultCodeEnum.COURSE_NOT_EXIST_ERROR);
+            throw new ApiException(ErrorType.COURSE_NOT_FOUND);
         }
-
-        // 将结果存入 Redis，并设置过期时间 / Store result in Redis and set expiration time
-        generalRedisTemplate.opsForValue().set(cacheKey, course, CACHE_EXPIRE_TIME, TimeUnit.SECONDS);
         return course;
     }
 
-    /**
-     * 根据User ID查询
-     * Query a course by user ID
-     */
-
-
-
-    public List<Course>selectCoursesByUserId(Integer id) {
-        User user=userService.selectById(id);
-        List<Course> courses=new ArrayList();
-        if (ObjectUtil.isNull(user)){
-            throw new CustomException(ResultCodeEnum.USER_NOT_EXIST_ERROR);
-        }else{
-            if (LevelEnum.INSTRUCTOR.level.equals(user.getLevel())
-                    || LevelEnum.TA.level.equals(user.getLevel())) {
-                courses=courseMapper.selectByUserIdFromTeach(user.getId());
-            }
-            if (LevelEnum.STUDENT.level.equals(user.getLevel())){
-                courses=courseMapper.selectByUserIdFromLearn(user.getId());
-            }
+    private void requireUser(Integer userId) {
+        User user = userMapper.selectById(userId);
+        if (user == null) {
+            throw new ApiException(ErrorType.USER_NOT_FOUND);
         }
-        return courses;
-    }
-    
-    public List<CourseDTO>selectByUserId(Integer id) {
-        User user=userService.selectById(id);
-        List<Course> courses=new ArrayList();
-        if (ObjectUtil.isNull(user)){
-            throw new CustomException(ResultCodeEnum.USER_NOT_EXIST_ERROR);
-        }else{
-            if (LevelEnum.INSTRUCTOR.level.equals(user.getLevel())
-                    || LevelEnum.TA.level.equals(user.getLevel())) {
-                courses=courseMapper.selectByUserIdFromTeach(user.getId());
-            }
-            if (LevelEnum.STUDENT.level.equals(user.getLevel())){
-                courses=courseMapper.selectByUserIdFromLearn(user.getId());
-            }
-        }
-
-        // 构造返回的 CourseDTO 列表
-        List<CourseDTO> result = new ArrayList<>();
-        for (Course course : courses) {
-            CourseDTO dto = new CourseDTO();
-            // 继承 Course，所以直接 copy 属性
-            BeanUtil.copyProperties(course, dto);
-
-            // 查询 CourseSchedule
-            List<CourseSchedule> schedules = courseScheduleMapper.selectByCourseId(course.getId());
-            // 你 CourseDTO 只有一个 CourseSchedule 字段，可以决定放第一个或者改成 List<CourseSchedule>
-            if (CollUtil.isNotEmpty(schedules)) {
-                dto.setCourseSchedules(schedules);
-            }
-
-            result.add(dto);
-        }
-
-        return result;
     }
 
-    /**
-     * 查询所有
-     * Query all courses
-     */
-    public List<Course> selectAll(Course course) {
-        String cacheKey = "course:all";
-        if (course != null) {
-            cacheKey += course.toString();
-        }
-
-        // 从 Redis 获取缓存 / Get cache from Redis
-        List<Course> courses = (List<Course>) courseAllRedisTemplate.opsForValue().get(cacheKey);
-        if (courses != null) {
-            System.out.println("from cache: " + cacheKey);
-            return courses;
-        }
-
-        // 如果缓存不存在，从数据库查询 / If cache does not exist, query from database
-        courses = courseMapper.selectAll(course);
-        if (courses != null && !courses.isEmpty()) {
-            courseAllRedisTemplate.opsForValue().set(cacheKey, courses, CACHE_EXPIRE_TIME, TimeUnit.SECONDS);
-        }
-        return courses;
+    private CourseResponse toResponse(Course course) {
+        CourseResponse response = new CourseResponse();
+        response.setId(course.getId());
+        response.setTenantId(course.getTenantId());
+        response.setCourseCode(course.getCourseCode());
+        response.setTitle(course.getTitle());
+        response.setTermStartDate(course.getTermStartDate());
+        response.setTermEndDate(course.getTermEndDate());
+        response.setDescription(course.getDescription());
+        response.setLocation(course.getLocation());
+        response.setInstructorId(course.getInstructorId());
+        response.setState(course.getState());
+        response.setArchivedAt(course.getArchivedAt());
+        response.setCreatorId(course.getCreatorId());
+        response.setCreatedAt(course.getCreatedAt());
+        response.setUpdatedAt(course.getUpdatedAt());
+        return response;
     }
-
-    public List<CourseDetailsDTO> getCourseDetailsByUserId(Integer userId, List<Course> courseList)
-    {
-        List<CourseDetailsDTO> courseDetails = courseMapper.selectCourseDetailsByUserId(userId,courseList);
-        return courseDetails;
-    }
-
-    public void updateLastSelectedCourse(Integer userId, Integer courseId)
-    {
-        courseMapper.updateLastSelectedCourse(userId,courseId);
-    }
-
-    public Integer countStudentByCourseId(Integer courseId){
-        int num= learnMapper.countByCourseId(courseId);
-
-
-        return  num;
-    }
-
-
 }

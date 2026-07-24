@@ -1,13 +1,9 @@
-package com.coursistant.lms.module.course.entity;
+package com.coursistant.lms.module.course.dto;
 
-import java.io.Serializable;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 
-public class Course implements Serializable {
-    private static final long serialVersionUID = 1L;
+public class CreateCourseRequest {
 
-    private Integer id;
     private Integer tenantId;
     private String courseCode;
     private String title;
@@ -16,19 +12,6 @@ public class Course implements Serializable {
     private String description;
     private String location;
     private Integer instructorId;
-    private String state;
-    private LocalDateTime archivedAt;
-    private Integer creatorId;
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
-
-    public Integer getId() {
-        return id;
-    }
-
-    public void setId(Integer id) {
-        this.id = id;
-    }
 
     public Integer getTenantId() {
         return tenantId;
@@ -92,45 +75,5 @@ public class Course implements Serializable {
 
     public void setInstructorId(Integer instructorId) {
         this.instructorId = instructorId;
-    }
-
-    public String getState() {
-        return state;
-    }
-
-    public void setState(String state) {
-        this.state = state;
-    }
-
-    public LocalDateTime getArchivedAt() {
-        return archivedAt;
-    }
-
-    public void setArchivedAt(LocalDateTime archivedAt) {
-        this.archivedAt = archivedAt;
-    }
-
-    public Integer getCreatorId() {
-        return creatorId;
-    }
-
-    public void setCreatorId(Integer creatorId) {
-        this.creatorId = creatorId;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(LocalDateTime updatedAt) {
-        this.updatedAt = updatedAt;
     }
 }

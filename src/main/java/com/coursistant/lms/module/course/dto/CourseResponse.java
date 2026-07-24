@@ -1,11 +1,9 @@
-package com.coursistant.lms.module.course.entity;
+package com.coursistant.lms.module.course.dto;
 
-import java.io.Serializable;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-public class Course implements Serializable {
-    private static final long serialVersionUID = 1L;
+public class CourseResponse {
 
     private Integer id;
     private Integer tenantId;

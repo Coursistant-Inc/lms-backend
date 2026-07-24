@@ -5,7 +5,6 @@ import java.util.List;
 import org.apache.ibatis.annotations.Select;
 
 import com.coursistant.lms.module.course.entity.Learn;
-import com.coursistant.lms.module.course.entity.Course;
 import com.coursistant.lms.module.chat.entity.Query;
 
 /**

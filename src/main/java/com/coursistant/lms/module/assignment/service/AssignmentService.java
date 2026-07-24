@@ -1,5 +1,4 @@
 package com.coursistant.lms.module.assignment.service;
-import com.coursistant.lms.module.course.entity.Course;
 import com.coursistant.lms.module.chat.entity.Query;
 import com.coursistant.lms.module.quiz.entity.Quiz;
 
@@ -8,7 +7,6 @@ import com.coursistant.lms.module.quiz.entity.Quiz;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.ObjectUtil;
 import com.coursistant.lms.module.assignment.dto.AssignmentGroupDTO;
-import com.coursistant.lms.module.course.repository.CourseMapper;
 import com.coursistant.lms.module.course.repository.LearnMapper;
 import com.coursistant.lms.module.assignment.repository.AssignmentItemMapper;
 import org.springframework.stereotype.Service;
@@ -46,8 +44,6 @@ public class AssignmentService {
     @Resource
     private AssignmentMapper assignmentMapper;
 
-    @Resource
-    private CourseMapper courseMapper;
 
     @Resource
     private EmailUtil emailUtil;
@@ -132,7 +128,7 @@ public class AssignmentService {
         if (row==1 && assignment.getGradePublish()==true){
             Assignment updated=assignmentMapper.selectById(assignment.getId());
             List<String> emails=learnMapper.selectEmailsByCourseId(updated.getCourseId());
-            Course course=courseMapper.selectById(updated.getCourseId());
+            String courseName = "course " + updated.getCourseId();
             if (emails != null && !emails.isEmpty()) {
                 // 去重 & 过滤空邮箱
                 List<String> targets = emails.stream()
@@ -144,7 +140,7 @@ public class AssignmentService {
 
                 String subject = "Grade Released — " + updated.getTitle();
                 String content = ""
-                        + "Your grade for **" + updated.getTitle() + "** in the course **" + course.getName() + "** has been released.\n\n"
+                        + "Your grade for **" + updated.getTitle() + "** in the course **" + courseName + "** has been released.\n\n"
                         + "Best regards,\n"
                         + "**Coursistant xLearn Team**";
 

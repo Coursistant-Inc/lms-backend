@@ -1,133 +1,67 @@
 package com.coursistant.lms.module.course.controller;
 
-import com.coursistant.lms.shared.web.Result;
-import com.coursistant.lms.module.course.entity.Course;
-import com.coursistant.lms.module.course.dto.CourseDTO;
+import com.coursistant.lms.module.course.dto.CourseResponse;
+import com.coursistant.lms.module.course.dto.CreateCourseRequest;
+import com.coursistant.lms.module.course.dto.UpdateCourseRequest;
 import com.coursistant.lms.module.course.service.CourseService;
-import io.swagger.v3.oas.models.security.SecurityScheme;
-import org.springframework.web.bind.annotation.*;
-
+import com.coursistant.lms.shared.api.ApiException;
+import com.coursistant.lms.shared.api.ApiResponse;
+import com.coursistant.lms.shared.api.ErrorType;
+import com.coursistant.lms.shared.idempotency.Idempotent;
 import jakarta.annotation.Resource;
-import java.util.List;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.logging.Logger;
-import com.coursistant.lms.module.chat.entity.Query;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-/**
- * 部门信息表前端操作接口
- * Course frontend operation API
- **/
 @RestController
-@RequestMapping("/course")
+@RequestMapping("/v2/courses")
 public class CourseController {
 
     @Resource
     private CourseService courseService;
 
-    private static final Logger logger = Logger.getLogger(CourseController.class.getName());
-
-    private void logRequest(String methodName, String requestBody) {
-        logger.info(() -> String.format("Start %s: %s", methodName, requestBody));
+    @Idempotent
+    @PostMapping
+    public ApiResponse<CourseResponse> create(HttpServletRequest request,
+                                              @RequestBody CreateCourseRequest body) {
+        return ApiResponse.success(courseService.create(currentUserId(request), body));
     }
 
-    private void logResponse(String methodName, String response) {
-        logger.info(() -> String.format("End %s: %s", methodName, response));
+    @GetMapping("/{id}")
+    public ApiResponse<CourseResponse> getById(@PathVariable Integer id) {
+        return ApiResponse.success(courseService.getById(id));
     }
 
-    /**
-     * 新增
-     * Add a new course
-     */
-    @PostMapping("/add")
-    public Result add(@RequestBody Course course) {
-        logRequest("add", course.toString());
-        Integer courseId = courseService.add(course);
-        logResponse("add", course.toString());
-        Map<String, Object> data = new HashMap<>();
-        data.put("courseId", courseId);
-        return Result.success(data);
+    @Idempotent
+    @PutMapping("/{id}")
+    public ApiResponse<CourseResponse> update(@PathVariable Integer id,
+                                              @RequestBody UpdateCourseRequest body) {
+        return ApiResponse.success(courseService.update(id, body));
     }
 
-    /**
-     * 删除
-     * Delete a course by ID
-     */
-    @DeleteMapping("/delete/{id}")
-    public Result deleteById(@PathVariable Integer id) {
-        logRequest("deleteById", id.toString());
-        courseService.deleteById(id);
-        logResponse("deleteById", id.toString());
-        return Result.success();
+    @DeleteMapping("/{id}")
+    public ApiResponse<Void> delete(@PathVariable Integer id) {
+        courseService.delete(id);
+        return ApiResponse.success();
     }
 
-    /**
-     * 批量删除
-     * Batch delete courses
-     */
-    @DeleteMapping("/delete/batch")
-    public Result deleteBatch(@RequestBody List<Integer> ids) {
-        logRequest("deleteBatch", ids.toString());
-        courseService.deleteBatch(ids);
-        logResponse("deleteBatch", ids.toString());
-        return Result.success();
+    @Idempotent
+    @PostMapping("/{id}/archive")
+    public ApiResponse<CourseResponse> archive(@PathVariable Integer id) {
+        return ApiResponse.success(courseService.archive(id));
     }
 
-    /**
-     * 修改
-     * Update a course
-     */
-    @PutMapping("/update")
-    public Result updateById(@RequestBody Course course) {
-        logRequest("updateById", course.toString());
-        courseService.updateById(course);
-        logResponse("updateById", course.toString());
-        return Result.success();
+    private Integer currentUserId(HttpServletRequest request) {
+        Object attr = request.getAttribute("userId");
+        if (!(attr instanceof Integer userId)) {
+            throw new ApiException(ErrorType.UNAUTHORIZED);
+        }
+        return userId;
     }
-
-    /**
-     * 根据ID查询
-     * Query a course by ID
-     */
-    @GetMapping("/selectById/{id}")
-    public Result selectById(@PathVariable Integer id) {
-        logRequest("selectById", id.toString());
-        Course course = courseService.selectById(id);
-        logResponse("selectById", course.toString());
-        return Result.success(course);
-    }
-
-    /**
-     * 查询所有
-     * Query all courses
-     */
-    @GetMapping("/selectAll")
-    public Result selectAll(Course course) {
-        logRequest("selectAll", course != null ? course.toString() : "null");
-        List<Course> list = courseService.selectAll(course);
-        logResponse("selectAll", null);
-        return Result.success(list);
-    }
-
-    /**
-     * 查询所有
-     * Query all courses by userId
-     */
-    @GetMapping("/selectByUserId/{id}")
-    public Result selectByUserId(@PathVariable Integer id) {
-        logRequest("selectById", id.toString());
-        List<CourseDTO> list = courseService.selectByUserId(id);
-        logResponse("selectById", null);
-        return Result.success(list);
-    }
-
-
-    @GetMapping("/countStudentByCourseId/{id}")
-    public Result countStudentByCourseId(@PathVariable Integer id) {
-        logRequest("countStudentByCourseId", id.toString());
-        Integer num = courseService.countStudentByCourseId(id);
-        logResponse("countStudentByCourseId", num.toString());
-        return Result.success(num);
-    }
-
 }

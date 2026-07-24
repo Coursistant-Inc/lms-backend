@@ -8,7 +8,6 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.annotation.Resource;
 import java.util.List;
 import java.util.logging.Logger;
-import com.coursistant.lms.module.course.entity.Course;
 import com.coursistant.lms.module.chat.entity.Query;
 
 /**

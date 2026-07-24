@@ -14,7 +14,6 @@ import jakarta.annotation.Resource;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
-import com.coursistant.lms.module.course.entity.Course;
 
 /**
  * 教师信息业务处理 // Teach service processing
