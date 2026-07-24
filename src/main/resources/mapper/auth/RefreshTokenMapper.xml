@@ -66,6 +66,11 @@
         delete from refresh_tokens where user_id = #{userId}
     </delete>
 
+    <!-- 删除 by token（单设备退出） -->
+    <delete id="deleteByToken">
+        delete from refresh_tokens where token = #{token}
+    </delete>
+
     <!-- 删除所有过期 token（定时任务用） -->
     <delete id="deleteExpiredTokens">
         delete from refresh_tokens where expire_time &lt; now()

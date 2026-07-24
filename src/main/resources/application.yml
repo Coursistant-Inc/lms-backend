@@ -141,7 +141,7 @@ api:
 
 token:
   access-expire-hours: 2
-  refresh-expire-days: 30
+  refresh-expire-days: 14
   private-key-path: private.pem
   public-key-path: public.pem
 

@@ -5,7 +5,6 @@ import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.module.auth.token.dto.RefreshResult;
 import com.coursistant.lms.module.auth.token.entity.RefreshToken;
 import com.coursistant.lms.module.auth.token.repository.RefreshTokenMapper;
-import com.coursistant.lms.module.auth.token.service.RefreshTokenService;
 import com.coursistant.lms.shared.security.TokenUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,6 +20,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Duration;
 import java.util.Date;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -43,7 +43,7 @@ class RefreshTokenServiceTest {
 
     @BeforeEach
     void setUp() {
-        ReflectionTestUtils.setField(refreshTokenService, "refreshExpireDays", 30);
+        ReflectionTestUtils.setField(refreshTokenService, "refreshExpireDays", 14);
         lenient().when(refreshTokenRedisTemplate.opsForValue()).thenReturn(valueOperations);
     }
 
@@ -53,8 +53,8 @@ class RefreshTokenServiceTest {
         RefreshToken dbToken = buildToken(1, "USER", oldToken, futureDate());
 
         when(valueOperations.get("refresh:used:" + oldToken)).thenReturn(null);
+        when(refreshTokenRedisTemplate.hasKey("refresh:token:" + oldToken)).thenReturn(true);
         when(refreshTokenMapper.selectByToken(oldToken)).thenReturn(dbToken);
-        when(valueOperations.get("refresh:1:USER")).thenReturn(oldToken);
 
         try (MockedStatic<TokenUtils> tokenUtils = mockStatic(TokenUtils.class)) {
             tokenUtils.when(() -> TokenUtils.createAccessToken(1, "USER")).thenReturn("new-access-token");
@@ -66,7 +66,8 @@ class RefreshTokenServiceTest {
             assertNotEquals(oldToken, result.getRefreshToken());
 
             verify(valueOperations).set(eq("refresh:used:" + oldToken), eq(result.getRefreshToken()), eq(Duration.ofSeconds(30)));
-            verify(valueOperations).set(eq("refresh:1:USER"), eq(result.getRefreshToken()), eq(Duration.ofDays(30)));
+            verify(refreshTokenRedisTemplate).delete("refresh:token:" + oldToken);
+            verify(valueOperations).set(eq("refresh:token:" + result.getRefreshToken()), eq("1:USER"), eq(Duration.ofDays(14)));
 
             ArgumentCaptor<RefreshToken> captor = ArgumentCaptor.forClass(RefreshToken.class);
             verify(refreshTokenMapper).updateById(captor.capture());
@@ -98,6 +99,7 @@ class RefreshTokenServiceTest {
     void getNewAccessToken_invalidToken_throwsException() {
         String badToken = "invalid-token";
         when(valueOperations.get("refresh:used:" + badToken)).thenReturn(null);
+        when(refreshTokenRedisTemplate.hasKey("refresh:token:" + badToken)).thenReturn(false);
         when(refreshTokenMapper.selectByToken(badToken)).thenReturn(null);
 
         ApiException ex = assertThrows(ApiException.class,
@@ -108,19 +110,18 @@ class RefreshTokenServiceTest {
     @Test
     void validateRefreshToken_matchesRedis_returnsTrue() {
         String token = "valid-token";
-        RefreshToken dbToken = buildToken(5, "ADMIN", token, futureDate());
-        when(refreshTokenMapper.selectByToken(token)).thenReturn(dbToken);
-        when(valueOperations.get("refresh:5:ADMIN")).thenReturn(token);
+        when(refreshTokenRedisTemplate.hasKey("refresh:token:" + token)).thenReturn(true);
 
         assertTrue(refreshTokenService.validateRefreshToken(token));
+        verify(refreshTokenMapper, never()).selectByToken(any());
     }
 
     @Test
     void validateRefreshToken_redisExpired_fallsBackToDb() {
         String token = "db-only-token";
         RefreshToken dbToken = buildToken(5, "USER", token, futureDate());
+        when(refreshTokenRedisTemplate.hasKey("refresh:token:" + token)).thenReturn(false);
         when(refreshTokenMapper.selectByToken(token)).thenReturn(dbToken);
-        when(valueOperations.get("refresh:5:USER")).thenReturn(null);
 
         assertTrue(refreshTokenService.validateRefreshToken(token));
         verify(refreshTokenMapper, never()).deleteById(any());
@@ -131,19 +132,32 @@ class RefreshTokenServiceTest {
         String token = "expired-token";
         RefreshToken dbToken = buildToken(5, "USER", token, pastDate());
         dbToken.setId(100);
+        when(refreshTokenRedisTemplate.hasKey("refresh:token:" + token)).thenReturn(false);
         when(refreshTokenMapper.selectByToken(token)).thenReturn(dbToken);
-        when(valueOperations.get("refresh:5:USER")).thenReturn(null);
 
         assertFalse(refreshTokenService.validateRefreshToken(token));
         verify(refreshTokenMapper).deleteById(100);
     }
 
     @Test
-    void deleteByUserId_clearsRedisAndDb() {
+    void deleteByUserId_clearsDbThenRedis() {
+        RefreshToken t1 = buildToken(7, "USER", "tok-a", futureDate());
+        RefreshToken t2 = buildToken(7, "USER", "tok-b", futureDate());
+        when(refreshTokenMapper.selectAllByUserId(7)).thenReturn(List.of(t1, t2));
+
         refreshTokenService.deleteByUserId(7, "USER");
 
         verify(refreshTokenMapper).deleteByUserId(7);
-        verify(refreshTokenRedisTemplate).delete("refresh:7:USER");
+        verify(refreshTokenRedisTemplate).delete("refresh:token:tok-a");
+        verify(refreshTokenRedisTemplate).delete("refresh:token:tok-b");
+    }
+
+    @Test
+    void deleteByToken_clearsDbThenRedis() {
+        refreshTokenService.deleteByToken("device-token");
+
+        verify(refreshTokenMapper).deleteByToken("device-token");
+        verify(refreshTokenRedisTemplate).delete("refresh:token:device-token");
     }
 
     private RefreshToken buildToken(Integer userId, String role, String token, Date expireTime) {

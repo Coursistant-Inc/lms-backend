@@ -14,6 +14,7 @@ public interface RefreshTokenMapper {
     int insert(RefreshToken refreshToken);
     int deleteById(Integer id);
     int deleteByUserId(Integer userId);
+    int deleteByToken(String token);
     int deleteExpiredTokens();
 
     int updateById(RefreshToken refreshToken);

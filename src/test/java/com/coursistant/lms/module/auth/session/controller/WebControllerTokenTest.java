@@ -107,15 +107,14 @@ class WebControllerTokenTest {
     @Test
     void logout_validAuth_clearsTokenAndCookie() throws Exception {
         MvcResult result = mockMvc.perform(post("/v1/auth/logout")
-                        .requestAttr("userId", 42)
-                        .requestAttr("userRole", "USER")
+                        .cookie(new jakarta.servlet.http.Cookie("refreshToken", "current-device-token"))
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value(200))
                 .andExpect(jsonPath("$.code").value("SUCCESS"))
                 .andReturn();
 
-        verify(refreshTokenService).deleteByUserId(42, "USER");
+        verify(refreshTokenService).deleteByToken("current-device-token");
 
         String setCookie = result.getResponse().getHeader("Set-Cookie");
         assertNotNull(setCookie);

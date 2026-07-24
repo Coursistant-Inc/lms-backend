@@ -115,10 +115,20 @@ public class WebController {
 
     @PostMapping("/v1/auth/logout")
     public ApiResponse<Void> logout(HttpServletRequest request, HttpServletResponse response) {
-        Integer userId = (Integer) request.getAttribute("userId");
-        String role = (String) request.getAttribute("userRole");
+        String refreshToken = null;
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if ("refreshToken".equals(cookie.getName())) {
+                    refreshToken = cookie.getValue();
+                    break;
+                }
+            }
+        }
 
-        refreshTokenService.deleteByUserId(userId, role);
+        if (StrUtil.isNotBlank(refreshToken)) {
+            refreshTokenService.deleteByToken(refreshToken);
+        }
 
         ResponseCookie cookie = ResponseCookie.from("refreshToken", "")
                 .httpOnly(true).secure(true).path("/")
@@ -250,7 +260,7 @@ public class WebController {
                 .httpOnly(true)
                 .secure(true)
                 .path("/")
-                .maxAge(60 * 60 * 24 * 30)
+                .maxAge(60 * 60 * 24 * 14)
                 .sameSite("Lax")
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());

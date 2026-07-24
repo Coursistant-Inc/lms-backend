@@ -23,16 +23,16 @@ import java.time.ZoneId;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
-import com.coursistant.lms.module.user.entity.User;
 
 @Service
 public class RefreshTokenService {
 
     private static final Logger log = LoggerFactory.getLogger(RefreshTokenService.class);
 
-    private static final String REDIS_PREFIX = "refresh:";
+    private static final String REDIS_PREFIX = "refresh:token:";
     private static final String REDIS_USED_PREFIX = "refresh:used:";
     private static final int GRACE_WINDOW_SECONDS = 30;
+    private static final int MAX_DEVICES = 5;
 
     @Resource
     private RefreshTokenMapper refreshTokenMapper;
@@ -40,7 +40,7 @@ public class RefreshTokenService {
     @Resource(name = "refreshTokenRedisTemplate")
     private RedisTemplate<String, Object> refreshTokenRedisTemplate;
 
-    @Value("${token.refresh-expire-days:30}")
+    @Value("${token.refresh-expire-days:14}")
     private int refreshExpireDays;
 
     public String createAndStoreRefreshToken(Integer userId, String role) {
@@ -51,13 +51,14 @@ public class RefreshTokenService {
         String userAgent = request.getHeader("User-Agent");
 
         List<RefreshToken> existingTokens = refreshTokenMapper.selectByUserIdAndRoleOrderByCreateTime(userId, role);
-        if (existingTokens.size() >= 3) {
-            RefreshToken oldest = existingTokens.get(0);
+        while (existingTokens.size() >= MAX_DEVICES) {
+            RefreshToken oldest = existingTokens.remove(0);
             refreshTokenMapper.deleteById(oldest.getId());
+            refreshTokenRedisTemplate.delete(REDIS_PREFIX + oldest.getToken());
         }
 
-        String redisKey = REDIS_PREFIX + userId + ":" + role;
-        refreshTokenRedisTemplate.opsForValue().set(redisKey, token, Duration.ofDays(refreshExpireDays));
+        refreshTokenRedisTemplate.opsForValue().set(
+                REDIS_PREFIX + token, userId + ":" + role, Duration.ofDays(refreshExpireDays));
 
         RefreshToken refreshToken = new RefreshToken();
         refreshToken.setUserId(userId);
@@ -72,15 +73,14 @@ public class RefreshTokenService {
     }
 
     public boolean validateRefreshToken(String token) {
+        String redisKey = REDIS_PREFIX + token;
+        if (Boolean.TRUE.equals(refreshTokenRedisTemplate.hasKey(redisKey))) {
+            return true;
+        }
+
         RefreshToken dbToken = refreshTokenMapper.selectByToken(token);
-        if (dbToken == null) return false;
-
-        String redisKey = REDIS_PREFIX + dbToken.getUserId() + ":" + dbToken.getRole();
-        Object redisTokenObj = refreshTokenRedisTemplate.opsForValue().get(redisKey);
-        String redisToken = redisTokenObj != null ? redisTokenObj.toString() : null;
-
-        if (redisToken != null) {
-            return redisToken.equals(token);
+        if (dbToken == null) {
+            return false;
         }
 
         boolean isValid = dbToken.getExpireTime().after(new Date());
@@ -140,9 +140,10 @@ public class RefreshTokenService {
                 REDIS_USED_PREFIX + token, newRefreshToken,
                 Duration.ofSeconds(GRACE_WINDOW_SECONDS));
 
-        // Update Redis with the new token
-        String redisKey = REDIS_PREFIX + userId + ":" + role;
-        refreshTokenRedisTemplate.opsForValue().set(redisKey, newRefreshToken, Duration.ofDays(refreshExpireDays));
+        // Replace Redis key: delete old, create new
+        refreshTokenRedisTemplate.delete(REDIS_PREFIX + token);
+        refreshTokenRedisTemplate.opsForValue().set(
+                REDIS_PREFIX + newRefreshToken, userId + ":" + role, Duration.ofDays(refreshExpireDays));
 
         // Update database record
         Date newExpireTime = Date.from(LocalDateTime.now()
@@ -158,9 +159,29 @@ public class RefreshTokenService {
         return new RefreshResult(accessToken, newRefreshToken);
     }
 
+    /**
+     * Revoke all sessions for a user (password change / reset).
+     * Deletes DB first, then Redis keys (residual keys expire via TTL).
+     */
     public void deleteByUserId(Integer userId, String role) {
+        List<RefreshToken> tokens = refreshTokenMapper.selectAllByUserId(userId);
         refreshTokenMapper.deleteByUserId(userId);
-        refreshTokenRedisTemplate.delete(REDIS_PREFIX + userId + ":" + role);
+        for (RefreshToken t : tokens) {
+            if (t.getToken() != null) {
+                refreshTokenRedisTemplate.delete(REDIS_PREFIX + t.getToken());
+            }
+        }
+    }
+
+    /**
+     * Revoke a single device session.
+     */
+    public void deleteByToken(String token) {
+        if (token == null || token.isBlank()) {
+            return;
+        }
+        refreshTokenMapper.deleteByToken(token);
+        refreshTokenRedisTemplate.delete(REDIS_PREFIX + token);
     }
 
     public RefreshToken getByToken(String token) {
