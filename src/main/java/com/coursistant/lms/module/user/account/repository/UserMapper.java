@@ -1,10 +1,10 @@
-package com.coursistant.lms.module.user.repository;
+package com.coursistant.lms.module.user.account.repository;
 
 import java.util.List;
 
 import org.apache.ibatis.annotations.Select;
 
-import com.coursistant.lms.module.user.entity.User;
+import com.coursistant.lms.module.user.account.entity.User;
 import com.coursistant.lms.module.chat.entity.Query;
 
 /**
@@ -75,4 +75,6 @@ public interface UserMapper {
     List<User> selectUsersByIds(List<Integer> userIds);
 
     void updateMustChangePassword( Integer id, boolean mustChangePassword);
+
+    void clearAvatar(Integer id);
 }

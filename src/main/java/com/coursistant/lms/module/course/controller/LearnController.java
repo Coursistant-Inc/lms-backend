@@ -19,7 +19,7 @@ import org.springframework.web.multipart.MultipartFile;
 import com.coursistant.lms.shared.web.Result;
 import com.coursistant.lms.shared.enums.ResultCodeEnum;
 import com.coursistant.lms.module.course.entity.Learn;
-import com.coursistant.lms.module.user.entity.User;
+import com.coursistant.lms.module.user.account.entity.User;
 import com.coursistant.lms.module.course.service.LearnService;
 
 import cn.hutool.core.util.ObjectUtil;

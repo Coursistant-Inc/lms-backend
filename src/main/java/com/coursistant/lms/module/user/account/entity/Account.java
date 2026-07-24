@@ -1,4 +1,4 @@
-package com.coursistant.lms.module.user.entity;
+package com.coursistant.lms.module.user.account.entity;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
@@ -55,6 +55,4 @@ public class Account {
      * Email verification code
      */
     private String verification;
-
-    private String type;
 }

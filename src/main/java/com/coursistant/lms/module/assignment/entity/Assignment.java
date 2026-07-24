@@ -7,7 +7,7 @@ import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import com.coursistant.lms.module.course.entity.Course;
-import com.coursistant.lms.module.user.entity.User;
+import com.coursistant.lms.module.user.account.entity.User;
 
 /**
  * 公告实体类

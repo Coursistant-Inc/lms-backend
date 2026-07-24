@@ -13,7 +13,7 @@
     </sql>
 
     <select id="selectAll" resultType="com.coursistant.lms.module.course.entity.Course">
-        select Course.*, User.name as teacherName, User.phone as teacherPhone, User.email as teacherEmail
+        select Course.*, User.name as teacherName, User.email as teacherEmail
         from Course
         left join User on Course.teacher_id = User.id
         <where>
@@ -95,7 +95,7 @@
 
     <!-- 查询某用户通过 Teach 表教授的所有课程（含老师信息） -->
     <select id="selectByUserIdFromTeach" resultType="com.coursistant.lms.module.course.entity.Course">
-        SELECT c.*, u.name AS teacherName, u.phone AS teacherPhone, u.email AS teacherEmail, COALESCE(f.unit_count, 0) AS courseUnitCount
+        SELECT c.*, u.name AS teacherName, u.email AS teacherEmail, COALESCE(f.unit_count, 0) AS courseUnitCount
         FROM Teach t
                  JOIN Course c ON t.course_id = c.id
                  LEFT JOIN User u ON c.teacher_id = u.id
@@ -110,7 +110,7 @@
 
     <!-- 查询某用户通过 Learn 表学习的所有课程（含老师信息） -->
     <select id="selectByUserIdFromLearn" resultType="com.coursistant.lms.module.course.entity.Course">
-        SELECT c.*, u.name AS teacherName, u.phone AS teacherPhone, u.email AS teacherEmail, COALESCE(f.unit_count, 0) AS courseUnitCount
+        SELECT c.*, u.name AS teacherName, u.email AS teacherEmail, COALESCE(f.unit_count, 0) AS courseUnitCount
         FROM Learn l
                  JOIN Course c ON l.course_id = c.id
                  LEFT JOIN User u ON c.teacher_id = u.id

@@ -2,7 +2,7 @@ package com.coursistant.lms.module.assignment.service;
 import com.coursistant.lms.module.course.entity.Course;
 import com.coursistant.lms.module.chat.entity.Query;
 import com.coursistant.lms.module.file.entity.SubmissionFile;
-import com.coursistant.lms.module.user.entity.User;
+import com.coursistant.lms.module.user.account.entity.User;
 
 
 
@@ -19,7 +19,7 @@ import com.coursistant.lms.module.course.repository.CourseMapper;
 import com.coursistant.lms.module.assignment.repository.AssignmentItemMapper;
 import com.coursistant.lms.module.file.repository.DiskFilesMapper;
 import com.coursistant.lms.module.file.repository.SubmissionFileMapper;
-import com.coursistant.lms.module.user.repository.UserMapper;
+import com.coursistant.lms.module.user.account.repository.UserMapper;
 import com.coursistant.lms.module.file.service.SubmissionFileService;
 import com.coursistant.lms.shared.util.EmailUtil;
 import com.coursistant.lms.shared.util.TimeZoneUtils;

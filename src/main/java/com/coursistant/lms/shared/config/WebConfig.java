@@ -42,6 +42,7 @@ public class WebConfig implements WebMvcConfigurer {
                 .excludePathPatterns("/login/oauth2/**")
                 .excludePathPatterns("/thirdParty/**")
                 .excludePathPatterns("/oauth2/authorization/**")
+                .excludePathPatterns("/v2/users/*/avatar")
         ;
 
         // Idempotency exclude is intentionally narrower than JWT: keep email-verifications,

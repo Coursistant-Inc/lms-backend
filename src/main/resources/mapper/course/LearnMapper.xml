@@ -19,7 +19,7 @@
     <select id="selectAll" resultType="com.coursistant.lms.module.course.entity.Learn">
         select Learn.*, Course.name as courseName, Course.course_code as courseCode,Course.instructor_name as instructorName, Course.school as school, Course.semester as semester,
         User.name as studentName, User.username as studentUsername,
-        User.phone as studentPhone, User.email as studentEmail, User.avatar as studentAvatar
+        User.email as studentEmail, User.avatar as studentAvatar
         from Learn
         left join Course on Learn.course_id = Course.id
         left join User on Learn.user_id = User.id

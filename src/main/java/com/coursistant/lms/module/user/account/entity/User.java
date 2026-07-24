@@ -1,4 +1,4 @@
-package com.coursistant.lms.module.user.entity;
+package com.coursistant.lms.module.user.account.entity;
 
 import com.coursistant.lms.shared.util.PasswordEncoderUtil;
 
@@ -46,24 +46,15 @@ public class User extends Account implements Serializable {
      */
     private String level;
 
-    /** 电话
-     * Phone number
-     */
-    private String phone;
-
     /** 邮箱
      * Email
      */
     private String email;
 
-    /** 邀请码
-     * Invitation code
-     */
-    private String invitation;
-
-    private String type;
-
     private Boolean mustChangePassword;
+
+    /** Whether the user receives email notifications (default true). */
+    private Boolean emailNotifications;
 
     @Override
     public String toString() {
@@ -75,9 +66,9 @@ public class User extends Account implements Serializable {
         if (avatar != null) sb.append("\"avatar\":\"").append(avatar).append("\",");
         if (role != null) sb.append("\"role\":\"").append(role).append("\",");
         if (level != null) sb.append("\"level\":\"").append(level).append("\",");
-        if (phone != null) sb.append("\"phone\":\"").append(phone).append("\",");
         if (email != null) sb.append("\"email\":\"").append(email).append("\",");
         if (mustChangePassword != null) sb.append("\"mustChangePassword\":\"").append(mustChangePassword).append("\",");
+        if (emailNotifications != null) sb.append("\"emailNotifications\":\"").append(emailNotifications).append("\",");
         if (sb.charAt(sb.length() - 1) == ',') sb.deleteCharAt(sb.length() - 1); // 删除最后的逗号 / Remove trailing comma
         sb.append("}");
         return sb.toString();
@@ -159,14 +150,6 @@ public class User extends Account implements Serializable {
         this.level = level;
     }
 
-    public String getPhone() {
-        return phone;
-    }
-
-    public void setPhone(String phone) {
-        this.phone = phone;
-    }
-
     public String getEmail() {
         return email;
     }
@@ -177,24 +160,6 @@ public class User extends Account implements Serializable {
         }
     }
 
-    public String getInvitation() {
-        return invitation;
-    }
-
-    public void setInvitation(String invitation) {
-        this.invitation = invitation;
-    }
-
-    @Override
-    public String getType() {
-        return type;
-    }
-
-    @Override
-    public void setType(String type) {
-        this.type = type;
-    }
-
     public Boolean getMustChangePassword() {
         return mustChangePassword;
     }
@@ -202,5 +167,13 @@ public class User extends Account implements Serializable {
     public void setMustChangePassword(Boolean mustChangePassword) {
         this.mustChangePassword = mustChangePassword;
     }
-    
+
+    public Boolean getEmailNotifications() {
+        return emailNotifications;
+    }
+
+    public void setEmailNotifications(Boolean emailNotifications) {
+        this.emailNotifications = emailNotifications;
+    }
+
 }

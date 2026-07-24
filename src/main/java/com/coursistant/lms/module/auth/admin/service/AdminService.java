@@ -9,7 +9,7 @@ import com.coursistant.lms.module.auth.token.service.RefreshTokenService;
 import com.coursistant.lms.shared.web.Constants;
 import com.coursistant.lms.shared.enums.RoleEnum;
 import com.coursistant.lms.module.auth.session.dto.AuthResult;
-import com.coursistant.lms.module.user.entity.Account;
+import com.coursistant.lms.module.user.account.entity.Account;
 import com.coursistant.lms.module.auth.admin.entity.Admin;
 import com.coursistant.lms.shared.util.PasswordEncoderUtil;
 import com.coursistant.lms.shared.security.TokenUtils;
@@ -25,7 +25,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import com.coursistant.lms.module.chat.entity.Query;
-import com.coursistant.lms.module.user.entity.User;
+import com.coursistant.lms.module.user.account.entity.User;
 
 /**
  * 管理员业务处理 // Administrator business logic handling
@@ -259,10 +259,8 @@ public class AdminService {
         if (ObjectUtil.isNull(dbAdmin)) {
             throw new ApiException(ErrorType.USER_NOT_FOUND, "User Does Not Exist");
         }
-        if ("reset".equals(account.getType())) {
-            if (!PasswordEncoderUtil.matches(account.getPassword(), dbAdmin.getPassword())) {
-                throw new ApiException(ErrorType.INVALID_PASSWORD, "Incorrect Original Password");
-            }
+        if (!PasswordEncoderUtil.matches(account.getPassword(), dbAdmin.getPassword())) {
+            throw new ApiException(ErrorType.INVALID_PASSWORD, "Incorrect Original Password");
         }
         // 加密新密码然后设置 // Encrypt new password and set it
         String encryptedNewPassword = PasswordEncoderUtil.encodePassword(account.getNewPassword());

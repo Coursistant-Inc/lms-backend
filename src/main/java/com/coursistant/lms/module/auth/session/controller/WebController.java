@@ -7,14 +7,14 @@ import com.coursistant.lms.shared.api.ApiResponse;
 import com.coursistant.lms.shared.api.ErrorType;
 import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.shared.enums.RoleEnum;
-import com.coursistant.lms.module.user.entity.Account;
+import com.coursistant.lms.module.user.account.entity.Account;
 import com.coursistant.lms.module.auth.admin.dto.PasswordDTO;
 import com.coursistant.lms.module.auth.session.dto.AuthResult;
 import com.coursistant.lms.module.auth.token.dto.RefreshResult;
 import com.coursistant.lms.module.chat.entity.Query;
 import com.coursistant.lms.module.chat.service.CoursistanceService;
 import com.coursistant.lms.module.auth.admin.service.AdminService;
-import com.coursistant.lms.module.user.service.UserService;
+import com.coursistant.lms.module.user.account.service.UserService;
 import com.coursistant.lms.shared.util.TimeZoneUtils;
 import com.coursistant.lms.shared.idempotency.Idempotent;
 import lombok.extern.slf4j.Slf4j;
@@ -182,9 +182,6 @@ public class WebController {
     @Idempotent
     @PutMapping("/v1/auth/password")
     public ApiResponse<Void> updatePassword(@RequestBody PasswordDTO account) {
-        if (!"update".equals(account.getType())) {
-            throw new ApiException(ErrorType.PARAM_MISSING, "Parameter Missing");
-        }
         if (StrUtil.isBlank(account.getEmail()) || StrUtil.isBlank(account.getPassword())
                 || ObjectUtil.isEmpty(account.getNewPassword())) {
             throw new ApiException(ErrorType.PARAM_MISSING, "Parameter Missing");

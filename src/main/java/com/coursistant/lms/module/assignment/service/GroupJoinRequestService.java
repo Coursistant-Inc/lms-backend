@@ -10,8 +10,8 @@ import com.coursistant.lms.module.assignment.repository.AssignmentGroupMapper;
 import com.coursistant.lms.module.assignment.repository.GroupJoinRequestMapper;
 import com.coursistant.lms.module.assignment.repository.GroupMemberMapper;
 import com.coursistant.lms.module.assignment.repository.AssignmentMapper;
-import com.coursistant.lms.module.user.repository.UserMapper;
-import com.coursistant.lms.module.user.entity.User;
+import com.coursistant.lms.module.user.account.repository.UserMapper;
+import com.coursistant.lms.module.user.account.entity.User;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

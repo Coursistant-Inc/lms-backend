@@ -1,7 +1,7 @@
 package com.coursistant.lms.module.assignment.service;
  
 import com.coursistant.lms.module.assignment.entity.GroupMember;
-import com.coursistant.lms.module.user.entity.User;
+import com.coursistant.lms.module.user.account.entity.User;
 import com.coursistant.lms.shared.exception.CustomException;
 import com.coursistant.lms.module.assignment.repository.GroupMemberMapper;
 
@@ -16,7 +16,7 @@ import com.coursistant.lms.shared.enums.ResultCodeEnum;
 import com.coursistant.lms.module.assignment.entity.Assignment;
 import com.coursistant.lms.module.assignment.repository.AssignmentGroupMapper;
 import com.coursistant.lms.module.assignment.repository.AssignmentMapper;
-import com.coursistant.lms.module.user.repository.UserMapper;
+import com.coursistant.lms.module.user.account.repository.UserMapper;
 
 @Service
 public class GroupMemberService {
@@ -31,7 +31,7 @@ public class GroupMemberService {
     private com.coursistant.lms.module.assignment.repository.AssignmentMapper assignmentMapper;
 
     @Resource
-    private com.coursistant.lms.module.user.repository.UserMapper userMapper;
+    private com.coursistant.lms.module.user.account.repository.UserMapper userMapper;
     /**
      * 添加成员到小组
     */

@@ -2,7 +2,7 @@
 <!DOCTYPE mapper
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.coursistant.lms.module.user.repository.UserMapper">
+<mapper namespace="com.coursistant.lms.module.user.account.repository.UserMapper">
 
     <!-- Always alias snake_case -> camelCase to avoid relying on global underscoreToCamelCase -->
     <sql id="Base_Column_List">
@@ -10,17 +10,16 @@
         username,
         password,
         name,
-        phone,
         email,
         avatar,
         role,
         level,
-        invitation,
-        must_change_password AS mustChangePassword
+        must_change_password AS mustChangePassword,
+        email_notifications AS emailNotifications
     </sql>
 
     <!-- ====== SELECTS ====== -->
-    <select id="selectAll" resultType="com.coursistant.lms.module.user.entity.User">
+    <select id="selectAll" resultType="com.coursistant.lms.module.user.account.entity.User">
         SELECT
         <include refid="Base_Column_List"/>
         FROM User
@@ -29,17 +28,16 @@
             <if test="username != null">AND username = #{username}</if>
             <if test="password != null">AND password = #{password}</if>
             <if test="name != null">AND name = #{name}</if>
-            <if test="phone != null">AND phone = #{phone}</if>
             <if test="email != null">AND email = #{email}</if>
             <if test="avatar != null">AND avatar = #{avatar}</if>
             <if test="role != null">AND role = #{role}</if>
             <if test="level != null">AND level = #{level}</if>
-            <if test="invitation != null">AND invitation = #{invitation}</if>
             <if test="mustChangePassword != null">AND must_change_password = #{mustChangePassword, jdbcType=TINYINT}</if>
+            <if test="emailNotifications != null">AND email_notifications = #{emailNotifications, jdbcType=TINYINT}</if>
         </where>
     </select>
 
-    <select id="selectById" resultType="com.coursistant.lms.module.user.entity.User">
+    <select id="selectById" resultType="com.coursistant.lms.module.user.account.entity.User">
         SELECT
         <include refid="Base_Column_List"/>
         FROM User
@@ -47,7 +45,7 @@
     </select>
 
 
-    <select id="selectStudentsByCourseId" resultType="com.coursistant.lms.module.user.entity.User">
+    <select id="selectStudentsByCourseId" resultType="com.coursistant.lms.module.user.account.entity.User">
         SELECT
         <include refid="Base_Column_List"/>
         FROM User
@@ -56,7 +54,7 @@
         )
     </select>
 
-    <select id="selectUsersByIds" resultType="com.coursistant.lms.module.user.entity.User">
+    <select id="selectUsersByIds" resultType="com.coursistant.lms.module.user.account.entity.User">
         SELECT
         <include refid="Base_Column_List"/>
         FROM User
@@ -73,50 +71,49 @@
         WHERE id = #{id}
     </delete>
 
-    <insert id="insert" parameterType="com.coursistant.lms.module.user.entity.User" useGeneratedKeys="true" keyProperty="id">
+    <insert id="insert" parameterType="com.coursistant.lms.module.user.account.entity.User" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO User
         <trim prefix="(" suffix=")" suffixOverrides=",">
             <if test="id != null">id,</if>
             <if test="username != null">username,</if>
             <if test="password != null">password,</if>
             <if test="name != null">name,</if>
-            <if test="phone != null">phone,</if>
             <if test="email != null">email,</if>
             <if test="avatar != null">avatar,</if>
             <if test="role != null">role,</if>
             <if test="level != null">level,</if>
-            <if test="invitation != null">invitation,</if>
             <if test="mustChangePassword != null">must_change_password,</if>
+            <if test="emailNotifications != null">email_notifications,</if>
         </trim>
         <trim prefix="VALUES (" suffix=")" suffixOverrides=",">
             <if test="id != null">#{id},</if>
             <if test="username != null">#{username},</if>
             <if test="password != null">#{password},</if>
             <if test="name != null">#{name},</if>
-            <if test="phone != null">#{phone},</if>
             <if test="email != null">#{email},</if>
             <if test="avatar != null">#{avatar},</if>
             <if test="role != null">#{role},</if>
             <if test="level != null">#{level},</if>
-            <if test="invitation != null">#{invitation},</if>
             <if test="mustChangePassword != null">#{mustChangePassword, jdbcType=TINYINT},</if>
+            <if test="emailNotifications != null">#{emailNotifications, jdbcType=TINYINT},</if>
         </trim>
     </insert>
 
-    <update id="updateById" parameterType="com.coursistant.lms.module.user.entity.User">
+    <update id="updateById" parameterType="com.coursistant.lms.module.user.account.entity.User">
         UPDATE User
         <set>
             <if test="username != null">username = #{username},</if>
             <if test="password != null">password = #{password},</if>
             <if test="name != null">name = #{name},</if>
-            <if test="phone != null">phone = #{phone},</if>
             <if test="email != null">email = #{email},</if>
             <if test="avatar != null">avatar = #{avatar},</if>
             <if test="role != null">role = #{role},</if>
             <if test="level != null">level = #{level},</if>
-            <if test="invitation != null">invitation = #{invitation},</if>
             <if test="mustChangePassword != null">
                 must_change_password = #{mustChangePassword, jdbcType=TINYINT},
+            </if>
+            <if test="emailNotifications != null">
+                email_notifications = #{emailNotifications, jdbcType=TINYINT},
             </if>
         </set>
         WHERE id = #{id}
@@ -128,13 +125,19 @@
         WHERE id = #{id}
     </update>
 
-    <!-- <select id="selectUserLevelById" parameterType="com.coursistant.lms.module.user.entity.User" resultType="String">
+    <update id="clearAvatar">
+        UPDATE User
+        SET avatar = NULL
+        WHERE id = #{id}
+    </update>
+
+    <!-- <select id="selectUserLevelById" parameterType="com.coursistant.lms.module.user.account.entity.User" resultType="String">
         SELECT level 
         FROM User 
         WHERE id = #{userId}
     </select> -->
 
-    <select id="selectUserLevelById" parameterType="com.coursistant.lms.module.user.entity.User" resultType="String">
+    <select id="selectUserLevelById" parameterType="com.coursistant.lms.module.user.account.entity.User" resultType="String">
         SELECT level 
         FROM User 
         WHERE id = #{userId}

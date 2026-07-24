@@ -8,7 +8,7 @@ import com.coursistant.lms.module.assignment.repository.AssignmentGroupMapper;
 import cn.hutool.core.util.ObjectUtil;
 
 import com.coursistant.lms.module.assignment.entity.GroupMember;
-import com.coursistant.lms.module.user.entity.User;
+import com.coursistant.lms.module.user.account.entity.User;
 import com.coursistant.lms.shared.exception.CustomException;
 
 import org.springframework.stereotype.Service;
@@ -25,7 +25,7 @@ import java.util.Map;
 import java.util.HashMap;
 import com.coursistant.lms.module.assignment.repository.AssignmentMapper;
 import com.coursistant.lms.module.assignment.repository.GroupMemberMapper;
-import com.coursistant.lms.module.user.repository.UserMapper;
+import com.coursistant.lms.module.user.account.repository.UserMapper;
 
 @Service
 public class AssignmentGroupService {
@@ -40,7 +40,7 @@ public class AssignmentGroupService {
     private com.coursistant.lms.module.assignment.repository.AssignmentMapper assignmentMapper;
 
     @Resource
-    private com.coursistant.lms.module.user.repository.UserMapper userMapper;
+    private com.coursistant.lms.module.user.account.repository.UserMapper userMapper;
 
     @Resource
     private GroupJoinRequestService groupJoinRequestService;
@@ -146,7 +146,8 @@ public class AssignmentGroupService {
                 memberDetail.setUsername(student.getUsername());
                 memberDetail.setName(student.getName());
                 memberDetail.setEmail(student.getEmail());
-                memberDetail.setAvatar(student.getAvatar());
+                memberDetail.setAvatar(com.coursistant.lms.module.user.profile.AvatarUrlBuilder.buildStatic(
+                        student.getId(), student.getAvatar()));
                 
                 allMembers.add(memberDetail);
             }

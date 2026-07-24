@@ -26,14 +26,14 @@ import com.auth0.jwt.interfaces.DecodedJWT;
 import com.coursistant.lms.shared.web.Result;
 import com.coursistant.lms.shared.enums.ResultCodeEnum;
 import com.coursistant.lms.shared.enums.RoleEnum;
-import com.coursistant.lms.module.user.entity.Account;
+import com.coursistant.lms.module.user.account.entity.Account;
 import com.coursistant.lms.module.auth.session.dto.AuthResult;
 import com.coursistant.lms.module.auth.oauth.entity.LinkedInUserInfo;
-import com.coursistant.lms.module.user.entity.User;
+import com.coursistant.lms.module.user.account.entity.User;
+import com.coursistant.lms.module.user.profile.AvatarUrlBuilder;
 import com.coursistant.lms.module.auth.oauth.dto.LinkedInDTO;
-import com.coursistant.lms.shared.exception.CustomException;
-import com.coursistant.lms.module.user.repository.UserMapper;
-import com.coursistant.lms.module.user.service.UserService;
+import com.coursistant.lms.module.user.account.repository.UserMapper;
+import com.coursistant.lms.module.user.account.service.UserService;
 import com.coursistant.lms.shared.security.TokenUtils;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -119,21 +119,6 @@ public class OAuthService {
 
         User user = new User();
         BeanUtils.copyProperties(account, user);
-
-        //check
-        String invitation = user.getInvitation();
-        if ("PZMWXN4UUO".equals(invitation)) {
-            user.setInvitation("Local Student"); // 本土学生
-        } else if ("YK0AU47BZ1".equals(invitation)) {
-            user.setInvitation("International Student"); // 留学生
-        } else if ("OPH31E5TOK".equals(invitation)) {
-            user.setInvitation("Developer"); // 开发人员
-        } else if ("Z4G2MZ1XO1".equals(invitation)) {
-            user.setInvitation("Teaching Class"); // 教学班级
-        } else {
-            throw new CustomException(ResultCodeEnum.INVITATION_NOT_EXIST_ERROR);
-        }
-
         userService.add(user);
 
     }
@@ -354,7 +339,7 @@ public class OAuthService {
             authResult.setUsername(dbUser.getUsername());
             authResult.setRole(dbUser.getRole());
             authResult.setLevel(dbUser.getLevel());
-            authResult.setAvatar(dbUser.getAvatar());
+            authResult.setAvatar(AvatarUrlBuilder.buildStatic(dbUser.getId(), dbUser.getAvatar()));
             authResult.setAccessToken(accessToken);
             result = Result.success(authResult);
         }

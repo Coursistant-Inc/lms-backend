@@ -1,6 +1,6 @@
 package com.coursistant.lms.module.auth.admin.entity;
 
-import com.coursistant.lms.module.user.entity.Account;
+import com.coursistant.lms.module.user.account.entity.Account;
 import com.coursistant.lms.shared.util.PasswordEncoderUtil;
 
 import java.io.Serializable;

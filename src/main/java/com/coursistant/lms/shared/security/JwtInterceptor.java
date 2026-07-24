@@ -4,9 +4,9 @@ import com.auth0.jwt.interfaces.DecodedJWT;
 import com.coursistant.lms.shared.api.ErrorType;
 import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.shared.enums.RoleEnum;
-import com.coursistant.lms.module.user.entity.Account;
+import com.coursistant.lms.module.user.account.entity.Account;
 import com.coursistant.lms.module.auth.admin.service.AdminService;
-import com.coursistant.lms.module.user.service.UserService;
+import com.coursistant.lms.module.user.account.service.UserService;
 import com.coursistant.lms.shared.security.JwtParserUtil;
 
 import lombok.extern.slf4j.Slf4j;

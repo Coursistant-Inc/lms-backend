@@ -1,4 +1,4 @@
-package com.coursistant.lms.module.user.controller;
+package com.coursistant.lms.module.user.account.controller;
 
 import java.util.List;
 import java.util.logging.Logger;
@@ -18,8 +18,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.coursistant.lms.shared.api.ApiResponse;
 import com.coursistant.lms.shared.idempotency.Idempotent;
-import com.coursistant.lms.module.user.entity.User;
-import com.coursistant.lms.module.user.service.UserService;
+import com.coursistant.lms.module.user.account.entity.User;
+import com.coursistant.lms.module.user.account.service.UserService;
 
 /**
  * User frontend operation API

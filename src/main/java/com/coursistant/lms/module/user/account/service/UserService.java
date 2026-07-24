@@ -1,4 +1,4 @@
-package com.coursistant.lms.module.user.service;
+package com.coursistant.lms.module.user.account.service;
 
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.StrUtil;
@@ -11,10 +11,11 @@ import com.coursistant.lms.shared.util.PasswordValidator;
 
 import com.coursistant.lms.shared.enums.LevelEnum;
 import com.coursistant.lms.shared.enums.RoleEnum;
-import com.coursistant.lms.module.user.entity.Account;
+import com.coursistant.lms.module.user.account.entity.Account;
 import com.coursistant.lms.module.auth.admin.dto.PasswordDTO;
-import com.coursistant.lms.module.user.entity.User;
-import com.coursistant.lms.module.user.repository.UserMapper;
+import com.coursistant.lms.module.user.account.entity.User;
+import com.coursistant.lms.module.user.account.repository.UserMapper;
+import com.coursistant.lms.module.user.profile.AvatarUrlBuilder;
 import com.coursistant.lms.shared.util.PasswordEncoderUtil;
 import com.coursistant.lms.shared.security.TokenUtils;
 import org.springframework.beans.BeanUtils;
@@ -29,7 +30,7 @@ import java.util.stream.Collectors;
 import java.util.concurrent.TimeUnit;
 
 /**
- * User业务处理 // User business processing
+ * User???? // User business processing
  **/
 @Service
 public class UserService {
@@ -49,7 +50,7 @@ public class UserService {
     private static final long CACHE_EXPIRE_TIME = 300;
 
     /**
-     * 新增 // Add a new user
+     * ?? // Add a new user
      */
     public void add(User user) {
         User dbUser = userMapper.selectByEmail(user.getEmail());
@@ -69,13 +70,16 @@ public class UserService {
         if (ObjectUtil.isEmpty(user.getLevel())) {
             user.setLevel(LevelEnum.STUDENT.level);
         }
+        if (user.getEmailNotifications() == null) {
+            user.setEmailNotifications(true);
+        }
 
         user.setRole(RoleEnum.USER.name());
         userMapper.insert(user);
     }
 
     /**
-     * 删除 // Delete user by ID
+     * ?? // Delete user by ID
      */
     public void deleteById(Integer id) {
         userMapper.deleteById(id);
@@ -83,7 +87,7 @@ public class UserService {
     }
 
     /**
-     * 批量删除 // Batch delete users
+     * ???? // Batch delete users
      */
     public void deleteBatch(List<Integer> ids) {
         for (Integer id : ids) {
@@ -93,7 +97,7 @@ public class UserService {
     }
 
     /**
-     * 修改 // Update user by ID
+     * ?? // Update user by ID
      */
     public void updateById(User user) {
         userMapper.updateById(user);
@@ -102,7 +106,7 @@ public class UserService {
     }
 
     /**
-     * 根据ID查询 // Select user by ID
+     * ??ID?? // Select user by ID
      */
     public User selectById(Integer id) {
         String cacheKey = "user:" + id;
@@ -122,7 +126,7 @@ public class UserService {
     }
 
     /**
-     * 查询所有 // Select all users
+     * ???? // Select all users
      */
     @SuppressWarnings("unchecked")
     public List<User> selectAll(User user) {
@@ -144,7 +148,7 @@ public class UserService {
     }
 
     /**
-     * 批量查询用户 // Batch select users by IDs
+     * ?????? // Batch select users by IDs
      */
     @SuppressWarnings("unchecked")
     public List<User> selectUsersByIds(List<Integer> userIds) {
@@ -175,7 +179,7 @@ public class UserService {
     }
 
     /**
-     * 登录 / User login
+     * ?? / User login
      */
     public AuthResult login(Account account) {
         String cacheKey = "user:email:" + account.getEmail();
@@ -230,7 +234,7 @@ public class UserService {
     }
 
     /**
-     * 注册 / Register
+     * ?? / Register
      */
     public AuthResult register(Account account) {
         if (StrUtil.isBlank(account.getEmail())) {
@@ -259,6 +263,9 @@ public class UserService {
         user.setEmail(email);
         user.setLevel(LevelEnum.STUDENT.level);
         user.setRole(RoleEnum.USER.name());
+        if (user.getEmailNotifications() == null) {
+            user.setEmailNotifications(true);
+        }
         if (StrUtil.isBlank(user.getUsername())) {
             user.setUsername(email.split("@")[0]);
         }
@@ -305,17 +312,15 @@ public class UserService {
     }
 
     /**
-     * 修改密码 Change Password (logged-in user updating password)
+     * ???? Change Password (logged-in user updating password)
      */
     public void updatePassword(PasswordDTO account) {
         User dbUser = userMapper.selectByEmail(account.getEmail());
         if (ObjectUtil.isNull(dbUser)) {
             throw new ApiException(ErrorType.USER_NOT_FOUND, "User Does Not Exist");
         }
-        if (!"reset".equals(account.getType())) {
-            if (!PasswordEncoderUtil.matches(account.getPassword(), dbUser.getPassword())) {
-                throw new ApiException(ErrorType.INVALID_PASSWORD, "Incorrect Original Password");
-            }
+        if (!PasswordEncoderUtil.matches(account.getPassword(), dbUser.getPassword())) {
+            throw new ApiException(ErrorType.INVALID_PASSWORD, "Incorrect Original Password");
         }
 
         PasswordValidator.validate(account.getNewPassword());
@@ -360,14 +365,14 @@ public class UserService {
     }
 
     /**
-     * 查询教师用户 // Select teacher users
+     * ?????? // Select teacher users
      */
     public List<User> selectTeachers() {
         return userMapper.selectTeachers();
     }
 
     /**
-     * 发送邮箱验证码 // Send email verification code
+     * ??????? // Send email verification code
      */
     public void sendEmailVerificationCode(String email, String type) {
         if (ObjectUtil.isEmpty(email)) {
@@ -451,7 +456,7 @@ public class UserService {
         result.setUsername(user.getUsername());
         result.setRole(user.getRole());
         result.setLevel(user.getLevel());
-        result.setAvatar(user.getAvatar());
+        result.setAvatar(AvatarUrlBuilder.buildStatic(user.getId(), user.getAvatar()));
         result.setAccessToken(accessToken);
         result.setRefreshToken(refreshToken);
         return result;

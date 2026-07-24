@@ -5,7 +5,7 @@ import com.coursistant.lms.module.auth.token.dto.RefreshResult;
 import com.coursistant.lms.module.chat.service.CoursistanceService;
 import com.coursistant.lms.module.auth.admin.service.AdminService;
 import com.coursistant.lms.module.auth.token.service.RefreshTokenService;
-import com.coursistant.lms.module.user.service.UserService;
+import com.coursistant.lms.module.user.account.service.UserService;
 import com.coursistant.lms.shared.api.ApiExceptionHandler;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

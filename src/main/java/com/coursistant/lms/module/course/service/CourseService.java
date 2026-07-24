@@ -20,12 +20,12 @@ import com.coursistant.lms.module.course.dto.CourseDetailsDTO;
 import com.coursistant.lms.module.course.entity.CourseSchedule;
 import com.coursistant.lms.module.course.dto.CourseDTO;
 import com.coursistant.lms.module.course.entity.Teach;
-import com.coursistant.lms.module.user.entity.User;
+import com.coursistant.lms.module.user.account.entity.User;
 import com.coursistant.lms.shared.exception.CustomException;
 import com.coursistant.lms.module.course.repository.CourseMapper;
 import com.coursistant.lms.module.course.repository.CourseScheduleMapper;
 import com.coursistant.lms.module.course.repository.LearnMapper;
-import com.coursistant.lms.module.user.service.UserService;
+import com.coursistant.lms.module.user.account.service.UserService;
 
 import cn.hutool.core.util.ObjectUtil;
 import com.coursistant.lms.module.chat.entity.Query;

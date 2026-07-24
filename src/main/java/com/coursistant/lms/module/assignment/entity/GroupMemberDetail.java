@@ -1,6 +1,7 @@
 package com.coursistant.lms.module.assignment.entity;
 
-import com.coursistant.lms.module.user.entity.User;
+import com.coursistant.lms.module.user.account.entity.User;
+import com.coursistant.lms.module.user.profile.AvatarUrlBuilder;
 
 import java.io.Serializable;
 
@@ -48,7 +49,7 @@ public class GroupMemberDetail implements Serializable {
             this.username = user.getUsername();
             this.name = user.getName();
             this.email = user.getEmail();
-            this.avatar = user.getAvatar();
+            this.avatar = AvatarUrlBuilder.buildStatic(user.getId(), user.getAvatar());
         }
     }
 

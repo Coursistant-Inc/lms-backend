@@ -19,11 +19,11 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.coursistant.lms.shared.enums.ResultCodeEnum;
 import com.coursistant.lms.module.course.entity.Learn;
-import com.coursistant.lms.module.user.entity.User;
+import com.coursistant.lms.module.user.account.entity.User;
 import com.coursistant.lms.shared.exception.CustomException;
 import com.coursistant.lms.module.course.repository.LearnMapper;
-import com.coursistant.lms.module.user.repository.UserMapper;
-import com.coursistant.lms.module.user.service.UserService;
+import com.coursistant.lms.module.user.account.repository.UserMapper;
+import com.coursistant.lms.module.user.account.service.UserService;
 
 import cn.hutool.core.util.ObjectUtil;
 import jakarta.annotation.Resource;

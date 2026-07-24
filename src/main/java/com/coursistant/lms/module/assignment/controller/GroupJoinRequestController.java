@@ -5,7 +5,7 @@ import com.coursistant.lms.shared.enums.ResultCodeEnum;
 import com.coursistant.lms.module.assignment.entity.GroupJoinRequest;
 import com.coursistant.lms.module.assignment.service.GroupJoinRequestService;
 import com.coursistant.lms.shared.security.TokenUtils;
-import com.coursistant.lms.module.user.entity.Account;
+import com.coursistant.lms.module.user.account.entity.Account;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.annotation.Resource;

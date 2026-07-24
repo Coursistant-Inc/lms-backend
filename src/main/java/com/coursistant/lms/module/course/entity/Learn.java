@@ -23,8 +23,6 @@ public class Learn implements Serializable {
 
     private String studentUsername;
 
-    private String studentPhone;
-
     private String studentEmail;
 
     private String studentAvatar;
@@ -113,14 +111,6 @@ public class Learn implements Serializable {
 
     public void setStudentUsername(String studentUsername) {
         this.studentUsername = studentUsername;
-    }
-
-    public String getStudentPhone() {
-        return studentPhone;
-    }
-
-    public void setStudentPhone(String studentPhone) {
-        this.studentPhone = studentPhone;
     }
 
     public String getStudentEmail() {

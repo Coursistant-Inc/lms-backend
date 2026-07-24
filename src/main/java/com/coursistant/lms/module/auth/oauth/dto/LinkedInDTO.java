@@ -1,6 +1,6 @@
 package com.coursistant.lms.module.auth.oauth.dto;
 
-import com.coursistant.lms.module.user.entity.Account;
+import com.coursistant.lms.module.user.account.entity.Account;
 import com.coursistant.lms.module.auth.oauth.entity.LinkedInUserInfo;
 
 import java.io.Serializable;

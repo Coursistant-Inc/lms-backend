@@ -24,8 +24,6 @@ public class Course implements Serializable {
 
     private String teacherName;
 
-    private String teacherPhone;
-
     private String teacherEmail;
 
     private String title;
@@ -86,14 +84,6 @@ public class Course implements Serializable {
 
     public void setTeacherName(String teacherName) {
         this.teacherName = teacherName;
-    }
-
-    public String getTeacherPhone() {
-        return teacherPhone;
-    }
-
-    public void setTeacherPhone(String teacherPhone) {
-        this.teacherPhone = teacherPhone;
     }
 
     public String getTeacherEmail() {

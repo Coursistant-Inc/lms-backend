@@ -17,9 +17,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.coursistant.lms.shared.web.Result;
 import com.coursistant.lms.module.interaction.entity.Announcement;
-import com.coursistant.lms.module.user.entity.User;
+import com.coursistant.lms.module.user.account.entity.User;
 import com.coursistant.lms.module.interaction.service.AnnouncementService;
-import com.coursistant.lms.module.user.service.UserService;
+import com.coursistant.lms.module.user.account.service.UserService;
 import com.coursistant.lms.shared.util.TimeZoneUtils;
 import org.springframework.web.bind.annotation.*;
 

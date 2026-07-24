@@ -14,8 +14,6 @@ public class PasswordDTO {
 
     private String role;
 
-    private String type;
-
     private String code;
 
     public String getPassword() {
@@ -54,14 +52,6 @@ public class PasswordDTO {
 
     public void setRole(String role) {
         this.role = role;
-    }
-
-    public String getType() {
-        return type;
-    }
-
-    public void setType(String type) {
-        this.type = type;
     }
 
     public String getCode() {
