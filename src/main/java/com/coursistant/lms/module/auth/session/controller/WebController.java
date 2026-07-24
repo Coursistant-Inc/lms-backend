@@ -157,6 +157,7 @@ public class WebController {
         return ApiResponse.success();
     }
 
+    @Idempotent
     @PostMapping("/v1/auth/email-verifications/register/validate")
     public ApiResponse<Void> validateRegisterEmailVerification(@RequestParam("email") String email,
                                                     @RequestParam("code") String code) {
@@ -170,6 +171,7 @@ public class WebController {
         return ApiResponse.success();
     }
 
+    @Idempotent
     @PostMapping("/v1/auth/email-verifications/reset/validate")
     public ApiResponse<Void> validateResetEmailVerification(@RequestParam("email") String email,
                                                  @RequestParam("code") String code) {
@@ -196,6 +198,7 @@ public class WebController {
         return ApiResponse.success();
     }
 
+    @Idempotent
     @PostMapping("/v1/auth/password-resets")
     public ApiResponse<Void> resetPassword(@RequestBody PasswordDTO dto) {
         if (StrUtil.isBlank(dto.getEmail()) || StrUtil.isBlank(dto.getNewPassword())) {

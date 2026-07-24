@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.coursistant.lms.shared.web.Result;
+import com.coursistant.lms.shared.idempotency.Idempotent;
 import com.coursistant.lms.shared.enums.ResultCodeEnum;
 import com.coursistant.lms.module.course.controller.CourseController;
 import com.coursistant.lms.module.user.entity.Profile;
@@ -364,6 +365,7 @@ public class ProfileController {
         return Result.success(avatarPath);
     }
 
+    @Idempotent
     @DeleteMapping("/delete/avatar/{id}")
     public Result deleteAvatar(@PathVariable Integer id)
     {
@@ -386,6 +388,7 @@ public class ProfileController {
      * 根据 ID 删除个人资料
      * Delete profile by ID
      */
+    @Idempotent
     @DeleteMapping("/delete/{id}")
     public Result deleteProfile(@PathVariable Integer id) {
 

@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.view.RedirectView;
 
 import com.coursistant.lms.shared.web.Result;
+import com.coursistant.lms.shared.idempotency.Idempotent;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.coursistant.lms.module.course.entity.Teach;
 
@@ -65,6 +66,7 @@ public class ThirdPartyController {
      *
      * continue
      */
+    @Idempotent
     @PostMapping("/register")
     public Result registerWithThirdParty(@RequestBody Account account) {
         logRequest("registerWithThirdParty", null);

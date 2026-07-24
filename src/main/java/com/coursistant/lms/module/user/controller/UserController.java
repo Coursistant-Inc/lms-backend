@@ -50,6 +50,7 @@ public class UserController {
         return ApiResponse.success();
     }
 
+    @Idempotent
     @DeleteMapping("/{id}")
     public ApiResponse<Void> deleteById(@PathVariable Integer id) {
         logRequest("deleteById", id.toString());
@@ -58,6 +59,7 @@ public class UserController {
         return ApiResponse.success();
     }
 
+    @Idempotent
     @DeleteMapping("/batch")
     public ApiResponse<Void> deleteBatch(@RequestBody List<Integer> ids) {
         logRequest("deleteBatch", ids.toString());
@@ -66,6 +68,7 @@ public class UserController {
         return ApiResponse.success();
     }
 
+    @Idempotent
     @PutMapping("/{id}")
     public ApiResponse<Void> updateById(@PathVariable Integer id, @RequestBody User user) {
         user.setId(id);
@@ -102,6 +105,7 @@ public class UserController {
         return ApiResponse.success(list);
     }
 
+    @Idempotent
     @PatchMapping("/{id}/password-status")
     public ApiResponse<Void> markPasswordChanged(@PathVariable Integer id) {
         logRequest("markPasswordChanged", id.toString());

@@ -1,6 +1,7 @@
 package com.coursistant.lms.module.auth.admin.controller;
 
 import com.coursistant.lms.shared.api.ApiResponse;
+import com.coursistant.lms.shared.idempotency.Idempotent;
 import com.coursistant.lms.module.auth.admin.entity.Admin;
 import com.coursistant.lms.module.auth.admin.service.AdminService;
 import org.springframework.web.bind.annotation.*;
@@ -12,7 +13,7 @@ import java.util.logging.Logger;
  * Admin frontend operation API
  **/
 @RestController
-@RequestMapping("/v1/admins")
+@RequestMapping("/v2/admins")
 public class AdminController {
 
     @Resource
@@ -28,6 +29,7 @@ public class AdminController {
         logger.info(() -> String.format("End %s: %s", methodName, response));
     }
 
+    @Idempotent
     @PostMapping
     public ApiResponse<Void> add(@RequestBody Admin admin) {
         logRequest("add", admin.toString());
@@ -36,6 +38,7 @@ public class AdminController {
         return ApiResponse.success();
     }
 
+    @Idempotent
     @DeleteMapping("/{id}")
     public ApiResponse<Void> deleteById(@PathVariable Integer id) {
         logRequest("deleteById", id.toString());
@@ -44,6 +47,7 @@ public class AdminController {
         return ApiResponse.success();
     }
 
+    @Idempotent
     @DeleteMapping("/batch")
     public ApiResponse<Void> deleteBatch(@RequestBody List<Integer> ids) {
         logRequest("deleteBatch", ids.toString());
@@ -52,6 +56,7 @@ public class AdminController {
         return ApiResponse.success();
     }
 
+    @Idempotent
     @PutMapping("/{id}")
     public ApiResponse<Void> updateById(@PathVariable Integer id, @RequestBody Admin admin) {
         admin.setId(id);
