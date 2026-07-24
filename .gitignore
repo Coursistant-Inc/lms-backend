@@ -30,3 +30,6 @@ Thumbs.db
 private.pem
 *.md
 xlearnedu_west2.pem
+
+# 🔹 本地测试资源
+test_avatars/

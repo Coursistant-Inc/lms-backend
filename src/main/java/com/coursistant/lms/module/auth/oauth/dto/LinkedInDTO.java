@@ -4,11 +4,9 @@ import com.coursistant.lms.module.user.account.entity.Account;
 import com.coursistant.lms.module.auth.oauth.entity.LinkedInUserInfo;
 
 import java.io.Serializable;
-import com.coursistant.lms.module.course.entity.Teach;
 
 /**
- * teach 数据传输对象
- * Teach Data Transfer Object (DTO)
+ * LinkedIn OAuth data transfer object
  */
 public class LinkedInDTO implements Serializable {
     private static final long serialVersionUID = 1L;

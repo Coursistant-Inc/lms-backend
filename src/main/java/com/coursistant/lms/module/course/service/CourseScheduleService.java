@@ -14,10 +14,9 @@ import jakarta.annotation.Resource;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import com.coursistant.lms.module.course.entity.CourseSchedule;
-import com.coursistant.lms.module.course.entity.Learn;
-import com.coursistant.lms.module.course.entity.Teach;
 
 
 /**
@@ -29,10 +28,6 @@ public class CourseScheduleService {
 
     @Resource
     private CourseScheduleMapper courseScheduleMapper;
-    @Resource
-    private LearnService learnService;
-    @Resource
-    private TeachService teachService;
 
     /**
      * 新增
@@ -98,35 +93,11 @@ public class CourseScheduleService {
     }
 
     public List<CalendarDisplayEvent> selectCourseOccurrencesByTeacherId(Integer teacherId, LocalDateTime start, LocalDateTime end){
-
-        List<CalendarDisplayEvent> result = new ArrayList<>();
-
-        List<Teach> dbteach=teachService.selectByTeacherId(teacherId);
-        if (dbteach == null || dbteach.isEmpty()) {
-            return result;
-        }
-        for (Teach singleLearn:dbteach){
-            List<CalendarDisplayEvent> courses=selectCourseOccurrences(singleLearn.getCourseId(),start,end);
-            result.addAll(courses);
-        }
-
-        return result;
+        return Collections.emptyList();
     }
 
     public List<CalendarDisplayEvent> selectCourseOccurrencesByStudentId(Integer studentId, LocalDateTime start, LocalDateTime end){
-
-        List<CalendarDisplayEvent> result = new ArrayList<>();
-
-        List<Learn> dblearn=learnService.selectByStudentId(studentId);
-        if (dblearn == null || dblearn.isEmpty()) {
-            return result;
-        }
-        for (Learn singleLearn:dblearn){
-            List<CalendarDisplayEvent> courses=selectCourseOccurrences(singleLearn.getCourseId(),start,end);
-            result.addAll(courses);
-        }
-
-        return result;
+        return Collections.emptyList();
     }
 
     public List<CalendarDisplayEvent> selectCourseOccurrences(Integer courseId, LocalDateTime start, LocalDateTime end) {

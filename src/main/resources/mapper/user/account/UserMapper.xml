@@ -49,9 +49,7 @@
         SELECT
         <include refid="Base_Column_List"/>
         FROM User
-        WHERE id IN (
-        SELECT user_id FROM Learn WHERE course_id = #{courseId}
-        )
+        WHERE 1 = 0
     </select>
 
     <select id="selectUsersByIds" resultType="com.coursistant.lms.module.user.account.entity.User">

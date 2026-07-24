@@ -22,12 +22,10 @@ import org.springframework.web.servlet.view.RedirectView;
 import com.coursistant.lms.shared.web.Result;
 import com.coursistant.lms.shared.idempotency.Idempotent;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.coursistant.lms.module.course.entity.Teach;
 
 
 /**
- * 部门信息表前端操作接口
- * Teach frontend operation API
+ * Third-party OAuth frontend operation API
  **/
 @RestController
 @RequestMapping("/thirdParty")

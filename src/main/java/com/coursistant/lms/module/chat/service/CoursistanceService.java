@@ -2,18 +2,10 @@ package com.coursistant.lms.module.chat.service;
 
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.io.FileUtil;
-import com.coursistant.lms.shared.enums.ResultCodeEnum;
-import com.coursistant.lms.shared.enums.LevelEnum;
 import com.coursistant.lms.module.chat.entity.Chat;
 import com.coursistant.lms.module.chat.entity.Dialogue;
-import com.coursistant.lms.module.course.entity.Learn;
 import com.coursistant.lms.module.chat.entity.Query;
-import com.coursistant.lms.module.course.entity.Teach;
-import com.coursistant.lms.module.user.account.entity.User;
-import com.coursistant.lms.shared.exception.CustomException;
 import com.coursistant.lms.module.chat.repository.DialogueMapper;
-import com.coursistant.lms.module.course.service.LearnService;
-import com.coursistant.lms.module.course.service.TeachService;
 import com.coursistant.lms.module.user.account.service.UserService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -52,10 +44,6 @@ public class CoursistanceService {
     private ChatService chatService;
     @Resource
     private UserService userService;
-    @Resource
-    private TeachService teachService;
-    @Resource
-    private LearnService learnService;
     @Resource
     private DialogueService dialogueService;
     @Resource
@@ -120,37 +108,8 @@ public class CoursistanceService {
         chat.setTime(LocalDateTime.now());
         chat.setDialogueId(dialogueId);
 
-        //get user info
-        String course_list="";
-        List<String> courseList = new ArrayList<>();
-        if (courseId==0) {
-
-            User currentUser =userService.selectById(userId);
-            if (ObjectUtil.isEmpty(currentUser)) {
-                throw new CustomException(ResultCodeEnum.USER_NOT_EXIST_ERROR);
-            }
-            if (LevelEnum.INSTRUCTOR.level.equals(currentUser.getLevel())
-                    || LevelEnum.TA.level.equals(currentUser.getLevel())) {
-                Teach serTeach=new Teach();
-                serTeach.setUserId(userId);
-                List<Teach> teaches=teachService.selectAll(serTeach);
-                for (int i = 0; i < teaches.size(); i++) {
-                    courseList.add(String.valueOf(teaches.get(i).getCourseId()));
-                }
-                course_list = String.join(",", courseList);
-
-            }
-            else{
-                Learn serLearn=new Learn();
-                serLearn.setUserId(userId);
-                List<Learn> learns=learnService.selectAll(serLearn);
-                for (int i = 0; i < learns.size(); i++) {
-                    courseList.add(String.valueOf(learns.get(i).getCourseId()));
-                }
-                course_list = String.join(",", courseList);
-
-            }
-        }
+        // Enrollment model removed; without an explicit courseId the course list is empty.
+        String course_list = "";
 
 
 

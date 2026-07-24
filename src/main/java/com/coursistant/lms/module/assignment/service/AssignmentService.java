@@ -7,22 +7,17 @@ import com.coursistant.lms.module.quiz.entity.Quiz;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.ObjectUtil;
 import com.coursistant.lms.module.assignment.dto.AssignmentGroupDTO;
-import com.coursistant.lms.module.course.repository.LearnMapper;
 import com.coursistant.lms.module.assignment.repository.AssignmentItemMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.coursistant.lms.module.quiz.repository.QuizMapper;
-import com.coursistant.lms.module.course.service.LearnService;
 import com.coursistant.lms.module.assignment.service.AssignmentFileService;
 import com.coursistant.lms.shared.enums.ResultCodeEnum;
 import com.coursistant.lms.module.calendar.entity.CalendarDisplayEvent;
 import com.coursistant.lms.module.assignment.dto.AssignmentDTO;
 import com.coursistant.lms.shared.exception.CustomException;
 import com.coursistant.lms.module.assignment.repository.AssignmentMapper;
-import com.coursistant.lms.module.course.service.LearnService;
-import com.coursistant.lms.module.assignment.service.AssignmentFileService;
-import com.coursistant.lms.shared.util.EmailUtil;
 import com.coursistant.lms.shared.util.TimeZoneUtils;
 
 import cn.hutool.core.bean.BeanUtil;
@@ -44,12 +39,6 @@ public class AssignmentService {
     @Resource
     private AssignmentMapper assignmentMapper;
 
-
-    @Resource
-    private EmailUtil emailUtil;
-
-    @Resource
-    private LearnMapper     learnMapper;
 
     @Resource
     private QuizMapper quizMapper;
@@ -125,34 +114,9 @@ public class AssignmentService {
     public void publishGrade(Assignment assignment) {
         int row= assignmentMapper.updateById(assignment);
 
-        if (row==1 && assignment.getGradePublish()==true){
-            Assignment updated=assignmentMapper.selectById(assignment.getId());
-            List<String> emails=learnMapper.selectEmailsByCourseId(updated.getCourseId());
-            String courseName = "course " + updated.getCourseId();
-            if (emails != null && !emails.isEmpty()) {
-                // 去重 & 过滤空邮箱
-                List<String> targets = emails.stream()
-                        .filter(Objects::nonNull)
-                        .map(String::trim)
-                        .filter(s -> !s.isEmpty())
-                        .distinct()
-                        .toList();
-
-                String subject = "Grade Released — " + updated.getTitle();
-                String content = ""
-                        + "Your grade for **" + updated.getTitle() + "** in the course **" + courseName + "** has been released.\n\n"
-                        + "Best regards,\n"
-                        + "**Coursistant xLearn Team**";
-
-                for (String to : targets) {
-                    try {
-                        emailUtil.sendEmail(to, subject, content);
-                    } catch (Exception e) {
-                        // 打印错误日志，但不中断后续邮件发送
-                        System.out.print("Failed to send email to: " + to);
-                    }
-                }
-            }
+        // Enrollment model removed; grade-publish emails are skipped until a new recipient source exists.
+        if (row == 1 && Boolean.TRUE.equals(assignment.getGradePublish())) {
+            assignmentMapper.selectById(assignment.getId());
         }
     }
 

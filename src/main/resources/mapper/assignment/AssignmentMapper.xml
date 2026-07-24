@@ -195,10 +195,7 @@
     <select id="selectAssignmentsByUserAndTimeRange" resultType="com.coursistant.lms.module.assignment.entity.Assignment">
         SELECT a.*
         FROM Assignment a
-                 INNER JOIN Learn l ON a.course_id = l.course_id
-        WHERE l.user_id = #{userId}
-          AND a.due IS NOT NULL
-          AND a.due BETWEEN #{start} AND #{end}
+        WHERE 1 = 0
     </select>
 
 

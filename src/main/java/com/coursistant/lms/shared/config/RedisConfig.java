@@ -60,31 +60,6 @@ public class RedisConfig {
 
 
     /**
-     * 教学所有数据的 RedisTemplate（数据库 4）
-     * Teach All RedisTemplate (db4)
-     */
-    @Bean(name = "teachAllRedisTemplate")
-    public RedisTemplate<String, Object> teachAllRedisTemplate() {
-        return createRedisTemplate(createLettuceConnectionFactory(4));
-    }
-
-
-    /**
-     * 学习所有数据的 RedisTemplate（数据库 5）
-     * Learn All RedisTemplate (db5)
-     */
-    @Bean(name = "learnAllRedisTemplate")
-    public RedisTemplate<String, Object> learnAllRedisTemplate() {
-        return createRedisTemplate(createLettuceConnectionFactory(5));
-    }
-
-    @Bean(name = "learnPageRedisTemplate")
-    public RedisTemplate<String, Object> learnPageRedisTemplate() {
-        return createRedisTemplate(createLettuceConnectionFactory(5));
-    }
-
-
-    /**
      * 幂等系统 StringRedisTemplate（数据库 2）
      * Idempotency StringRedisTemplate (db2)
      */
