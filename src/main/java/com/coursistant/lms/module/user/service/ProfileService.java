@@ -69,7 +69,7 @@ public class ProfileService {
 
     // public void updateUserPrivacy(String privacy, Integer userId)
     // {
-    //     if(privacy.equals(LevelEnum.SELF.level)||privacy.equals(LevelEnum.TEACHER.level)||privacy.equals(LevelEnum.STUDENT.level))
+    //     if(privacy.equals(LevelEnum.SELF.level)||privacy.equals(LevelEnum.INSTRUCTOR.level)||privacy.equals(LevelEnum.STUDENT.level)||privacy.equals(LevelEnum.TA.level))
     //     {
     //         profileMapper.updateUserPrivacyById(privacy, userId);
     //     }

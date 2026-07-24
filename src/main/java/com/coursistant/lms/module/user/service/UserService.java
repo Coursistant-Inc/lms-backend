@@ -6,7 +6,6 @@ import com.coursistant.lms.shared.api.ErrorType;
 import com.coursistant.lms.module.auth.token.service.RefreshTokenService;
 import com.coursistant.lms.shared.util.EmailUtil;
 
-import com.coursistant.lms.shared.enums.AdminEnums;
 import com.coursistant.lms.shared.enums.LevelEnum;
 import com.coursistant.lms.shared.enums.RoleEnum;
 import com.coursistant.lms.module.user.entity.Account;
@@ -443,33 +442,6 @@ public class UserService {
     public String getUserLevel(Integer id)
     {
         return userMapper.selectUserLevelById(id);
-    }
-
-    public void updateName(String currentName, String newName, Integer userId)
-    {
-        userMapper.addNameChangeRequest(currentName, newName, userId);
-    }
-
-    public void reviewNameChangeRequest(String decision, Integer userId, Integer adminId)
-    {
-        User user = userMapper.selectById(adminId);
-        String role = user.getRole();
-
-        if (!role.equals("ADMIN"))
-        {
-            throw new ApiException(ErrorType.ACCESS_DENIED, "No Permission to Perform This Action");
-        }
-        
-        if (decision.equals(AdminEnums.APPROVED)|| decision.equals(AdminEnums.DENIED))
-        {
-            userMapper.reviewNameChangeRequest(decision, userId, adminId);
-        }
-
-        else
-        {
-            throw new ApiException(ErrorType.BAD_REQUEST, "Invalid request data");
-        }
-
     }
 
     public void markPasswordChanged(Integer id) {

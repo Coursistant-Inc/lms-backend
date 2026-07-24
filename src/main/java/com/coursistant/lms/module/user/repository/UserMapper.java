@@ -61,7 +61,7 @@ public interface UserMapper {
      * 查询所有教师
      * Query all teachers
      */
-    @Select("select * from User where level = 'TEACHER'")
+    @Select("select * from User where level = 'INSTRUCTOR'")
     List<User> selectTeachers();
 
     /**
@@ -71,10 +71,6 @@ public interface UserMapper {
 
     // @Select("SELECT level FROM User WHERE id = #{id}")
     String selectUserLevelById(Integer id);
-
-    void addNameChangeRequest(String currentName, String newName, Integer userId);
-
-    void reviewNameChangeRequest(String decision, Integer userId, Integer adminId);
 
     List<User> selectUsersByIds(List<Integer> userIds);
 

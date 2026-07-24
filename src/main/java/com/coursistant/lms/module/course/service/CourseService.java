@@ -14,6 +14,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import com.coursistant.lms.shared.enums.ResultCodeEnum;
+import com.coursistant.lms.shared.enums.LevelEnum;
 import com.coursistant.lms.module.course.entity.Course;
 import com.coursistant.lms.module.course.dto.CourseDetailsDTO;
 import com.coursistant.lms.module.course.entity.CourseSchedule;
@@ -169,10 +170,11 @@ public class CourseService {
         if (ObjectUtil.isNull(user)){
             throw new CustomException(ResultCodeEnum.USER_NOT_EXIST_ERROR);
         }else{
-            if ("TEACHER".equals(user.getLevel())){
+            if (LevelEnum.INSTRUCTOR.level.equals(user.getLevel())
+                    || LevelEnum.TA.level.equals(user.getLevel())) {
                 courses=courseMapper.selectByUserIdFromTeach(user.getId());
             }
-            if ("STUDENT".equals(user.getLevel())){
+            if (LevelEnum.STUDENT.level.equals(user.getLevel())){
                 courses=courseMapper.selectByUserIdFromLearn(user.getId());
             }
         }
@@ -185,10 +187,11 @@ public class CourseService {
         if (ObjectUtil.isNull(user)){
             throw new CustomException(ResultCodeEnum.USER_NOT_EXIST_ERROR);
         }else{
-            if ("TEACHER".equals(user.getLevel())){
+            if (LevelEnum.INSTRUCTOR.level.equals(user.getLevel())
+                    || LevelEnum.TA.level.equals(user.getLevel())) {
                 courses=courseMapper.selectByUserIdFromTeach(user.getId());
             }
-            if ("STUDENT".equals(user.getLevel())){
+            if (LevelEnum.STUDENT.level.equals(user.getLevel())){
                 courses=courseMapper.selectByUserIdFromLearn(user.getId());
             }
         }

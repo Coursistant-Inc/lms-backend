@@ -3,6 +3,7 @@ package com.coursistant.lms.module.chat.service;
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.io.FileUtil;
 import com.coursistant.lms.shared.enums.ResultCodeEnum;
+import com.coursistant.lms.shared.enums.LevelEnum;
 import com.coursistant.lms.module.chat.entity.Chat;
 import com.coursistant.lms.module.chat.entity.Dialogue;
 import com.coursistant.lms.module.course.entity.Learn;
@@ -130,7 +131,8 @@ public class CoursistanceService {
             if (ObjectUtil.isEmpty(currentUser)) {
                 throw new CustomException(ResultCodeEnum.USER_NOT_EXIST_ERROR);
             }
-            if ("TEACHER".equals(currentUser.getLevel())) {
+            if (LevelEnum.INSTRUCTOR.level.equals(currentUser.getLevel())
+                    || LevelEnum.TA.level.equals(currentUser.getLevel())) {
                 Teach serTeach=new Teach();
                 serTeach.setUserId(userId);
                 List<Teach> teaches=teachService.selectAll(serTeach);

@@ -24,7 +24,7 @@ import com.coursistant.lms.module.user.service.UserService;
  * User frontend operation API
  **/
 @RestController
-@RequestMapping("/v1/users")
+@RequestMapping("/v2/users")
 public class UserController {
 
     @Resource
@@ -82,14 +82,14 @@ public class UserController {
     }
 
     /**
-     * List users. Pass role=teacher to return teachers only.
+     * List users. Pass role=instructor to return instructors only.
      */
     @GetMapping
     public ApiResponse<List<User>> selectAll(
             User user,
             @RequestParam(value = "role", required = false) String role) {
-        if ("teacher".equalsIgnoreCase(role)) {
-            logRequest("selectTeachers", "role=teacher");
+        if ("instructor".equalsIgnoreCase(role) || "teacher".equalsIgnoreCase(role)) {
+            logRequest("selectTeachers", "role=instructor");
             List<User> list = userService.selectTeachers();
             logResponse("selectTeachers", "null");
             return ApiResponse.success(list);
@@ -98,24 +98,6 @@ public class UserController {
         List<User> list = userService.selectAll(user);
         logResponse("selectAll", null);
         return ApiResponse.success(list);
-    }
-
-    @PostMapping("/{userId}/name-change-requests")
-    public ApiResponse<String> nameChangeRequest(
-            @PathVariable Integer userId,
-            @RequestParam("currentName") String currentName,
-            @RequestParam("newName") String newName) {
-        userService.updateName(currentName, newName, userId);
-        return ApiResponse.success("Your request has been received. You will be notified once a decision has been taken");
-    }
-
-    @PostMapping("/{userId}/name-change-requests/review")
-    public ApiResponse<Void> reviewNameChangeRequest(
-            @PathVariable Integer userId,
-            @RequestParam("decision") String decision,
-            @RequestParam("adminId") Integer adminId) {
-        userService.reviewNameChangeRequest(decision, userId, adminId);
-        return ApiResponse.success();
     }
 
     @PatchMapping("/{id}/password-status")
