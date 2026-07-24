@@ -5,7 +5,6 @@ import com.coursistant.lms.shared.enums.ResultCodeEnum;
 import com.coursistant.lms.module.calendar.entity.CalendarDisplayEvent;
 import com.coursistant.lms.shared.exception.CustomException;
 import com.coursistant.lms.module.assignment.service.AssignmentService;
-import com.coursistant.lms.module.course.service.CourseScheduleService;
 import com.coursistant.lms.module.calendar.service.CalendarEventService;
 import com.coursistant.lms.shared.util.TimeZoneUtils;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -30,9 +29,6 @@ public class CalendarController {
 
     @Resource
     private CalendarEventService calendarEventService;
-
-    @Resource
-    private CourseScheduleService courseScheduleService;
 
     @Resource
     private AssignmentService assignmentService;
@@ -60,17 +56,11 @@ public class CalendarController {
 
         logRequest("selectCourseOccurrencesByStudentId", "Id=" + id + ", start=" + start + ", end=" + end);
 
-        List<CalendarDisplayEvent> list = new ArrayList<>();
-
-        if (type.equals("student")){
-            list = courseScheduleService.selectCourseOccurrencesByStudentId(id, start, end);
-        }
-        else if (type.equals("teacher")){
-            list = courseScheduleService.selectCourseOccurrencesByTeacherId(id, start, end);
-        }
-        else{
+        // CourseSchedule removed; keep endpoint and return empty list
+        if (!type.equals("student") && !type.equals("teacher")) {
             throw new CustomException(ResultCodeEnum.PARAM_ERROR);
         }
+        List<CalendarDisplayEvent> list = new ArrayList<>();
 
         logResponse("selectCourseOccurrencesById", "size=" + list.size());
 
@@ -125,28 +115,16 @@ public class CalendarController {
         logRequest("selectUnifiedById", "Id=" + id + ", start=" + start + ", end=" + end + ", zone=" + timezone);
 
 
-        // 查询课程安排
-        List<CalendarDisplayEvent> courseEvents = new ArrayList<>();
-        List<CalendarDisplayEvent> list=new ArrayList<>();
-
-        List<CalendarDisplayEvent> personalEvents = calendarEventService.selectDisplayEventsByUserAndTimeRange(id, start, end,zone);
-        // 查询私人日历事件（假设 studentId 即 userId）
-        if (type.equals("student")){
-            courseEvents = courseScheduleService.selectCourseOccurrencesByStudentId(id, start, end);
-            list = assignmentService.selectAssignmentByUserAndTimeRange(id, start, end,zone);
-        }
-        else if (type.equals("teacher")){
-            courseEvents = courseScheduleService.selectCourseOccurrencesByTeacherId(id, start, end);
-        }
-        else{
+        // CourseSchedule removed; only personal + assignment events remain
+        List<CalendarDisplayEvent> list = new ArrayList<>();
+        List<CalendarDisplayEvent> personalEvents = calendarEventService.selectDisplayEventsByUserAndTimeRange(id, start, end, zone);
+        if (type.equals("student")) {
+            list = assignmentService.selectAssignmentByUserAndTimeRange(id, start, end, zone);
+        } else if (!type.equals("teacher")) {
             throw new CustomException(ResultCodeEnum.PARAM_ERROR);
         }
 
-
-
-        // 合并所有事件
         List<CalendarDisplayEvent> allEvents = new ArrayList<>();
-        allEvents.addAll(courseEvents);
         allEvents.addAll(personalEvents);
         allEvents.addAll(list);
 

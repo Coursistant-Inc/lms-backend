@@ -6,7 +6,6 @@ import com.coursistant.lms.module.file.entity.DiskFiles;
 import com.coursistant.lms.module.file.entity.FileSummary;
 import com.coursistant.lms.module.assignment.entity.AssignmentItem;
 import com.coursistant.lms.module.assignment.service.AssignmentContentItemService;
-import com.coursistant.lms.module.course.service.CourseContentItemService;
 import com.coursistant.lms.module.file.service.DiskFilesService;
 import jakarta.annotation.Resource;
 import org.springframework.web.bind.annotation.*;

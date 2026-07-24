@@ -2,11 +2,10 @@ package com.coursistant.lms.module.assignment.entity;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
-import com.coursistant.lms.module.file.entity.Folder;
 
 /**
- * Folder 实体类
- * 表示课程中的 Lecture 文件夹
+ * AssignmentItem 实体类
+ * Assignment content item entity
  */
 public class AssignmentItem implements Serializable {
     private static final long serialVersionUID = 1L;

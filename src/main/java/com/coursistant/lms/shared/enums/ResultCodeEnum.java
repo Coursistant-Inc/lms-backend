@@ -71,7 +71,6 @@ public enum ResultCodeEnum {
     SUBMISSION_ATTEMPT_EXCEEDED_ERROR("4051", "Submission Attempts Exceeded"),
 
     EVENT_NOT_EXIST_ERROR("4048", "Event Not Exist"),
-    COURSE_SCHEDULE_NOT_EXIST_ERROR("4049", "Course Schedule Not Exist"),
     GROUP_NOT_EXIST_ERROR("4050", "Group Not Exist"),
 
     /**
