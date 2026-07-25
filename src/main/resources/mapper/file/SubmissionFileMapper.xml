@@ -11,7 +11,7 @@
     <select id="selectAll" resultType="com.coursistant.lms.module.file.entity.SubmissionFile">
         select
         <include refid="Base_Column_List"/>
-        from AssignmentSubmissionFile
+        from assignment_submission_file
         <where>
             <if test="id != null">and id = #{id}</if>
             <if test="submissionId != null">and submission_id = #{submissionId}</if>
@@ -23,26 +23,26 @@
     <select id="selectSubmissionInfo" resultType="com.coursistant.lms.module.file.entity.SubmissionFile">
         select
         <include refid="Base_Column_List"/>
-        from AssignmentSubmissionFile
+        from assignment_submission_file
         where submission_id = #{submissionId}
     </select>
 
     <select id="selectById" resultType="com.coursistant.lms.module.file.entity.SubmissionFile">
         select
         <include refid="Base_Column_List"/>
-        from AssignmentSubmissionFile
+        from assignment_submission_file
         where id = #{id}
     </select>
 
     <select id="selectBySubmissionId" resultType="com.coursistant.lms.module.file.entity.SubmissionFile">
         select
         <include refid="Base_Column_List"/>
-        from AssignmentSubmissionFile
+        from assignment_submission_file
         where submission_id = #{submissionId}
     </select>
 
     <insert id="insert" parameterType="com.coursistant.lms.module.file.entity.SubmissionFile" useGeneratedKeys="true" keyProperty="id">
-        insert into AssignmentSubmissionFile
+        insert into assignment_submission_file
         <trim prefix="(" suffix=")" suffixOverrides=",">
             <if test="submissionId != null">submission_id,</if>
             <if test="type != null">type,</if>
@@ -66,7 +66,7 @@
     </insert>
 
     <update id="updateById" parameterType="com.coursistant.lms.module.file.entity.SubmissionFile">
-        update AssignmentSubmissionFile
+        update assignment_submission_file
         <set>
             <if test="submissionId != null">submission_id = #{submissionId},</if>
             <if test="type != null">type = #{type},</if>
@@ -81,18 +81,18 @@
     </update>
 
     <delete id="deleteById">
-        delete from AssignmentSubmissionFile where id = #{id}
+        delete from assignment_submission_file where id = #{id}
     </delete>
 
     <delete id="deleteBySubmissionId" parameterType="int">
-        delete from AssignmentSubmissionFile where submission_id = #{submissionId}
+        delete from assignment_submission_file where submission_id = #{submissionId}
     </delete>
 
 
     <select id="selectFileBySubmissionId" resultType="com.coursistant.lms.module.file.entity.SubmissionFile">
         SELECT
         <include refid="Base_Column_List"/>
-        FROM AssignmentSubmissionFile
+        FROM assignment_submission_file
         WHERE submission_id = #{submissionId}
         AND type = 'file'
     </select>

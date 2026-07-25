@@ -52,7 +52,7 @@ public interface DialogueMapper {
      * 根据用户 ID 查询
      * Query Dialogues by user ID
      */
-    @Select("select * from Dialogue where user_id = #{userId}")
+    @Select("select * from dialogue where user_id = #{userId}")
     List<Dialogue> selectByUserId(Integer userId);
 
     /**

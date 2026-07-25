@@ -11,7 +11,7 @@
     <select id="selectAll" resultType="com.coursistant.lms.module.auth.admin.entity.Admin">
         select
         <include refid="Base_Column_List" />
-        from Admin
+        from admin
         <where>
             <if test="id != null"> and id= #{id}</if>
             <if test="username != null"> and username like concat('%', #{username}, '%')</if>
@@ -27,17 +27,17 @@
     <select id="selectById" resultType="com.coursistant.lms.module.auth.admin.entity.Admin">
         select
         <include refid="Base_Column_List" />
-        from Admin
+        from admin
         where id = #{id}
     </select>
 
     <delete id="deleteById">
-        delete from Admin
+        delete from admin
         where  id = #{id}
     </delete>
 
     <insert id="insert" parameterType="com.coursistant.lms.module.auth.admin.entity.Admin" useGeneratedKeys="true">
-        insert into Admin
+        insert into admin
         <trim prefix="(" suffix=")" suffixOverrides=",">
             <if test="id != null">id,</if>
             <if test="username != null">username,</if>
@@ -61,7 +61,7 @@
     </insert>
 
     <update id="updateById" parameterType="com.coursistant.lms.module.auth.admin.entity.Admin">
-        update Admin
+        update admin
         <set>
             <if test="username != null">
                 username = #{username},

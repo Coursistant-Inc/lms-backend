@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.coursistant.lms.module.course.enrollment.repository.EnrollmentAuditLogMapper">
+
+    <sql id="Base_Column_List">
+        id,
+        course_id AS courseId,
+        target_user_id AS targetUserId,
+        actor_type AS actorType,
+        actor_id AS actorId,
+        action,
+        detail_json AS detailJson,
+        created_at AS createdAt
+    </sql>
+
+    <insert id="insert" parameterType="com.coursistant.lms.module.course.enrollment.entity.EnrollmentAuditLog"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO enrollment_audit_log (
+            course_id,
+            target_user_id,
+            actor_type,
+            actor_id,
+            action,
+            detail_json
+        ) VALUES (
+            #{courseId},
+            #{targetUserId},
+            #{actorType},
+            #{actorId},
+            #{action},
+            #{detailJson}
+        )
+    </insert>
+
+    <select id="selectByCourseId" resultType="com.coursistant.lms.module.course.enrollment.entity.EnrollmentAuditLog">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM enrollment_audit_log
+        WHERE course_id = #{courseId}
+        ORDER BY created_at DESC
+    </select>
+
+</mapper>

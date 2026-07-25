@@ -59,7 +59,7 @@ public interface AssignmentMapper {
      * 根据 user_id 查询 Assignment
      * Query Assignments by user_id
      */
-    @Select("SELECT * FROM Assignment WHERE user_id = #{userId}")
+    @Select("SELECT * FROM assignment WHERE user_id = #{userId}")
     List<Assignment> selectByUserId(Integer userId);
 
     List<AssignmentDTO> selectAssignmentsByCourseAndUserId(Integer userId,Integer courseId);
@@ -68,7 +68,7 @@ public interface AssignmentMapper {
      * 根据 course_id 查询 Assignment
      * Query Assignments by course_id
      */
-    @Select("SELECT * FROM Assignment WHERE course_id = #{courseId}")
+    @Select("SELECT * FROM assignment WHERE course_id = #{courseId}")
     List<Assignment> selectByCourseId(Integer courseId);
 
 

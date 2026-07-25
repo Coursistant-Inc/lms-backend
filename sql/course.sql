@@ -2,7 +2,7 @@
 -- instructor_id / creator_id reference User(id); tenant_id has no Tenant table yet.
 -- course_code is intentionally not unique (duplicates allowed).
 
-CREATE TABLE Course (
+CREATE TABLE course (
   id INT NOT NULL AUTO_INCREMENT,
   tenant_id INT NOT NULL,
   course_code VARCHAR(32) NOT NULL,

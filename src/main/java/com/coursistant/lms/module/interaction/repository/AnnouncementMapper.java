@@ -50,14 +50,14 @@ public interface AnnouncementMapper {
      * 根据 user_id 查询 Announcement
      * Query Announcements by user_id
      */
-    @Select("SELECT * FROM Announcement WHERE user_id = #{userId}")
+    @Select("SELECT * FROM announcement WHERE user_id = #{userId}")
     List<Announcement> selectByUserId(Integer userId);
 
     /**
      * 根据 course_id 查询 Announcement
      * Query Announcements by course_id
      */
-    @Select("SELECT * FROM Announcement WHERE course_id = #{courseId}")
+    @Select("SELECT * FROM announcement WHERE course_id = #{courseId}")
     List<Announcement> selectByCourseId(Integer courseId);
 
     List<Announcement> selectLatestAnnouncementByCourseId(List<Integer> courseIds);

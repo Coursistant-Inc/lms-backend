@@ -1,0 +1,25 @@
+package com.coursistant.lms.module.course.enrollment.repository;
+
+import com.coursistant.lms.module.course.enrollment.entity.Enrollment;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+
+import java.util.List;
+
+@Mapper
+public interface EnrollmentMapper {
+
+    int insert(Enrollment enrollment);
+
+    int updateById(Enrollment enrollment);
+
+    Enrollment selectById(@Param("id") Integer id);
+
+    Enrollment selectByCourseIdAndUserId(@Param("courseId") Integer courseId, @Param("userId") Integer userId);
+
+    List<Enrollment> selectByCourseId(@Param("courseId") Integer courseId);
+
+    List<Enrollment> selectActiveByUserId(@Param("userId") Integer userId);
+
+    int countByCourseId(@Param("courseId") Integer courseId);
+}

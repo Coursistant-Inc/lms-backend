@@ -13,7 +13,7 @@
     <select id="selectAll" resultType="com.coursistant.lms.module.assignment.entity.AssignmentSubmission">
         SELECT
         <include refid="Base_Column_List" />
-        FROM AssignmentSubmission
+        FROM assignment_submission
         <where>
             <if test="id != null"> AND id = #{id} </if>
             <if test="assignmentId != null"> AND assignment_id = #{assignmentId} </if>
@@ -36,19 +36,19 @@
     <select id="selectById" resultType="com.coursistant.lms.module.assignment.entity.AssignmentSubmission">
         SELECT
         <include refid="Base_Column_List" />
-        FROM AssignmentSubmission
+        FROM assignment_submission
         WHERE id = #{id}
     </select>
 
     <!-- 通过 ID 删除 AssignmentSubmission // Delete AssignmentSubmission by ID -->
     <delete id="deleteById">
-        DELETE FROM AssignmentSubmission
+        DELETE FROM assignment_submission
         WHERE id = #{id}
     </delete>
 
     <!-- 插入新的 AssignmentSubmission // Insert a new AssignmentSubmission -->
     <insert id="insert" parameterType="com.coursistant.lms.module.assignment.entity.AssignmentSubmission" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO AssignmentSubmission
+        INSERT INTO assignment_submission
         <trim prefix="(" suffix=")" suffixOverrides=",">
             <if test="id != null">id,</if>
             <if test="assignmentId != null">assignment_id,</if>
@@ -79,9 +79,9 @@
         </trim>
     </insert>
 
-    <!-- 更新 AssignmentSubmission // Update AssignmentSubmission -->
+    <!-- 更新 AssignmentSubmission // Update assignment_submission -->
     <update id="updateById" parameterType="com.coursistant.lms.module.assignment.entity.AssignmentSubmission">
-        UPDATE AssignmentSubmission
+        UPDATE assignment_submission
         <set>
             <if test="assignmentId != null">assignment_id = #{assignmentId},</if>
             <if test="studentId != null">student_id = #{studentId},</if>
@@ -100,14 +100,14 @@
     </update>
 
     <update id="clearFinalFlag">
-        UPDATE AssignmentSubmission
+        UPDATE assignment_submission
         SET is_final = false
         WHERE assignment_id = #{assignmentId} AND student_id = #{studentId}
     </update>
 
     <select id="selectFinalGradedByAssignmentId" resultType="com.coursistant.lms.module.assignment.entity.AssignmentSubmission">
         SELECT *
-        FROM AssignmentSubmission
+        FROM assignment_submission
         WHERE assignment_id = #{assignmentId}
           AND is_final = 1
           AND grade IS NOT NULL
@@ -118,7 +118,7 @@
     <select id="selectFinalByAssignmentIdAndUserId" resultType="com.coursistant.lms.module.assignment.entity.AssignmentSubmission">
         SELECT
         <include refid="Base_Column_List" />
-        FROM AssignmentSubmission
+        FROM assignment_submission
         WHERE assignment_id = #{assignmentId}
         AND student_id = #{studentId}
         AND is_final = 1
@@ -128,7 +128,7 @@
     <select id="selectFinalByAssignmentIdAndGroupId" resultType="com.coursistant.lms.module.assignment.entity.AssignmentSubmission">
         SELECT
         <include refid="Base_Column_List" />
-        FROM AssignmentSubmission
+        FROM assignment_submission
         WHERE assignment_id = #{assignmentId}
         AND group_id = #{groupId}
         AND is_final = 1
@@ -137,7 +137,7 @@
 
     <select id="selectFinalByAssignmentIdsAndStudent" resultType="com.coursistant.lms.module.assignment.entity.AssignmentSubmission">
         SELECT *
-        FROM AssignmentSubmission
+        FROM assignment_submission
         WHERE student_id = #{studentId}
         AND is_final = 1
         AND assignment_id IN

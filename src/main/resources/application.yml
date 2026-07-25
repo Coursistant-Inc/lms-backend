@@ -132,6 +132,10 @@ minio:
   access-key: ${MINIO_ACCESS_KEY}
   secret-key: ${MINIO_SECRET_KEY}
 
+lms:
+  content:
+    max-file-bytes: 209715200
+
 ip: localhost
 
 api:

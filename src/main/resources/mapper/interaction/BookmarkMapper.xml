@@ -12,7 +12,7 @@
     <select id="selectAll" resultType="com.coursistant.lms.module.interaction.entity.Bookmark">
         select
         <include refid="Base_Column_List" />
-        from Bookmark
+        from bookmark
         <where>
             <if test="id != null"> and id= #{id}</if>
             <if test="userId != null"> and user_id= #{userId}</if>
@@ -24,19 +24,19 @@
     <select id="selectById" resultType="com.coursistant.lms.module.interaction.entity.Bookmark">
         select
         <include refid="Base_Column_List" />
-        from Bookmark
+        from bookmark
         where id = #{id}
     </select>
 
     <!-- 通过 ID 删除 Bookmark // Delete Bookmark by ID -->
     <delete id="deleteById">
-        delete from Bookmark
+        delete from bookmark
         where id = #{id}
     </delete>
 
     <!-- 插入新的 Bookmark // Insert a new Bookmark -->
     <insert id="insert" parameterType="com.coursistant.lms.module.interaction.entity.Bookmark" useGeneratedKeys="true">
-        insert into Bookmark
+        insert into bookmark
         <trim prefix="(" suffix=")" suffixOverrides=",">
             <if test="id != null">id,</if>
             <if test="userId != null">user_id,</if>
@@ -49,9 +49,9 @@
         </trim>
     </insert>
 
-    <!-- 更新 Bookmark // Update Bookmark -->
+    <!-- 更新 Bookmark // Update bookmark -->
     <update id="updateById" parameterType="com.coursistant.lms.module.interaction.entity.Bookmark">
-        update Bookmark
+        update bookmark
         <set>
             <if test="userId != null">
                 user_id = #{userId},

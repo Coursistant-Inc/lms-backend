@@ -47,6 +47,6 @@ public interface FeedbackMapper {
      * 查询某个用户的所有反馈
      * Query all Feedback records for a specific user
      */
-    @Select("SELECT * FROM Feedback WHERE user_id = #{userId}")
+    @Select("SELECT * FROM feedback WHERE user_id = #{userId}")
     List<Feedback> selectByUserId(Integer userId);
 }

@@ -11,7 +11,7 @@
     <select id="selectAll" resultType="com.coursistant.lms.module.chat.entity.Dialogue">
         select
         <include refid="Base_Column_List" />
-        from Dialogue
+        from dialogue
         <where>
             <if test="id != null"> and id = #{id}</if>
             <if test="userId != null"> and user_id = #{userId}</if>
@@ -28,8 +28,8 @@
 
     <select id="selectByUserIdAndKeyword" resultType="com.coursistant.lms.module.chat.entity.Dialogue">
         select distinct d.* 
-        from Dialogue d
-        LEFT JOIN Chat c ON d.id = c.dialogue_id
+        from dialogue d
+        LEFT JOIN chat c ON d.id = c.dialogue_id
         WHERE d.user_id = #{userId}
         AND (d.`delete` IS NULL OR d.`delete` = FALSE)
         AND (
@@ -45,22 +45,22 @@
     <select id="selectById" resultType="com.coursistant.lms.module.chat.entity.Dialogue">
         select
         <include refid="Base_Column_List" />
-        from Dialogue
+        from dialogue
         where id = #{id}
     </select>
 
     <delete id="deleteById">
-        delete from Dialogue
+        delete from dialogue
         where id = #{id}
     </delete>
 
     <select id="selectMaxId" resultType="java.lang.Integer">
-        SELECT MAX(id) FROM Dialogue
+        SELECT MAX(id) FROM dialogue
     </select>
 
 
     <insert id="insert" parameterType="com.coursistant.lms.module.chat.entity.Dialogue" useGeneratedKeys="true" keyProperty="id">
-        insert into Dialogue
+        insert into dialogue
         <trim prefix="(" suffix=")" suffixOverrides=",">
             <if test="id != null">id,</if>
             <if test="userId != null">user_id,</if>
@@ -86,7 +86,7 @@
     </insert>
 
     <update id="updateById" parameterType="com.coursistant.lms.module.chat.entity.Dialogue">
-        update Dialogue
+        update dialogue
         <set>
             <if test="userId != null">
                 user_id = #{userId},

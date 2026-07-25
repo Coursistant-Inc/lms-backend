@@ -11,7 +11,7 @@
     <select id="selectAll" resultType="com.coursistant.lms.module.quiz.entity.QuizItem">
         select
         <include refid="Base_Column_List"/>
-        from QuizItem
+        from quiz_item
         <where>
             <if test="id != null">and id = #{id}</if>
             <if test="quizId != null">and quiz_id = #{quizId}</if>
@@ -26,16 +26,16 @@
     <select id="selectById" resultType="com.coursistant.lms.module.quiz.entity.QuizItem">
         select
         <include refid="Base_Column_List"/>
-        from QuizItem
+        from quiz_item
         where id = #{id}
     </select>
 
     <delete id="deleteById">
-        delete from QuizItem where id = #{id}
+        delete from quiz_item where id = #{id}
     </delete>
 
     <insert id="insert" parameterType="com.coursistant.lms.module.quiz.entity.QuizItem" useGeneratedKeys="true" keyProperty="id">
-        insert into QuizItem
+        insert into quiz_item
         <trim prefix="(" suffix=")" suffixOverrides=",">
             <if test="id != null">id,</if>
             <if test="quizId != null">quiz_id,</if>
@@ -57,7 +57,7 @@
     </insert>
 
     <update id="updateById" parameterType="com.coursistant.lms.module.quiz.entity.QuizItem">
-        update QuizItem
+        update quiz_item
         <set>
             <if test="quizId != null">quiz_id = #{quizId},</if>
             <if test="questionId != null">question_id = #{questionId},</if>
@@ -73,7 +73,7 @@
     <select id="selectByQuestionId" resultType="com.coursistant.lms.module.quiz.entity.QuizItem">
         select
         <include refid="Base_Column_List"/>
-        from QuizItem
+        from quiz_item
         where question_id = #{questionId}
     </select>
 
@@ -81,7 +81,7 @@
     <select id="selectByQuizId" resultType="com.coursistant.lms.module.quiz.entity.QuizItem">
         select
         <include refid="Base_Column_List"/>
-        from QuizItem
+        from quiz_item
         where quiz_id = #{quizId}
     </select>
 

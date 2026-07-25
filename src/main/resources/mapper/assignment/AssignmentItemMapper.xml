@@ -11,7 +11,7 @@
     <select id="selectAll" resultType="com.coursistant.lms.module.assignment.entity.AssignmentItem">
         select
         <include refid="Base_Column_List"/>
-        from AssignmentItem
+        from assignment_item
         <where>
             <if test="id != null">and id = #{id}</if>
             
@@ -24,26 +24,26 @@
     <select id="selectAssignmentInfo" resultType="com.coursistant.lms.module.assignment.entity.AssignmentItem">
         SELECT
         <include refid="Base_Column_List"/>
-        FROM AssignmentItem
+        FROM assignment_item
         WHERE assignment_id = #{assignmentId}
     </select>
 
     <select id="selectById" resultType="com.coursistant.lms.module.assignment.entity.AssignmentItem">
         select
         <include refid="Base_Column_List"/>
-        from AssignmentItem
+        from assignment_item
         where id = #{id}
     </select>
 
     <select id="selectByAssignmentId" resultType="com.coursistant.lms.module.assignment.entity.AssignmentItem">
         select
         <include refid="Base_Column_List"/>
-        from AssignmentItem
+        from assignment_item
         where assignment_id = #{assignmentId}
     </select>
 
     <insert id="insert" parameterType="com.coursistant.lms.module.assignment.entity.AssignmentItem" useGeneratedKeys="true" keyProperty="id">
-        insert into AssignmentItem
+        insert into assignment_item
         <trim prefix="(" suffix=")" suffixOverrides=",">
             <if test="assignmentId != null">assignment_id,</if>
             <if test="type != null">type,</if>
@@ -67,7 +67,7 @@
     </insert>
 
     <update id="updateById" parameterType="com.coursistant.lms.module.assignment.entity.AssignmentItem">
-        update AssignmentItem
+        update assignment_item
         <set>
             <if test="assignmentId != null">assignment_id = #{assignmentId},</if>
             <if test="type != null">type = #{type},</if>
@@ -82,19 +82,19 @@
     </update>
 
     <delete id="deleteById">
-        delete from AssignmentItem where id = #{id}
+        delete from assignment_item where id = #{id}
     </delete>
 
     <delete id="deleteByAssignmentId" parameterType="int">
-        delete from AssignmentItem where assignment_id = #{assignmentId}
+        delete from assignment_item where assignment_id = #{assignmentId}
     </delete>
 
 
     <select id="selectAssignmentFilesByCourseId" resultType="com.coursistant.lms.module.file.entity.DiskFiles">
         SELECT DISTINCT d.*
-        FROM Diskfiles d
-                 JOIN AssignmentItem ai ON d.id = ai.file_id
-                 JOIN Assignment a ON ai.assignment_id = a.id
+        FROM diskfiles d
+                 JOIN assignment_item ai ON d.id = ai.file_id
+                 JOIN assignment a ON ai.assignment_id = a.id
         WHERE a.course_id = #{courseId}
           AND ai.type = 'file'
           AND d.`delete` = 0

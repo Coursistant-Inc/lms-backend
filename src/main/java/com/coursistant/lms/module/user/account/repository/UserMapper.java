@@ -47,21 +47,21 @@ public interface UserMapper {
      * 根据用户名查询
      * Query a User record by username
      */
-    @Select("select * from User where username = #{username}")
+    @Select("select * from user where username = #{username}")
     User selectByUsername(String username);
 
     /**
      * 根据邮箱查询
      * Query a User record by email
      */
-    @Select("select * from User where email = #{email}")
+    @Select("select * from user where email = #{email}")
     User selectByEmail(String email);
 
     /**
      * 查询所有教师
      * Query all teachers
      */
-    @Select("select * from User where level = 'INSTRUCTOR'")
+    @Select("select * from user where level = 'INSTRUCTOR'")
     List<User> selectTeachers();
 
     /**
@@ -69,7 +69,7 @@ public interface UserMapper {
      */
     List<User> selectStudentsByCourseId(Integer courseId);
 
-    // @Select("SELECT level FROM User WHERE id = #{id}")
+    // @Select("SELECT level FROM user WHERE id = #{id}")
     String selectUserLevelById(Integer id);
 
     List<User> selectUsersByIds(List<Integer> userIds);

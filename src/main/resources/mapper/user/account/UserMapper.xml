@@ -22,7 +22,7 @@
     <select id="selectAll" resultType="com.coursistant.lms.module.user.account.entity.User">
         SELECT
         <include refid="Base_Column_List"/>
-        FROM User
+        FROM user
         <where>
             <if test="id != null">AND id = #{id}</if>
             <if test="username != null">AND username = #{username}</if>
@@ -40,7 +40,7 @@
     <select id="selectById" resultType="com.coursistant.lms.module.user.account.entity.User">
         SELECT
         <include refid="Base_Column_List"/>
-        FROM User
+        FROM user
         WHERE id = #{id}
     </select>
 
@@ -48,14 +48,14 @@
     <select id="selectStudentsByCourseId" resultType="com.coursistant.lms.module.user.account.entity.User">
         SELECT
         <include refid="Base_Column_List"/>
-        FROM User
+        FROM user
         WHERE 1 = 0
     </select>
 
     <select id="selectUsersByIds" resultType="com.coursistant.lms.module.user.account.entity.User">
         SELECT
         <include refid="Base_Column_List"/>
-        FROM User
+        FROM user
         WHERE id IN
         <foreach item="id" collection="userIds" open="(" separator="," close=")">
             #{id}
@@ -65,12 +65,12 @@
     <!-- ====== DML ====== -->
 
     <delete id="deleteById">
-        DELETE FROM User
+        DELETE FROM user
         WHERE id = #{id}
     </delete>
 
     <insert id="insert" parameterType="com.coursistant.lms.module.user.account.entity.User" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO User
+        INSERT INTO user
         <trim prefix="(" suffix=")" suffixOverrides=",">
             <if test="id != null">id,</if>
             <if test="username != null">username,</if>
@@ -98,7 +98,7 @@
     </insert>
 
     <update id="updateById" parameterType="com.coursistant.lms.module.user.account.entity.User">
-        UPDATE User
+        UPDATE user
         <set>
             <if test="username != null">username = #{username},</if>
             <if test="password != null">password = #{password},</if>
@@ -118,26 +118,26 @@
     </update>
 
     <update id="updateMustChangePassword">
-        UPDATE User
+        UPDATE user
         SET must_change_password = #{mustChangePassword, jdbcType=TINYINT}
         WHERE id = #{id}
     </update>
 
     <update id="clearAvatar">
-        UPDATE User
+        UPDATE user
         SET avatar = NULL
         WHERE id = #{id}
     </update>
 
     <!-- <select id="selectUserLevelById" parameterType="com.coursistant.lms.module.user.account.entity.User" resultType="String">
         SELECT level 
-        FROM User 
+        FROM user 
         WHERE id = #{userId}
     </select> -->
 
     <select id="selectUserLevelById" parameterType="com.coursistant.lms.module.user.account.entity.User" resultType="String">
         SELECT level 
-        FROM User 
+        FROM user 
         WHERE id = #{userId}
     </select>
 

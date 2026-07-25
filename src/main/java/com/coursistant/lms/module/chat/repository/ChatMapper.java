@@ -43,7 +43,7 @@ public interface ChatMapper {
      */
     List<Chat> selectAll(Chat chat);
 
-    @Select("select * from Chat where dialogue_id = #{dialogueId}")
+    @Select("select * from chat where dialogue_id = #{dialogueId}")
     List<Chat> selectByDialogueId(Integer dialogueId);
 
     int updateSoftDeleteByDialogueId(@Param("dialogueId") Integer dialogueId,
@@ -51,7 +51,7 @@ public interface ChatMapper {
                                      @Param("deleteTime") LocalDateTime deleteTime);
 
 
-    @Select("SELECT * FROM Chat WHERE dialogue_id = #{dialogueId} ORDER BY id DESC LIMIT 5")
+    @Select("SELECT * FROM chat WHERE dialogue_id = #{dialogueId} ORDER BY id DESC LIMIT 5")
     List<Chat> selectTop5ByDialogueId(Integer dialogueId);
 
 }

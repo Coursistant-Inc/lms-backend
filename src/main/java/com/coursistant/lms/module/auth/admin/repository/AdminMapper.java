@@ -42,9 +42,9 @@ public interface AdminMapper {
      */
     List<Admin> selectAll(Admin admin);
 
-    @Select("select * from Admin where username = #{username}")
+    @Select("select * from admin where username = #{username}")
     Admin selectByUsername(String username);
 
-    @Select("select * from Admin where email = #{email}")
+    @Select("select * from admin where email = #{email}")
     Admin selectByEmail(String email);
 }

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.coursistant.lms.module.course.content.syllabus.repository.CourseSyllabusVersionMapper">
+
+    <sql id="Base_Column_List">
+        id,
+        course_id AS courseId,
+        object_key AS objectKey,
+        original_filename AS originalFilename,
+        content_type AS contentType,
+        size_bytes AS sizeBytes,
+        uploaded_by AS uploadedBy,
+        created_at AS createdAt
+    </sql>
+
+    <select id="selectById" resultType="com.coursistant.lms.module.course.content.syllabus.entity.CourseSyllabusVersion">
+        SELECT <include refid="Base_Column_List"/>
+        FROM course_syllabus_version WHERE id = #{id}
+    </select>
+
+    <insert id="insert" parameterType="com.coursistant.lms.module.course.content.syllabus.entity.CourseSyllabusVersion"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO course_syllabus_version (
+            course_id, object_key, original_filename, content_type, size_bytes, uploaded_by
+        ) VALUES (
+            #{courseId}, #{objectKey}, #{originalFilename}, #{contentType}, #{sizeBytes}, #{uploadedBy}
+        )
+    </insert>
+</mapper>

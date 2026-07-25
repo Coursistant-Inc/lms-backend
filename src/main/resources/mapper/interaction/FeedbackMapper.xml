@@ -12,7 +12,7 @@
     <select id="selectAll" resultType="com.coursistant.lms.module.interaction.entity.Feedback">
         select
         <include refid="Base_Column_List"/>
-        from Feedback
+        from feedback
         <where>
             <if test="id != null"> and id = #{id}</if>
             <if test="userId != null"> and user_id = #{userId}</if>
@@ -28,18 +28,18 @@
     <select id="selectById" resultType="com.coursistant.lms.module.interaction.entity.Feedback">
         select
         <include refid="Base_Column_List"/>
-        from Feedback
+        from feedback
         where id = #{id}
     </select>
 
     <!-- 通过 ID 删除 // Delete Feedback by ID -->
     <delete id="deleteById">
-        delete from Feedback where id = #{id}
+        delete from feedback where id = #{id}
     </delete>
 
     <!-- 插入新的 Feedback // Insert a new Feedback record -->
     <insert id="insert" parameterType="com.coursistant.lms.module.interaction.entity.Feedback" useGeneratedKeys="true" keyProperty="id">
-        insert into Feedback
+        insert into feedback
         <trim prefix="(" suffix=")" suffixOverrides=",">
             <if test="userId != null">user_id,</if>
             <if test="courseId != null">course_id,</if>
@@ -56,9 +56,9 @@
         </trim>
     </insert>
 
-    <!-- 更新 Feedback // Update Feedback -->
+    <!-- 更新 Feedback // Update feedback -->
     <update id="updateById" parameterType="com.coursistant.lms.module.interaction.entity.Feedback">
-        update Feedback
+        update feedback
         <set>
             <if test="userId != null">
                 user_id = #{userId},

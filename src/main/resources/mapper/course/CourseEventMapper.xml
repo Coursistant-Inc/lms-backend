@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.coursistant.lms.module.course.event.repository.CourseEventMapper">
+
+    <sql id="Base_Column_List">
+        id,
+        course_id AS courseId,
+        name,
+        event_date AS eventDate,
+        start_time AS startTime,
+        end_time AS endTime,
+        location,
+        description,
+        created_at AS createdAt,
+        updated_at AS updatedAt
+    </sql>
+
+    <select id="selectById" resultType="com.coursistant.lms.module.course.event.entity.CourseEvent">
+        SELECT <include refid="Base_Column_List"/>
+        FROM course_event WHERE id = #{id}
+    </select>
+
+    <select id="selectByCourseId" resultType="com.coursistant.lms.module.course.event.entity.CourseEvent">
+        SELECT <include refid="Base_Column_List"/>
+        FROM course_event
+        WHERE course_id = #{courseId}
+        ORDER BY event_date, start_time
+    </select>
+
+    <insert id="insert" parameterType="com.coursistant.lms.module.course.event.entity.CourseEvent"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO course_event (
+            course_id, name, event_date, start_time, end_time, location, description
+        ) VALUES (
+            #{courseId}, #{name}, #{eventDate}, #{startTime}, #{endTime}, #{location}, #{description}
+        )
+    </insert>
+
+    <update id="updateById" parameterType="com.coursistant.lms.module.course.event.entity.CourseEvent">
+        UPDATE course_event
+        <set>
+            <if test="name != null">name = #{name},</if>
+            <if test="eventDate != null">event_date = #{eventDate},</if>
+            <if test="startTime != null">start_time = #{startTime},</if>
+            <if test="endTime != null">end_time = #{endTime},</if>
+            <if test="location != null">location = #{location},</if>
+            <if test="description != null">description = #{description},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM course_event WHERE id = #{id}
+    </delete>
+</mapper>

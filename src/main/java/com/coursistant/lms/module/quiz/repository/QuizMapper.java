@@ -40,7 +40,7 @@ public interface QuizMapper {
     List<Quiz> selectAll(Quiz filter);
 
 
-    @Select("SELECT * FROM Quiz WHERE course_id = #{courseId}")
+    @Select("SELECT * FROM quiz WHERE course_id = #{courseId}")
     List<Quiz> selectByCourseId(Integer courseId);
 
 

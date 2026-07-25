@@ -10,12 +10,12 @@
     </sql>
 
     <insert id="insert" parameterType="com.coursistant.lms.module.assignment.entity.AssignmentGroup" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO AssignmentGroup (assignment_id, course_id, title, group_name, group_status, join_mode, description, curr_student_count, max_student, create_at)
+        INSERT INTO assignment_group (assignment_id, course_id, title, group_name, group_status, join_mode, description, curr_student_count, max_student, create_at)
         VALUES (#{assignmentId}, #{courseId}, #{title}, #{groupName}, #{groupStatus}, #{joinMode}, #{description}, #{currStudentCount}, #{maxStudent}, #{createAt})
     </insert>
 
     <update id="updateById" parameterType="com.coursistant.lms.module.assignment.entity.AssignmentGroup">
-        UPDATE AssignmentGroup
+        UPDATE assignment_group
         <set>
             <if test="assignmentId != null">assignment_id = #{assignmentId},</if>
             <if test="courseId != null">course_id = #{courseId},</if>
@@ -32,18 +32,18 @@
     </update>
 
     <delete id="deleteById" parameterType="int">
-        DELETE FROM AssignmentGroup WHERE id = #{id}
+        DELETE FROM assignment_group WHERE id = #{id}
     </delete>
 
     <select id="selectById" resultType="com.coursistant.lms.module.assignment.entity.AssignmentGroup">
         SELECT <include refid="Base_Column_List"/>
-        FROM AssignmentGroup
+        FROM assignment_group
         WHERE id = #{id}
     </select>
 
     <select id="selectAll" resultType="com.coursistant.lms.module.assignment.entity.AssignmentGroup" parameterType="com.coursistant.lms.module.assignment.entity.AssignmentGroup">
         SELECT <include refid="Base_Column_List"/>
-        FROM AssignmentGroup
+        FROM assignment_group
         <where>
             <if test="assignmentId != null">AND assignment_id = #{assignmentId}</if>
             <if test="courseId != null">AND course_id = #{courseId}</if>
@@ -55,25 +55,25 @@
 
     <select id="selectByAssignmentId" resultType="com.coursistant.lms.module.assignment.entity.AssignmentGroup">
         SELECT <include refid="Base_Column_List"/>
-        FROM AssignmentGroup
+        FROM assignment_group
         WHERE assignment_id = #{assignmentId}
     </select>
 
     <select id="selectByCourseId" resultType="com.coursistant.lms.module.assignment.entity.AssignmentGroup">
         SELECT <include refid="Base_Column_List"/>
-        FROM AssignmentGroup
+        FROM assignment_group
         WHERE course_id = #{courseId}
     </select>
 
     <select id="selectByCourseIdAndAssignmentId" resultType="com.coursistant.lms.module.assignment.entity.AssignmentGroup">
         SELECT <include refid="Base_Column_List"/>
-        FROM AssignmentGroup
+        FROM assignment_group
         WHERE course_id = #{courseId} AND assignment_id = #{assignmentId}
     </select>
 
     <select id="selectAvailableGroups" resultType="com.coursistant.lms.module.assignment.entity.AssignmentGroup">
         SELECT <include refid="Base_Column_List"/>
-        FROM AssignmentGroup
+        FROM assignment_group
         WHERE course_id = #{courseId} 
         AND assignment_id = #{assignmentId}
         AND group_status = 'active'

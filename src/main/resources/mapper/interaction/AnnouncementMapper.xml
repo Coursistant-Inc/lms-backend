@@ -19,8 +19,8 @@
         a.created_at as createdAt,
         a.updated_at as updatedAt,
         u.name as name
-        from Announcement a
-        left join User u on a.user_id = u.id
+        from announcement a
+        left join user u on a.user_id = u.id
         <where>
             <if test="id != null"> and a.id = #{id}</if>
             <if test="userId != null"> and a.user_id = #{userId}</if>
@@ -46,8 +46,8 @@
             a.created_at as createdAt,
             a.updated_at as updatedAt,
             u.name as name
-        from Announcement a
-                 left join User u on a.user_id = u.id
+        from announcement a
+                 left join user u on a.user_id = u.id
         where a.id = #{id}
     </select>
 
@@ -56,12 +56,12 @@
 
     <!-- 通过 ID 删除 -->
     <delete id="deleteById">
-        delete from Announcement where id = #{id}
+        delete from announcement where id = #{id}
     </delete>
 
     <!-- 插入新的 Announcement -->
     <insert id="insert" parameterType="com.coursistant.lms.module.interaction.entity.Announcement" useGeneratedKeys="true" keyProperty="id">
-        insert into Announcement
+        insert into announcement
         <trim prefix="(" suffix=")" suffixOverrides=",">
             <if test="userId != null">user_id,</if>
             <if test="courseId != null">course_id,</if>
@@ -79,7 +79,7 @@
 
     <!-- 更新 Announcement -->
     <update id="updateById" parameterType="com.coursistant.lms.module.interaction.entity.Announcement">
-        update Announcement
+        update announcement
         <set>
             <if test="userId != null"> user_id = #{userId}, </if>
             <if test="courseId != null"> course_id = #{courseId}, </if>
@@ -91,14 +91,14 @@
 
     <select id="selectLatestAnnouncementByCourseId" resultType="com.coursistant.lms.module.interaction.dto.AnnouncementDTO">
         SELECT c.name AS courseName, u.name AS userName,a1.title ,a1.content,a1.created_at,a1.updated_at,af.path,(SELECT COUNT(*)
-        FROM AnnouncementRead
+        FROM announcement_read
         WHERE announcement_id = a1.id AND course_id = c.id) AS count
-        FROM  Course c
-        INNER JOIN Announcement a1
+        FROM course c
+        INNER JOIN announcement a1
         ON c.id = a1.course_id
-        INNER JOIN User u
+        INNER JOIN user u
         ON a1.user_id = u.id
-        LEFT JOIN AnnouncementFile af
+        LEFT JOIN announcement_file af
         ON af.announcement_id = a1.id
         WHERE c.id IN
         <foreach item="courseId" index="index" collection="list"
@@ -107,19 +107,19 @@
         </foreach>
         AND GREATEST(a1.created_at,a1.updated_at) = (
         SELECT MAX(GREATEST(a2.created_at,a2.updated_at))
-        FROM Announcement a2
+        FROM announcement a2
         WHERE a2.course_id = a1.course_id);
 
     </select>
 
     <insert id="readAnnouncement" parameterType="Integer">
-        INSERT INTO AnnouncementRead (student_id, announcement_id, course_id)
+        INSERT INTO announcement_read (student_id, announcement_id, course_id)
         VALUES (#{userId},#{announcementId}, #{courseId})
     </insert>
 
     <select id="isAnnouncementRead" parameterType="Integer" resultType="Integer">
         SELECT 1
-        FROM AnnouncementRead
+        FROM announcement_read
         WHERE student_id = #{userId} AND announcement_id = #{announcementId} AND course_id = #{courseId}
     </select>
 

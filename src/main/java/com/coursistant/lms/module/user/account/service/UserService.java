@@ -182,7 +182,6 @@ public class UserService {
      * ?? / User login
      */
     public AuthResult login(Account account) {
-        String cacheKey = "user:email:" + account.getEmail();
         String loginAttemptsKey = "user:login:attempts:" + account.getEmail();
         String lockKey = "user:login:lock:" + account.getEmail();
 
@@ -190,13 +189,9 @@ public class UserService {
             throw new ApiException(ErrorType.ACCOUNT_LOCKED, "Your account is locked. Please try again later.");
         }
 
-        Account dbUser;
-        Account cachedAccount = (Account) generalRedisTemplate.opsForValue().get(cacheKey);
-        if (cachedAccount != null) {
-            dbUser = cachedAccount;
-        } else {
-            dbUser = userMapper.selectByEmail(account.getEmail());
-        }
+        // Always load from DB for password verification. Redis must not cache credentials:
+        // Account.password is WRITE_ONLY, so Jackson Redis serialization drops the hash.
+        User dbUser = userMapper.selectByEmail(account.getEmail());
 
         if (ObjectUtil.isNull(dbUser)) {
             throw new ApiException(ErrorType.USER_NOT_FOUND, "User Does Not Exist");
@@ -218,7 +213,6 @@ public class UserService {
                     "Invalid email or password. Remaining attempts: " + (6 - attempts));
         }
 
-        generalRedisTemplate.opsForValue().set(cacheKey, dbUser, 3600, TimeUnit.SECONDS);
         generalRedisTemplate.delete(loginAttemptsKey);
         generalRedisTemplate.delete(lockKey);
 

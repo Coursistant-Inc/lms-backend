@@ -45,10 +45,10 @@ public interface QuizAttemptMapper {
     // 1) quizId 下按 student_id 去重：每个学生只取主键 id 最大的一条
     @Select("""
     SELECT qa.*
-    FROM QuizAttempt qa
+    FROM quiz_attempt qa
     INNER JOIN (
         SELECT student_id, MAX(id) AS max_id
-        FROM QuizAttempt
+        FROM quiz_attempt
         WHERE quiz_id = #{quizId}
         GROUP BY student_id
     ) t ON qa.id = t.max_id
@@ -58,7 +58,7 @@ public interface QuizAttemptMapper {
     // 2) quizId + studentId：取该学生在该测验下主键 id 最大的一条
     @Select("""
     SELECT *
-    FROM QuizAttempt
+    FROM quiz_attempt
     WHERE quiz_id = #{quizId}
       AND student_id = #{studentId}
     ORDER BY id DESC

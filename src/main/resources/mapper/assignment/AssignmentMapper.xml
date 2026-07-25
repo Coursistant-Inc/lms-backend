@@ -15,7 +15,7 @@
     <select id="selectAll" resultType="com.coursistant.lms.module.assignment.entity.Assignment">
         select
         <include refid="Base_Column_List" />
-        from Assignment
+        from assignment
         <where>
             <if test="id != null"> and id = #{id}</if>
             <if test="userId != null"> and user_id = #{userId}</if>
@@ -49,26 +49,26 @@
     <select id="selectById" resultType="com.coursistant.lms.module.assignment.entity.Assignment">
         select
         <include refid="Base_Column_List" />
-        from Assignment
+        from assignment
         where id = #{id}
     </select>
 
     <!-- 通过 ID 删除 Assignment // Delete Assignment by ID -->
     <delete id="deleteById">
-        delete from Assignment
+        delete from assignment
         where id = #{id}
     </delete>
 
     <select id="selectIdsByCourse" resultType="int">
         SELECT id
-        FROM Assignment
+        FROM assignment
         WHERE course_id = #{courseId}
     </select>
 
 
     <!-- 插入新的 Assignment // Insert a new Assignment -->
     <insert id="insert" parameterType="com.coursistant.lms.module.assignment.entity.Assignment" useGeneratedKeys="true" keyProperty="id">
-        insert into Assignment
+        insert into assignment
         <trim prefix="(" suffix=")" suffixOverrides=",">
             <if test="id != null">id,</if>
             <if test="userId != null">user_id,</if>
@@ -121,9 +121,9 @@
 
 
 
-    <!-- 更新 Assignment // Update Assignment -->
+    <!-- 更新 Assignment // Update assignment -->
     <update id="updateById" parameterType="com.coursistant.lms.module.assignment.entity.Assignment">
-        update Assignment
+        update assignment
         <set>
             <if test="userId != null">user_id = #{userId},</if>
             <if test="courseId != null">course_id = #{courseId},</if>
@@ -153,7 +153,7 @@
 
     <!-- 增加 Submission Number // Increment Assignment submission number by 1 -->
     <update id="incrementSubNumById" parameterType="com.coursistant.lms.module.assignment.entity.Assignment">
-        update Assignment
+        update assignment
         <set>
             submission_num = submission_num + 1,
         </set>
@@ -168,16 +168,16 @@
             CASE
                 WHEN EXISTS (
                     SELECT 1
-                    FROM AssignmentSubmission
+                    FROM assignment_submission
                     WHERE assignment_id = a.id AND student_id = #{userId}
                 ) THEN (SELECT IFNULL(
-                (SELECT as_sub.grade FROM AssignmentSubmission as_sub WHERE as_sub.assignment_id = a.id AND as_sub.student_id = #{userId}),
+                (SELECT as_sub.grade FROM assignment_submission as_sub WHERE as_sub.assignment_id = a.id AND as_sub.student_id = #{userId}),
                 (SELECT "Not graded" )))
                 WHEN a.due &lt; NOW() THEN 'Overdue'
-                ELSE (SELECT a2.due FROM Assignment a2 WHERE a2.id = a.id)
+                ELSE (SELECT a2.due FROM assignment a2 WHERE a2.id = a.id)
             END AS status
-            FROM Assignment a
-            LEFT JOIN AssignmentSubmission asgmt_sub
+            FROM assignment a
+            LEFT JOIN assignment_submission asgmt_sub
             ON asgmt_sub.assignment_id = a.id AND asgmt_sub.student_id = #{userId}
             WHERE a.course_id = #{courseId}
         ) sub
@@ -194,7 +194,7 @@
 
     <select id="selectAssignmentsByUserAndTimeRange" resultType="com.coursistant.lms.module.assignment.entity.Assignment">
         SELECT a.*
-        FROM Assignment a
+        FROM assignment a
         WHERE 1 = 0
     </select>
 

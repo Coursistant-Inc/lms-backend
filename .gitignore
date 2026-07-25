@@ -33,3 +33,7 @@ xlearnedu_west2.pem
 
 # 🔹 本地测试资源
 test_avatars/
+test_files/
+
+# 🔹 本地脚本（不入库）
+scripts/

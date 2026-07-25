@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.coursistant.lms.module.course.content.syllabus.repository.CourseSyllabusMapper">
+
+    <sql id="Base_Column_List">
+        course_id AS courseId,
+        current_version_id AS currentVersionId,
+        previous_version_id AS previousVersionId,
+        updated_at AS updatedAt
+    </sql>
+
+    <select id="selectByCourseId" resultType="com.coursistant.lms.module.course.content.syllabus.entity.CourseSyllabus">
+        SELECT <include refid="Base_Column_List"/>
+        FROM course_syllabus WHERE course_id = #{courseId}
+    </select>
+
+    <insert id="insert" parameterType="com.coursistant.lms.module.course.content.syllabus.entity.CourseSyllabus">
+        INSERT INTO course_syllabus (
+            course_id, current_version_id, previous_version_id
+        ) VALUES (
+            #{courseId}, #{currentVersionId}, #{previousVersionId}
+        )
+    </insert>
+
+    <update id="updateVersions" parameterType="com.coursistant.lms.module.course.content.syllabus.entity.CourseSyllabus">
+        UPDATE course_syllabus
+        SET current_version_id = #{currentVersionId},
+            previous_version_id = #{previousVersionId}
+        WHERE course_id = #{courseId}
+    </update>
+</mapper>

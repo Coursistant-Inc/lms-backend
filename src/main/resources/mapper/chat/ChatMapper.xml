@@ -12,7 +12,7 @@
     <select id="selectAll" resultType="com.coursistant.lms.module.chat.entity.Chat">
         select
         <include refid="Base_Column_List" />
-        from Chat
+        from chat
          <where>
             <if test="id != null"> and id = #{id}</if>
             <if test="dialogueId != null"> and dialogue_id = #{dialogueId}</if>
@@ -30,23 +30,23 @@
     <select id="selectById" resultType="com.coursistant.lms.module.chat.entity.Chat">
         select
         <include refid="Base_Column_List" />
-        from Chat
+        from chat
         where id = #{id}
     </select>
 
     <delete id="deleteById">
-        delete from Chat
+        delete from chat
         where id = #{id}
     </delete>
 
     <update id="updateSoftDeleteByDialogueId">
-        UPDATE Chat 
+        UPDATE chat 
         SET `delete` = #{delete}, delete_time = #{deleteTime}
         WHERE dialogue_id = #{dialogueId}
     </update>
 
     <insert id="insert" parameterType="com.coursistant.lms.module.chat.entity.Chat" useGeneratedKeys="true">
-        insert into Chat
+        insert into chat
         <trim prefix="(" suffix=")" suffixOverrides=",">
             <if test="id != null">id,</if>
             <if test="dialogueId != null">dialogue_id,</if>
@@ -72,7 +72,7 @@
     </insert>
 
     <update id="updateById" parameterType="com.coursistant.lms.module.chat.entity.Chat">
-        update Chat
+        update chat
         <set>
             <if test="dialogueId != null">
                 dialogue_id = #{dialogueId},

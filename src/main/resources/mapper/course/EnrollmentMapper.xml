@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.coursistant.lms.module.course.enrollment.repository.EnrollmentMapper">
+
+    <sql id="Base_Column_List">
+        id,
+        course_id AS courseId,
+        user_id AS userId,
+        course_role AS courseRole,
+        can_grade AS canGrade,
+        can_post_announcements AS canPostAnnouncements,
+        can_manage_groups AS canManageGroups,
+        can_manage_course_events AS canManageCourseEvents,
+        active,
+        enrolled_at AS enrolledAt,
+        created_at AS createdAt,
+        updated_at AS updatedAt
+    </sql>
+
+    <insert id="insert" parameterType="com.coursistant.lms.module.course.enrollment.entity.Enrollment"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO enrollment (
+            course_id,
+            user_id,
+            course_role,
+            can_grade,
+            can_post_announcements,
+            can_manage_groups,
+            can_manage_course_events,
+            active,
+            enrolled_at
+        ) VALUES (
+            #{courseId},
+            #{userId},
+            #{courseRole},
+            #{canGrade},
+            #{canPostAnnouncements},
+            #{canManageGroups},
+            #{canManageCourseEvents},
+            #{active},
+            #{enrolledAt}
+        )
+    </insert>
+
+    <update id="updateById" parameterType="com.coursistant.lms.module.course.enrollment.entity.Enrollment">
+        UPDATE enrollment
+        <set>
+            <if test="courseRole != null">course_role = #{courseRole},</if>
+            <if test="canGrade != null">can_grade = #{canGrade},</if>
+            <if test="canPostAnnouncements != null">can_post_announcements = #{canPostAnnouncements},</if>
+            <if test="canManageGroups != null">can_manage_groups = #{canManageGroups},</if>
+            <if test="canManageCourseEvents != null">can_manage_course_events = #{canManageCourseEvents},</if>
+            <if test="active != null">active = #{active},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <select id="selectById" resultType="com.coursistant.lms.module.course.enrollment.entity.Enrollment">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM enrollment
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectByCourseIdAndUserId" resultType="com.coursistant.lms.module.course.enrollment.entity.Enrollment">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM enrollment
+        WHERE course_id = #{courseId} AND user_id = #{userId}
+    </select>
+
+    <select id="selectByCourseId" resultType="com.coursistant.lms.module.course.enrollment.entity.Enrollment">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM enrollment
+        WHERE course_id = #{courseId}
+        ORDER BY FIELD(course_role, 'Instructor', 'TA', 'Student'), enrolled_at
+    </select>
+
+    <select id="selectActiveByUserId" resultType="com.coursistant.lms.module.course.enrollment.entity.Enrollment">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM enrollment
+        WHERE user_id = #{userId} AND active = 1
+        ORDER BY enrolled_at DESC
+    </select>
+
+    <select id="countByCourseId" resultType="int">
+        SELECT COUNT(*)
+        FROM enrollment
+        WHERE course_id = #{courseId}
+    </select>
+
+</mapper>

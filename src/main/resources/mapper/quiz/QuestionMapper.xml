@@ -11,7 +11,7 @@
     <select id="selectAll" resultType="com.coursistant.lms.module.quiz.entity.Question">
         select
         <include refid="Base_Column_List"/>
-        from Question
+        from question
         <where>
             <if test="id != null">and id = #{id}</if>
             <if test="type != null">and `type` = #{type}</if>
@@ -27,16 +27,16 @@
     <select id="selectById" resultType="com.coursistant.lms.module.quiz.entity.Question">
         select
         <include refid="Base_Column_List"/>
-        from Question
+        from question
         where id = #{id}
     </select>
 
     <delete id="deleteById">
-        delete from Question where id = #{id}
+        delete from question where id = #{id}
     </delete>
 
     <insert id="insert" parameterType="com.coursistant.lms.module.quiz.entity.Question" useGeneratedKeys="true" keyProperty="id">
-        insert into Question
+        insert into question
         <trim prefix="(" suffix=")" suffixOverrides=",">
             <if test="id != null">id,</if>
             <if test="type != null">`type`,</if>
@@ -60,7 +60,7 @@
     </insert>
 
     <update id="updateById" parameterType="com.coursistant.lms.module.quiz.entity.Question">
-        update Question
+        update question
         <set>
             <if test="type != null">`type` = #{type},</if>
             <if test="stem != null">stem = #{stem},</if>

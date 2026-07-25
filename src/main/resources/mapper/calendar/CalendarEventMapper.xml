@@ -11,7 +11,7 @@
     <select id="selectAll" resultType="com.coursistant.lms.module.calendar.entity.CalendarEvent">
         select
         <include refid="Base_Column_List"/>
-        from CalendarEvent
+        from calendar_event
         <where>
             <if test="userId != null"> and user_id = #{userId}</if>
             <if test="title != null"> and title like concat('%', #{title}, '%')</if>
@@ -21,25 +21,25 @@
     <select id="selectById" resultType="com.coursistant.lms.module.calendar.entity.CalendarEvent">
         select
         <include refid="Base_Column_List"/>
-        from CalendarEvent
+        from calendar_event
         where id = #{id}
     </select>
 
     <select id="selectByUserAndRange" resultType="com.coursistant.lms.module.calendar.entity.CalendarEvent">
         select
         <include refid="Base_Column_List"/>
-        from CalendarEvent
+        from calendar_event
         where user_id = #{userId}
         and start_time &gt;= #{start}
         and end_time &lt;= #{end}
     </select>
 
     <delete id="deleteById">
-        delete from CalendarEvent where id = #{id}
+        delete from calendar_event where id = #{id}
     </delete>
 
     <insert id="insert" parameterType="com.coursistant.lms.module.calendar.entity.CalendarEvent" useGeneratedKeys="true" keyProperty="id">
-        insert into CalendarEvent
+        insert into calendar_event
         <trim prefix="(" suffix=")" suffixOverrides=",">
             <if test="userId != null">user_id,</if>
             <if test="title != null">title,</if>
@@ -59,7 +59,7 @@
     </insert>
 
     <update id="updateById" parameterType="com.coursistant.lms.module.calendar.entity.CalendarEvent">
-        update CalendarEvent
+        update calendar_event
         <set>
             <if test="title != null">title = #{title},</if>
             <if test="description != null">description = #{description},</if>

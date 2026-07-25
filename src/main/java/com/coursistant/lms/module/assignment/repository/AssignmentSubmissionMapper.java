@@ -50,7 +50,7 @@ public interface AssignmentSubmissionMapper {
      * 根据 user_id 查询 AssignmentSubmission
      * Query Assignments by user_id
      */
-    @Select("SELECT * FROM AssignmentSubmission WHERE user_id = #{userId}")
+    @Select("SELECT * FROM assignment_submission WHERE user_id = #{userId}")
     List<AssignmentSubmission> selectByUserId(Integer userId);
 
     /**

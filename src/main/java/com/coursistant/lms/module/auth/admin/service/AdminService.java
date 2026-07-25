@@ -69,6 +69,8 @@ public class AdminService {
         }
         if (ObjectUtil.isEmpty(admin.getPassword())) {
             admin.setEncryptPassword(Constants.USER_DEFAULT_PASSWORD);
+        } else {
+            admin.setEncryptPassword(admin.getPassword());
         }
         if (ObjectUtil.isEmpty(admin.getName())) {
             admin.setName(admin.getUsername());
@@ -173,34 +175,21 @@ public class AdminService {
      */
     public AuthResult login(Account account) {
 
-        // Redis 缓存键 // Redis cache keys
-        String cacheKey = "admin:email:" + account.getEmail(); // 用户缓存键 // User cache key
-        String loginAttemptsKey = "admin:login:attempts:" + account.getEmail(); // 登录尝试次数键 // Login attempt key
-        String lockKey = "admin:login:lock:" + account.getEmail(); // 锁定状态键 // Lock status key
-
-        Account dbAdmin;
+        // Redis keys for lockout only — credentials are always loaded from DB.
+        // Account.password is WRITE_ONLY; Jackson Redis serialization drops the hash.
+        String loginAttemptsKey = "admin:login:attempts:" + account.getEmail();
+        String lockKey = "admin:login:lock:" + account.getEmail();
 
         // 检查是否被锁定 // Check if the account is locked
         if (Boolean.TRUE.equals(generalRedisTemplate.hasKey(lockKey))) {
             throw new ApiException(ErrorType.ACCOUNT_LOCKED, "Your account is locked. Please try again later.");
         }
 
-        // 尝试从 Redis 缓存中获取用户信息 // Try to retrieve user information from Redis cache
-        Account cachedAccount = (Account) generalRedisTemplate.opsForValue().get(cacheKey);
-        if (cachedAccount != null) {
-            dbAdmin = cachedAccount;
-        }
-        else {
-            // 查询数据库 // Query the database if cache is not available
-            dbAdmin = adminMapper.selectByEmail(account.getEmail());
-        }
+        Admin dbAdmin = adminMapper.selectByEmail(account.getEmail());
         // 如果用户不存在 // If the user does not exist
         if (ObjectUtil.isNull(dbAdmin)) {
             throw new ApiException(ErrorType.USER_NOT_FOUND, "User Does Not Exist");
         }
-
-        // 将用户信息存入 Redis 缓存，设置过期时间 // Store user information in Redis cache with expiration time
-        generalRedisTemplate.opsForValue().set(cacheKey, dbAdmin, 3600, TimeUnit.SECONDS); // 缓存 1 小时 // Cache for 1 hour
 
         // 验证密码 // Validate password
         if (!PasswordEncoderUtil.matches(account.getPassword(), dbAdmin.getPassword())) {

@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.coursistant.lms.module.course.content.material.repository.CourseMaterialMapper">
+
+    <sql id="Base_Column_List">
+        id,
+        week_id AS weekId,
+        course_id AS courseId,
+        material_type AS materialType,
+        display_name AS displayName,
+        order_position AS orderPosition,
+        original_filename AS originalFilename,
+        content_type AS contentType,
+        extension,
+        size_bytes AS sizeBytes,
+        object_key AS objectKey,
+        link_url AS linkUrl,
+        uploaded_by AS uploadedBy,
+        created_at AS createdAt,
+        updated_at AS updatedAt
+    </sql>
+
+    <select id="selectById" resultType="com.coursistant.lms.module.course.content.material.entity.CourseMaterial">
+        SELECT <include refid="Base_Column_List"/>
+        FROM course_material WHERE id = #{id}
+    </select>
+
+    <select id="selectByWeekId" resultType="com.coursistant.lms.module.course.content.material.entity.CourseMaterial">
+        SELECT <include refid="Base_Column_List"/>
+        FROM course_material
+        WHERE week_id = #{weekId}
+        ORDER BY order_position, id
+    </select>
+
+    <select id="selectByWeekIdAndType" resultType="com.coursistant.lms.module.course.content.material.entity.CourseMaterial">
+        SELECT <include refid="Base_Column_List"/>
+        FROM course_material
+        WHERE week_id = #{weekId} AND material_type = #{materialType}
+        ORDER BY order_position, id
+    </select>
+
+    <select id="selectByCourseId" resultType="com.coursistant.lms.module.course.content.material.entity.CourseMaterial">
+        SELECT <include refid="Base_Column_List"/>
+        FROM course_material
+        WHERE course_id = #{courseId}
+        ORDER BY week_id, order_position, id
+    </select>
+
+    <select id="countByWeekId" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM course_material WHERE week_id = #{weekId}
+    </select>
+
+    <select id="selectMaxOrderPosition" resultType="java.lang.Integer">
+        SELECT MAX(order_position) FROM course_material WHERE week_id = #{weekId}
+    </select>
+
+    <insert id="insert" parameterType="com.coursistant.lms.module.course.content.material.entity.CourseMaterial"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO course_material (
+            week_id, course_id, material_type, display_name, order_position,
+            original_filename, content_type, extension, size_bytes, object_key, link_url, uploaded_by
+        ) VALUES (
+            #{weekId}, #{courseId}, #{materialType}, #{displayName}, #{orderPosition},
+            #{originalFilename}, #{contentType}, #{extension}, #{sizeBytes}, #{objectKey}, #{linkUrl}, #{uploadedBy}
+        )
+    </insert>
+
+    <update id="updateById" parameterType="com.coursistant.lms.module.course.content.material.entity.CourseMaterial">
+        UPDATE course_material
+        <set>
+            <if test="displayName != null">display_name = #{displayName},</if>
+            <if test="orderPosition != null">order_position = #{orderPosition},</if>
+            <if test="weekId != null">week_id = #{weekId},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateOrderPosition">
+        UPDATE course_material SET order_position = #{orderPosition} WHERE id = #{id}
+    </update>
+
+    <update id="updateWeekId">
+        UPDATE course_material SET week_id = #{weekId}, order_position = #{orderPosition} WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM course_material WHERE id = #{id}
+    </delete>
+</mapper>

@@ -42,7 +42,7 @@ public interface AttemptItemMapper {
      */
     List<AttemptItem> selectAll(AttemptItem filter);
 
-    @Select("SELECT IFNULL(SUM(final_score), 0) FROM AttemptItem WHERE attempt_id = #{attemptId}")
+    @Select("SELECT IFNULL(SUM(final_score), 0) FROM attempt_item WHERE attempt_id = #{attemptId}")
     int selectTotalFinalScoreByAttemptId(Integer attemptId);
 
 }

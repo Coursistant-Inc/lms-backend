@@ -2,7 +2,7 @@
 <!DOCTYPE mapper
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.coursistant.lms.module.course.repository.CourseMapper">
+<mapper namespace="com.coursistant.lms.module.course.course.repository.CourseMapper">
 
     <sql id="Base_Column_List">
         id,
@@ -21,16 +21,16 @@
         updated_at AS updatedAt
     </sql>
 
-    <select id="selectById" resultType="com.coursistant.lms.module.course.entity.Course">
+    <select id="selectById" resultType="com.coursistant.lms.module.course.course.entity.Course">
         SELECT
         <include refid="Base_Column_List"/>
-        FROM Course
+        FROM course
         WHERE id = #{id}
     </select>
 
-    <insert id="insert" parameterType="com.coursistant.lms.module.course.entity.Course"
+    <insert id="insert" parameterType="com.coursistant.lms.module.course.course.entity.Course"
             useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO Course (
+        INSERT INTO course (
             tenant_id,
             course_code,
             title,
@@ -57,8 +57,8 @@
         )
     </insert>
 
-    <update id="updateById" parameterType="com.coursistant.lms.module.course.entity.Course">
-        UPDATE Course
+    <update id="updateById" parameterType="com.coursistant.lms.module.course.course.entity.Course">
+        UPDATE course
         <set>
             <if test="courseCode != null">course_code = #{courseCode},</if>
             <if test="title != null">title = #{title},</if>
@@ -72,14 +72,14 @@
     </update>
 
     <update id="archiveById">
-        UPDATE Course
+        UPDATE course
         SET state = 'Archived',
             archived_at = #{archivedAt}
         WHERE id = #{id}
     </update>
 
     <delete id="deleteById">
-        DELETE FROM Course
+        DELETE FROM course
         WHERE id = #{id}
     </delete>
 

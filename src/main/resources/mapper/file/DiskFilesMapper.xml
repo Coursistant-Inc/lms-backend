@@ -12,7 +12,7 @@
     <select id="selectAll" resultType="com.coursistant.lms.module.file.entity.DiskFiles">
         select
         <include refid="Base_Column_List" />
-        from Diskfiles
+        from diskfiles
         <where>
             <if test="name != null"> and name like concat('%', #{name}, '%')</if>
             <if test="path != null"> and path= #{path}</if>
@@ -47,21 +47,21 @@
     <select id="selectById" resultType="com.coursistant.lms.module.file.entity.DiskFiles">
         select
         <include refid="Base_Column_List" />
-        from Diskfiles
+        from diskfiles
         where id = #{id}
     </select>
 
     <delete id="deleteById">
-        delete from Diskfiles
+        delete from diskfiles
         where  id = #{id}
     </delete>
 
     <delete id="deleteBatch">
-        delete from Diskfiles where user_id = #{userId} and `delete` = 1
+        delete from diskfiles where user_id = #{userId} and `delete` = 1
     </delete>
 
     <insert id="insert" parameterType="com.coursistant.lms.module.file.entity.DiskFiles" useGeneratedKeys="true" keyProperty="id">
-        insert into Diskfiles
+        insert into diskfiles
         <trim prefix="(" suffix=")" suffixOverrides=",">
             <if test="id != null">id,</if>
             <if test="name != null">name,</if>
@@ -89,7 +89,7 @@
     </insert>
 
     <update id="updateById" parameterType="com.coursistant.lms.module.file.entity.DiskFiles">
-        update Diskfiles
+        update diskfiles
         <set>
             <if test="name != null">
                 name = #{name},

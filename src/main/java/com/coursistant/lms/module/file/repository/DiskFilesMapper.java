@@ -47,14 +47,14 @@ public interface DiskFilesMapper {
      * 根据课程名称查询
      * Query DiskFiles records by course name
      */
-    @Select("select * from Diskfiles where course_Id = #{courseId}")
+    @Select("select * from diskfiles where course_Id = #{courseId}")
     List<DiskFiles> selectByCourseName(Integer courseId);
 
     /**
      * 根据路径查询
      * Query a DiskFiles record by path
      */
-    @Select("select * from Diskfiles where path = #{path}")
+    @Select("select * from diskfiles where path = #{path}")
     DiskFiles selectByPath(String path);
 
 

@@ -12,7 +12,7 @@
     <select id="selectAll" resultType="com.coursistant.lms.module.assignment.entity.AssignmentFile">
         select
         <include refid="Base_Column_List" />
-        from AssignmentFile
+        from assignment_file
         <where>
             <if test="id != null"> and id = #{id}</if>
             <if test="assignmentId != null"> and assignment_id = #{assignmentId}</if>
@@ -26,19 +26,19 @@
     <select id="selectById" resultType="com.coursistant.lms.module.assignment.entity.AssignmentFile">
         select
         <include refid="Base_Column_List" />
-        from AssignmentFile
+        from assignment_file
         where id = #{id}
     </select>
 
     <!-- 通过 ID 删除 AssignmentFile // Delete AssignmentFile by ID -->
     <delete id="deleteById">
-        delete from AssignmentFile
+        delete from assignment_file
         where id = #{id}
     </delete>
 
     <!-- 插入新的 AssignmentFile // Insert a new AssignmentFile -->
     <insert id="insert" parameterType="com.coursistant.lms.module.assignment.entity.AssignmentFile" useGeneratedKeys="true" keyProperty="id">
-        insert into AssignmentFile
+        insert into assignment_file
         <trim prefix="(" suffix=")" suffixOverrides=",">
             <if test="id != null">id,</if>
             <if test="assignmentId != null">assignment_id,</if>
@@ -55,9 +55,9 @@
 
 
 
-    <!-- 更新 AssignmentFile // Update AssignmentFile -->
+    <!-- 更新 AssignmentFile // Update assignment_file -->
     <update id="updateById" parameterType="com.coursistant.lms.module.assignment.entity.AssignmentFile">
-        update AssignmentFile
+        update assignment_file
         <set>
             <if test="assignmentId != null">
                 assignment_id = #{assignmentId},

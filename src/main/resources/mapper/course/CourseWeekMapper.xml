@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.coursistant.lms.module.course.content.week.repository.CourseWeekMapper">
+
+    <sql id="Base_Column_List">
+        id,
+        course_id AS courseId,
+        title,
+        order_position AS orderPosition,
+        state,
+        created_at AS createdAt,
+        updated_at AS updatedAt
+    </sql>
+
+    <select id="selectById" resultType="com.coursistant.lms.module.course.content.week.entity.CourseWeek">
+        SELECT <include refid="Base_Column_List"/>
+        FROM course_week WHERE id = #{id}
+    </select>
+
+    <select id="selectByCourseId" resultType="com.coursistant.lms.module.course.content.week.entity.CourseWeek">
+        SELECT <include refid="Base_Column_List"/>
+        FROM course_week
+        WHERE course_id = #{courseId}
+        ORDER BY order_position, id
+    </select>
+
+    <select id="selectMaxOrderPosition" resultType="java.lang.Integer">
+        SELECT MAX(order_position) FROM course_week WHERE course_id = #{courseId}
+    </select>
+
+    <insert id="insert" parameterType="com.coursistant.lms.module.course.content.week.entity.CourseWeek"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO course_week (
+            course_id, title, order_position, state
+        ) VALUES (
+            #{courseId}, #{title}, #{orderPosition}, #{state}
+        )
+    </insert>
+
+    <update id="updateById" parameterType="com.coursistant.lms.module.course.content.week.entity.CourseWeek">
+        UPDATE course_week
+        <set>
+            <if test="title != null">title = #{title},</if>
+            <if test="orderPosition != null">order_position = #{orderPosition},</if>
+            <if test="state != null">state = #{state},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateOrderPosition">
+        UPDATE course_week SET order_position = #{orderPosition} WHERE id = #{id}
+    </update>
+
+    <update id="updateState">
+        UPDATE course_week SET state = #{state} WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM course_week WHERE id = #{id}
+    </delete>
+</mapper>

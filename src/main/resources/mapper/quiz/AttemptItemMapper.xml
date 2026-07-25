@@ -13,7 +13,7 @@
     <select id="selectAll" resultType="com.coursistant.lms.module.quiz.entity.AttemptItem">
         select
         <include refid="Base_Column_List"/>
-        from AttemptItem
+        from attempt_item
         <where>
             <if test="id != null">and id = #{id}</if>
             <if test="attemptId != null">and attempt_id = #{attemptId}</if>
@@ -34,17 +34,17 @@
     <select id="selectById" resultType="com.coursistant.lms.module.quiz.entity.AttemptItem">
         select
         <include refid="Base_Column_List"/>
-        from AttemptItem
+        from attempt_item
         where id = #{id}
     </select>
 
     <delete id="deleteById">
-        delete from AttemptItem
+        delete from attempt_item
         where id = #{id}
     </delete>
 
     <insert id="insert" parameterType="com.coursistant.lms.module.quiz.entity.AttemptItem" useGeneratedKeys="true" keyProperty="id">
-        insert into AttemptItem
+        insert into attempt_item
         <trim prefix="(" suffix=")" suffixOverrides=",">
             <if test="id != null">id,</if>
             <if test="attemptId != null">attempt_id,</if>
@@ -79,7 +79,7 @@
 
     <!-- AttemptItemMapper.xml -->
     <insert id="insertBatch" parameterType="java.util.List">
-        INSERT INTO AttemptItem
+        INSERT INTO attempt_item
         (attempt_id, quiz_item_id, question_id, answer_payload, needs_grading)
         VALUES
         <foreach collection="items" item="it" separator=",">
@@ -95,7 +95,7 @@
 
 
     <update id="updateById" parameterType="com.coursistant.lms.module.quiz.entity.AttemptItem">
-        update AttemptItem
+        update attempt_item
         <set>
             <if test="attemptId != null">attempt_id = #{attemptId},</if>
             <if test="quizItemId != null">quiz_item_id = #{quizItemId},</if>

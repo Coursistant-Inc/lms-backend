@@ -49,6 +49,6 @@ public interface AssignmentFileMapper {
      * 根据 user_id 查询 AssignmentFile
      * Query AssignmentFiles by assignment_id
      */
-    @Select("SELECT * FROM AssignmentFile WHERE assignment_id = #{assignmentId}")
+    @Select("SELECT * FROM assignment_file WHERE assignment_id = #{assignmentId}")
     List<AssignmentFile> selectByAssignmentId(Integer assignmentId);
 }
