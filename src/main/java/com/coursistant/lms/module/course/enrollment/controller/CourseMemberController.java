@@ -69,6 +69,16 @@ public class CourseMemberController {
         return ApiResponse.success(enrollmentService.updateTaPermissions(courseId, userId, body, actorId));
     }
 
+    @Idempotent
+    @DeleteMapping("/{userId}")
+    public ApiResponse<MemberResponse> deactivateMember(HttpServletRequest request,
+                                                        @PathVariable Integer courseId,
+                                                        @PathVariable Integer userId) {
+        Integer actorId = currentUserId(request);
+        coursePermissionService.requireInstructor(courseId, actorId);
+        return ApiResponse.success(enrollmentService.instructorDeactivateMember(courseId, userId, actorId));
+    }
+
     private Integer currentUserId(HttpServletRequest request) {
         Object attr = request.getAttribute("userId");
         if (!(attr instanceof Integer userId)) {

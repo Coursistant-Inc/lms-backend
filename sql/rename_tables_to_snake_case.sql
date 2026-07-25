@@ -1,4 +1,4 @@
--- Rename concatenated lowercase tables to MySQL snake_case.
+﻿-- Rename concatenated lowercase tables to MySQL snake_case.
 -- Run against lms_v2 during a maintenance window (stop app first).
 -- Idempotent: only renames when source exists and target does not.
 

@@ -41,7 +41,7 @@ public class CourseSessionService {
     }
 
     public SessionResponse create(Integer courseId, CreateSessionRequest request) {
-        requireCourse(courseId);
+        requireCourseWritable(courseId);
         if (request == null) {
             throw new ApiException(ErrorType.BAD_REQUEST, "Request body is required");
         }
@@ -60,6 +60,7 @@ public class CourseSessionService {
     }
 
     public SessionResponse update(Integer courseId, Integer sessionId, UpdateSessionRequest request) {
+        requireCourseWritable(courseId);
         CourseSession existing = requireSessionInCourse(courseId, sessionId);
         if (request == null) {
             throw new ApiException(ErrorType.BAD_REQUEST, "Request body is required");
@@ -107,6 +108,7 @@ public class CourseSessionService {
     }
 
     public void delete(Integer courseId, Integer sessionId) {
+        requireCourseWritable(courseId);
         requireSessionInCourse(courseId, sessionId);
         courseSessionMapper.deleteById(sessionId);
     }
@@ -139,6 +141,8 @@ public class CourseSessionService {
         }
     }
 
+    private static final String STATE_ARCHIVED = "Archived";
+
     private Course requireCourse(Integer courseId) {
         if (courseId == null) {
             throw new ApiException(ErrorType.BAD_REQUEST, "Course id is required");
@@ -146,6 +150,14 @@ public class CourseSessionService {
         Course course = courseMapper.selectById(courseId);
         if (course == null) {
             throw new ApiException(ErrorType.COURSE_NOT_FOUND);
+        }
+        return course;
+    }
+
+    private Course requireCourseWritable(Integer courseId) {
+        Course course = requireCourse(courseId);
+        if (STATE_ARCHIVED.equals(course.getState())) {
+            throw new ApiException(ErrorType.COURSE_ARCHIVED);
         }
         return course;
     }

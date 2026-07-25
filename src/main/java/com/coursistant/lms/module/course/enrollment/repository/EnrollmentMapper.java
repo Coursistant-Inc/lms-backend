@@ -22,4 +22,8 @@ public interface EnrollmentMapper {
     List<Enrollment> selectActiveByUserId(@Param("userId") Integer userId);
 
     int countByCourseId(@Param("courseId") Integer courseId);
+
+    int countActiveInstructorsByCourseId(@Param("courseId") Integer courseId);
+
+    int countActiveInstructorEnrollmentsByUserId(@Param("userId") Integer userId);
 }

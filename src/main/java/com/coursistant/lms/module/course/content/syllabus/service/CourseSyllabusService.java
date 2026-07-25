@@ -112,13 +112,34 @@ public class CourseSyllabusService {
     }
 
     @Transactional
+    public SyllabusResponse clear(Integer courseId, Integer userId) {
+        Course course = requireCourse(courseId);
+        coursePermissionService.requireInstructor(courseId, userId);
+        requireNotArchived(course);
+
+        CourseSyllabus existing = courseSyllabusMapper.selectByCourseId(courseId);
+        if (existing == null || (existing.getCurrentVersionId() == null && existing.getPreviousVersionId() == null)) {
+            return toResponse(existing, true);
+        }
+        CourseSyllabus patch = new CourseSyllabus();
+        patch.setCourseId(courseId);
+        patch.setCurrentVersionId(null);
+        patch.setPreviousVersionId(null);
+        courseSyllabusMapper.updateVersions(patch);
+        return toResponse(courseSyllabusMapper.selectByCourseId(courseId), true);
+    }
+
+    @Transactional
     public SyllabusResponse restorePrevious(Integer courseId, Integer userId) {
         Course course = requireCourse(courseId);
         coursePermissionService.requireInstructor(courseId, userId);
         requireNotArchived(course);
 
         CourseSyllabus syllabus = courseSyllabusMapper.selectByCourseId(courseId);
-        if (syllabus == null || syllabus.getPreviousVersionId() == null) {
+        if (syllabus == null || syllabus.getCurrentVersionId() == null) {
+            throw new ApiException(ErrorType.SYLLABUS_NOT_FOUND);
+        }
+        if (syllabus.getPreviousVersionId() == null) {
             throw new ApiException(ErrorType.NO_PREVIOUS_SYLLABUS_VERSION);
         }
 

@@ -1,10 +1,13 @@
 package com.coursistant.lms.module.course.course.service;
 
+import com.coursistant.lms.module.course.course.dto.CoursePageResponse;
 import com.coursistant.lms.module.course.course.dto.CourseResponse;
 import com.coursistant.lms.module.course.course.dto.CreateCourseRequest;
+import com.coursistant.lms.module.course.course.dto.TransferInstructorRequest;
 import com.coursistant.lms.module.course.course.dto.UpdateCourseRequest;
 import com.coursistant.lms.module.course.course.entity.Course;
 import com.coursistant.lms.module.course.course.repository.CourseMapper;
+import com.coursistant.lms.module.course.enrollment.service.CoursePermissionService;
 import com.coursistant.lms.module.course.enrollment.service.EnrollmentService;
 import com.coursistant.lms.module.user.account.entity.User;
 import com.coursistant.lms.module.user.account.repository.UserMapper;
@@ -19,6 +22,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class CourseService {
@@ -35,6 +40,9 @@ public class CourseService {
 
     @Resource
     private EnrollmentService enrollmentService;
+
+    @Resource
+    private CoursePermissionService coursePermissionService;
 
     @Transactional
     public CourseResponse create(Integer creatorId, CreateCourseRequest request) {
@@ -64,10 +72,14 @@ public class CourseService {
         return toResponse(requireCourse(id));
     }
 
-    public CourseResponse update(Integer id, UpdateCourseRequest request) {
+    public CourseResponse update(Integer callerUserId, Integer id, UpdateCourseRequest request) {
+        coursePermissionService.requireInstructor(id, callerUserId);
         Course existing = requireCourse(id);
         if (request == null) {
             throw new ApiException(ErrorType.BAD_REQUEST, "Request body is required");
+        }
+        if (request.getInstructorId() != null) {
+            throw new ApiException(ErrorType.BAD_REQUEST, "instructorId cannot be changed via this API");
         }
 
         LocalDate start = request.getTermStartDate() != null
@@ -78,10 +90,6 @@ public class CourseService {
                 : existing.getTermEndDate();
         if (start != null && end != null && end.isBefore(start)) {
             throw new ApiException(ErrorType.BAD_REQUEST, "termEndDate must be on or after termStartDate");
-        }
-
-        if (request.getInstructorId() != null) {
-            requireUser(request.getInstructorId());
         }
 
         Course patch = new Course();
@@ -104,13 +112,13 @@ public class CourseService {
         patch.setTermEndDate(request.getTermEndDate());
         patch.setDescription(request.getDescription());
         patch.setLocation(request.getLocation());
-        patch.setInstructorId(request.getInstructorId());
 
         courseMapper.updateById(patch);
         return toResponse(requireCourse(id));
     }
 
-    public void delete(Integer id) {
+    public void delete(Integer callerUserId, Integer id) {
+        coursePermissionService.requireInstructor(id, callerUserId);
         requireCourse(id);
         if (enrollmentService.countByCourseId(id) > 0) {
             throw new ApiException(ErrorType.CONFLICT, "Course cannot be deleted while it still has enrollments");
@@ -122,13 +130,94 @@ public class CourseService {
         }
     }
 
-    public CourseResponse archive(Integer id) {
+    public CourseResponse archive(Integer callerUserId, Integer id) {
+        coursePermissionService.requireInstructor(id, callerUserId);
         Course course = requireCourse(id);
         if (STATE_ARCHIVED.equals(course.getState())) {
             return toResponse(course);
         }
         courseMapper.archiveById(id, LocalDateTime.now(ZoneOffset.UTC));
         return toResponse(requireCourse(id));
+    }
+
+    public CourseResponse unarchive(Integer callerUserId, Integer id) {
+        coursePermissionService.requireInstructor(id, callerUserId);
+        Course course = requireCourse(id);
+        if (STATE_ACTIVE.equals(course.getState())) {
+            return toResponse(course);
+        }
+        courseMapper.unarchiveById(id);
+        return toResponse(requireCourse(id));
+    }
+
+    @Transactional
+    public CourseResponse transferInstructor(Integer callerUserId, Integer id, TransferInstructorRequest request) {
+        coursePermissionService.requireInstructor(id, callerUserId);
+        Course course = requireCourse(id);
+        if (STATE_ARCHIVED.equals(course.getState())) {
+            throw new ApiException(ErrorType.COURSE_ARCHIVED);
+        }
+        if (request == null || request.getNewInstructorId() == null) {
+            throw new ApiException(ErrorType.PARAM_MISSING, "newInstructorId is required");
+        }
+        Integer newInstructorId = request.getNewInstructorId();
+        enrollmentService.transferInstructorRole(id, callerUserId, newInstructorId, callerUserId);
+
+        Course patch = new Course();
+        patch.setId(id);
+        patch.setInstructorId(newInstructorId);
+        courseMapper.updateById(patch);
+        return toResponse(requireCourse(id));
+    }
+
+    public CoursePageResponse listForBrowse(boolean admin,
+                                            Integer callerUserId,
+                                            String q,
+                                            String state,
+                                            Integer page,
+                                            Integer size) {
+        if (!admin) {
+            User user = userMapper.selectById(callerUserId);
+            boolean platformInstructor = user != null
+                    && LevelEnum.INSTRUCTOR.level.equalsIgnoreCase(user.getLevel());
+            boolean courseInstructor = enrollmentService.hasActiveInstructorEnrollment(callerUserId);
+            if (!platformInstructor && !courseInstructor) {
+                throw new ApiException(ErrorType.ACCESS_DENIED, "Course browse requires Admin or Instructor");
+            }
+        }
+
+        int pageNum = page == null || page < 0 ? 0 : page;
+        int pageSize = size == null ? 20 : size;
+        if (pageSize < 1) {
+            pageSize = 20;
+        }
+        if (pageSize > 100) {
+            pageSize = 100;
+        }
+
+        String normalizedState = null;
+        if (state != null && !state.isBlank()) {
+            normalizedState = state.trim();
+            if (!STATE_ACTIVE.equals(normalizedState) && !STATE_ARCHIVED.equals(normalizedState)) {
+                throw new ApiException(ErrorType.BAD_REQUEST, "state must be Active or Archived");
+            }
+        }
+        String normalizedQ = (q == null || q.isBlank()) ? null : q.trim();
+        Integer scopeInstructorId = admin ? null : callerUserId;
+
+        long total = courseMapper.countForBrowse(normalizedQ, normalizedState, scopeInstructorId);
+        List<CourseResponse> items = courseMapper
+                .selectForBrowse(normalizedQ, normalizedState, scopeInstructorId, pageNum * pageSize, pageSize)
+                .stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+
+        CoursePageResponse response = new CoursePageResponse();
+        response.setItems(items);
+        response.setPage(pageNum);
+        response.setSize(pageSize);
+        response.setTotal(total);
+        return response;
     }
 
     private void validateCreate(CreateCourseRequest request) {
@@ -164,13 +253,6 @@ public class CourseService {
             throw new ApiException(ErrorType.COURSE_NOT_FOUND);
         }
         return course;
-    }
-
-    private void requireUser(Integer userId) {
-        User user = userMapper.selectById(userId);
-        if (user == null) {
-            throw new ApiException(ErrorType.USER_NOT_FOUND);
-        }
     }
 
     /** Platform level must be INSTRUCTOR (not course Enrollment role). */

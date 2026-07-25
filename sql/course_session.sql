@@ -1,4 +1,4 @@
--- CourseSession: weekly schedule template (one row per day)
+﻿-- CourseSession: weekly schedule template (one row per day)
 -- Apply against lms_v2
 
 CREATE TABLE IF NOT EXISTS course_session (
@@ -13,6 +13,6 @@ CREATE TABLE IF NOT EXISTS course_session (
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   KEY idx_course_session_course (course_id),
-  CONSTRAINT fk_course_session_course FOREIGN KEY (course_id) REFERENCES Course (id) ON DELETE CASCADE,
+  CONSTRAINT fk_course_session_course FOREIGN KEY (course_id) REFERENCES course (id) ON DELETE CASCADE,
   CONSTRAINT chk_course_session_time CHECK (end_time > start_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

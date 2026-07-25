@@ -39,12 +39,12 @@ Base URL：`http://localhost:8080/api`
 
 **需要 `Idempotency-Key` 的写接口：**
 
-- `POST/PUT /v2/courses`、`POST /v2/courses/{id}/archive`
+- `POST/PUT /v2/courses`、`POST /v2/courses/{id}/archive`、`POST .../unarchive`、`POST .../transfer-instructor`
 - `POST/PUT .../sessions`
 - `POST/PUT .../events`
-- `POST/PATCH .../members/.../ta...`
-- `POST /v2/admin/courses/{id}/enrollments`
-- `POST .../syllabus`、`POST .../syllabus/restore`
+- `POST/PATCH .../members/.../ta...`、`DELETE .../members/{userId}`
+- `POST /v2/admin/courses/{id}/enrollments`、`POST .../enrollments/batch`、`DELETE .../enrollments/{userId}`
+- `POST .../syllabus`、`POST .../syllabus/restore`、`DELETE .../syllabus`
 - `POST/PATCH/PUT .../weeks...`（含 publish/unpublish/reorder；不含 DELETE）
 - `PATCH/PUT/POST .../materials` 的 rename / reorder / move（**创建 materials 不需要**）
 
@@ -146,11 +146,12 @@ Token 无效 → `401`（`INVALID_TOKEN` / `UNAUTHORIZED`）。
 | 改 sessions / members / syllabus | ✓ | | |
 | 改 events | ✓ | 需 `canManageCourseEvents` | |
 | 建课 | 仅平台 `level=INSTRUCTOR`（建完自己是该课 Instructor） | | |
-| 归档 / 更新 / 删除课 | ✓（前端按 Instructor 控按钮） | | |
-| Admin 入课 | 平台 Admin，见 §10 | | |
+| 归档 / 取消归档 / 更新 / 删除课 / 转让 Instructor | ✓（后端强制 Instructor） | | |
+| 停用成员（Student/TA） | ✓ | | |
+| Admin 入课 / 批量入课 / 停用 enrollment | 平台 Admin，见 §10 | | |
+| 课程列表检索 `GET /v2/courses` | 平台 Admin 或 Instructor（见 §5.0） | | |
 
-课 `state=Archived` 时：大纲 / 周次 / 资料 / TA / 入课等写操作会 `COURSE_ARCHIVED`。读一般仍可。  
-（Events / Sessions 写目前后端仍可能成功；**产品上归档后请隐藏写入口**。）
+课 `state=Archived` 时：大纲 / 周次 / 资料 / sessions / events / TA / 入课等写操作会 `COURSE_ARCHIVED`。读一般仍可。
 
 常见错误：`NOT_COURSE_MEMBER`、`NOT_COURSE_INSTRUCTOR`、`ACCESS_DENIED`、`COURSE_ARCHIVED`。
 
@@ -174,6 +175,25 @@ Token 无效 → `401`（`INVALID_TOKEN` / `UNAUTHORIZED`）。
 ## 5. Course CRUD
 
 前缀：`/v2/courses`
+
+### 5.0 课程列表检索 — `GET /v2/courses`
+
+| | |
+|--|--|
+| 谁可以调 | 平台 **Admin**（全站）；平台 `level=INSTRUCTOR` 或课内 Instructor（仅自己的课） |
+| 纯 Student | `403 ACCESS_DENIED` |
+| Query | 均可选：`q`（匹配 courseCode/title）、`state`（`Active`/`Archived`）、`page`（默认 0）、`size`（默认 20，最大 100） |
+
+成功 `data`：
+
+```json
+{
+  "items": [ { "id": 9, "courseCode": "DEMO", "title": "...", "state": "Active" } ],
+  "page": 0,
+  "size": 20,
+  "total": 1
+}
+```
 
 ### 5.1 创建课程 — `POST /v2/courses`
 
@@ -254,9 +274,10 @@ Token 无效 → `401`（`INVALID_TOKEN` / `UNAUTHORIZED`）。
 
 | | |
 |--|--|
-| 谁可以调 | Instructor（前端控按钮） |
+| 谁可以调 | 该课 Instructor（后端强制；非 Instructor → `NOT_COURSE_INSTRUCTOR`） |
 | 需要幂等 Key | 是 |
-| Body | 字段均可选：`courseCode` `title` `termStartDate` `termEndDate` `description` `location` `instructorId` |
+| Body | 字段均可选：`courseCode` `title` `termStartDate` `termEndDate` `description` `location` |
+| 禁止 | **不要传 `instructorId`**；传入 → `400 BAD_REQUEST`（转让 Instructor 另开接口） |
 
 成功：`200`，`data` 为更新后课程。
 
@@ -266,7 +287,7 @@ Token 无效 → `401`（`INVALID_TOKEN` / `UNAUTHORIZED`）。
 
 | | |
 |--|--|
-| 谁可以调 | Instructor（前端控按钮） |
+| 谁可以调 | 该课 Instructor（后端强制） |
 
 成功：`data` 为 `null`。  
 课上还有成员 → `409 CONFLICT`：
@@ -285,10 +306,34 @@ Token 无效 → `401`（`INVALID_TOKEN` / `UNAUTHORIZED`）。
 
 | | |
 |--|--|
-| 谁可以调 | Instructor（前端控按钮） |
+| 谁可以调 | 该课 Instructor（后端强制） |
 | 需要幂等 Key | 是 |
 
 成功：`data.state = "Archived"`，带 `archivedAt`。已归档再调仍 `200`。
+
+---
+
+### 5.6 取消归档 — `POST /v2/courses/{id}/unarchive`
+
+| | |
+|--|--|
+| 谁可以调 | 该课 Instructor（后端强制） |
+| 需要幂等 Key | 是 |
+
+成功：`data.state = "Active"`，`archivedAt = null`。已是 Active 再调仍 `200`。
+
+---
+
+### 5.7 转让 Instructor — `POST /v2/courses/{id}/transfer-instructor`
+
+| | |
+|--|--|
+| 谁可以调 | 当前课 Instructor |
+| 需要幂等 Key | 是 |
+| Body | `{ "newInstructorId": 403 }`（须存在且平台 `level=INSTRUCTOR`） |
+| 课已归档 | `COURSE_ARCHIVED` |
+
+事务效果：`course.instructorId` 更新；旧 Instructor → Student；新用户成为唯一 Instructor（可新建或升级已有 Student/TA enrollment）。
 
 ---
 
@@ -326,7 +371,7 @@ Token 无效 → `401`（`INVALID_TOKEN` / `UNAUTHORIZED`）。
 
 ### 6.3 创建 — `POST .../sessions`
 
-Instructor；需要幂等 Key。Body 均必填：
+Instructor；需要幂等 Key；课已归档 → `400 COURSE_ARCHIVED`。Body 均必填：
 
 | 字段 | 约束 |
 |------|------|
@@ -349,11 +394,11 @@ Instructor；需要幂等 Key。Body 均必填：
 
 ### 6.4 更新 — `PUT .../sessions/{sessionId}`
 
-Instructor；需要幂等 Key；字段均可选。
+Instructor；需要幂等 Key；字段均可选；课已归档 → `COURSE_ARCHIVED`。
 
 ### 6.5 删除 — `DELETE .../sessions/{sessionId}`
 
-Instructor。成功 `data: null`；再 GET → `SESSION_NOT_FOUND`。
+Instructor；课已归档 → `COURSE_ARCHIVED`。成功 `data: null`；再 GET → `SESSION_NOT_FOUND`。
 
 ---
 
@@ -389,7 +434,7 @@ Instructor。成功 `data: null`；再 GET → `SESSION_NOT_FOUND`。
 
 ### 7.3 创建 — `POST .../events`
 
-需要幂等 Key。
+需要幂等 Key；课已归档 → `400 COURSE_ARCHIVED`。
 
 | 字段 | 必填 |
 |------|------|
@@ -405,7 +450,7 @@ Instructor。成功 `data: null`；再 GET → `SESSION_NOT_FOUND`。
 | 谁可以调 | Instructor，或 `canManageCourseEvents=true` 的 TA |
 | 需要幂等 Key | 是 |
 | 成功 | `200`，`data` 为更新后的单条 event |
-| 常见错误 | `403 ACCESS_DENIED`；`404 COURSE_EVENT_NOT_FOUND`；时间非法 `400 BAD_REQUEST` |
+| 常见错误 | `403 ACCESS_DENIED`；`400 COURSE_ARCHIVED`；`404 COURSE_EVENT_NOT_FOUND`；时间非法 `400 BAD_REQUEST` |
 
 **Body（字段均可选，传什么改什么）**
 
@@ -435,6 +480,7 @@ Instructor。成功 `data: null`；再 GET → `SESSION_NOT_FOUND`。
 |--|--|
 | 谁可以调 | Instructor，或 `canManageCourseEvents=true` 的 TA |
 | 需要幂等 Key | 否 |
+| 课已归档 | `400 COURSE_ARCHIVED` |
 | 成功 | `200`，`data` 为 `null` |
 | 常见错误 | `403 ACCESS_DENIED`；不存在 → `404 COURSE_EVENT_NOT_FOUND` |
 
@@ -445,7 +491,7 @@ Instructor。成功 `data: null`；再 GET → `SESSION_NOT_FOUND`。
 ## 8. Members / TA
 
 前缀：`/v2/courses/{courseId}/members`  
-课已归档时不能改 TA。
+课已归档时不能改 TA / 停用成员。
 
 ### 8.1 成员列表 — `GET .../members`
 
@@ -480,7 +526,7 @@ Instructor。成功 `data: null`；再 GET → `SESSION_NOT_FOUND`。
 | 谁可以调 | 仅 Instructor |
 | 需要幂等 Key | 是 |
 | Path | `courseId`：课程 id；`userId`：被提升用户的 userId（须已是该课成员） |
-| 课状态 | 已归档 → `403 COURSE_ARCHIVED` |
+| 课状态 | 已归档 → `400 COURSE_ARCHIVED` |
 
 **前置条件（目标用户）**
 
@@ -554,13 +600,26 @@ Instructor。成功 `data: null`；再 GET → `SESSION_NOT_FOUND`。
 
 需要幂等 Key；body 为上面四个 boolean。
 
+### 8.5 停用成员 — `DELETE .../members/{userId}`
+
+| | |
+|--|--|
+| 谁可以调 | Instructor |
+| 需要幂等 Key | 是 |
+| 语义 | 软停用：`active=false`；目标仅 Student/TA |
+| 停用 Instructor | `403 ACCESS_DENIED` |
+| 已 inactive | `200`（幂等） |
+| 归档课 | `COURSE_ARCHIVED` |
+
+停用后该用户 `GET /v2/me/courses` 不再包含本课。
+
 ---
 
 ## 9. My courses
 
 ### `GET /v2/me/courses`
 
-已登录。返回自己已加入的课（含 Archived），每条带 `role`。
+已登录。返回自己 **active** enrollment 的课（课本身可为 Archived），每条带 `role`。
 
 ```json
 {
@@ -591,7 +650,7 @@ Instructor。成功 `data: null`；再 GET → `SESSION_NOT_FOUND`。
 
 ## 10. Admin enroll
 
-### `POST /v2/admin/courses/{courseId}/enrollments`
+### 10.1 单人入课 — `POST /v2/admin/courses/{courseId}/enrollments`
 
 | | |
 |--|--|
@@ -600,14 +659,43 @@ Instructor。成功 `data: null`；再 GET → `SESSION_NOT_FOUND`。
 | Body | `{ "userId": 385 }` |
 
 成功：成员对象，`courseRole: "Student"`。  
-非 Admin → `ACCESS_DENIED`；已入课 → `CONFLICT`；已归档 → `COURSE_ARCHIVED`。
+非 Admin → `ACCESS_DENIED`；已 active 入课 → `CONFLICT`；已归档 → `COURSE_ARCHIVED`。
+
+### 10.2 批量 / 邮箱入课 — `POST /v2/admin/courses/{courseId}/enrollments/batch`
+
+| | |
+|--|--|
+| 谁可以调 | 平台 Admin |
+| 需要幂等 Key | 是 |
+| Body | `{ "userIds": [385], "emails": ["regtest2@example.com"] }`（至少一项） |
+
+成功 HTTP **始终 200**（部分成功也 200）：
+
+```json
+{
+  "succeeded": [ { "userId": 385, "courseRole": "Student", "active": true } ],
+  "failed": [ { "email": "missing@example.com", "code": "USER_NOT_FOUND", "message": "User not found" } ]
+}
+```
+
+规则：邮箱解析用户；不存在进 `failed`；已 active → `CONFLICT`；inactive → 重新激活算成功。
+
+### 10.3 停用 enrollment — `DELETE /v2/admin/courses/{courseId}/enrollments/{userId}`
+
+| | |
+|--|--|
+| 谁可以调 | 平台 Admin |
+| 需要幂等 Key | 是 |
+| 语义 | 软停用 `active=false` |
+| 唯一 active Instructor | `409 CONFLICT` |
+| 已 inactive | `200` |
 
 ---
 
 ## 11. Syllabus
 
 前缀：`/v2/courses/{courseId}/syllabus`  
-上传仅 PDF；归档后不能上传/恢复。
+上传仅 PDF；归档后不能上传/恢复/清空。
 
 ### 11.1 元信息 — `GET .../syllabus`
 
@@ -681,7 +769,7 @@ Instructor。成功 `data: null`；再 GET → `SESSION_NOT_FOUND`。
 | 谁可以调 | 仅 Instructor |
 | 需要幂等 Key | 是 |
 | Content-Type | `multipart/form-data`（FormData 勿手动设，浏览器自动带 boundary） |
-| 课状态 | 已归档 → `403 COURSE_ARCHIVED` |
+| 课状态 | 已归档 → `400 COURSE_ARCHIVED` |
 
 **表单字段**
 
@@ -741,7 +829,17 @@ await fetch(`${BASE}/v2/courses/${courseId}/syllabus`, {
 
 ### 11.4 恢复上一版 — `POST .../syllabus/restore`
 
-Instructor；需要幂等 Key。无上一版 → `NO_PREVIOUS_SYLLABUS_VERSION`。
+Instructor；需要幂等 Key。无当前大纲 → `SYLLABUS_NOT_FOUND`；无上一版 → `NO_PREVIOUS_SYLLABUS_VERSION`。
+
+### 11.5 清空大纲 — `DELETE .../syllabus`
+
+| | |
+|--|--|
+| 谁可以调 | Instructor |
+| 需要幂等 Key | 是 |
+| 课已归档 | `COURSE_ARCHIVED` |
+
+清空当前/上一版指针（`posted: false`）；历史 version 行保留在库中但不暴露。无大纲再删仍 `200`。
 
 ---
 
@@ -801,7 +899,7 @@ Instructor；需要幂等 Key。无上一版 → `NO_PREVIOUS_SYLLABUS_VERSION`�
 | 方法与路径 | `POST /v2/courses/{courseId}/weeks` |
 | 谁可以调 | 仅 Instructor（TA / Student → `403 NOT_COURSE_INSTRUCTOR`） |
 | 需要幂等 Key | 是 |
-| 课状态 | 已归档 → `403 COURSE_ARCHIVED` |
+| 课状态 | 已归档 → `400 COURSE_ARCHIVED` |
 
 **Body**
 
@@ -911,7 +1009,7 @@ Instructor；需要幂等 Key。无上一版 → `NO_PREVIOUS_SYLLABUS_VERSION`�
 
 ### 12.6 删除 — `DELETE .../weeks/{weekId}`
 
-周内还有资料 → `WEEK_NOT_EMPTY`（先删 materials）。
+周内还有资料 → `409 WEEK_NOT_EMPTY`（先删 materials）。
 
 ### 12.7 下载周 ZIP — `GET .../weeks/{weekId}/download.zip`
 
@@ -1097,19 +1195,25 @@ a.click();
 | 方法 | 路径 | 谁调 | 幂等 Key |
 |------|------|------|----------|
 | POST | `/v2/courses` | level=INSTRUCTOR | 是 |
+| GET | `/v2/courses` | Admin / Instructor | |
 | GET | `/v2/courses/{id}` | 已入课 | |
 | PUT | `/v2/courses/{id}` | Instructor | 是 |
 | DELETE | `/v2/courses/{id}` | Instructor | |
 | POST | `/v2/courses/{id}/archive` | Instructor | 是 |
+| POST | `/v2/courses/{id}/unarchive` | Instructor | 是 |
+| POST | `/v2/courses/{id}/transfer-instructor` | Instructor | 是 |
 | GET | `/v2/courses/{id}/sessions` | 已入课 | |
 | POST/PUT/DELETE | `.../sessions` | Instructor | POST/PUT |
 | GET | `/v2/courses/{id}/events` | 已入课 | |
 | POST/PUT/DELETE | `.../events` | Instructor / 事件 TA | POST/PUT |
 | GET | `/v2/courses/{id}/members` | Instructor | |
 | POST/DELETE/PATCH | `.../members/.../ta` | Instructor | POST/PATCH |
+| DELETE | `.../members/{userId}` | Instructor（停用 Student/TA） | 是 |
 | GET | `/v2/me/courses` | 已登录 | |
 | POST | `/v2/admin/courses/{id}/enrollments` | Admin | 是 |
-| GET/POST | `.../syllabus` | 读：成员；写：Instructor | 写是 |
+| POST | `.../enrollments/batch` | Admin | 是 |
+| DELETE | `.../enrollments/{userId}` | Admin | 是 |
+| GET/POST/DELETE | `.../syllabus` | 读：成员；写/删：Instructor | 写/删是 |
 | GET/POST/... | `.../weeks` | 读：成员；写：Instructor | 多数写是 |
 | POST | `.../materials` | Instructor / TA 上传 | 否 |
 | DELETE | `.../materials/{id}` | Instructor；TA 仅自己的 | |

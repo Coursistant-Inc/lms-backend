@@ -12,6 +12,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -60,6 +61,12 @@ public class CourseSyllabusController {
     @PostMapping("/restore")
     public ApiResponse<SyllabusResponse> restore(HttpServletRequest request, @PathVariable Integer courseId) {
         return ApiResponse.success(courseSyllabusService.restorePrevious(courseId, currentUserId(request)));
+    }
+
+    @Idempotent
+    @DeleteMapping
+    public ApiResponse<SyllabusResponse> clear(HttpServletRequest request, @PathVariable Integer courseId) {
+        return ApiResponse.success(courseSyllabusService.clear(courseId, currentUserId(request)));
     }
 
     private Integer currentUserId(HttpServletRequest request) {

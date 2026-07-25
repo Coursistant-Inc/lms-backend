@@ -93,4 +93,20 @@
         WHERE course_id = #{courseId}
     </select>
 
+    <select id="countActiveInstructorsByCourseId" resultType="int">
+        SELECT COUNT(*)
+        FROM enrollment
+        WHERE course_id = #{courseId}
+          AND course_role = 'Instructor'
+          AND active = 1
+    </select>
+
+    <select id="countActiveInstructorEnrollmentsByUserId" resultType="int">
+        SELECT COUNT(*)
+        FROM enrollment
+        WHERE user_id = #{userId}
+          AND course_role = 'Instructor'
+          AND active = 1
+    </select>
+
 </mapper>

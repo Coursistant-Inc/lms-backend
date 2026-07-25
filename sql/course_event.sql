@@ -1,4 +1,4 @@
--- CourseEvent: one-off dated events (not recurring sessions)
+﻿-- CourseEvent: one-off dated events (not recurring sessions)
 
 CREATE TABLE IF NOT EXISTS course_event (
   id INT NOT NULL AUTO_INCREMENT,
@@ -14,6 +14,6 @@ CREATE TABLE IF NOT EXISTS course_event (
   PRIMARY KEY (id),
   KEY idx_course_event_course (course_id),
   KEY idx_course_event_date (event_date),
-  CONSTRAINT fk_course_event_course FOREIGN KEY (course_id) REFERENCES Course (id) ON DELETE CASCADE,
+  CONSTRAINT fk_course_event_course FOREIGN KEY (course_id) REFERENCES course (id) ON DELETE CASCADE,
   CONSTRAINT chk_course_event_time CHECK (end_time > start_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

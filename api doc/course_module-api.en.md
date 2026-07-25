@@ -39,12 +39,12 @@ Base URL: `https://dev.xlearnedu.com:8080/api`
 
 **Write APIs that require `Idempotency-Key`:**
 
-- `POST/PUT /v2/courses`, `POST /v2/courses/{id}/archive`
+- `POST/PUT /v2/courses`, `POST /v2/courses/{id}/archive`, `POST .../unarchive`, `POST .../transfer-instructor`
 - `POST/PUT .../sessions`
 - `POST/PUT .../events`
-- `POST/PATCH .../members/.../ta...`
-- `POST /v2/admin/courses/{id}/enrollments`
-- `POST .../syllabus`, `POST .../syllabus/restore`
+- `POST/PATCH .../members/.../ta...`, `DELETE .../members/{userId}`
+- `POST /v2/admin/courses/{id}/enrollments`, `POST .../enrollments/batch`, `DELETE .../enrollments/{userId}`
+- `POST .../syllabus`, `POST .../syllabus/restore`, `DELETE .../syllabus`
 - `POST/PATCH/PUT .../weeks...` (including publish/unpublish/reorder; not DELETE)
 - `PATCH/PUT/POST .../materials` for rename / reorder / move (**creating materials does not require a key**)
 
@@ -146,11 +146,12 @@ Use `role` from `GET /v2/me/courses` to show/hide UI actions.
 | Edit sessions / members / syllabus | ✓ | | |
 | Edit events | ✓ | requires `canManageCourseEvents` | |
 | Create course | platform `level=INSTRUCTOR` only (then you are that course's Instructor) | | |
-| Archive / update / delete course | ✓ (frontend: Instructor-gated buttons) | | |
-| Admin enroll | platform Admin, see §10 | | |
+| Archive / unarchive / update / delete / transfer Instructor | ✓ (backend-enforced Instructor) | | |
+| Deactivate member (Student/TA) | ✓ | | |
+| Admin enroll / batch enroll / deactivate enrollment | platform Admin, see §10 | | |
+| Course browse `GET /v2/courses` | platform Admin or Instructor (see §5.0) | | |
 
-When course `state=Archived`: writes for syllabus / weeks / materials / TA / enroll return `COURSE_ARCHIVED`. Reads usually still work.  
-(Events / Sessions writes may still succeed today; **product-wise, hide write entry points after archive**.)
+When course `state=Archived`: writes for syllabus / weeks / materials / sessions / events / TA / enroll return `COURSE_ARCHIVED`. Reads usually still work.
 
 Common errors: `NOT_COURSE_MEMBER`, `NOT_COURSE_INSTRUCTOR`, `ACCESS_DENIED`, `COURSE_ARCHIVED`.
 
@@ -174,6 +175,25 @@ Invalid enum → usually `400 BAD_REQUEST`.
 ## 5. Course CRUD
 
 Prefix: `/v2/courses`
+
+### 5.0 Browse courses — `GET /v2/courses`
+
+| | |
+|--|--|
+| Who can call | Platform **Admin** (all courses); platform `level=INSTRUCTOR` or course Instructor (own courses only) |
+| Plain Student | `403 ACCESS_DENIED` |
+| Query | Optional: `q` (courseCode/title), `state` (`Active`/`Archived`), `page` (default 0), `size` (default 20, max 100) |
+
+Success `data`:
+
+```json
+{
+  "items": [ { "id": 9, "courseCode": "DEMO", "title": "...", "state": "Active" } ],
+  "page": 0,
+  "size": 20,
+  "total": 1
+}
+```
 
 ### 5.1 Create course — `POST /v2/courses`
 
@@ -254,9 +274,10 @@ Success `data` shape matches create.
 
 | | |
 |--|--|
-| Who can call | Instructor (frontend-gated) |
+| Who can call | Course Instructor (backend-enforced; others → `NOT_COURSE_INSTRUCTOR`) |
 | Idempotency key | Yes |
-| Body | All optional: `courseCode` `title` `termStartDate` `termEndDate` `description` `location` `instructorId` |
+| Body | All optional: `courseCode` `title` `termStartDate` `termEndDate` `description` `location` |
+| Forbidden | **Do not send `instructorId`**; if present → `400 BAD_REQUEST` (instructor transfer is a separate feature) |
 
 Success: `200`, `data` is the updated course.
 
@@ -266,7 +287,7 @@ Success: `200`, `data` is the updated course.
 
 | | |
 |--|--|
-| Who can call | Instructor (frontend-gated) |
+| Who can call | Course Instructor (backend-enforced) |
 
 Success: `data` is `null`.  
 If the course still has members → `409 CONFLICT`:
@@ -285,10 +306,34 @@ If the course still has members → `409 CONFLICT`:
 
 | | |
 |--|--|
-| Who can call | Instructor (frontend-gated) |
+| Who can call | Course Instructor (backend-enforced) |
 | Idempotency key | Yes |
 
 Success: `data.state = "Archived"` with `archivedAt`. Calling again when already archived still returns `200`.
+
+---
+
+### 5.6 Unarchive — `POST /v2/courses/{id}/unarchive`
+
+| | |
+|--|--|
+| Who can call | Course Instructor (backend-enforced) |
+| Idempotency key | Yes |
+
+Success: `data.state = "Active"`, `archivedAt = null`. Already Active → still `200`.
+
+---
+
+### 5.7 Transfer Instructor — `POST /v2/courses/{id}/transfer-instructor`
+
+| | |
+|--|--|
+| Who can call | Current course Instructor |
+| Idempotency key | Yes |
+| Body | `{ "newInstructorId": 403 }` (must exist with platform `level=INSTRUCTOR`) |
+| Archived | `COURSE_ARCHIVED` |
+
+Effects: updates `course.instructorId`; old Instructor → Student; new user becomes the sole Instructor.
 
 ---
 
@@ -326,7 +371,7 @@ Fetch a single session by id. Enrolled members. Missing → `404 SESSION_NOT_FOU
 
 ### 6.3 Create — `POST .../sessions`
 
-Instructor; idempotency key required. All body fields required:
+Instructor; idempotency key required; archived course → `400 COURSE_ARCHIVED`. All body fields required:
 
 | Field | Constraints |
 |------|------|
@@ -349,11 +394,11 @@ Student call → `403 NOT_COURSE_INSTRUCTOR`.
 
 ### 6.4 Update — `PUT .../sessions/{sessionId}`
 
-Instructor; idempotency key required; all fields optional.
+Instructor; idempotency key required; all fields optional; archived course → `COURSE_ARCHIVED`.
 
 ### 6.5 Delete — `DELETE .../sessions/{sessionId}`
 
-Instructor. Success `data: null`; subsequent GET → `SESSION_NOT_FOUND`.
+Instructor; archived course → `COURSE_ARCHIVED`. Success `data: null`; subsequent GET → `SESSION_NOT_FOUND`.
 
 ---
 
@@ -389,7 +434,7 @@ Fetch a single event by id. Missing → `404 COURSE_EVENT_NOT_FOUND`.
 
 ### 7.3 Create — `POST .../events`
 
-Idempotency key required.
+Idempotency key required; archived course → `400 COURSE_ARCHIVED`.
 
 | Field | Required |
 |------|------|
@@ -405,7 +450,7 @@ No permission → `403 ACCESS_DENIED`.
 | Who can call | Instructor, or TA with `canManageCourseEvents=true` |
 | Idempotency key | Yes |
 | Success | `200`, `data` is the updated event |
-| Common errors | `403 ACCESS_DENIED`; `404 COURSE_EVENT_NOT_FOUND`; invalid time `400 BAD_REQUEST` |
+| Common errors | `403 ACCESS_DENIED`; `400 COURSE_ARCHIVED`; `404 COURSE_EVENT_NOT_FOUND`; invalid time `400 BAD_REQUEST` |
 
 **Body (all optional; only sent fields are updated)**
 
@@ -436,7 +481,7 @@ Success `data` shape matches a list item (includes `id`, `courseId`, times/locat
 | Who can call | Instructor, or TA with `canManageCourseEvents=true` |
 | Idempotency key | No |
 | Success | `200`, `data` is `null` |
-| Common errors | `403 ACCESS_DENIED`; missing → `404 COURSE_EVENT_NOT_FOUND` |
+| Common errors | `403 ACCESS_DENIED`; `400 COURSE_ARCHIVED`; missing → `404 COURSE_EVENT_NOT_FOUND` |
 
 After delete, `GET .../events/{eventId}` → `404 COURSE_EVENT_NOT_FOUND`.
 
@@ -480,7 +525,7 @@ Promote a course **Student** to **TA**, optionally setting TA permission flags.
 | Who can call | Instructor only |
 | Idempotency key | Yes |
 | Path | `courseId`: course id; `userId`: target userId (must already be a course member) |
-| Course state | Archived → `403 COURSE_ARCHIVED` |
+| Course state | Archived → `400 COURSE_ARCHIVED` |
 
 **Preconditions (target user)**
 
@@ -554,13 +599,26 @@ Target must be TA. On success, `courseRole` becomes `Student` again.
 
 Idempotency key required; body is the four booleans above.
 
+### 8.5 Deactivate member — `DELETE .../members/{userId}`
+
+| | |
+|--|--|
+| Who can call | Instructor |
+| Idempotency key | Yes |
+| Semantics | Soft deactivate: `active=false`; Student/TA only |
+| Deactivate Instructor | `403 ACCESS_DENIED` |
+| Already inactive | `200` (idempotent) |
+| Archived | `COURSE_ARCHIVED` |
+
+After deactivate, the user no longer sees the course in `GET /v2/me/courses`.
+
 ---
 
 ## 9. My courses
 
 ### `GET /v2/me/courses`
 
-Authenticated user. Returns courses the user has joined (including Archived), each with `role`.
+Authenticated user. Returns courses with an **active** enrollment (the course itself may be Archived), each with `role`.
 
 ```json
 {
@@ -591,7 +649,7 @@ Use `role` here for navigation: student timetable vs instructor prep entry.
 
 ## 10. Admin enroll
 
-### `POST /v2/admin/courses/{courseId}/enrollments`
+### 10.1 Single enroll — `POST /v2/admin/courses/{courseId}/enrollments`
 
 | | |
 |--|--|
@@ -600,7 +658,36 @@ Use `role` here for navigation: student timetable vs instructor prep entry.
 | Body | `{ "userId": 385 }` |
 
 Success: member object with `courseRole: "Student"`.  
-Non-Admin → `ACCESS_DENIED`; already enrolled → `CONFLICT`; archived → `COURSE_ARCHIVED`.
+Non-Admin → `ACCESS_DENIED`; already active → `CONFLICT`; archived → `COURSE_ARCHIVED`.
+
+### 10.2 Batch / email enroll — `POST /v2/admin/courses/{courseId}/enrollments/batch`
+
+| | |
+|--|--|
+| Who can call | Platform Admin |
+| Idempotency key | Yes |
+| Body | `{ "userIds": [385], "emails": ["regtest2@example.com"] }` (at least one) |
+
+HTTP is always **200** (including partial success):
+
+```json
+{
+  "succeeded": [ { "userId": 385, "courseRole": "Student", "active": true } ],
+  "failed": [ { "email": "missing@example.com", "code": "USER_NOT_FOUND", "message": "User not found" } ]
+}
+```
+
+Emails are resolved to users; missing emails go to `failed`; active conflict → `CONFLICT`; inactive → reactivated as success.
+
+### 10.3 Deactivate enrollment — `DELETE /v2/admin/courses/{courseId}/enrollments/{userId}`
+
+| | |
+|--|--|
+| Who can call | Platform Admin |
+| Idempotency key | Yes |
+| Semantics | Soft deactivate `active=false` |
+| Sole active Instructor | `409 CONFLICT` |
+| Already inactive | `200` |
 
 ---
 
@@ -681,7 +768,7 @@ Upload (or overwrite) the current syllabus PDF. On re-upload: new file becomes c
 | Who can call | Instructor only |
 | Idempotency key | Yes |
 | Content-Type | `multipart/form-data` (do not set manually on FormData; browser adds boundary) |
-| Course state | Archived → `403 COURSE_ARCHIVED` |
+| Course state | Archived → `400 COURSE_ARCHIVED` |
 
 **Form fields**
 
@@ -741,7 +828,17 @@ After the second and later successful uploads, `canRestorePrevious` is usually `
 
 ### 11.4 Restore previous — `POST .../syllabus/restore`
 
-Instructor; idempotency key required. No previous version → `NO_PREVIOUS_SYLLABUS_VERSION`.
+Instructor; idempotency key required. No current syllabus → `SYLLABUS_NOT_FOUND`; no previous → `NO_PREVIOUS_SYLLABUS_VERSION`.
+
+### 11.5 Clear syllabus — `DELETE .../syllabus`
+
+| | |
+|--|--|
+| Who can call | Instructor |
+| Idempotency key | Yes |
+| Archived | `COURSE_ARCHIVED` |
+
+Clears current/previous pointers (`posted: false`); version rows remain in DB but are not exposed. Clearing again → `200`.
 
 ---
 
@@ -801,7 +898,7 @@ Append a week at the end of the course; unpublished by default.
 | Method & path | `POST /v2/courses/{courseId}/weeks` |
 | Who can call | Instructor only (TA / Student → `403 NOT_COURSE_INSTRUCTOR`) |
 | Idempotency key | Yes |
-| Course state | Archived → `403 COURSE_ARCHIVED` |
+| Course state | Archived → `400 COURSE_ARCHIVED` |
 
 **Body**
 
@@ -911,7 +1008,7 @@ Both require an idempotency key.
 
 ### 12.6 Delete — `DELETE .../weeks/{weekId}`
 
-If the week still has materials → `WEEK_NOT_EMPTY` (delete materials first).
+If the week still has materials → `409 WEEK_NOT_EMPTY` (delete materials first).
 
 ### 12.7 Download week ZIP — `GET .../weeks/{weekId}/download.zip`
 
@@ -1097,19 +1194,25 @@ a.click();
 | Method | Path | Who | Idempotency key |
 |------|------|------|----------|
 | POST | `/v2/courses` | level=INSTRUCTOR | Yes |
+| GET | `/v2/courses` | Admin / Instructor | |
 | GET | `/v2/courses/{id}` | Enrolled | |
 | PUT | `/v2/courses/{id}` | Instructor | Yes |
 | DELETE | `/v2/courses/{id}` | Instructor | |
 | POST | `/v2/courses/{id}/archive` | Instructor | Yes |
+| POST | `/v2/courses/{id}/unarchive` | Instructor | Yes |
+| POST | `/v2/courses/{id}/transfer-instructor` | Instructor | Yes |
 | GET | `/v2/courses/{id}/sessions` | Enrolled | |
 | POST/PUT/DELETE | `.../sessions` | Instructor | POST/PUT |
 | GET | `/v2/courses/{id}/events` | Enrolled | |
 | POST/PUT/DELETE | `.../events` | Instructor / event TA | POST/PUT |
 | GET | `/v2/courses/{id}/members` | Instructor | |
 | POST/DELETE/PATCH | `.../members/.../ta` | Instructor | POST/PATCH |
+| DELETE | `.../members/{userId}` | Instructor (deactivate Student/TA) | Yes |
 | GET | `/v2/me/courses` | Authenticated | |
 | POST | `/v2/admin/courses/{id}/enrollments` | Admin | Yes |
-| GET/POST | `.../syllabus` | Read: members; write: Instructor | Write: yes |
+| POST | `.../enrollments/batch` | Admin | Yes |
+| DELETE | `.../enrollments/{userId}` | Admin | Yes |
+| GET/POST/DELETE | `.../syllabus` | Read: members; write/delete: Instructor | Write/delete: yes |
 | GET/POST/... | `.../weeks` | Read: members; write: Instructor | Most writes: yes |
 | POST | `.../materials` | Instructor / TA upload | No |
 | DELETE | `.../materials/{id}` | Instructor; TA own only | |

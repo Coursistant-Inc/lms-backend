@@ -1,4 +1,4 @@
--- CourseSyllabus + CourseSyllabusVersion for lms_v2
+﻿-- CourseSyllabus + CourseSyllabusVersion for lms_v2
 
 CREATE TABLE IF NOT EXISTS course_syllabus_version (
   id INT NOT NULL AUTO_INCREMENT,
@@ -11,8 +11,8 @@ CREATE TABLE IF NOT EXISTS course_syllabus_version (
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   KEY idx_course_syllabus_version_course (course_id),
-  CONSTRAINT fk_course_syllabus_version_course FOREIGN KEY (course_id) REFERENCES Course (id) ON DELETE CASCADE,
-  CONSTRAINT fk_course_syllabus_version_user FOREIGN KEY (uploaded_by) REFERENCES User (id)
+  CONSTRAINT fk_course_syllabus_version_course FOREIGN KEY (course_id) REFERENCES course (id) ON DELETE CASCADE,
+  CONSTRAINT fk_course_syllabus_version_user FOREIGN KEY (uploaded_by) REFERENCES user (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- CourseSyllabus: one row per course tracking the current/previous posted version.
@@ -26,5 +26,5 @@ CREATE TABLE IF NOT EXISTS course_syllabus (
   previous_version_id INT NULL,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (course_id),
-  CONSTRAINT fk_course_syllabus_course FOREIGN KEY (course_id) REFERENCES Course (id) ON DELETE RESTRICT
+  CONSTRAINT fk_course_syllabus_course FOREIGN KEY (course_id) REFERENCES course (id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

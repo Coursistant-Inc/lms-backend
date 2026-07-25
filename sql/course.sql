@@ -1,4 +1,4 @@
--- Course table for lms_v2 (MySQL)
+﻿-- Course table for lms_v2 (MySQL)
 -- instructor_id / creator_id reference User(id); tenant_id has no Tenant table yet.
 -- course_code is intentionally not unique (duplicates allowed).
 
@@ -22,8 +22,8 @@ CREATE TABLE course (
   KEY idx_course_state (state),
   KEY idx_course_instructor (instructor_id),
   KEY idx_course_creator (creator_id),
-  CONSTRAINT fk_course_instructor FOREIGN KEY (instructor_id) REFERENCES User (id),
-  CONSTRAINT fk_course_creator FOREIGN KEY (creator_id) REFERENCES User (id),
+  CONSTRAINT fk_course_instructor FOREIGN KEY (instructor_id) REFERENCES user (id),
+  CONSTRAINT fk_course_creator FOREIGN KEY (creator_id) REFERENCES user (id),
   CONSTRAINT chk_course_term CHECK (term_end_date >= term_start_date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

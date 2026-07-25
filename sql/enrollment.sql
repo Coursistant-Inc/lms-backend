@@ -1,4 +1,4 @@
--- Enrollment + EnrollmentAuditLog for lms_v2
+﻿-- Enrollment + EnrollmentAuditLog for lms_v2
 
 CREATE TABLE IF NOT EXISTS enrollment (
   id INT NOT NULL AUTO_INCREMENT,
@@ -19,8 +19,8 @@ CREATE TABLE IF NOT EXISTS enrollment (
   UNIQUE KEY uk_enrollment_one_instructor (instructor_course_id),
   KEY idx_enrollment_user (user_id),
   KEY idx_enrollment_course (course_id),
-  CONSTRAINT fk_enrollment_course FOREIGN KEY (course_id) REFERENCES Course (id) ON DELETE RESTRICT,
-  CONSTRAINT fk_enrollment_user FOREIGN KEY (user_id) REFERENCES User (id)
+  CONSTRAINT fk_enrollment_course FOREIGN KEY (course_id) REFERENCES course (id) ON DELETE RESTRICT,
+  CONSTRAINT fk_enrollment_user FOREIGN KEY (user_id) REFERENCES user (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS enrollment_audit_log (

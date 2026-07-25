@@ -5,6 +5,7 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Mapper
 public interface CourseMapper {
@@ -18,4 +19,16 @@ public interface CourseMapper {
     int deleteById(Integer id);
 
     int archiveById(@Param("id") Integer id, @Param("archivedAt") LocalDateTime archivedAt);
+
+    int unarchiveById(@Param("id") Integer id);
+
+    long countForBrowse(@Param("q") String q,
+                        @Param("state") String state,
+                        @Param("instructorUserId") Integer instructorUserId);
+
+    List<Course> selectForBrowse(@Param("q") String q,
+                                 @Param("state") String state,
+                                 @Param("instructorUserId") Integer instructorUserId,
+                                 @Param("offset") int offset,
+                                 @Param("limit") int limit);
 }

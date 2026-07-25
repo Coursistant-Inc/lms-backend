@@ -78,6 +78,50 @@
         WHERE id = #{id}
     </update>
 
+    <update id="unarchiveById">
+        UPDATE course
+        SET state = 'Active',
+            archived_at = NULL
+        WHERE id = #{id}
+    </update>
+
+    <sql id="Browse_Where">
+        <where>
+            <if test="q != null and q != ''">
+                AND (course_code LIKE CONCAT('%', #{q}, '%') OR title LIKE CONCAT('%', #{q}, '%'))
+            </if>
+            <if test="state != null and state != ''">
+                AND state = #{state}
+            </if>
+            <if test="instructorUserId != null">
+                AND (
+                    instructor_id = #{instructorUserId}
+                    OR id IN (
+                        SELECT course_id FROM enrollment
+                        WHERE user_id = #{instructorUserId}
+                          AND course_role = 'Instructor'
+                          AND active = 1
+                    )
+                )
+            </if>
+        </where>
+    </sql>
+
+    <select id="countForBrowse" resultType="long">
+        SELECT COUNT(*)
+        FROM course
+        <include refid="Browse_Where"/>
+    </select>
+
+    <select id="selectForBrowse" resultType="com.coursistant.lms.module.course.course.entity.Course">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM course
+        <include refid="Browse_Where"/>
+        ORDER BY updated_at DESC, id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
     <delete id="deleteById">
         DELETE FROM course
         WHERE id = #{id}

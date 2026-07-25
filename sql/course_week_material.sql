@@ -1,4 +1,4 @@
--- CourseWeek + CourseMaterial for lms_v2
+﻿-- CourseWeek + CourseMaterial for lms_v2
 
 CREATE TABLE IF NOT EXISTS course_week (
   id INT NOT NULL AUTO_INCREMENT,
@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS course_week (
   PRIMARY KEY (id),
   KEY idx_course_week_course (course_id),
   KEY idx_course_week_course_order (course_id, order_position),
-  CONSTRAINT fk_course_week_course FOREIGN KEY (course_id) REFERENCES Course (id) ON DELETE RESTRICT
+  CONSTRAINT fk_course_week_course FOREIGN KEY (course_id) REFERENCES course (id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS course_material (
@@ -35,9 +35,9 @@ CREATE TABLE IF NOT EXISTS course_material (
   KEY idx_course_material_week_order (week_id, order_position),
   KEY idx_course_material_course (course_id),
   KEY idx_course_material_uploader (uploaded_by),
-  CONSTRAINT fk_course_material_week FOREIGN KEY (week_id) REFERENCES CourseWeek (id) ON DELETE RESTRICT,
-  CONSTRAINT fk_course_material_course FOREIGN KEY (course_id) REFERENCES Course (id) ON DELETE RESTRICT,
-  CONSTRAINT fk_course_material_uploader FOREIGN KEY (uploaded_by) REFERENCES User (id) ON DELETE RESTRICT,
+  CONSTRAINT fk_course_material_week FOREIGN KEY (week_id) REFERENCES course_week (id) ON DELETE RESTRICT,
+  CONSTRAINT fk_course_material_course FOREIGN KEY (course_id) REFERENCES course (id) ON DELETE RESTRICT,
+  CONSTRAINT fk_course_material_uploader FOREIGN KEY (uploaded_by) REFERENCES user (id) ON DELETE RESTRICT,
   CONSTRAINT chk_course_material_type CHECK (
     (material_type = 'FILE' AND object_key IS NOT NULL AND link_url IS NULL)
     OR (material_type = 'LINK' AND link_url IS NOT NULL AND object_key IS NULL)
