@@ -161,4 +161,26 @@
         WHERE id = #{id}
     </update>
 
+    <select id="selectPublishedUpcomingForUser"
+            resultType="com.coursistant.lms.module.assignment.dto.UpcomingAssignmentQueryRow">
+        SELECT
+            a.id,
+            a.course_id AS courseId,
+            c.course_code AS courseCode,
+            a.title,
+            a.due_at AS dueAt,
+            a.late_until AS lateUntil,
+            a.submission_type AS submissionType,
+            a.group_set_id AS groupSetId
+        FROM assignment a
+        INNER JOIN enrollment e
+            ON e.course_id = a.course_id AND e.user_id = #{userId} AND e.active = 1
+        INNER JOIN course c ON c.id = a.course_id
+        WHERE a.state = 'Published'
+          AND a.due_at IS NOT NULL
+          AND a.due_at &gt;= #{fromUtc}
+          AND a.due_at &lt;= #{toUtc}
+        ORDER BY a.due_at ASC, a.course_id ASC, a.id ASC
+    </select>
+
 </mapper>

@@ -66,4 +66,22 @@
     <delete id="deleteById">
         DELETE FROM course_session WHERE id = #{id}
     </delete>
+
+    <select id="selectByUserActiveEnrollments"
+            resultType="com.coursistant.lms.module.course.schedule.dto.SessionWithCourseCode">
+        SELECT
+            s.id,
+            s.course_id AS courseId,
+            c.course_code AS courseCode,
+            s.type,
+            s.day_of_week AS dayOfWeek,
+            s.start_time AS startTime,
+            s.end_time AS endTime,
+            s.location
+        FROM course_session s
+        INNER JOIN enrollment e
+            ON e.course_id = s.course_id AND e.user_id = #{userId} AND e.active = 1
+        INNER JOIN course c ON c.id = s.course_id
+        ORDER BY s.course_id, s.id
+    </select>
 </mapper>

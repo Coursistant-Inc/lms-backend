@@ -8,6 +8,9 @@ import com.coursistant.lms.module.assignment.dto.DueDateChangePreviewRequest;
 import com.coursistant.lms.module.assignment.dto.DueDateChangePreviewResponse;
 import com.coursistant.lms.module.assignment.dto.PatchAssignmentRequest;
 import com.coursistant.lms.module.assignment.dto.ReceiptSummaryResponse;
+import com.coursistant.lms.module.assignment.dto.UpcomingAssignmentDeadlineResponse;
+import com.coursistant.lms.module.assignment.dto.UpcomingAssignmentQueryRow;
+import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.module.assignment.entity.Assignment;
 import com.coursistant.lms.module.assignment.entity.AssignmentAttachment;
 import com.coursistant.lms.module.assignment.entity.AssignmentGrade;
@@ -223,6 +226,71 @@ public class AssignmentService {
             result.add(item);
         }
         return result;
+    }
+
+    /**
+     * Dashboard: Published assignments across the user's active enrollments with dueAt in
+     * {@code [now, now+days]} (UTC, inclusive). Requires {@code X-Timezone}.
+     */
+    public List<UpcomingAssignmentDeadlineResponse> listUpcomingDeadlines(Integer userId,
+                                                                          String timezoneHeader,
+                                                                          Integer days) {
+        if (userId == null) {
+            throw new ApiException(ErrorType.UNAUTHORIZED);
+        }
+        ZoneId zone = assignmentTimeSupport.requireZone(timezoneHeader);
+        int windowDays = normalizeDays(days, 14, 30);
+        LocalDateTime now = assignmentTimeSupport.nowUtc();
+        LocalDateTime toUtc = now.plusDays(windowDays);
+
+        List<UpcomingAssignmentQueryRow> rows =
+                assignmentMapper.selectPublishedUpcomingForUser(userId, now, toUtc);
+        if (rows == null) {
+            throw new ApiException(ErrorType.INTERNAL_ERROR, "Upcoming assignment query returned null");
+        }
+
+        List<UpcomingAssignmentDeadlineResponse> result = new ArrayList<>();
+        for (UpcomingAssignmentQueryRow row : rows) {
+            Assignment assignment = new Assignment();
+            assignment.setId(row.getId());
+            assignment.setCourseId(row.getCourseId());
+            assignment.setTitle(row.getTitle());
+            assignment.setDueAt(row.getDueAt());
+            assignment.setLateUntil(row.getLateUntil());
+            assignment.setSubmissionType(row.getSubmissionType());
+            assignment.setGroupSetId(row.getGroupSetId());
+
+            AssignmentSubmissionVersion version = resolveCurrentVersion(assignment, userId);
+            boolean groupAssignment = AssignmentAccessService.SUBMISSION_TYPE_GROUP.equals(
+                    assignment.getSubmissionType());
+            List<LocalDateTime> stagingCreatedAts = groupAssignment
+                    ? List.of()
+                    : assignmentSubmissionService.activeStagingCreatedAts(assignment.getId(), userId, now);
+
+            UpcomingAssignmentDeadlineResponse item = new UpcomingAssignmentDeadlineResponse();
+            item.setCourseId(row.getCourseId());
+            item.setCourseCode(row.getCourseCode());
+            item.setAssignmentId(row.getId());
+            item.setTitle(row.getTitle());
+            item.setDueAtLocal(assignmentTimeSupport.toZone(row.getDueAt(), zone));
+            item.setTimezone(zone.getId());
+            item.setSubmissionStatus(submissionStatusCalculator.calculate(
+                    assignment.getDueAt(),
+                    assignment.getLateUntil(),
+                    now,
+                    version == null ? null : version.getSubmittedAt(),
+                    version == null ? null : version.getUsedGraceBuffer(),
+                    stagingCreatedAts));
+            result.add(item);
+        }
+        return result;
+    }
+
+    private int normalizeDays(Integer days, int defaultDays, int maxDays) {
+        if (days == null || days < 1) {
+            return defaultDays;
+        }
+        return Math.min(days, maxDays);
     }
 
     public AssignmentResponse detail(HttpServletRequest request, Integer courseId, Integer assignmentId,

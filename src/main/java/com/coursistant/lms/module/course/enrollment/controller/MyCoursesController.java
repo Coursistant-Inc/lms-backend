@@ -1,6 +1,6 @@
 package com.coursistant.lms.module.course.enrollment.controller;
 
-import com.coursistant.lms.module.course.enrollment.dto.MyCourseResponse;
+import com.coursistant.lms.module.course.enrollment.dto.DashboardCourseResponse;
 import com.coursistant.lms.module.course.enrollment.service.EnrollmentService;
 import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.shared.api.ApiResponse;
@@ -21,7 +21,7 @@ public class MyCoursesController {
     private EnrollmentService enrollmentService;
 
     @GetMapping
-    public ApiResponse<List<MyCourseResponse>> list(HttpServletRequest request) {
+    public ApiResponse<List<DashboardCourseResponse>> list(HttpServletRequest request) {
         return ApiResponse.success(enrollmentService.listMyCourses(currentUserId(request)));
     }
 

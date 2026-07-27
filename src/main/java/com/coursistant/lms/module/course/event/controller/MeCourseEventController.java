@@ -1,7 +1,7 @@
-package com.coursistant.lms.module.course.announcement.controller;
+package com.coursistant.lms.module.course.event.controller;
 
-import com.coursistant.lms.module.course.announcement.dto.RecentAnnouncementResponse;
-import com.coursistant.lms.module.course.announcement.service.CourseAnnouncementService;
+import com.coursistant.lms.module.course.event.dto.UpcomingCourseActivityResponse;
+import com.coursistant.lms.module.course.event.service.CourseEventService;
 import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.shared.api.ApiResponse;
 import com.coursistant.lms.shared.api.ErrorType;
@@ -15,16 +15,17 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 @RestController
-@RequestMapping("/v2/me/announcements")
-public class MeAnnouncementController {
+@RequestMapping("/v2/me/events")
+public class MeCourseEventController {
 
     @Resource
-    private CourseAnnouncementService courseAnnouncementService;
+    private CourseEventService courseEventService;
 
-    @GetMapping("/recent")
-    public ApiResponse<List<RecentAnnouncementResponse>> recent(HttpServletRequest request,
-                                                                @RequestParam(required = false) Integer limit) {
-        return ApiResponse.success(courseAnnouncementService.listRecentForUser(currentUserId(request), limit));
+    @GetMapping("/upcoming")
+    public ApiResponse<List<UpcomingCourseActivityResponse>> upcoming(HttpServletRequest request,
+                                                                      @RequestParam(required = false) Integer days) {
+        return ApiResponse.success(
+                courseEventService.listUpcomingActivitiesForUser(currentUserId(request), days));
     }
 
     private Integer currentUserId(HttpServletRequest request) {

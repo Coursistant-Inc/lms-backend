@@ -54,4 +54,25 @@
     <delete id="deleteById">
         DELETE FROM course_event WHERE id = #{id}
     </delete>
+
+    <select id="selectUpcomingActivitiesForUser"
+            resultType="com.coursistant.lms.module.course.event.dto.UpcomingCourseActivityResponse">
+        SELECT
+            e.course_id AS courseId,
+            c.course_code AS courseCode,
+            'CourseEvent' AS type,
+            e.event_date AS `date`,
+            e.start_time AS startTime,
+            e.end_time AS endTime,
+            e.location,
+            'Event' AS source,
+            e.id AS sourceId
+        FROM course_event e
+        INNER JOIN enrollment en
+            ON en.course_id = e.course_id AND en.user_id = #{userId} AND en.active = 1
+        INNER JOIN course c ON c.id = e.course_id
+        WHERE e.event_date &gt;= #{fromDate}
+          AND e.event_date &lt;= #{toDate}
+        ORDER BY e.event_date ASC, e.start_time ASC, e.id ASC
+    </select>
 </mapper>

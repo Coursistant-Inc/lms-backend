@@ -3,6 +3,7 @@ package com.coursistant.lms.module.course.announcement.service;
 import com.coursistant.lms.module.course.announcement.dto.AnnouncementResponse;
 import com.coursistant.lms.module.course.announcement.dto.AnnouncementSummaryResponse;
 import com.coursistant.lms.module.course.announcement.dto.CreateAnnouncementRequest;
+import com.coursistant.lms.module.course.announcement.dto.RecentAnnouncementResponse;
 import com.coursistant.lms.module.course.announcement.dto.UpdateAnnouncementRequest;
 import com.coursistant.lms.module.course.announcement.entity.CourseAnnouncement;
 import com.coursistant.lms.module.course.announcement.entity.CourseAnnouncementRead;
@@ -20,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -135,9 +137,24 @@ public class CourseAnnouncementService {
         courseAnnouncementMapper.deleteById(announcementId);
     }
 
-    public List<AnnouncementSummaryResponse> listRecentForUser(Integer userId, Integer limit) {
+    public List<RecentAnnouncementResponse> listRecentForUser(Integer userId, Integer limit) {
         int lim = normalizeLimit(limit, RECENT_DEFAULT, RECENT_MAX);
-        return courseAnnouncementMapper.selectRecentForUser(userId, lim);
+        List<AnnouncementSummaryResponse> rows = courseAnnouncementMapper.selectRecentForUser(userId, lim);
+        if (rows == null || rows.isEmpty()) {
+            return List.of();
+        }
+        List<RecentAnnouncementResponse> result = new ArrayList<>(rows.size());
+        for (AnnouncementSummaryResponse row : rows) {
+            RecentAnnouncementResponse item = new RecentAnnouncementResponse();
+            item.setCourseId(row.getCourseId());
+            item.setId(row.getId());
+            item.setCourseCode(row.getCourseCode());
+            item.setTitle(row.getTitle());
+            item.setPostedAt(row.getPostedAt());
+            item.setUnread(!Boolean.TRUE.equals(row.getRead()));
+            result.add(item);
+        }
+        return result;
     }
 
     private void markAnnouncementRead(Integer announcementId, Integer userId) {

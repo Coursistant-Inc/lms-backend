@@ -4,21 +4,41 @@ import com.coursistant.lms.module.course.course.entity.Course;
 import com.coursistant.lms.module.course.course.repository.CourseMapper;
 import com.coursistant.lms.module.course.event.dto.CourseEventResponse;
 import com.coursistant.lms.module.course.event.dto.CreateCourseEventRequest;
+import com.coursistant.lms.module.course.event.dto.UpcomingCourseActivityResponse;
 import com.coursistant.lms.module.course.event.dto.UpdateCourseEventRequest;
 import com.coursistant.lms.module.course.event.entity.CourseEvent;
 import com.coursistant.lms.module.course.event.repository.CourseEventMapper;
+import com.coursistant.lms.module.course.schedule.dto.SessionWithCourseCode;
+import com.coursistant.lms.module.course.schedule.repository.CourseSessionMapper;
 import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.shared.api.ErrorType;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
 public class CourseEventService {
+
+    private static final Map<DayOfWeek, String> DAY_CODES = new EnumMap<>(DayOfWeek.class);
+
+    static {
+        DAY_CODES.put(DayOfWeek.MONDAY, "MON");
+        DAY_CODES.put(DayOfWeek.TUESDAY, "TUE");
+        DAY_CODES.put(DayOfWeek.WEDNESDAY, "WED");
+        DAY_CODES.put(DayOfWeek.THURSDAY, "THU");
+        DAY_CODES.put(DayOfWeek.FRIDAY, "FRI");
+        DAY_CODES.put(DayOfWeek.SATURDAY, "SAT");
+        DAY_CODES.put(DayOfWeek.SUNDAY, "SUN");
+    }
 
     @Resource
     private CourseEventMapper courseEventMapper;
@@ -26,11 +46,73 @@ public class CourseEventService {
     @Resource
     private CourseMapper courseMapper;
 
+    @Resource
+    private CourseSessionMapper courseSessionMapper;
+
     public List<CourseEventResponse> listByCourseId(Integer courseId) {
         requireCourse(courseId);
         return courseEventMapper.selectByCourseId(courseId).stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Dashboard activities: expanded Course Sessions + Course Events for active enrollments
+     * in {@code [today, today+days-1]} (server default calendar date). Finished sessions today
+     * are still included.
+     */
+    public List<UpcomingCourseActivityResponse> listUpcomingActivitiesForUser(Integer userId, Integer days) {
+        if (userId == null) {
+            throw new ApiException(ErrorType.UNAUTHORIZED);
+        }
+        int windowDays = normalizeDays(days, 7, 30);
+        LocalDate from = LocalDate.now();
+        LocalDate to = from.plusDays(windowDays - 1L);
+
+        List<UpcomingCourseActivityResponse> result = new ArrayList<>();
+
+        List<UpcomingCourseActivityResponse> events =
+                courseEventMapper.selectUpcomingActivitiesForUser(userId, from, to);
+        if (events != null) {
+            result.addAll(events);
+        }
+
+        List<SessionWithCourseCode> sessions = courseSessionMapper.selectByUserActiveEnrollments(userId);
+        if (sessions != null && !sessions.isEmpty()) {
+            for (LocalDate d = from; !d.isAfter(to); d = d.plusDays(1)) {
+                String dayCode = DAY_CODES.get(d.getDayOfWeek());
+                for (SessionWithCourseCode session : sessions) {
+                    if (session.getDayOfWeek() == null || !session.getDayOfWeek().equals(dayCode)) {
+                        continue;
+                    }
+                    UpcomingCourseActivityResponse item = new UpcomingCourseActivityResponse();
+                    item.setCourseId(session.getCourseId());
+                    item.setCourseCode(session.getCourseCode());
+                    item.setType(session.getType());
+                    item.setDate(d);
+                    item.setStartTime(session.getStartTime());
+                    item.setEndTime(session.getEndTime());
+                    item.setLocation(session.getLocation());
+                    item.setSource(UpcomingCourseActivityResponse.SOURCE_SESSION);
+                    item.setSourceId(session.getId());
+                    result.add(item);
+                }
+            }
+        }
+
+        result.sort(Comparator
+                .comparing(UpcomingCourseActivityResponse::getDate, Comparator.nullsLast(Comparator.naturalOrder()))
+                .thenComparing(UpcomingCourseActivityResponse::getStartTime, Comparator.nullsLast(Comparator.naturalOrder()))
+                .thenComparing(UpcomingCourseActivityResponse::getCourseId, Comparator.nullsLast(Comparator.naturalOrder()))
+                .thenComparing(UpcomingCourseActivityResponse::getSourceId, Comparator.nullsLast(Comparator.naturalOrder())));
+        return result;
+    }
+
+    private int normalizeDays(Integer days, int defaultDays, int maxDays) {
+        if (days == null || days < 1) {
+            return defaultDays;
+        }
+        return Math.min(days, maxDays);
     }
 
     public CourseEventResponse getById(Integer courseId, Integer eventId) {

@@ -6,7 +6,7 @@ import com.coursistant.lms.module.course.enrollment.dto.AdminBatchEnrollRequest;
 import com.coursistant.lms.module.course.enrollment.dto.BatchEnrollFailure;
 import com.coursistant.lms.module.course.enrollment.dto.BatchEnrollResponse;
 import com.coursistant.lms.module.course.enrollment.dto.MemberResponse;
-import com.coursistant.lms.module.course.enrollment.dto.MyCourseResponse;
+import com.coursistant.lms.module.course.enrollment.dto.DashboardCourseResponse;
 import com.coursistant.lms.module.course.enrollment.dto.PromoteTaResponse;
 import com.coursistant.lms.module.course.enrollment.dto.UpdateTaPermissionsRequest;
 import com.coursistant.lms.shared.enums.LevelEnum;
@@ -386,14 +386,14 @@ public class EnrollmentService {
                 .collect(Collectors.toList());
     }
 
-    public List<MyCourseResponse> listMyCourses(Integer userId) {
-        List<MyCourseResponse> result = new ArrayList<>();
+    public List<DashboardCourseResponse> listMyCourses(Integer userId) {
+        List<DashboardCourseResponse> result = new ArrayList<>();
         for (Enrollment enrollment : enrollmentMapper.selectActiveByUserId(userId)) {
             Course course = courseMapper.selectById(enrollment.getCourseId());
             if (course == null) {
                 continue;
             }
-            result.add(toMyCourseResponse(enrollment, course));
+            result.add(toDashboardCourseResponse(enrollment, course));
         }
         return result;
     }
@@ -544,19 +544,11 @@ public class EnrollmentService {
         return response;
     }
 
-    private MyCourseResponse toMyCourseResponse(Enrollment enrollment, Course course) {
-        MyCourseResponse response = new MyCourseResponse();
+    private DashboardCourseResponse toDashboardCourseResponse(Enrollment enrollment, Course course) {
+        DashboardCourseResponse response = new DashboardCourseResponse();
         response.setId(course.getId());
-        response.setTenantId(course.getTenantId());
         response.setCourseCode(course.getCourseCode());
         response.setTitle(course.getTitle());
-        response.setTermStartDate(course.getTermStartDate());
-        response.setTermEndDate(course.getTermEndDate());
-        response.setDescription(course.getDescription());
-        response.setLocation(course.getLocation());
-        response.setInstructorId(course.getInstructorId());
-        response.setState(course.getState());
-        response.setArchivedAt(course.getArchivedAt());
         response.setRole(enrollment.getCourseRole());
         return response;
     }

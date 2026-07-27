@@ -1,9 +1,11 @@
 package com.coursistant.lms.module.assignment.repository;
 
+import com.coursistant.lms.module.assignment.dto.UpcomingAssignmentQueryRow;
 import com.coursistant.lms.module.assignment.entity.Assignment;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Mapper
@@ -47,4 +49,12 @@ public interface AssignmentMapper {
 
     /** Always writes group_set_id, including {@code null} when switching to Individual. */
     int updateGroupSetId(@Param("id") Integer id, @Param("groupSetId") Integer groupSetId);
+
+    /**
+     * Published assignments for the user's active enrollments with due_at in
+     * {@code [fromUtc, toUtc]} (inclusive), ordered by due then course then id.
+     */
+    List<UpcomingAssignmentQueryRow> selectPublishedUpcomingForUser(@Param("userId") Integer userId,
+                                                                    @Param("fromUtc") LocalDateTime fromUtc,
+                                                                    @Param("toUtc") LocalDateTime toUtc);
 }
