@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.coursistant.lms.module.quiz.repository.QuizAuditLogMapper">
+
+    <insert id="insert" parameterType="com.coursistant.lms.module.quiz.entity.QuizAuditLog" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO quiz_audit_log (course_id, quiz_id, attempt_id, actor_user_id, action, reason, detail_json, created_at)
+        VALUES (#{courseId}, #{quizId}, #{attemptId}, #{actorUserId}, #{action}, #{reason}, #{detailJson}, #{createdAt})
+    </insert>
+</mapper>

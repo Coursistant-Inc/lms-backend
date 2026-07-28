@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.coursistant.lms.module.quiz.repository.QuizAttemptAnswerMapper">
+
+    <insert id="upsert" parameterType="com.coursistant.lms.module.quiz.entity.QuizAttemptAnswer">
+        INSERT INTO quiz_attempt_answer (
+            attempt_id, question_id, selected_option_ids_json, text_answer,
+            revision, saved_at, created_at, updated_at
+        ) VALUES (
+            #{attemptId}, #{questionId}, #{selectedOptionIdsJson}, #{textAnswer},
+            1, #{savedAt}, #{createdAt}, #{updatedAt}
+        )
+        ON DUPLICATE KEY UPDATE
+            selected_option_ids_json = VALUES(selected_option_ids_json),
+            text_answer = VALUES(text_answer),
+            revision = revision + 1,
+            saved_at = VALUES(saved_at),
+            updated_at = VALUES(updated_at)
+    </insert>
+
+    <select id="selectByAttemptIdAndQuestionId" resultType="com.coursistant.lms.module.quiz.entity.QuizAttemptAnswer">
+        SELECT id, attempt_id AS attemptId, question_id AS questionId,
+               selected_option_ids_json AS selectedOptionIdsJson, text_answer AS textAnswer,
+               revision, saved_at AS savedAt, score, pending_manual AS pendingManual,
+               feedback, graded_by AS gradedBy, graded_at AS gradedAt,
+               created_at AS createdAt, updated_at AS updatedAt
+        FROM quiz_attempt_answer WHERE attempt_id = #{attemptId} AND question_id = #{questionId}
+    </select>
+
+    <select id="selectByAttemptId" resultType="com.coursistant.lms.module.quiz.entity.QuizAttemptAnswer">
+        SELECT id, attempt_id AS attemptId, question_id AS questionId,
+               selected_option_ids_json AS selectedOptionIdsJson, text_answer AS textAnswer,
+               revision, saved_at AS savedAt, score, pending_manual AS pendingManual,
+               feedback, graded_by AS gradedBy, graded_at AS gradedAt,
+               created_at AS createdAt, updated_at AS updatedAt
+        FROM quiz_attempt_answer WHERE attempt_id = #{attemptId}
+    </select>
+
+    <select id="selectShortAnswersByQuestionId" resultType="com.coursistant.lms.module.quiz.entity.QuizAttemptAnswer">
+        SELECT a.id, a.attempt_id AS attemptId, a.question_id AS questionId,
+               a.text_answer AS textAnswer, a.score, a.pending_manual AS pendingManual,
+               a.feedback, a.graded_by AS gradedBy, a.graded_at AS gradedAt
+        FROM quiz_attempt_answer a
+        INNER JOIN quiz_attempt att ON att.id = a.attempt_id
+        INNER JOIN quiz_question q ON q.id = a.question_id
+        WHERE a.question_id = #{questionId} AND q.type = 'ShortAnswer' AND att.status = 'Submitted'
+    </select>
+
+    <select id="selectByQuestionId" resultType="com.coursistant.lms.module.quiz.entity.QuizAttemptAnswer">
+        SELECT id, attempt_id AS attemptId, question_id AS questionId,
+               selected_option_ids_json AS selectedOptionIdsJson, text_answer AS textAnswer,
+               revision, saved_at AS savedAt, score, pending_manual AS pendingManual,
+               feedback, graded_by AS gradedBy, graded_at AS gradedAt,
+               created_at AS createdAt, updated_at AS updatedAt
+        FROM quiz_attempt_answer WHERE question_id = #{questionId}
+    </select>
+
+    <update id="updateScore" parameterType="com.coursistant.lms.module.quiz.entity.QuizAttemptAnswer">
+        UPDATE quiz_attempt_answer SET
+            score = #{score}, pending_manual = #{pendingManual}, feedback = #{feedback},
+            graded_by = #{gradedBy}, graded_at = #{gradedAt}, updated_at = #{updatedAt}
+        WHERE id = #{id}
+    </update>
+
+    <select id="countPendingManualByAttemptId" resultType="int">
+        SELECT COUNT(*) FROM quiz_attempt_answer WHERE attempt_id = #{attemptId} AND pending_manual = 1
+    </select>
+
+    <select id="countPendingManualByQuizId" resultType="int">
+        SELECT COUNT(*) FROM quiz_attempt_answer a
+        INNER JOIN quiz_attempt att ON att.id = a.attempt_id
+        WHERE att.quiz_id = #{quizId} AND a.pending_manual = 1 AND att.status = 'Submitted'
+    </select>
+</mapper>

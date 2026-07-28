@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.coursistant.lms.module.quiz.repository.QuizScoreAuditMapper">
+
+    <insert id="insert" parameterType="com.coursistant.lms.module.quiz.entity.QuizScoreAudit" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO quiz_score_audit (quiz_id, attempt_id, question_id, actor_user_id, reason, score_before, score_after, created_at)
+        VALUES (#{quizId}, #{attemptId}, #{questionId}, #{actorUserId}, #{reason}, #{scoreBefore}, #{scoreAfter}, #{createdAt})
+    </insert>
+</mapper>

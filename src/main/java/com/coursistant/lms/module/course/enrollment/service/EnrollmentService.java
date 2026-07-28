@@ -16,6 +16,7 @@ import com.coursistant.lms.module.course.enrollment.repository.EnrollmentAuditLo
 import com.coursistant.lms.module.course.enrollment.repository.EnrollmentMapper;
 import com.coursistant.lms.module.course.group.entity.GroupMembershipAudit;
 import com.coursistant.lms.module.course.group.service.GroupMembershipService;
+import com.coursistant.lms.module.quiz.service.QuizLifecycleHooks;
 import com.coursistant.lms.module.user.account.entity.User;
 import com.coursistant.lms.module.user.account.repository.UserMapper;
 import com.coursistant.lms.shared.api.ApiException;
@@ -68,6 +69,10 @@ public class EnrollmentService {
     @Lazy
     @Resource
     private GroupMembershipService groupMembershipService;
+
+    @Lazy
+    @Resource
+    private QuizLifecycleHooks quizLifecycleHooks;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -196,6 +201,7 @@ public class EnrollmentService {
         enrollmentMapper.updateById(patch);
         groupMembershipService.endGroupMembershipsOnEnrollmentDeactivated(
                 courseId, userId, GroupMembershipAudit.ACTOR_ADMIN, adminId);
+        quizLifecycleHooks.onMembershipIneligible(courseId, userId);
         writeAudit(courseId, userId, ACTOR_TYPE_ADMIN, adminId, "DEACTIVATE", null);
         return toMemberResponse(requireEnrollmentById(enrollment.getId()));
     }
@@ -223,6 +229,7 @@ public class EnrollmentService {
         enrollmentMapper.updateById(patch);
         groupMembershipService.endGroupMembershipsOnEnrollmentDeactivated(
                 courseId, userId, GroupMembershipAudit.ACTOR_USER, actorId);
+        quizLifecycleHooks.onMembershipIneligible(courseId, userId);
         writeAudit(courseId, userId, ACTOR_TYPE_USER, actorId, "DEACTIVATE", null);
         return toMemberResponse(requireEnrollmentById(enrollment.getId()));
     }
@@ -320,6 +327,7 @@ public class EnrollmentService {
         // here on. Revoking the TA role deliberately does not unfreeze it.
         patch.setAssignmentSubmitFrozen(true);
         enrollmentMapper.updateById(patch);
+        quizLifecycleHooks.onMembershipIneligible(courseId, userId);
 
         writeAudit(courseId, userId, ACTOR_TYPE_USER, actorId, "PROMOTED_TO_TA", toJson(request));
         sendTaChangeEmailBestEffort(userId, course, "promoted to Teaching Assistant");

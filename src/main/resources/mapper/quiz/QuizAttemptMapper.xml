@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.coursistant.lms.module.quiz.repository.QuizAttemptMapper">
+
+    <sql id="Base_Column_List">
+        id, quiz_id AS quizId, user_id AS userId, attempt_number AS attemptNumber, status, close_reason AS closeReason,
+        receipt_id AS receiptId, started_at AS startedAt, deadline_at AS deadlineAt, submitted_at AS submittedAt,
+        auto_score AS autoScore, manual_score AS manualScore, total_score AS totalScore,
+        manual_grading_complete AS manualGradingComplete, version, created_at AS createdAt, updated_at AS updatedAt
+    </sql>
+
+    <insert id="insert" parameterType="com.coursistant.lms.module.quiz.entity.QuizAttempt" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO quiz_attempt (quiz_id, user_id, attempt_number, status, started_at, deadline_at, version, created_at, updated_at)
+        VALUES (#{quizId}, #{userId}, #{attemptNumber}, #{status}, #{startedAt}, #{deadlineAt}, #{version}, #{createdAt}, #{updatedAt})
+    </insert>
+
+    <select id="selectById" resultType="com.coursistant.lms.module.quiz.entity.QuizAttempt">
+        SELECT <include refid="Base_Column_List"/> FROM quiz_attempt WHERE id = #{id}
+    </select>
+
+    <select id="selectByQuizIdAndId" resultType="com.coursistant.lms.module.quiz.entity.QuizAttempt">
+        SELECT <include refid="Base_Column_List"/> FROM quiz_attempt WHERE quiz_id = #{quizId} AND id = #{id}
+    </select>
+
+    <select id="selectInProgressByQuizIdAndUserId" resultType="com.coursistant.lms.module.quiz.entity.QuizAttempt">
+        SELECT <include refid="Base_Column_List"/> FROM quiz_attempt
+        WHERE quiz_id = #{quizId} AND user_id = #{userId} AND status IN ('InProgress', 'Finalizing')
+        LIMIT 1
+    </select>
+
+    <select id="countByQuizIdAndUserId" resultType="int">
+        SELECT COUNT(*) FROM quiz_attempt WHERE quiz_id = #{quizId} AND user_id = #{userId}
+    </select>
+
+    <select id="countByQuizIdAndUserIdSubmitted" resultType="int">
+        SELECT COUNT(*) FROM quiz_attempt WHERE quiz_id = #{quizId} AND user_id = #{userId} AND status = 'Submitted'
+    </select>
+
+    <select id="countByQuizIdAndUserIdAny" resultType="int">
+        SELECT COUNT(*) FROM quiz_attempt WHERE quiz_id = #{quizId} AND user_id = #{userId}
+    </select>
+
+    <select id="selectByQuizIdAndUserId" resultType="com.coursistant.lms.module.quiz.entity.QuizAttempt">
+        SELECT <include refid="Base_Column_List"/> FROM quiz_attempt
+        WHERE quiz_id = #{quizId} AND user_id = #{userId} ORDER BY attempt_number DESC
+    </select>
+
+    <select id="selectByQuizId" resultType="com.coursistant.lms.module.quiz.entity.QuizAttempt">
+        SELECT <include refid="Base_Column_List"/> FROM quiz_attempt
+        WHERE quiz_id = #{quizId}
+        <if test="userId != null">AND user_id = #{userId}</if>
+        ORDER BY id DESC LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <update id="casToFinalizing">
+        UPDATE quiz_attempt SET status = 'Finalizing', updated_at = UTC_TIMESTAMP(3)
+        WHERE id = #{id} AND status = 'InProgress'
+    </update>
+
+    <update id="updateSubmitted" parameterType="com.coursistant.lms.module.quiz.entity.QuizAttempt">
+        UPDATE quiz_attempt SET
+            status = #{status}, close_reason = #{closeReason}, receipt_id = #{receiptId},
+            submitted_at = #{submittedAt}, auto_score = #{autoScore}, manual_score = #{manualScore},
+            total_score = #{totalScore}, manual_grading_complete = #{manualGradingComplete},
+            version = version + 1, updated_at = #{updatedAt}
+        WHERE id = #{id}
+    </update>
+
+    <select id="selectIdsNeedingFinalize" resultType="int">
+        SELECT a.id FROM quiz_attempt a
+        INNER JOIN quiz q ON q.id = a.quiz_id
+        INNER JOIN course c ON c.id = q.course_id
+        LEFT JOIN enrollment e ON e.course_id = q.course_id AND e.user_id = a.user_id AND e.active = 1
+        WHERE a.status = 'InProgress'
+          AND (
+            a.deadline_at &lt;= #{nowUtc}
+            OR q.closes_at &lt;= #{nowUtc}
+            OR c.state = 'Archived'
+            OR e.id IS NULL
+            OR e.course_role != 'Student'
+          )
+        ORDER BY a.deadline_at
+        LIMIT #{limit}
+    </select>
+
+    <select id="countSubmittedByQuizId" resultType="int">
+        SELECT COUNT(*) FROM quiz_attempt WHERE quiz_id = #{quizId} AND status = 'Submitted'
+    </select>
+
+    <select id="selectInProgressIdsByCourseId" resultType="int">
+        SELECT a.id FROM quiz_attempt a
+        INNER JOIN quiz q ON q.id = a.quiz_id
+        WHERE q.course_id = #{courseId} AND a.status = 'InProgress'
+        ORDER BY a.id
+        LIMIT #{limit}
+    </select>
+
+    <select id="selectInProgressIdsByCourseIdAndUserId" resultType="int">
+        SELECT a.id FROM quiz_attempt a
+        INNER JOIN quiz q ON q.id = a.quiz_id
+        WHERE q.course_id = #{courseId} AND a.user_id = #{userId} AND a.status = 'InProgress'
+        ORDER BY a.id
+        LIMIT #{limit}
+    </select>
+</mapper>

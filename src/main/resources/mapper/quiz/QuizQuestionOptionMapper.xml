@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.coursistant.lms.module.quiz.repository.QuizQuestionOptionMapper">
+
+    <insert id="insert" parameterType="com.coursistant.lms.module.quiz.entity.QuizQuestionOption" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO quiz_question_option (question_id, label, is_correct, position)
+        VALUES (#{questionId}, #{label}, #{isCorrect}, #{position})
+    </insert>
+
+    <insert id="insertBatch">
+        INSERT INTO quiz_question_option (question_id, label, is_correct, position) VALUES
+        <foreach collection="options" item="o" separator=",">
+            (#{o.questionId}, #{o.label}, #{o.isCorrect}, #{o.position})
+        </foreach>
+    </insert>
+
+    <select id="selectById" resultType="com.coursistant.lms.module.quiz.entity.QuizQuestionOption">
+        SELECT id, question_id AS questionId, label, is_correct AS isCorrect, position
+        FROM quiz_question_option WHERE id = #{id}
+    </select>
+
+    <select id="selectInstructorByQuestionId" resultType="com.coursistant.lms.module.quiz.entity.QuizQuestionOption">
+        SELECT id, question_id AS questionId, label, is_correct AS isCorrect, position
+        FROM quiz_question_option WHERE question_id = #{questionId} ORDER BY position
+    </select>
+
+    <select id="selectStudentSafeByQuestionId" resultType="com.coursistant.lms.module.quiz.entity.QuizQuestionOption">
+        SELECT id, question_id AS questionId, label, position
+        FROM quiz_question_option WHERE question_id = #{questionId} ORDER BY position
+    </select>
+
+    <select id="selectStudentSafeByQuestionIds" resultType="com.coursistant.lms.module.quiz.entity.QuizQuestionOption">
+        SELECT id, question_id AS questionId, label, position
+        FROM quiz_question_option
+        WHERE question_id IN
+        <foreach collection="questionIds" item="qid" open="(" separator="," close=")">#{qid}</foreach>
+        ORDER BY question_id, position
+    </select>
+
+    <update id="updateLabel">
+        UPDATE quiz_question_option SET label = #{label}, position = #{position} WHERE id = #{id}
+    </update>
+
+    <update id="updateIsCorrect">
+        UPDATE quiz_question_option SET is_correct = #{isCorrect} WHERE id = #{id}
+    </update>
+
+    <delete id="deleteByQuestionId">
+        DELETE FROM quiz_question_option WHERE question_id = #{questionId}
+    </delete>
+
+    <delete id="deleteById">
+        DELETE FROM quiz_question_option WHERE id = #{id}
+    </delete>
+</mapper>

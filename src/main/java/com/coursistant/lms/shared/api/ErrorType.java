@@ -107,6 +107,23 @@ public enum ErrorType {
     GRADE_SCORE_OUT_OF_RANGE(HttpStatus.BAD_REQUEST, "Grade score is out of range"),
     GRADE_NOT_FOUND(HttpStatus.NOT_FOUND, "Grade does not exist"),
     STORAGE_FAILURE(HttpStatus.SERVICE_UNAVAILABLE, "Object storage operation failed"),
+
+    // --- Quiz ---
+    QUIZ_NOT_FOUND(HttpStatus.NOT_FOUND, "Quiz does not exist"),
+    QUIZ_NOT_PUBLISHED(HttpStatus.NOT_FOUND, "Quiz is not published"),
+    QUIZ_WINDOW_CLOSED(HttpStatus.CONFLICT, "Quiz window is closed"),
+    QUIZ_ATTEMPT_NOT_FOUND(HttpStatus.NOT_FOUND, "Quiz attempt does not exist"),
+    QUIZ_ATTEMPT_NOT_IN_PROGRESS(HttpStatus.CONFLICT, "Quiz attempt is not in progress"),
+    QUIZ_CONTENT_LOCKED(HttpStatus.CONFLICT, "Quiz content is locked"),
+    QUIZ_VERSION_CONFLICT(HttpStatus.CONFLICT, "Quiz version conflict"),
+    QUIZ_HAS_ATTEMPTS(HttpStatus.CONFLICT, "Quiz already has attempts"),
+    QUIZ_ANSWER_INVALID(HttpStatus.BAD_REQUEST, "Quiz answer is invalid"),
+    QUIZ_ATTEMPTS_EXCEEDED(HttpStatus.CONFLICT, "Quiz attempt limit reached"),
+    QUIZ_FEATURE_DISABLED(HttpStatus.CONFLICT, "Quiz new activity is disabled"),
+    QUIZ_GRADING_FORBIDDEN(HttpStatus.FORBIDDEN, "Not permitted to grade this quiz"),
+    QUIZ_TA_SELF_CONFLICT(HttpStatus.FORBIDDEN, "TA cannot grade a quiz they attempted"),
+    QUIZ_QUESTION_NOT_FOUND(HttpStatus.NOT_FOUND, "Quiz question does not exist"),
+
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Internal server error");
 
     private final HttpStatus httpStatus;

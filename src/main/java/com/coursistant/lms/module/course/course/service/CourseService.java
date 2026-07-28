@@ -9,6 +9,7 @@ import com.coursistant.lms.module.course.course.entity.Course;
 import com.coursistant.lms.module.course.course.repository.CourseMapper;
 import com.coursistant.lms.module.course.enrollment.service.CoursePermissionService;
 import com.coursistant.lms.module.course.enrollment.service.EnrollmentService;
+import com.coursistant.lms.module.quiz.service.QuizLifecycleHooks;
 import com.coursistant.lms.module.user.account.entity.User;
 import com.coursistant.lms.module.user.account.repository.UserMapper;
 import com.coursistant.lms.shared.api.ApiException;
@@ -43,6 +44,9 @@ public class CourseService {
 
     @Resource
     private CoursePermissionService coursePermissionService;
+
+    @Resource
+    private QuizLifecycleHooks quizLifecycleHooks;
 
     @Transactional
     public CourseResponse create(Integer creatorId, CreateCourseRequest request) {
@@ -137,6 +141,7 @@ public class CourseService {
             return toResponse(course);
         }
         courseMapper.archiveById(id, LocalDateTime.now(ZoneOffset.UTC));
+        quizLifecycleHooks.onCourseArchived(id);
         return toResponse(requireCourse(id));
     }
 

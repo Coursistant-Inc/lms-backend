@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.coursistant.lms.module.quiz.repository.QuizGradeMapper">
+
+    <insert id="upsertOnSubmit" parameterType="com.coursistant.lms.module.quiz.entity.QuizGrade">
+        INSERT INTO quiz_grade (quiz_id, user_id, counted_attempt_id, status, version, created_at, updated_at)
+        VALUES (#{quizId}, #{userId}, #{countedAttemptId}, #{status}, 1, #{createdAt}, #{updatedAt})
+        ON DUPLICATE KEY UPDATE
+            counted_attempt_id = VALUES(counted_attempt_id),
+            status = 'Entered',
+            released_at = NULL,
+            released_by = NULL,
+            version = version + 1,
+            updated_at = VALUES(updated_at)
+    </insert>
+
+    <select id="selectByQuizIdAndUserId" resultType="com.coursistant.lms.module.quiz.entity.QuizGrade">
+        SELECT id, quiz_id AS quizId, user_id AS userId, counted_attempt_id AS countedAttemptId,
+               status, version, released_at AS releasedAt, released_by AS releasedBy,
+               created_at AS createdAt, updated_at AS updatedAt
+        FROM quiz_grade WHERE quiz_id = #{quizId} AND user_id = #{userId}
+    </select>
+
+    <select id="selectByQuizId" resultType="com.coursistant.lms.module.quiz.entity.QuizGrade">
+        SELECT id, quiz_id AS quizId, user_id AS userId, counted_attempt_id AS countedAttemptId,
+               status, version, released_at AS releasedAt, released_by AS releasedBy,
+               created_at AS createdAt, updated_at AS updatedAt
+        FROM quiz_grade WHERE quiz_id = #{quizId}
+    </select>
+
+    <update id="release">
+        UPDATE quiz_grade SET status = 'Released', released_at = UTC_TIMESTAMP(3), released_by = #{releasedBy},
+            version = version + 1, updated_at = UTC_TIMESTAMP(3)
+        WHERE quiz_id = #{quizId} AND status = 'Entered'
+        <if test="userIds != null">
+            AND user_id IN
+            <foreach collection="userIds" item="uid" open="(" separator="," close=")">#{uid}</foreach>
+        </if>
+    </update>
+
+    <update id="retract">
+        UPDATE quiz_grade SET status = 'Entered', released_at = NULL, released_by = NULL,
+            version = version + 1, updated_at = UTC_TIMESTAMP(3)
+        WHERE quiz_id = #{quizId} AND status = 'Released'
+        <if test="userIds != null">
+            AND user_id IN
+            <foreach collection="userIds" item="uid" open="(" separator="," close=")">#{uid}</foreach>
+        </if>
+    </update>
+
+    <update id="incrementVersion">
+        UPDATE quiz_grade SET version = version + 1, updated_at = UTC_TIMESTAMP(3) WHERE id = #{id}
+    </update>
+
+    <select id="countReleasedByQuizId" resultType="int">
+        SELECT COUNT(*) FROM quiz_grade WHERE quiz_id = #{quizId} AND status = 'Released'
+    </select>
+</mapper>

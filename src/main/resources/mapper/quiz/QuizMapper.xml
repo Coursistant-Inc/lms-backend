@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.coursistant.lms.module.quiz.repository.QuizMapper">
+
+    <sql id="Base_Column_List">
+        id, course_id AS courseId, title, instructions,
+        opens_at AS opensAt, closes_at AS closesAt, time_limit_seconds AS timeLimitSeconds,
+        attempts_allowed AS attemptsAllowed, result_visibility AS resultVisibility,
+        state, version, created_by AS createdBy, created_at AS createdAt, updated_at AS updatedAt
+    </sql>
+
+    <insert id="insert" parameterType="com.coursistant.lms.module.quiz.entity.Quiz" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO quiz (course_id, title, instructions, opens_at, closes_at, time_limit_seconds,
+                          attempts_allowed, result_visibility, state, version, created_by, created_at, updated_at)
+        VALUES (#{courseId}, #{title}, #{instructions}, #{opensAt}, #{closesAt}, #{timeLimitSeconds},
+                #{attemptsAllowed}, #{resultVisibility}, #{state}, #{version}, #{createdBy}, #{createdAt}, #{updatedAt})
+    </insert>
+
+    <select id="selectById" resultType="com.coursistant.lms.module.quiz.entity.Quiz">
+        SELECT <include refid="Base_Column_List"/> FROM quiz WHERE id = #{id}
+    </select>
+
+    <select id="selectByCourseIdAndId" resultType="com.coursistant.lms.module.quiz.entity.Quiz">
+        SELECT <include refid="Base_Column_List"/> FROM quiz WHERE course_id = #{courseId} AND id = #{id}
+    </select>
+
+    <select id="selectByCourseId" resultType="com.coursistant.lms.module.quiz.entity.Quiz">
+        SELECT <include refid="Base_Column_List"/> FROM quiz WHERE course_id = #{courseId} ORDER BY opens_at, id
+    </select>
+
+    <select id="selectByCourseIdAndState" resultType="com.coursistant.lms.module.quiz.entity.Quiz">
+        SELECT <include refid="Base_Column_List"/> FROM quiz WHERE course_id = #{courseId} AND state = #{state} ORDER BY opens_at, id
+    </select>
+
+    <update id="updateById" parameterType="com.coursistant.lms.module.quiz.entity.Quiz">
+        UPDATE quiz SET
+            title = #{title},
+            instructions = #{instructions},
+            opens_at = #{opensAt},
+            closes_at = #{closesAt},
+            time_limit_seconds = #{timeLimitSeconds},
+            attempts_allowed = #{attemptsAllowed},
+            result_visibility = #{resultVisibility},
+            version = #{version},
+            updated_at = #{updatedAt}
+        WHERE id = #{id} AND version = #{version} - 1
+    </update>
+
+    <update id="updateState">
+        UPDATE quiz SET state = #{state}, version = version + 1, updated_at = UTC_TIMESTAMP(3) WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM quiz WHERE id = #{id}
+    </delete>
+
+    <select id="countAttemptsByQuizId" resultType="int">
+        SELECT COUNT(*) FROM quiz_attempt WHERE quiz_id = #{quizId}
+    </select>
+</mapper>
