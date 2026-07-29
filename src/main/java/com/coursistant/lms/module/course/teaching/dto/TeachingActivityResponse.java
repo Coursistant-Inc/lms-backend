@@ -1,16 +1,13 @@
-package com.coursistant.lms.module.course.event.dto;
+package com.coursistant.lms.module.course.teaching.dto;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
 
-/**
- * Dashboard activity card: expanded Course Session occurrence or Course Event.
- */
-public class UpcomingCourseActivityResponse {
+/** Teaching activities card (session occurrence or course event). */
+public class TeachingActivityResponse {
 
     public static final String SOURCE_SESSION = "Session";
     public static final String SOURCE_EVENT = "Event";
-    public static final String TYPE_COURSE_EVENT = "CourseEvent";
 
     private Integer courseId;
     private String courseCode;

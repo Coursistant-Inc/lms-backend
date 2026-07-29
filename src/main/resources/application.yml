@@ -133,6 +133,7 @@ minio:
   secret-key: ${MINIO_SECRET_KEY}
 
 lms:
+  institution-timezone: America/Los_Angeles
   content:
     max-file-bytes: 209715200
 

@@ -12,12 +12,16 @@ import com.coursistant.lms.module.course.schedule.dto.SessionWithCourseCode;
 import com.coursistant.lms.module.course.schedule.repository.CourseSessionMapper;
 import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.shared.api.ErrorType;
+import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.time.DateTimeException;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumMap;
@@ -40,6 +44,11 @@ public class CourseEventService {
         DAY_CODES.put(DayOfWeek.SUNDAY, "SUN");
     }
 
+    @Value("${lms.institution-timezone}")
+    private String institutionTimezone;
+
+    private ZoneId institutionZone;
+
     @Resource
     private CourseEventMapper courseEventMapper;
 
@@ -48,6 +57,19 @@ public class CourseEventService {
 
     @Resource
     private CourseSessionMapper courseSessionMapper;
+
+    @PostConstruct
+    void initInstitutionZone() {
+        if (institutionTimezone == null || institutionTimezone.isBlank()) {
+            throw new IllegalStateException("lms.institution-timezone must be a non-blank IANA timezone");
+        }
+        try {
+            institutionZone = ZoneId.of(institutionTimezone.trim());
+        } catch (DateTimeException ex) {
+            throw new IllegalStateException(
+                    "lms.institution-timezone is not a valid IANA timezone: " + institutionTimezone, ex);
+        }
+    }
 
     public List<CourseEventResponse> listByCourseId(Integer courseId) {
         requireCourse(courseId);
@@ -58,15 +80,16 @@ public class CourseEventService {
 
     /**
      * Dashboard activities: expanded Course Sessions + Course Events for active enrollments
-     * in {@code [today, today+days-1]} (server default calendar date). Finished sessions today
-     * are still included.
+     * in {@code [today, today+days-1]} using the configured institution timezone calendar date.
+     * Finished sessions today are still included.
      */
     public List<UpcomingCourseActivityResponse> listUpcomingActivitiesForUser(Integer userId, Integer days) {
         if (userId == null) {
             throw new ApiException(ErrorType.UNAUTHORIZED);
         }
         int windowDays = normalizeDays(days, 7, 30);
-        LocalDate from = LocalDate.now();
+        String timezoneId = institutionZone.getId();
+        LocalDate from = LocalDate.now(institutionZone);
         LocalDate to = from.plusDays(windowDays - 1L);
 
         List<UpcomingCourseActivityResponse> result = new ArrayList<>();
@@ -74,7 +97,10 @@ public class CourseEventService {
         List<UpcomingCourseActivityResponse> events =
                 courseEventMapper.selectUpcomingActivitiesForUser(userId, from, to);
         if (events != null) {
-            result.addAll(events);
+            for (UpcomingCourseActivityResponse event : events) {
+                event.setTimezone(timezoneId);
+                result.add(event);
+            }
         }
 
         List<SessionWithCourseCode> sessions = courseSessionMapper.selectByUserActiveEnrollments(userId);
@@ -89,12 +115,14 @@ public class CourseEventService {
                     item.setCourseId(session.getCourseId());
                     item.setCourseCode(session.getCourseCode());
                     item.setType(session.getType());
+                    item.setTitle(session.getType());
                     item.setDate(d);
                     item.setStartTime(session.getStartTime());
                     item.setEndTime(session.getEndTime());
                     item.setLocation(session.getLocation());
                     item.setSource(UpcomingCourseActivityResponse.SOURCE_SESSION);
                     item.setSourceId(session.getId());
+                    item.setTimezone(timezoneId);
                     result.add(item);
                 }
             }

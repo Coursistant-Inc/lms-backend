@@ -61,6 +61,7 @@
             e.course_id AS courseId,
             c.course_code AS courseCode,
             'CourseEvent' AS type,
+            e.name AS title,
             e.event_date AS `date`,
             e.start_time AS startTime,
             e.end_time AS endTime,

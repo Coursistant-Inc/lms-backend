@@ -2,11 +2,10 @@ package com.coursistant.lms.module.auth.token.entity;
 
 import java.io.Serializable;
 import java.util.Date;
-import com.coursistant.lms.module.interaction.entity.Announcement;
 
 /**
- * 公告实体类
- * Announcement Entity
+ * 刷新令牌实体类
+ * Refresh Token Entity
  */
 public class RefreshToken implements Serializable {
     private static final long serialVersionUID = 1L;

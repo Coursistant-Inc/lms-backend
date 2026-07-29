@@ -1,0 +1,332 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.coursistant.lms.module.course.teaching.repository.TeachingDashboardMapper">
+
+    <select id="selectTeachingCourses"
+            resultType="com.coursistant.lms.module.course.teaching.dto.TeachingCourseRow">
+        SELECT
+            c.id,
+            c.course_code AS courseCode,
+            c.title,
+            e.course_role AS role,
+            c.term_start_date AS termStartDate,
+            c.term_end_date AS termEndDate
+        FROM enrollment e
+        INNER JOIN course c ON c.id = e.course_id
+        WHERE e.user_id = #{userId}
+          AND e.active = 1
+          AND e.course_role = 'Instructor'
+          AND c.state &lt;&gt; 'Archived'
+        ORDER BY c.course_code ASC, c.id ASC
+    </select>
+
+    <select id="selectAssignmentUngradedIndividual"
+            resultType="com.coursistant.lms.module.course.teaching.dto.TeachingGradingQueueRow">
+        SELECT
+            'AssignmentUngraded' AS kind,
+            a.course_id AS courseId,
+            c.course_code AS courseCode,
+            a.title,
+            COUNT(*) AS pendingCount,
+            MIN(v.submitted_at) AS oldestWaitingAt,
+            a.id AS assignmentId,
+            NULL AS quizId
+        FROM assignment a
+        INNER JOIN course c ON c.id = a.course_id
+        INNER JOIN assignment_submission s
+            ON s.assignment_id = a.id
+           AND s.current_version_id IS NOT NULL
+           AND s.group_id IS NULL
+        INNER JOIN assignment_submission_version v ON v.id = s.current_version_id
+        LEFT JOIN assignment_grade g
+            ON g.assignment_id = a.id
+           AND g.student_user_id = s.owner_user_id
+        WHERE a.course_id IN
+        <foreach collection="courseIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+          AND a.submission_type = 'Individual'
+          AND g.id IS NULL
+        GROUP BY a.id, a.course_id, c.course_code, a.title
+        HAVING COUNT(*) &gt; 0
+    </select>
+
+    <select id="selectAssignmentUngradedGroup"
+            resultType="com.coursistant.lms.module.course.teaching.dto.TeachingGradingQueueRow">
+        SELECT
+            'AssignmentUngraded' AS kind,
+            a.course_id AS courseId,
+            c.course_code AS courseCode,
+            a.title,
+            COUNT(*) AS pendingCount,
+            MIN(v.submitted_at) AS oldestWaitingAt,
+            a.id AS assignmentId,
+            NULL AS quizId
+        FROM assignment a
+        INNER JOIN course c ON c.id = a.course_id
+        INNER JOIN assignment_submission s
+            ON s.assignment_id = a.id
+           AND s.current_version_id IS NOT NULL
+           AND s.group_id IS NOT NULL
+        INNER JOIN assignment_submission_version v ON v.id = s.current_version_id
+        LEFT JOIN assignment_grade g
+            ON g.assignment_id = a.id
+           AND g.group_id = s.group_id
+        WHERE a.course_id IN
+        <foreach collection="courseIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+          AND a.submission_type = 'Group'
+          AND g.id IS NULL
+        GROUP BY a.id, a.course_id, c.course_code, a.title
+        HAVING COUNT(*) &gt; 0
+    </select>
+
+    <select id="selectAssignmentAwaitingRelease"
+            resultType="com.coursistant.lms.module.course.teaching.dto.TeachingGradingQueueRow">
+        SELECT
+            'AssignmentAwaitingRelease' AS kind,
+            a.course_id AS courseId,
+            c.course_code AS courseCode,
+            a.title,
+            COUNT(*) AS pendingCount,
+            MIN(g.entered_at) AS oldestWaitingAt,
+            a.id AS assignmentId,
+            NULL AS quizId
+        FROM assignment_grade g
+        INNER JOIN assignment a ON a.id = g.assignment_id
+        INNER JOIN course c ON c.id = a.course_id
+        WHERE a.course_id IN
+        <foreach collection="courseIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+          AND g.status = 'Entered'
+        GROUP BY a.id, a.course_id, c.course_code, a.title
+        HAVING COUNT(*) &gt; 0
+    </select>
+
+    <select id="selectQuizManualPending"
+            resultType="com.coursistant.lms.module.course.teaching.dto.TeachingGradingQueueRow">
+        SELECT
+            'QuizManualPending' AS kind,
+            q.course_id AS courseId,
+            c.course_code AS courseCode,
+            q.title,
+            COUNT(*) AS pendingCount,
+            MIN(att.submitted_at) AS oldestWaitingAt,
+            NULL AS assignmentId,
+            q.id AS quizId
+        FROM quiz_attempt_answer ans
+        INNER JOIN quiz_attempt att
+            ON att.id = ans.attempt_id
+           AND att.status = 'Submitted'
+        INNER JOIN quiz q ON q.id = att.quiz_id
+        INNER JOIN course c ON c.id = q.course_id
+        WHERE q.course_id IN
+        <foreach collection="courseIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+          AND ans.pending_manual = 1
+        GROUP BY q.id, q.course_id, c.course_code, q.title
+        HAVING COUNT(*) &gt; 0
+    </select>
+
+    <select id="selectQuizAwaitingRelease"
+            resultType="com.coursistant.lms.module.course.teaching.dto.TeachingGradingQueueRow">
+        SELECT
+            'QuizAwaitingRelease' AS kind,
+            q.course_id AS courseId,
+            c.course_code AS courseCode,
+            q.title,
+            COUNT(*) AS pendingCount,
+            MIN(g.created_at) AS oldestWaitingAt,
+            NULL AS assignmentId,
+            q.id AS quizId
+        FROM quiz_grade g
+        INNER JOIN quiz q ON q.id = g.quiz_id
+        INNER JOIN course c ON c.id = q.course_id
+        WHERE q.course_id IN
+        <foreach collection="courseIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+          AND g.status = 'Entered'
+        GROUP BY q.id, q.course_id, c.course_code, q.title
+        HAVING COUNT(*) &gt; 0
+    </select>
+
+    <select id="selectSessionsByCourseIds"
+            resultType="com.coursistant.lms.module.course.teaching.dto.TeachingSessionRow">
+        SELECT
+            s.id,
+            s.course_id AS courseId,
+            c.course_code AS courseCode,
+            s.type,
+            s.day_of_week AS dayOfWeek,
+            s.start_time AS startTime,
+            s.end_time AS endTime,
+            s.location,
+            c.term_start_date AS termStartDate,
+            c.term_end_date AS termEndDate
+        FROM course_session s
+        INNER JOIN course c ON c.id = s.course_id
+        WHERE s.course_id IN
+        <foreach collection="courseIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+        ORDER BY s.course_id, s.id
+    </select>
+
+    <select id="selectEventsInWindow"
+            resultType="com.coursistant.lms.module.course.teaching.dto.TeachingActivityResponse">
+        SELECT
+            e.course_id AS courseId,
+            c.course_code AS courseCode,
+            'CourseEvent' AS type,
+            e.name AS title,
+            e.event_date AS `date`,
+            e.start_time AS startTime,
+            e.end_time AS endTime,
+            e.location,
+            'Event' AS source,
+            e.id AS sourceId
+        FROM course_event e
+        INNER JOIN course c ON c.id = e.course_id
+        WHERE e.course_id IN
+        <foreach collection="courseIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+          AND e.event_date &gt;= #{fromDate}
+          AND e.event_date &lt;= #{toDate}
+        ORDER BY e.event_date ASC, e.start_time ASC, e.id ASC
+    </select>
+
+    <!-- Eligible student: active Student, not frozen. -->
+    <select id="selectAssignmentDeadlines"
+            resultType="com.coursistant.lms.module.course.teaching.dto.TeachingDeadlineRow">
+        SELECT
+            'Assignment' AS kind,
+            a.course_id AS courseId,
+            c.course_code AS courseCode,
+            a.title,
+            a.due_at AS atUtc,
+            (
+                SELECT COUNT(DISTINCT e2.user_id)
+                FROM enrollment e2
+                WHERE e2.course_id = a.course_id
+                  AND e2.active = 1
+                  AND e2.course_role = 'Student'
+                  AND e2.assignment_submit_frozen = 0
+                  AND (
+                    (a.submission_type = 'Individual' AND EXISTS (
+                        SELECT 1 FROM assignment_submission s
+                        WHERE s.assignment_id = a.id
+                          AND s.owner_user_id = e2.user_id
+                          AND s.current_version_id IS NOT NULL
+                          AND s.group_id IS NULL
+                    ))
+                    OR
+                    (a.submission_type = 'Group' AND EXISTS (
+                        SELECT 1
+                        FROM group_membership gm
+                        INNER JOIN assignment_submission s
+                            ON s.group_id = gm.group_id
+                           AND s.current_version_id IS NOT NULL
+                        WHERE gm.user_id = e2.user_id
+                          AND gm.group_set_id = a.group_set_id
+                          AND s.assignment_id = a.id
+                    ))
+                  )
+            ) AS submittedCount,
+            (
+                SELECT COUNT(*)
+                FROM enrollment e3
+                WHERE e3.course_id = a.course_id
+                  AND e3.active = 1
+                  AND e3.course_role = 'Student'
+                  AND e3.assignment_submit_frozen = 0
+            ) AS totalStudents,
+            a.id AS assignmentId,
+            NULL AS quizId
+        FROM assignment a
+        INNER JOIN course c ON c.id = a.course_id
+        WHERE a.course_id IN
+        <foreach collection="courseIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+          AND a.state = 'Published'
+          AND a.due_at &gt;= #{fromUtc}
+          AND a.due_at &lt;= #{toUtc}
+        ORDER BY a.due_at ASC, a.id ASC
+    </select>
+
+    <select id="selectQuizDeadlines"
+            resultType="com.coursistant.lms.module.course.teaching.dto.TeachingDeadlineRow">
+        SELECT
+            'Quiz' AS kind,
+            q.course_id AS courseId,
+            c.course_code AS courseCode,
+            q.title,
+            q.closes_at AS atUtc,
+            (
+                SELECT COUNT(DISTINCT e2.user_id)
+                FROM enrollment e2
+                INNER JOIN quiz_attempt att
+                    ON att.user_id = e2.user_id
+                   AND att.status = 'Submitted'
+                WHERE e2.course_id = q.course_id
+                  AND e2.active = 1
+                  AND e2.course_role = 'Student'
+                  AND e2.assignment_submit_frozen = 0
+                  AND att.quiz_id = q.id
+            ) AS submittedCount,
+            (
+                SELECT COUNT(*)
+                FROM enrollment e3
+                WHERE e3.course_id = q.course_id
+                  AND e3.active = 1
+                  AND e3.course_role = 'Student'
+                  AND e3.assignment_submit_frozen = 0
+            ) AS totalStudents,
+            NULL AS assignmentId,
+            q.id AS quizId
+        FROM quiz q
+        INNER JOIN course c ON c.id = q.course_id
+        WHERE q.course_id IN
+        <foreach collection="courseIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+          AND q.state = 'Published'
+          AND q.closes_at &gt;= #{fromUtc}
+          AND q.closes_at &lt;= #{toUtc}
+        ORDER BY q.closes_at ASC, q.id ASC
+    </select>
+
+    <select id="selectGroupMembershipChanges"
+            resultType="com.coursistant.lms.module.course.teaching.dto.TeachingRecentActivityRow">
+        SELECT
+            'GroupMembershipChange' AS kind,
+            a.course_id AS courseId,
+            c.course_code AS courseCode,
+            CONCAT(a.action, ' user=', a.target_user_id) AS summary,
+            a.created_at AS occurredAt,
+            NULL AS assignmentId,
+            a.group_set_id AS groupSetId,
+            a.group_id AS groupId,
+            a.target_user_id AS targetUserId
+        FROM group_membership_audit a
+        INNER JOIN course c ON c.id = a.course_id
+        WHERE a.course_id IN
+        <foreach collection="courseIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+        ORDER BY a.created_at DESC, a.id DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="selectLateSubmissions"
+            resultType="com.coursistant.lms.module.course.teaching.dto.TeachingRecentActivityRow">
+        SELECT
+            'LateSubmission' AS kind,
+            a.course_id AS courseId,
+            c.course_code AS courseCode,
+            CONCAT('Late submission: ', a.title) AS summary,
+            v.submitted_at AS occurredAt,
+            a.id AS assignmentId,
+            NULL AS groupSetId,
+            s.group_id AS groupId,
+            s.owner_user_id AS targetUserId
+        FROM assignment_submission s
+        INNER JOIN assignment_submission_version v ON v.id = s.current_version_id
+        INNER JOIN assignment a ON a.id = s.assignment_id
+        INNER JOIN course c ON c.id = a.course_id
+        WHERE a.course_id IN
+        <foreach collection="courseIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+          AND s.current_version_id IS NOT NULL
+          AND v.submitted_at &gt; a.due_at
+          AND IFNULL(v.used_grace_buffer, 0) = 0
+        ORDER BY v.submitted_at DESC, v.id DESC
+        LIMIT #{limit}
+    </select>
+</mapper>
