@@ -18,6 +18,10 @@ public interface CourseMapper {
 
     int deleteById(Integer id);
 
+    long countByTenantId(@Param("tenantId") Integer tenantId);
+
+    long countByInstructorOrCreator(@Param("userId") Integer userId);
+
     int archiveById(@Param("id") Integer id, @Param("archivedAt") LocalDateTime archivedAt);
 
     int unarchiveById(@Param("id") Integer id);

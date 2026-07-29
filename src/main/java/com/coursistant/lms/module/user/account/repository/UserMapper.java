@@ -32,6 +32,12 @@ public interface UserMapper {
     int updateById(User user);
 
     /**
+     * Admin-only: change the user's tenant.
+     */
+    int updateTenantId(@org.apache.ibatis.annotations.Param("id") Integer id,
+                       @org.apache.ibatis.annotations.Param("tenantId") Integer tenantId);
+
+    /**
      * 根据 ID 查询
      * Query a User record by ID
      */
@@ -47,21 +53,27 @@ public interface UserMapper {
      * 根据用户名查询
      * Query a User record by username
      */
-    @Select("select * from user where username = #{username}")
+    @Select("SELECT id, tenant_id AS tenantId, username, password, name, email, avatar, role, level, "
+            + "must_change_password AS mustChangePassword, email_notifications AS emailNotifications "
+            + "FROM user WHERE username = #{username}")
     User selectByUsername(String username);
 
     /**
      * 根据邮箱查询
      * Query a User record by email
      */
-    @Select("select * from user where email = #{email}")
+    @Select("SELECT id, tenant_id AS tenantId, username, password, name, email, avatar, role, level, "
+            + "must_change_password AS mustChangePassword, email_notifications AS emailNotifications "
+            + "FROM user WHERE email = #{email}")
     User selectByEmail(String email);
 
     /**
      * 查询所有教师
      * Query all teachers
      */
-    @Select("select * from user where level = 'INSTRUCTOR'")
+    @Select("SELECT id, tenant_id AS tenantId, username, password, name, email, avatar, role, level, "
+            + "must_change_password AS mustChangePassword, email_notifications AS emailNotifications "
+            + "FROM user WHERE level = 'INSTRUCTOR'")
     List<User> selectTeachers();
 
     /**

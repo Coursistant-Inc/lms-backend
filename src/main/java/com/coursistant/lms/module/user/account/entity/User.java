@@ -16,6 +16,9 @@ public class User extends Account implements Serializable {
      */
     private Integer id;
 
+    /** Tenant this user belongs to. */
+    private Integer tenantId;
+
     /** 用户名
      * Username
      */
@@ -60,6 +63,7 @@ public class User extends Account implements Serializable {
     public String toString() {
         StringBuilder sb = new StringBuilder("{");
         if (id != null) sb.append("\"id\":").append(id).append(",");
+        if (tenantId != null) sb.append("\"tenantId\":").append(tenantId).append(",");
         if (username != null) sb.append("\"username\":\"").append(username).append("\",");
         if (password != null) sb.append("\"password\":\"").append(password).append("\",");
         if (name != null) sb.append("\"name\":\"").append(name).append("\",");
@@ -82,6 +86,14 @@ public class User extends Account implements Serializable {
     @Override
     public void setId(Integer id) {
         this.id = id;
+    }
+
+    public Integer getTenantId() {
+        return tenantId;
+    }
+
+    public void setTenantId(Integer tenantId) {
+        this.tenantId = tenantId;
     }
 
     @Override

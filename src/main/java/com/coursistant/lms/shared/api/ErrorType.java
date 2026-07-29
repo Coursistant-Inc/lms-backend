@@ -49,6 +49,13 @@ public enum ErrorType {
     // --- Profile ---
     INVALID_AVATAR_FILE(HttpStatus.BAD_REQUEST, "Invalid avatar file"),
 
+    // --- Tenant ---
+    TENANT_NOT_FOUND(HttpStatus.NOT_FOUND, "Tenant does not exist"),
+    TENANT_IN_USE(HttpStatus.CONFLICT, "Tenant is referenced by one or more courses"),
+    TENANT_NAME_EXISTS(HttpStatus.CONFLICT, "Tenant name already exists"),
+    TENANT_MISMATCH(HttpStatus.BAD_REQUEST, "User tenant does not match course tenant"),
+    USER_TENANT_CHANGE_BLOCKED(HttpStatus.CONFLICT, "User has course or enrollment data; tenant cannot be changed"),
+
     // --- Course ---
     COURSE_NOT_FOUND(HttpStatus.NOT_FOUND, "Course does not exist"),
     SESSION_NOT_FOUND(HttpStatus.NOT_FOUND, "Course session does not exist"),

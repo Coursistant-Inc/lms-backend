@@ -127,4 +127,17 @@
         WHERE id = #{id}
     </delete>
 
+    <select id="countByTenantId" resultType="long">
+        SELECT COUNT(*)
+        FROM course
+        WHERE tenant_id = #{tenantId}
+    </select>
+
+    <select id="countByInstructorOrCreator" resultType="long">
+        SELECT COUNT(*)
+        FROM course
+        WHERE instructor_id = #{userId}
+           OR creator_id = #{userId}
+    </select>
+
 </mapper>

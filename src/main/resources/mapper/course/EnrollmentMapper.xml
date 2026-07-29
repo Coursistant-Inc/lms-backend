@@ -135,4 +135,10 @@
           AND active = 1
     </select>
 
+    <select id="countByUserId" resultType="int">
+        SELECT COUNT(*)
+        FROM enrollment
+        WHERE user_id = #{userId}
+    </select>
+
 </mapper>

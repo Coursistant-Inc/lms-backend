@@ -37,4 +37,6 @@ public interface EnrollmentMapper {
     int countActiveInstructorsByCourseId(@Param("courseId") Integer courseId);
 
     int countActiveInstructorEnrollmentsByUserId(@Param("userId") Integer userId);
+
+    int countByUserId(@Param("userId") Integer userId);
 }

@@ -7,6 +7,7 @@
     <!-- Always alias snake_case -> camelCase to avoid relying on global underscoreToCamelCase -->
     <sql id="Base_Column_List">
         id,
+        tenant_id AS tenantId,
         username,
         password,
         name,
@@ -25,6 +26,7 @@
         FROM user
         <where>
             <if test="id != null">AND id = #{id}</if>
+            <if test="tenantId != null">AND tenant_id = #{tenantId}</if>
             <if test="username != null">AND username = #{username}</if>
             <if test="password != null">AND password = #{password}</if>
             <if test="name != null">AND name = #{name}</if>
@@ -73,6 +75,7 @@
         INSERT INTO user
         <trim prefix="(" suffix=")" suffixOverrides=",">
             <if test="id != null">id,</if>
+            <if test="tenantId != null">tenant_id,</if>
             <if test="username != null">username,</if>
             <if test="password != null">password,</if>
             <if test="name != null">name,</if>
@@ -85,6 +88,7 @@
         </trim>
         <trim prefix="VALUES (" suffix=")" suffixOverrides=",">
             <if test="id != null">#{id},</if>
+            <if test="tenantId != null">#{tenantId},</if>
             <if test="username != null">#{username},</if>
             <if test="password != null">#{password},</if>
             <if test="name != null">#{name},</if>
@@ -97,6 +101,7 @@
         </trim>
     </insert>
 
+    <!-- tenant_id is intentionally excluded — only updateTenantId may change it -->
     <update id="updateById" parameterType="com.coursistant.lms.module.user.account.entity.User">
         UPDATE user
         <set>
@@ -117,6 +122,12 @@
         WHERE id = #{id}
     </update>
 
+    <update id="updateTenantId">
+        UPDATE user
+        SET tenant_id = #{tenantId}
+        WHERE id = #{id}
+    </update>
+
     <update id="updateMustChangePassword">
         UPDATE user
         SET must_change_password = #{mustChangePassword, jdbcType=TINYINT}
@@ -128,12 +139,6 @@
         SET avatar = NULL
         WHERE id = #{id}
     </update>
-
-    <!-- <select id="selectUserLevelById" parameterType="com.coursistant.lms.module.user.account.entity.User" resultType="String">
-        SELECT level 
-        FROM user 
-        WHERE id = #{userId}
-    </select> -->
 
     <select id="selectUserLevelById" parameterType="com.coursistant.lms.module.user.account.entity.User" resultType="String">
         SELECT level 

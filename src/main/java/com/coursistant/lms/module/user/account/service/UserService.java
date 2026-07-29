@@ -13,17 +13,21 @@ import com.coursistant.lms.shared.enums.LevelEnum;
 import com.coursistant.lms.shared.enums.RoleEnum;
 import com.coursistant.lms.module.user.account.entity.Account;
 import com.coursistant.lms.module.auth.admin.dto.PasswordDTO;
+import com.coursistant.lms.module.user.account.dto.RegisterRequest;
 import com.coursistant.lms.module.user.account.entity.User;
 import com.coursistant.lms.module.user.account.repository.UserMapper;
+import com.coursistant.lms.module.tenant.repository.TenantMapper;
+import com.coursistant.lms.module.course.course.repository.CourseMapper;
+import com.coursistant.lms.module.course.enrollment.repository.EnrollmentMapper;
 import com.coursistant.lms.module.user.profile.AvatarUrlBuilder;
 import com.coursistant.lms.shared.util.PasswordEncoderUtil;
 import com.coursistant.lms.shared.security.TokenUtils;
-import org.springframework.beans.BeanUtils;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import jakarta.annotation.Resource;
 import java.util.List;
+import java.util.Objects;
 import java.util.Random;
 import java.util.ArrayList;
 import java.util.stream.Collectors;
@@ -39,6 +43,15 @@ public class UserService {
     private UserMapper userMapper;
 
     @Resource
+    private TenantMapper tenantMapper;
+
+    @Resource
+    private EnrollmentMapper enrollmentMapper;
+
+    @Resource
+    private CourseMapper courseMapper;
+
+    @Resource
     private RefreshTokenService refreshTokenService;
 
     @Resource(name = "generalRedisTemplate")
@@ -50,7 +63,7 @@ public class UserService {
     private static final long CACHE_EXPIRE_TIME = 300;
 
     /**
-     * ?? // Add a new user
+     * Add a new user (Admin / internal). {@code tenantId} is required and must exist.
      */
     public void add(User user) {
         User dbUser = userMapper.selectByEmail(user.getEmail());
@@ -61,6 +74,7 @@ public class UserService {
         if (ObjectUtil.isEmpty(user.getPassword())) {
             throw new ApiException(ErrorType.PARAM_MISSING, "Parameter Missing");
         }
+        requireExistingTenant(user.getTenantId());
         PasswordValidator.validate(user.getPassword());
         user.setEncryptPassword(user.getPassword());
 
@@ -79,7 +93,106 @@ public class UserService {
     }
 
     /**
-     * ?? // Delete user by ID
+     * Public registration. {@code tenantId} is required and must be {@code 1}.
+     */
+    public AuthResult register(RegisterRequest request) {
+        if (request == null || StrUtil.isBlank(request.getEmail())) {
+            throw new ApiException(ErrorType.PARAM_MISSING, "Parameter Missing");
+        }
+        String email = request.getEmail().trim().toLowerCase();
+
+        String verifiedKey = "email:verified:register:" + email;
+        if (!Boolean.TRUE.equals(generalRedisTemplate.hasKey(verifiedKey))) {
+            throw new ApiException(ErrorType.INVALID_VERIFICATION_CODE, "Email not verified");
+        }
+
+        PasswordValidator.validate(request.getPassword());
+
+        if (StrUtil.isBlank(request.getName())) {
+            throw new ApiException(ErrorType.PARAM_MISSING, "Display name is required");
+        }
+
+        requirePublicRegistrationTenant(request.getTenantId());
+
+        User existing = userMapper.selectByEmail(email);
+        if (existing != null) {
+            throw new ApiException(ErrorType.BAD_REQUEST, "Registration failed");
+        }
+
+        User user = new User();
+        user.setEmail(email);
+        user.setName(request.getName());
+        user.setUsername(request.getUsername());
+        user.setTenantId(request.getTenantId());
+        user.setLevel(LevelEnum.STUDENT.level);
+        user.setRole(RoleEnum.USER.name());
+        user.setEmailNotifications(true);
+        if (StrUtil.isBlank(user.getUsername())) {
+            user.setUsername(email.split("@")[0]);
+        }
+        user.setEncryptPassword(request.getPassword());
+        userMapper.insert(user);
+
+        generalRedisTemplate.delete(verifiedKey);
+
+        String accessToken = TokenUtils.createAccessToken(user.getId(), RoleEnum.USER.name());
+        String refreshToken = refreshTokenService.createAndStoreRefreshToken(user.getId(), RoleEnum.USER.name());
+        return toAuthResult(user, accessToken, refreshToken);
+    }
+
+    /**
+     * Update user by ID. Rejects any attempt to set {@code tenantId} via this path.
+     */
+    public void updateById(User user) {
+        if (user.getTenantId() != null) {
+            throw new ApiException(ErrorType.BAD_REQUEST, "tenantId cannot be changed via this API; use PATCH /v2/admin/users/{id}/tenant");
+        }
+        userMapper.updateById(user);
+        generalRedisTemplate.delete("user:" + user.getId());
+        if (user.getEmail() != null) {
+            generalRedisTemplate.delete("user:email:" + user.getEmail());
+        }
+    }
+
+    /**
+     * Admin-only: change a user's tenant when they have no course/enrollment links.
+     */
+    public User changeTenant(Integer userId, Integer tenantId) {
+        User existing = selectById(userId);
+        requireExistingTenant(tenantId);
+        if (Objects.equals(existing.getTenantId(), tenantId)) {
+            return existing;
+        }
+        if (enrollmentMapper.countByUserId(userId) > 0
+                || courseMapper.countByInstructorOrCreator(userId) > 0) {
+            throw new ApiException(ErrorType.USER_TENANT_CHANGE_BLOCKED);
+        }
+        userMapper.updateTenantId(userId, tenantId);
+        generalRedisTemplate.delete("user:" + userId);
+        if (existing.getEmail() != null) {
+            generalRedisTemplate.delete("user:email:" + existing.getEmail());
+        }
+        return selectById(userId);
+    }
+
+    public void requireExistingTenant(Integer tenantId) {
+        if (tenantId == null) {
+            throw new ApiException(ErrorType.PARAM_MISSING, "tenantId is required");
+        }
+        if (tenantMapper.selectById(tenantId) == null) {
+            throw new ApiException(ErrorType.TENANT_NOT_FOUND);
+        }
+    }
+
+    public void requirePublicRegistrationTenant(Integer tenantId) {
+        requireExistingTenant(tenantId);
+        if (!Integer.valueOf(1).equals(tenantId)) {
+            throw new ApiException(ErrorType.BAD_REQUEST, "Public registration only allows tenantId=1");
+        }
+    }
+
+    /**
+     * Delete user by ID
      */
     public void deleteById(Integer id) {
         userMapper.deleteById(id);
@@ -87,7 +200,7 @@ public class UserService {
     }
 
     /**
-     * ???? // Batch delete users
+     * Batch delete users
      */
     public void deleteBatch(List<Integer> ids) {
         for (Integer id : ids) {
@@ -97,16 +210,7 @@ public class UserService {
     }
 
     /**
-     * ?? // Update user by ID
-     */
-    public void updateById(User user) {
-        userMapper.updateById(user);
-        generalRedisTemplate.delete("user:" + user.getId());
-        generalRedisTemplate.delete("user:email:" + user.getEmail());
-    }
-
-    /**
-     * ??ID?? // Select user by ID
+     * Select user by ID
      */
     public User selectById(Integer id) {
         String cacheKey = "user:" + id;
@@ -225,52 +329,6 @@ public class UserService {
         } catch (Exception e) {
             throw new ApiException(ErrorType.TOKEN_CREATION_FAILED, "Error When Creating Token: " + e.getMessage());
         }
-    }
-
-    /**
-     * ?? / Register
-     */
-    public AuthResult register(Account account) {
-        if (StrUtil.isBlank(account.getEmail())) {
-            throw new ApiException(ErrorType.PARAM_MISSING, "Parameter Missing");
-        }
-        String email = account.getEmail().trim().toLowerCase();
-
-        String verifiedKey = "email:verified:register:" + email;
-        if (!Boolean.TRUE.equals(generalRedisTemplate.hasKey(verifiedKey))) {
-            throw new ApiException(ErrorType.INVALID_VERIFICATION_CODE, "Email not verified");
-        }
-
-        PasswordValidator.validate(account.getPassword());
-
-        if (StrUtil.isBlank(account.getName())) {
-            throw new ApiException(ErrorType.PARAM_MISSING, "Display name is required");
-        }
-
-        User existing = userMapper.selectByEmail(email);
-        if (existing != null) {
-            throw new ApiException(ErrorType.BAD_REQUEST, "Registration failed");
-        }
-
-        User user = new User();
-        BeanUtils.copyProperties(account, user);
-        user.setEmail(email);
-        user.setLevel(LevelEnum.STUDENT.level);
-        user.setRole(RoleEnum.USER.name());
-        if (user.getEmailNotifications() == null) {
-            user.setEmailNotifications(true);
-        }
-        if (StrUtil.isBlank(user.getUsername())) {
-            user.setUsername(email.split("@")[0]);
-        }
-        user.setEncryptPassword(account.getPassword());
-        userMapper.insert(user);
-
-        generalRedisTemplate.delete(verifiedKey);
-
-        String accessToken = TokenUtils.createAccessToken(user.getId(), RoleEnum.USER.name());
-        String refreshToken = refreshTokenService.createAndStoreRefreshToken(user.getId(), RoleEnum.USER.name());
-        return toAuthResult(user, accessToken, refreshToken);
     }
 
     /**

@@ -26,6 +26,7 @@ import com.auth0.jwt.interfaces.DecodedJWT;
 import com.coursistant.lms.shared.web.Result;
 import com.coursistant.lms.shared.enums.ResultCodeEnum;
 import com.coursistant.lms.shared.enums.RoleEnum;
+import com.coursistant.lms.module.user.account.dto.RegisterRequest;
 import com.coursistant.lms.module.user.account.entity.Account;
 import com.coursistant.lms.module.auth.session.dto.AuthResult;
 import com.coursistant.lms.module.auth.oauth.entity.LinkedInUserInfo;
@@ -113,14 +114,21 @@ public class OAuthService {
     private final RestTemplate restTemplate = new RestTemplate();
 
     /**
-     * 注册 register
+     * 注册 register — public path; tenantId required and must be 1.
      */
-    public void register(Account account) {
-
+    public void register(RegisterRequest request) {
+        if (request == null) {
+            throw new com.coursistant.lms.shared.api.ApiException(
+                    com.coursistant.lms.shared.api.ErrorType.PARAM_MISSING, "Request body is required");
+        }
+        userService.requirePublicRegistrationTenant(request.getTenantId());
         User user = new User();
-        BeanUtils.copyProperties(account, user);
+        user.setEmail(request.getEmail());
+        user.setPassword(request.getPassword());
+        user.setName(request.getName());
+        user.setUsername(request.getUsername());
+        user.setTenantId(request.getTenantId());
         userService.add(user);
-
     }
 
     public Result getEmailFromAuthCodeGoogle(String authorizationCode) {

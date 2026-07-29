@@ -10,6 +10,7 @@ import com.coursistant.lms.module.course.course.repository.CourseMapper;
 import com.coursistant.lms.module.course.enrollment.service.CoursePermissionService;
 import com.coursistant.lms.module.course.enrollment.service.EnrollmentService;
 import com.coursistant.lms.module.quiz.service.QuizLifecycleHooks;
+import com.coursistant.lms.module.tenant.repository.TenantMapper;
 import com.coursistant.lms.module.user.account.entity.User;
 import com.coursistant.lms.module.user.account.repository.UserMapper;
 import com.coursistant.lms.shared.api.ApiException;
@@ -29,7 +30,6 @@ import java.util.stream.Collectors;
 @Service
 public class CourseService {
 
-    private static final int DEFAULT_TENANT_ID = 1;
     private static final String STATE_ACTIVE = "Active";
     private static final String STATE_ARCHIVED = "Archived";
 
@@ -38,6 +38,9 @@ public class CourseService {
 
     @Resource
     private UserMapper userMapper;
+
+    @Resource
+    private TenantMapper tenantMapper;
 
     @Resource
     private EnrollmentService enrollmentService;
@@ -53,9 +56,10 @@ public class CourseService {
         validateCreate(request);
         requireInstructorLevel(creatorId);
         requireInstructorLevel(request.getInstructorId());
+        requireTenantAlignment(creatorId, request.getInstructorId(), request.getTenantId());
 
         Course course = new Course();
-        course.setTenantId(request.getTenantId() != null ? request.getTenantId() : DEFAULT_TENANT_ID);
+        course.setTenantId(request.getTenantId());
         course.setCourseCode(request.getCourseCode().trim());
         course.setTitle(request.getTitle().trim());
         course.setTermStartDate(request.getTermStartDate());
@@ -244,8 +248,25 @@ public class CourseService {
         if (request.getInstructorId() == null) {
             throw new ApiException(ErrorType.PARAM_MISSING, "instructorId is required");
         }
+        if (request.getTenantId() == null) {
+            throw new ApiException(ErrorType.PARAM_MISSING, "tenantId is required");
+        }
         if (request.getTermEndDate().isBefore(request.getTermStartDate())) {
             throw new ApiException(ErrorType.BAD_REQUEST, "termEndDate must be on or after termStartDate");
+        }
+    }
+
+    private void requireTenantAlignment(Integer creatorId, Integer instructorId, Integer tenantId) {
+        if (tenantMapper.selectById(tenantId) == null) {
+            throw new ApiException(ErrorType.TENANT_NOT_FOUND);
+        }
+        User creator = userMapper.selectById(creatorId);
+        User instructor = userMapper.selectById(instructorId);
+        if (creator == null || instructor == null) {
+            throw new ApiException(ErrorType.USER_NOT_FOUND);
+        }
+        if (!tenantId.equals(creator.getTenantId()) || !tenantId.equals(instructor.getTenantId())) {
+            throw new ApiException(ErrorType.TENANT_MISMATCH);
         }
     }
 

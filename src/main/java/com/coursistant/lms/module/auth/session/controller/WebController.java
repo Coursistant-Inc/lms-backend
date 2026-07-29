@@ -7,6 +7,7 @@ import com.coursistant.lms.shared.api.ApiResponse;
 import com.coursistant.lms.shared.api.ErrorType;
 import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.shared.enums.RoleEnum;
+import com.coursistant.lms.module.user.account.dto.RegisterRequest;
 import com.coursistant.lms.module.user.account.entity.Account;
 import com.coursistant.lms.module.auth.admin.dto.PasswordDTO;
 import com.coursistant.lms.module.auth.session.dto.AuthResult;
@@ -140,13 +141,13 @@ public class WebController {
     }
 
     @PostMapping("/v1/auth/register")
-    public ApiResponse<AuthResult> register(@RequestBody Account account, HttpServletResponse response) {
-        if (StrUtil.isBlank(account.getPassword()) || StrUtil.isBlank(account.getEmail())
-                || StrUtil.isBlank(account.getName())) {
+    public ApiResponse<AuthResult> register(@RequestBody RegisterRequest request, HttpServletResponse response) {
+        if (request == null || StrUtil.isBlank(request.getPassword()) || StrUtil.isBlank(request.getEmail())
+                || StrUtil.isBlank(request.getName())) {
             throw new ApiException(ErrorType.PARAM_MISSING, "Parameter Missing");
         }
 
-        AuthResult result = userService.register(account);
+        AuthResult result = userService.register(request);
         setRefreshTokenCookie(response, result.getRefreshToken());
         return ApiResponse.success(result);
     }
