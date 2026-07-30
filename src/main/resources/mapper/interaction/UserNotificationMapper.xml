@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.coursistant.lms.module.interaction.notification.repository.UserNotificationMapper">
+
+    <insert id="insertChunk">
+        INSERT INTO user_notification (
+            tenant_id,
+            recipient_user_id,
+            course_id,
+            notification_type,
+            message,
+            subject_type,
+            subject_id,
+            event_key,
+            deep_link,
+            created_at,
+            read_at
+        ) VALUES
+        <foreach collection="rows" item="row" separator=",">
+            (
+                #{row.tenantId},
+                #{row.recipientUserId},
+                #{row.courseId},
+                #{row.notificationType},
+                #{row.message},
+                #{row.subjectType},
+                #{row.subjectId},
+                #{row.eventKey},
+                #{row.deepLink},
+                #{row.createdAt},
+                #{row.readAt}
+            )
+        </foreach>
+        ON DUPLICATE KEY UPDATE id = id
+    </insert>
+
+    <select id="selectPage"
+            resultType="com.coursistant.lms.module.interaction.notification.dto.NotificationResponse">
+        SELECT
+            n.id AS notificationId,
+            n.tenant_id AS tenantId,
+            n.recipient_user_id AS recipientUserId,
+            n.course_id AS courseId,
+            c.course_code AS courseCode,
+            n.notification_type AS notificationType,
+            n.message,
+            n.subject_type AS subjectType,
+            n.subject_id AS subjectId,
+            n.deep_link AS deepLink,
+            n.created_at AS createdAt,
+            n.read_at AS readAt
+        FROM user_notification n
+        LEFT JOIN course c ON c.id = n.course_id
+        WHERE n.tenant_id = #{tenantId}
+          AND n.recipient_user_id = #{recipientUserId}
+        ORDER BY n.created_at DESC, n.id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countByRecipient" resultType="long">
+        SELECT COUNT(*)
+        FROM user_notification
+        WHERE tenant_id = #{tenantId}
+          AND recipient_user_id = #{recipientUserId}
+    </select>
+
+    <select id="countUnread" resultType="long">
+        SELECT COUNT(*)
+        FROM user_notification
+        WHERE tenant_id = #{tenantId}
+          AND recipient_user_id = #{recipientUserId}
+          AND read_at IS NULL
+    </select>
+
+    <select id="selectByIdForRecipient"
+            resultType="com.coursistant.lms.module.interaction.notification.entity.UserNotification">
+        SELECT
+            id,
+            tenant_id AS tenantId,
+            recipient_user_id AS recipientUserId,
+            course_id AS courseId,
+            notification_type AS notificationType,
+            message,
+            subject_type AS subjectType,
+            subject_id AS subjectId,
+            event_key AS eventKey,
+            deep_link AS deepLink,
+            created_at AS createdAt,
+            read_at AS readAt
+        FROM user_notification
+        WHERE id = #{id}
+          AND tenant_id = #{tenantId}
+          AND recipient_user_id = #{recipientUserId}
+    </select>
+
+    <update id="markRead">
+        UPDATE user_notification
+        SET read_at = #{readAt}
+        WHERE id = #{id}
+          AND tenant_id = #{tenantId}
+          AND recipient_user_id = #{recipientUserId}
+          AND read_at IS NULL
+    </update>
+
+    <update id="markAllRead">
+        UPDATE user_notification
+        SET read_at = #{readAt}
+        WHERE tenant_id = #{tenantId}
+          AND recipient_user_id = #{recipientUserId}
+          AND read_at IS NULL
+    </update>
+</mapper>

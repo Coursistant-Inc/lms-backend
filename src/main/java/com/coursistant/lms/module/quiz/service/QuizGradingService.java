@@ -1,5 +1,13 @@
 package com.coursistant.lms.module.quiz.service;
 
+import com.coursistant.lms.module.course.course.entity.Course;
+import com.coursistant.lms.module.course.course.repository.CourseMapper;
+import com.coursistant.lms.module.interaction.notification.dto.NotificationDispatchPayload;
+import com.coursistant.lms.module.interaction.notification.enums.NotificationType;
+import com.coursistant.lms.module.interaction.notification.enums.SubjectType;
+import com.coursistant.lms.module.interaction.notification.service.NotificationCommitHook;
+import com.coursistant.lms.module.interaction.notification.service.NotificationMessageFactory;
+import com.coursistant.lms.module.interaction.notification.service.NotificationRecipientResolver;
 import com.coursistant.lms.module.quiz.dto.grading.GradeAnswerRequest;
 import com.coursistant.lms.module.quiz.dto.grading.GradingSummaryResponse;
 import com.coursistant.lms.module.quiz.dto.grading.ReleaseGradesRequest;
@@ -13,9 +21,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 
 @Service
 public class QuizGradingService {
@@ -38,6 +49,14 @@ public class QuizGradingService {
     private QuizTimeSupport quizTimeSupport;
     @Resource
     private QuizAuditService quizAuditService;
+    @Resource
+    private CourseMapper courseMapper;
+    @Resource
+    private NotificationRecipientResolver notificationRecipientResolver;
+    @Resource
+    private NotificationMessageFactory notificationMessageFactory;
+    @Resource
+    private NotificationCommitHook notificationCommitHook;
 
     public GradingSummaryResponse summary(Integer courseId, Integer quizId, Integer userId) {
         quizAccessService.requireGradingAccess(courseId, quizId, userId);
@@ -103,6 +122,10 @@ public class QuizGradingService {
             throw new ApiException(ErrorType.BAD_REQUEST, "Score out of range");
         }
         BigDecimal before = answer.getScore();
+        String feedbackBefore = answer.getFeedback();
+        boolean visibleChanged = !scoresEqual(before, body.getScore())
+                || !Objects.equals(feedbackBefore, body.getFeedback());
+
         var now = quizTimeSupport.nowUtc();
         answer.setScore(body.getScore());
         answer.setPendingManual(false);
@@ -112,16 +135,23 @@ public class QuizGradingService {
         answer.setUpdatedAt(now);
         quizAttemptAnswerMapper.updateScore(answer);
         recalcAttempt(attemptId);
-        QuizScoreAudit audit = new QuizScoreAudit();
-        audit.setQuizId(quizId);
-        audit.setAttemptId(attemptId);
-        audit.setQuestionId(questionId);
-        audit.setActorUserId(userId);
-        audit.setReason(body.getReason());
-        audit.setScoreBefore(before);
-        audit.setScoreAfter(body.getScore());
-        audit.setCreatedAt(now);
-        quizScoreAuditMapper.insert(audit);
+
+        if (visibleChanged) {
+            QuizScoreAudit audit = new QuizScoreAudit();
+            audit.setQuizId(quizId);
+            audit.setAttemptId(attemptId);
+            audit.setQuestionId(questionId);
+            audit.setActorUserId(userId);
+            audit.setReason(body.getReason());
+            audit.setScoreBefore(before);
+            audit.setScoreAfter(body.getScore());
+            audit.setCreatedAt(now);
+            quizScoreAuditMapper.insert(audit);
+
+            if (released) {
+                dispatchQuizGradeCorrected(courseId, quizId, attempt.getUserId(), audit.getId(), now);
+            }
+        }
         quizAuditService.log(courseId, quizId, attemptId, userId, "ANSWER_GRADED", body.getReason(), null);
     }
 
@@ -129,8 +159,48 @@ public class QuizGradingService {
     public void release(Integer courseId, Integer quizId, Integer userId, ReleaseGradesRequest body) {
         quizAccessService.requireReleaseWritable(courseId, userId);
         validateUserIds(body);
-        quizGradeMapper.release(quizId, body == null ? null : body.getUserIds(), userId);
-        quizAuditService.log(courseId, quizId, null, userId, "GRADES_RELEASED", null, null);
+
+        List<Integer> filterUserIds = body == null ? null : body.getUserIds();
+        Set<Integer> filterSet = filterUserIds == null ? null : new HashSet<>(filterUserIds);
+        List<Integer> enteredUserIds = new ArrayList<>();
+        List<QuizGrade> grades = quizGradeMapper.selectByQuizId(quizId);
+        if (grades != null) {
+            for (QuizGrade g : grades) {
+                if (g == null || g.getUserId() == null) {
+                    continue;
+                }
+                if (!QuizConstants.GRADE_ENTERED.equals(g.getStatus())) {
+                    continue;
+                }
+                if (filterSet != null && !filterSet.contains(g.getUserId())) {
+                    continue;
+                }
+                enteredUserIds.add(g.getUserId());
+            }
+        }
+
+        quizGradeMapper.release(quizId, filterUserIds, userId);
+        Integer auditId = quizAuditService.log(courseId, quizId, null, userId, "GRADES_RELEASED", null, null);
+
+        if (!enteredUserIds.isEmpty() && auditId != null) {
+            Course course = courseMapper.selectById(courseId);
+            Quiz quiz = quizMapper.selectById(quizId);
+            List<Integer> recipients = notificationRecipientResolver.filterCandidateRecipients(course, enteredUserIds);
+            if (course != null && course.getTenantId() != null && quiz != null && !recipients.isEmpty()) {
+                NotificationDispatchPayload payload = new NotificationDispatchPayload();
+                payload.setTenantId(course.getTenantId());
+                payload.setCourseId(courseId);
+                payload.setNotificationType(NotificationType.QUIZ_GRADE_RELEASED);
+                payload.setMessage(notificationMessageFactory.quizGradeReleased(quiz.getTitle()));
+                payload.setSubjectType(SubjectType.QUIZ);
+                payload.setSubjectId(quizId);
+                payload.setEventKey("release:" + auditId);
+                payload.setDeepLink("/courses/" + courseId + "/quizzes/" + quizId + "/my-grade");
+                payload.setRecipientIds(recipients);
+                payload.setCreatedAt(LocalDateTime.now());
+                notificationCommitHook.afterCommitDispatch(payload);
+            }
+        }
     }
 
     @Transactional
@@ -139,6 +209,32 @@ public class QuizGradingService {
         validateUserIds(body);
         quizGradeMapper.retract(quizId, body == null ? null : body.getUserIds());
         quizAuditService.log(courseId, quizId, null, userId, "GRADES_RETRACTED", null, null);
+    }
+
+    private void dispatchQuizGradeCorrected(Integer courseId, Integer quizId, Integer studentUserId,
+                                            Integer scoreAuditId, LocalDateTime createdAt) {
+        if (studentUserId == null || scoreAuditId == null) {
+            return;
+        }
+        Course course = courseMapper.selectById(courseId);
+        Quiz quiz = quizMapper.selectById(quizId);
+        List<Integer> recipients = notificationRecipientResolver.filterCandidateRecipients(
+                course, List.of(studentUserId));
+        if (course == null || course.getTenantId() == null || quiz == null || recipients.isEmpty()) {
+            return;
+        }
+        NotificationDispatchPayload payload = new NotificationDispatchPayload();
+        payload.setTenantId(course.getTenantId());
+        payload.setCourseId(courseId);
+        payload.setNotificationType(NotificationType.QUIZ_GRADE_CORRECTED);
+        payload.setMessage(notificationMessageFactory.quizGradeCorrected(quiz.getTitle()));
+        payload.setSubjectType(SubjectType.QUIZ);
+        payload.setSubjectId(quizId);
+        payload.setEventKey("correct:" + scoreAuditId);
+        payload.setDeepLink("/courses/" + courseId + "/quizzes/" + quizId + "/my-grade");
+        payload.setRecipientIds(recipients);
+        payload.setCreatedAt(createdAt != null ? createdAt : LocalDateTime.now());
+        notificationCommitHook.afterCommitDispatch(payload);
     }
 
     private void validateUserIds(ReleaseGradesRequest body) {
@@ -180,5 +276,15 @@ public class QuizGradingService {
         attempt.setManualGradingComplete(!pending);
         attempt.setUpdatedAt(quizTimeSupport.nowUtc());
         quizAttemptMapper.updateSubmitted(attempt);
+    }
+
+    static boolean scoresEqual(BigDecimal a, BigDecimal b) {
+        if (a == null && b == null) {
+            return true;
+        }
+        if (a == null || b == null) {
+            return false;
+        }
+        return a.compareTo(b) == 0;
     }
 }

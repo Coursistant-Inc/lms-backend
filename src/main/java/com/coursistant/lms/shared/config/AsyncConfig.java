@@ -7,9 +7,10 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import java.util.concurrent.Executor;
+import java.util.concurrent.ThreadPoolExecutor;
 
 @Configuration
-@EnableAsync // 关键注解，启用异步
+@EnableAsync // 开启注解，启用异步
 public class AsyncConfig {
 
     /**
@@ -28,6 +29,22 @@ public class AsyncConfig {
         // 线程名前缀
         executor.setThreadNamePrefix("Async-Executor-");
         // 初始化
+        executor.initialize();
+        return executor;
+    }
+
+    /**
+     * Dedicated pool for in-app notification dispatch.
+     * AbortPolicy: reject when saturated (never block business threads / never silently drop oldest).
+     */
+    @Bean(name = "notificationExecutor")
+    public Executor notificationExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(4);
+        executor.setMaxPoolSize(8);
+        executor.setQueueCapacity(200);
+        executor.setThreadNamePrefix("Notification-Async-");
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.AbortPolicy());
         executor.initialize();
         return executor;
     }

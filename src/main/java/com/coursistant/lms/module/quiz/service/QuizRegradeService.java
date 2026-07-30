@@ -1,5 +1,13 @@
 package com.coursistant.lms.module.quiz.service;
 
+import com.coursistant.lms.module.course.course.entity.Course;
+import com.coursistant.lms.module.course.course.repository.CourseMapper;
+import com.coursistant.lms.module.interaction.notification.dto.NotificationDispatchPayload;
+import com.coursistant.lms.module.interaction.notification.enums.NotificationType;
+import com.coursistant.lms.module.interaction.notification.enums.SubjectType;
+import com.coursistant.lms.module.interaction.notification.service.NotificationCommitHook;
+import com.coursistant.lms.module.interaction.notification.service.NotificationMessageFactory;
+import com.coursistant.lms.module.interaction.notification.service.NotificationRecipientResolver;
 import com.coursistant.lms.module.quiz.dto.authoring.PatchAnswerKeyRequest;
 import com.coursistant.lms.module.quiz.dto.authoring.QuestionResponse;
 import com.coursistant.lms.module.quiz.entity.*;
@@ -12,10 +20,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.time.ZoneOffset;
-import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 public class QuizRegradeService {
@@ -38,6 +47,16 @@ public class QuizRegradeService {
     private QuizTimeSupport quizTimeSupport;
     @Resource
     private QuizAuditService quizAuditService;
+    @Resource
+    private QuizMapper quizMapper;
+    @Resource
+    private CourseMapper courseMapper;
+    @Resource
+    private NotificationRecipientResolver notificationRecipientResolver;
+    @Resource
+    private NotificationMessageFactory notificationMessageFactory;
+    @Resource
+    private NotificationCommitHook notificationCommitHook;
 
     @Transactional
     public QuestionResponse regradeAnswerKey(Integer courseId, Integer quizId, Integer questionId,
@@ -63,6 +82,7 @@ public class QuizRegradeService {
         question.setUpdatedAt(quizTimeSupport.nowUtc());
         quizQuestionMapper.updateById(question);
 
+        Set<Integer> affectedReleasedUsers = new LinkedHashSet<>();
         List<QuizQuestionOption> options = quizQuestionOptionMapper.selectInstructorByQuestionId(questionId);
         for (QuizAttemptAnswer answer : quizAttemptAnswerMapper.selectByQuestionId(questionId)) {
             QuizAttempt attempt = quizAttemptMapper.selectById(answer.getAttemptId());
@@ -72,8 +92,10 @@ public class QuizRegradeService {
             if (QuizConstants.TYPE_SHORT_ANSWER.equals(question.getType())) {
                 continue;
             }
+            BigDecimal oldScore = answer.getScore();
             List<Integer> selected = quizJsonUtil.parseOptionIds(answer.getSelectedOptionIdsJson());
             BigDecimal score = quizScoringService.scoreObjective(question, selected, options);
+            boolean scoreChanged = !QuizGradingService.scoresEqual(oldScore, score);
             answer.setScore(score);
             answer.setPendingManual(false);
             answer.setUpdatedAt(quizTimeSupport.nowUtc());
@@ -82,12 +104,36 @@ public class QuizRegradeService {
             QuizGrade grade = quizGradeMapper.selectByQuizIdAndUserId(quizId, attempt.getUserId());
             if (grade != null) {
                 quizGradeMapper.incrementVersion(grade.getId());
+                if (scoreChanged && QuizConstants.GRADE_RELEASED.equals(grade.getStatus())) {
+                    affectedReleasedUsers.add(attempt.getUserId());
+                }
             }
         }
 
         quizAuditService.log(courseId, quizId, null, userId, "ANSWER_KEY_UPDATED", body.getReason(),
                 Map.of("questionId", questionId));
         quizAuditService.log(courseId, quizId, null, userId, "SCORES_RECALCULATED", body.getReason(), null);
+
+        if (!affectedReleasedUsers.isEmpty()) {
+            Course course = courseMapper.selectById(courseId);
+            Quiz quiz = quizMapper.selectById(quizId);
+            List<Integer> recipients = notificationRecipientResolver.filterCandidateRecipients(
+                    course, new ArrayList<>(affectedReleasedUsers));
+            if (course != null && course.getTenantId() != null && quiz != null && !recipients.isEmpty()) {
+                NotificationDispatchPayload payload = new NotificationDispatchPayload();
+                payload.setTenantId(course.getTenantId());
+                payload.setCourseId(courseId);
+                payload.setNotificationType(NotificationType.QUIZ_GRADE_CORRECTED);
+                payload.setMessage(notificationMessageFactory.quizGradeCorrected(quiz.getTitle()));
+                payload.setSubjectType(SubjectType.QUIZ);
+                payload.setSubjectId(quizId);
+                payload.setEventKey("correct:regrade:" + questionId + ":" + question.getVersion());
+                payload.setDeepLink("/courses/" + courseId + "/quizzes/" + quizId + "/my-grade");
+                payload.setRecipientIds(recipients);
+                payload.setCreatedAt(LocalDateTime.now());
+                notificationCommitHook.afterCommitDispatch(payload);
+            }
+        }
 
         return buildResponse(questionId);
     }

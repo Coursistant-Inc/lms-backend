@@ -12,6 +12,12 @@ import com.coursistant.lms.module.course.announcement.repository.CourseAnnouncem
 import com.coursistant.lms.module.course.course.entity.Course;
 import com.coursistant.lms.module.course.course.repository.CourseMapper;
 import com.coursistant.lms.module.course.enrollment.service.CoursePermissionService;
+import com.coursistant.lms.module.interaction.notification.dto.NotificationDispatchPayload;
+import com.coursistant.lms.module.interaction.notification.enums.NotificationType;
+import com.coursistant.lms.module.interaction.notification.enums.SubjectType;
+import com.coursistant.lms.module.interaction.notification.service.NotificationCommitHook;
+import com.coursistant.lms.module.interaction.notification.service.NotificationMessageFactory;
+import com.coursistant.lms.module.interaction.notification.service.NotificationRecipientResolver;
 import com.coursistant.lms.module.user.account.entity.User;
 import com.coursistant.lms.module.user.account.repository.UserMapper;
 import com.coursistant.lms.shared.api.ApiException;
@@ -49,7 +55,13 @@ public class CourseAnnouncementService {
     private CoursePermissionService coursePermissionService;
 
     @Resource
-    private AnnouncementNotificationService announcementNotificationService;
+    private NotificationRecipientResolver notificationRecipientResolver;
+
+    @Resource
+    private NotificationMessageFactory notificationMessageFactory;
+
+    @Resource
+    private NotificationCommitHook notificationCommitHook;
 
     public List<AnnouncementSummaryResponse> listByCourse(Integer courseId, Integer userId) {
         requireCourseNotArchived(courseId);
@@ -66,7 +78,7 @@ public class CourseAnnouncementService {
 
     @Transactional
     public AnnouncementResponse create(Integer courseId, Integer authorUserId, CreateAnnouncementRequest request) {
-        requireCourseNotArchived(courseId);
+        Course course = requireCourseNotArchived(courseId);
         coursePermissionService.requireCanPostAnnouncements(courseId, authorUserId);
         if (request == null) {
             throw new ApiException(ErrorType.BAD_REQUEST, "Request body is required");
@@ -88,8 +100,22 @@ public class CourseAnnouncementService {
         courseAnnouncementMapper.insert(announcement);
 
         CourseAnnouncement persisted = courseAnnouncementMapper.selectById(announcement.getId());
-        announcementNotificationService.afterCommit(
-                () -> announcementNotificationService.notifyAnnouncementPosted(persisted));
+        List<Integer> recipientIds = new ArrayList<>(
+                notificationRecipientResolver.resolveActiveStudentRecipients(courseId));
+        recipientIds.removeIf(id -> authorUserId != null && authorUserId.equals(id));
+
+        NotificationDispatchPayload payload = new NotificationDispatchPayload();
+        payload.setTenantId(course.getTenantId());
+        payload.setCourseId(courseId);
+        payload.setNotificationType(NotificationType.ANNOUNCEMENT_POSTED);
+        payload.setMessage(notificationMessageFactory.announcementPosted(persisted.getTitle()));
+        payload.setSubjectType(SubjectType.ANNOUNCEMENT);
+        payload.setSubjectId(persisted.getId());
+        payload.setEventKey("published");
+        payload.setDeepLink("/courses/" + courseId + "/announcements/" + persisted.getId());
+        payload.setRecipientIds(recipientIds);
+        payload.setCreatedAt(now);
+        notificationCommitHook.afterCommitDispatch(payload);
         return toDetail(persisted, false);
     }
 

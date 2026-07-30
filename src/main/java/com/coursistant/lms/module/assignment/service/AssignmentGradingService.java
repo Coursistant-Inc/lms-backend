@@ -30,6 +30,7 @@ import com.coursistant.lms.module.course.group.entity.GroupMembership;
 import com.coursistant.lms.module.course.group.repository.CourseGroupMapper;
 import com.coursistant.lms.module.course.group.repository.GroupMembershipMapper;
 import com.coursistant.lms.module.course.group.service.GroupAccessService;
+import com.coursistant.lms.module.interaction.notification.service.NotificationRecipientResolver;
 import com.coursistant.lms.module.user.account.entity.User;
 import com.coursistant.lms.module.user.account.repository.UserMapper;
 import com.coursistant.lms.module.tenant.service.TenantTimezoneService;
@@ -50,6 +51,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Grading roster, per-student grading view, grade upsert, and the release / retract workflow.
@@ -120,6 +122,9 @@ public class AssignmentGradingService {
 
     @Resource
     private AssignmentNotificationService assignmentNotificationService;
+
+    @Resource
+    private NotificationRecipientResolver notificationRecipientResolver;
 
     @Resource
     private AssignmentGradeReleaseRecipientMapper assignmentGradeReleaseRecipientMapper;
@@ -371,16 +376,21 @@ public class AssignmentGradingService {
         auditDetail.put("created", existing == null);
         assignmentAuditService.write(courseId, assignmentId, userId, AssignmentAuditService.GRADE_UPSERTED, auditDetail);
 
-        boolean correctedAfterRelease = existing != null && GRADE_RELEASED.equals(existing.getStatus());
-        if (correctedAfterRelease) {
-            assignmentAuditService.write(courseId, assignmentId, userId,
+        String newFeedback = grade.getFeedbackHtml();
+        if (existing != null
+                && GRADE_RELEASED.equals(existing.getStatus())
+                && visibleGradeFieldsChanged(existing.getScore(), existing.getFeedbackHtml(), score, newFeedback)) {
+            Integer correctionAuditId = assignmentAuditService.write(courseId, assignmentId, userId,
                     AssignmentAuditService.GRADE_CORRECTED_AFTER_RELEASE,
                     Map.of("studentUserId", studentUserId, "score", score));
+            Course course = assignmentAccessService.requireCourse(courseId);
+            List<Integer> recipients = notificationRecipientResolver.filterCandidateRecipients(
+                    course, List.of(studentUserId));
             Assignment assignmentForNotify = assignment;
-            Integer studentForNotify = studentUserId;
+            Integer auditIdForNotify = correctionAuditId;
             assignmentNotificationService.afterCommit(
                     () -> assignmentNotificationService.notifyGradeCorrectedAfterRelease(
-                            assignmentForNotify, studentForNotify));
+                            assignmentForNotify, recipients, auditIdForNotify));
         }
 
         return toGradeResponse(assignment, requireGrade(courseId, assignmentId, studentUserId, userId));
@@ -414,6 +424,21 @@ public class AssignmentGradingService {
                 AssignmentAuditService.GRADE_ANNOTATED_FILE_UPLOADED,
                 Map.of("studentUserId", studentUserId, "originalName",
                         String.valueOf(patch.getAnnotatedOriginalName())));
+
+        boolean annotatedKeyChanged = !Objects.equals(previousKey, objectKey);
+        if (GRADE_RELEASED.equals(existing.getStatus()) && annotatedKeyChanged) {
+            Integer correctionAuditId = assignmentAuditService.write(courseId, assignmentId, userId,
+                    AssignmentAuditService.GRADE_CORRECTED_AFTER_RELEASE,
+                    Map.of("studentUserId", studentUserId, "annotatedFileChanged", true));
+            Course course = assignmentAccessService.requireCourse(courseId);
+            List<Integer> recipients = notificationRecipientResolver.filterCandidateRecipients(
+                    course, List.of(studentUserId));
+            Assignment assignmentForNotify = assignment;
+            Integer auditIdForNotify = correctionAuditId;
+            assignmentNotificationService.afterCommit(
+                    () -> assignmentNotificationService.notifyGradeCorrectedAfterRelease(
+                            assignmentForNotify, recipients, auditIdForNotify));
+        }
 
         if (previousKey != null && !previousKey.equals(objectKey)) {
             assignmentStorageService.deleteQuietly(previousKey);
@@ -478,6 +503,21 @@ public class AssignmentGradingService {
                 AssignmentAuditService.GRADE_ANNOTATED_FILE_UPLOADED,
                 Map.of("groupId", groupId, "originalName",
                         String.valueOf(patch.getAnnotatedOriginalName())));
+
+        boolean annotatedKeyChanged = !Objects.equals(previousKey, objectKey);
+        if (GRADE_RELEASED.equals(existing.getStatus()) && annotatedKeyChanged) {
+            Integer correctionAuditId = assignmentAuditService.write(courseId, assignmentId, userId,
+                    AssignmentAuditService.GRADE_CORRECTED_AFTER_RELEASE,
+                    Map.of("groupId", groupId, "annotatedFileChanged", true));
+            Course course = assignmentAccessService.requireCourse(courseId);
+            List<Integer> memberIds = groupMemberUserIds(groupId);
+            List<Integer> recipients = notificationRecipientResolver.filterCandidateRecipients(course, memberIds);
+            Assignment assignmentForNotify = assignment;
+            Integer auditIdForNotify = correctionAuditId;
+            assignmentNotificationService.afterCommit(
+                    () -> assignmentNotificationService.notifyGradeCorrectedAfterRelease(
+                            assignmentForNotify, recipients, auditIdForNotify));
+        }
 
         if (previousKey != null && !previousKey.equals(objectKey)) {
             assignmentStorageService.deleteQuietly(previousKey);
@@ -689,6 +729,24 @@ public class AssignmentGradingService {
         assignmentAuditService.write(courseId, assignmentId, userId, AssignmentAuditService.GRADE_UPSERTED,
                 Map.of("groupId", groupId, "score", score, "status", grade.getStatus(),
                         "created", existing == null));
+
+        String newFeedback = grade.getFeedbackHtml();
+        if (existing != null
+                && GRADE_RELEASED.equals(existing.getStatus())
+                && visibleGradeFieldsChanged(existing.getScore(), existing.getFeedbackHtml(), score, newFeedback)) {
+            Integer correctionAuditId = assignmentAuditService.write(courseId, assignmentId, userId,
+                    AssignmentAuditService.GRADE_CORRECTED_AFTER_RELEASE,
+                    Map.of("groupId", groupId, "score", score));
+            Course course = assignmentAccessService.requireCourse(courseId);
+            List<Integer> memberIds = groupMemberUserIds(groupId);
+            List<Integer> recipients = notificationRecipientResolver.filterCandidateRecipients(course, memberIds);
+            Assignment assignmentForNotify = assignment;
+            Integer auditIdForNotify = correctionAuditId;
+            assignmentNotificationService.afterCommit(
+                    () -> assignmentNotificationService.notifyGradeCorrectedAfterRelease(
+                            assignmentForNotify, recipients, auditIdForNotify));
+        }
+
         return toGradeResponse(assignment, requireGroupGrade(courseId, assignmentId, groupId, userId));
     }
 
@@ -741,11 +799,17 @@ public class AssignmentGradingService {
         response.setChangedCount(response.getChangedStudentUserIds().size());
 
         if (response.getChangedCount() > 0) {
-            List<Integer> notified = new ArrayList<>(response.getChangedStudentUserIds());
-            assignmentAuditService.write(courseId, assignmentId, userId, AssignmentAuditService.GRADES_RELEASED,
-                    Map.of("studentUserIds", notified));
+            List<Integer> changed = new ArrayList<>(response.getChangedStudentUserIds());
+            Integer releaseAuditId = assignmentAuditService.write(courseId, assignmentId, userId,
+                    AssignmentAuditService.GRADES_RELEASED,
+                    Map.of("studentUserIds", changed));
+            Course course = assignmentAccessService.requireCourse(courseId);
+            List<Integer> recipients = notificationRecipientResolver.filterCandidateRecipients(course, changed);
+            Assignment assignmentForNotify = assignment;
+            Integer auditIdForNotify = releaseAuditId;
             assignmentNotificationService.afterCommit(
-                    () -> assignmentNotificationService.notifyGradesReleased(assignment, notified));
+                    () -> assignmentNotificationService.notifyGradesReleased(
+                            assignmentForNotify, recipients, auditIdForNotify));
         }
         return response;
     }
@@ -776,10 +840,16 @@ public class AssignmentGradingService {
         }
         response.setChangedCount(response.getChangedGroupIds().size());
         if (response.getChangedCount() > 0) {
-            assignmentAuditService.write(courseId, assignmentId, userId, AssignmentAuditService.GRADES_RELEASED,
+            Integer releaseAuditId = assignmentAuditService.write(courseId, assignmentId, userId,
+                    AssignmentAuditService.GRADES_RELEASED,
                     Map.of("groupIds", response.getChangedGroupIds()));
+            Course course = assignmentAccessService.requireCourse(courseId);
+            List<Integer> recipients = notificationRecipientResolver.filterCandidateRecipients(course, notified);
+            Assignment assignmentForNotify = assignment;
+            Integer auditIdForNotify = releaseAuditId;
             assignmentNotificationService.afterCommit(
-                    () -> assignmentNotificationService.notifyGradesReleased(assignment, notified));
+                    () -> assignmentNotificationService.notifyGradesReleased(
+                            assignmentForNotify, recipients, auditIdForNotify));
         }
         return response;
     }
@@ -1110,6 +1180,41 @@ public class AssignmentGradingService {
         response.setDueAtLocal(assignmentTimeSupport.toZone(assignment.getDueAt(), zone));
         response.setLateUntilLocal(assignmentTimeSupport.toZone(assignment.getLateUntil(), zone));
         response.setTimezone(zone.getId());
+    }
+
+    private List<Integer> groupMemberUserIds(Integer groupId) {
+        List<Integer> result = new ArrayList<>();
+        if (groupId == null) {
+            return result;
+        }
+        List<GroupMembership> memberships = groupMembershipMapper.selectByGroupId(groupId);
+        if (memberships == null) {
+            return result;
+        }
+        for (GroupMembership membership : memberships) {
+            if (membership != null && membership.getUserId() != null) {
+                result.add(membership.getUserId());
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Student-visible grade fields: score and feedback. Used to gate post-release correction audits.
+     */
+    static boolean visibleGradeFieldsChanged(BigDecimal oldScore, String oldFeedback,
+                                             BigDecimal newScore, String newFeedback) {
+        return !scoresEqual(oldScore, newScore) || !Objects.equals(oldFeedback, newFeedback);
+    }
+
+    static boolean scoresEqual(BigDecimal a, BigDecimal b) {
+        if (a == null && b == null) {
+            return true;
+        }
+        if (a == null || b == null) {
+            return false;
+        }
+        return a.compareTo(b) == 0;
     }
 
     @SafeVarargs

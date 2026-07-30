@@ -38,6 +38,7 @@ import com.coursistant.lms.module.course.group.entity.GroupMembership;
 import com.coursistant.lms.module.course.group.repository.CourseGroupMapper;
 import com.coursistant.lms.module.course.group.repository.GroupMembershipMapper;
 import com.coursistant.lms.module.course.group.service.GroupAccessService;
+import com.coursistant.lms.module.interaction.notification.service.NotificationRecipientResolver;
 import com.coursistant.lms.module.tenant.service.TenantTimezoneService;
 import com.coursistant.lms.shared.api.ErrorType;
 import jakarta.annotation.Resource;
@@ -139,6 +140,9 @@ public class AssignmentService {
 
     @Resource
     private AssignmentNotificationService assignmentNotificationService;
+
+    @Resource
+    private NotificationRecipientResolver notificationRecipientResolver;
 
     @Resource
     private TenantTimezoneService tenantTimezoneService;
@@ -542,7 +546,7 @@ public class AssignmentService {
         assignmentAuditService.write(courseId, assignmentId, userId, AssignmentAuditService.ASSIGNMENT_PUBLISHED, (String) null);
 
         Assignment updated = requireAssignment(courseId, assignmentId, userId);
-        List<Integer> recipients = activeStudentIds(courseId);
+        List<Integer> recipients = notificationRecipientResolver.resolveActiveStudentRecipients(courseId);
         assignmentNotificationService.afterCommit(
                 () -> assignmentNotificationService.notifyAssignmentPublished(updated, recipients));
         return buildStaffResponse(updated, zone, activeStudents(courseId).size());

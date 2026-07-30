@@ -18,8 +18,8 @@ public class QuizAuditService {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public void log(Integer courseId, Integer quizId, Integer attemptId, Integer actorUserId,
-                    String action, String reason, Map<String, Object> detail) {
+    public Integer log(Integer courseId, Integer quizId, Integer attemptId, Integer actorUserId,
+                       String action, String reason, Map<String, Object> detail) {
         QuizAuditLog log = new QuizAuditLog();
         log.setCourseId(courseId);
         log.setQuizId(quizId);
@@ -34,5 +34,6 @@ public class QuizAuditService {
         }
         log.setCreatedAt(LocalDateTime.now(ZoneOffset.UTC));
         quizAuditLogMapper.insert(log);
+        return log.getId();
     }
 }

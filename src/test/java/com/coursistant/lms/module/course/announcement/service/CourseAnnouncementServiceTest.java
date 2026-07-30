@@ -8,6 +8,12 @@ import com.coursistant.lms.module.course.announcement.repository.CourseAnnouncem
 import com.coursistant.lms.module.course.course.entity.Course;
 import com.coursistant.lms.module.course.course.repository.CourseMapper;
 import com.coursistant.lms.module.course.enrollment.service.CoursePermissionService;
+import com.coursistant.lms.module.interaction.notification.dto.NotificationDispatchPayload;
+import com.coursistant.lms.module.interaction.notification.enums.NotificationType;
+import com.coursistant.lms.module.interaction.notification.enums.SubjectType;
+import com.coursistant.lms.module.interaction.notification.service.NotificationCommitHook;
+import com.coursistant.lms.module.interaction.notification.service.NotificationMessageFactory;
+import com.coursistant.lms.module.interaction.notification.service.NotificationRecipientResolver;
 import com.coursistant.lms.module.user.account.entity.User;
 import com.coursistant.lms.module.user.account.repository.UserMapper;
 import com.coursistant.lms.shared.api.ApiException;
@@ -19,13 +25,15 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -49,15 +57,22 @@ class CourseAnnouncementServiceTest {
     private CoursePermissionService coursePermissionService;
 
     @Mock
-    private AnnouncementNotificationService announcementNotificationService;
+    private NotificationRecipientResolver notificationRecipientResolver;
+
+    @Mock
+    private NotificationMessageFactory notificationMessageFactory;
+
+    @Mock
+    private NotificationCommitHook notificationCommitHook;
 
     @InjectMocks
     private CourseAnnouncementService courseAnnouncementService;
 
     @Test
-    void create_notificationFailure_stillPersistsAnnouncement() {
+    void create_dispatchesStudentRecipientsExcludingAuthor() {
         Course course = new Course();
         course.setId(17);
+        course.setTenantId(3);
         course.setState("Active");
         when(courseMapper.selectById(17)).thenReturn(course);
         doNothing().when(coursePermissionService).requireCanPostAnnouncements(17, 10);
@@ -82,18 +97,10 @@ class CourseAnnouncementServiceTest {
             a.setAuthorName("Teacher");
             return a;
         });
-
-        // Mirror AnnouncementNotificationService.afterCommit: run then swallow failures.
-        doAnswer(invocation -> {
-            try {
-                ((Runnable) invocation.getArgument(0)).run();
-            } catch (Exception ignored) {
-                // notification must not fail post
-            }
-            return null;
-        }).when(announcementNotificationService).afterCommit(any(Runnable.class));
-        doThrow(new RuntimeException("notification db down"))
-                .when(announcementNotificationService).notifyAnnouncementPosted(any(CourseAnnouncement.class));
+        when(notificationRecipientResolver.resolveActiveStudentRecipients(17))
+                .thenReturn(new ArrayList<>(List.of(10, 385, 50)));
+        when(notificationMessageFactory.announcementPosted("Hello")).thenReturn("New announcement: Hello");
+        doNothing().when(notificationCommitHook).afterCommitDispatch(any());
 
         CreateAnnouncementRequest request = new CreateAnnouncementRequest();
         request.setTitle("Hello");
@@ -103,8 +110,20 @@ class CourseAnnouncementServiceTest {
 
         assertNotNull(response);
         assertEquals(99, response.getId());
-        assertEquals("Hello", response.getTitle());
-        verify(courseAnnouncementMapper).insert(any(CourseAnnouncement.class));
+
+        ArgumentCaptor<NotificationDispatchPayload> captor =
+                ArgumentCaptor.forClass(NotificationDispatchPayload.class);
+        verify(notificationCommitHook).afterCommitDispatch(captor.capture());
+        NotificationDispatchPayload payload = captor.getValue();
+        assertEquals(3, payload.getTenantId());
+        assertEquals(17, payload.getCourseId());
+        assertEquals(NotificationType.ANNOUNCEMENT_POSTED, payload.getNotificationType());
+        assertEquals(SubjectType.ANNOUNCEMENT, payload.getSubjectType());
+        assertEquals(99, payload.getSubjectId());
+        assertEquals("published", payload.getEventKey());
+        assertEquals("/courses/17/announcements/99", payload.getDeepLink());
+        assertEquals(List.of(385, 50), payload.getRecipientIds());
+        assertFalse(payload.getRecipientIds().contains(10));
     }
 
     @Test
@@ -132,43 +151,5 @@ class CourseAnnouncementServiceTest {
                 () -> courseAnnouncementService.getById(17, 404, 10));
         assertEquals(ErrorType.ANNOUNCEMENT_GONE, ex.getErrorType());
         assertEquals("Content no longer available", ex.getMessage());
-    }
-
-    @Test
-    void create_schedulesAfterCommitNotification() {
-        Course course = new Course();
-        course.setId(17);
-        course.setState("Active");
-        when(courseMapper.selectById(17)).thenReturn(course);
-        doNothing().when(coursePermissionService).requireCanPostAnnouncements(17, 10);
-
-        User user = new User();
-        user.setId(10);
-        user.setUsername("teach");
-        when(userMapper.selectById(10)).thenReturn(user);
-
-        when(courseAnnouncementMapper.insert(any(CourseAnnouncement.class))).thenAnswer(invocation -> {
-            CourseAnnouncement a = invocation.getArgument(0);
-            a.setId(5);
-            return 1;
-        });
-        CourseAnnouncement persisted = new CourseAnnouncement();
-        persisted.setId(5);
-        persisted.setCourseId(17);
-        persisted.setTitle("T");
-        persisted.setBodyHtml("B");
-        persisted.setAuthorUserId(10);
-        persisted.setAuthorName("teach");
-        when(courseAnnouncementMapper.selectById(5)).thenReturn(persisted);
-        doNothing().when(announcementNotificationService).afterCommit(any());
-
-        CreateAnnouncementRequest request = new CreateAnnouncementRequest();
-        request.setTitle("T");
-        request.setBody("B");
-        courseAnnouncementService.create(17, 10, request);
-
-        ArgumentCaptor<Runnable> captor = ArgumentCaptor.forClass(Runnable.class);
-        verify(announcementNotificationService).afterCommit(captor.capture());
-        assertNotNull(captor.getValue());
     }
 }

@@ -44,7 +44,7 @@ public class AssignmentAuditService {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public void write(Integer courseId, Integer assignmentId, Integer actorUserId, String action, String detailJson) {
+    public Integer write(Integer courseId, Integer assignmentId, Integer actorUserId, String action, String detailJson) {
         AssignmentAuditLog auditLog = new AssignmentAuditLog();
         auditLog.setCourseId(courseId);
         auditLog.setAssignmentId(assignmentId);
@@ -52,10 +52,11 @@ public class AssignmentAuditService {
         auditLog.setAction(action);
         auditLog.setDetailJson(detailJson);
         assignmentAuditLogMapper.insert(auditLog);
+        return auditLog.getId();
     }
 
-    public void write(Integer courseId, Integer assignmentId, Integer actorUserId, String action, Map<String, ?> detail) {
-        write(courseId, assignmentId, actorUserId, action, toJson(detail));
+    public Integer write(Integer courseId, Integer assignmentId, Integer actorUserId, String action, Map<String, ?> detail) {
+        return write(courseId, assignmentId, actorUserId, action, toJson(detail));
     }
 
     public String toJson(Object value) {
