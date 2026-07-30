@@ -23,6 +23,7 @@ import com.coursistant.lms.module.course.group.repository.CourseGroupMapper;
 import com.coursistant.lms.module.course.group.repository.GroupMembershipMapper;
 import com.coursistant.lms.module.user.account.entity.User;
 import com.coursistant.lms.module.user.account.repository.UserMapper;
+import com.coursistant.lms.module.tenant.service.TenantTimezoneService;
 import com.coursistant.lms.shared.api.ErrorType;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
@@ -112,6 +113,9 @@ public class AssignmentSubmissionService {
     @Resource
     private UserMapper userMapper;
 
+    @Resource
+    private TenantTimezoneService tenantTimezoneService;
+
     // --------------------------------------------------------------- staging
 
     /**
@@ -199,11 +203,11 @@ public class AssignmentSubmissionService {
      * staged after the deadline cannot borrow an earlier upload's grace eligibility.</p>
      */
     @Transactional
-    public SubmissionResponse submit(Integer courseId, Integer assignmentId, Integer userId, String timezoneHeader,
+    public SubmissionResponse submit(Integer courseId, Integer assignmentId, Integer userId,
                                      SubmitAssignmentRequest body) {
         assignmentAccessService.requireStudentSubmitContext(courseId, userId);
         Assignment assignment = requirePublishedAssignment(courseId, assignmentId, userId);
-        ZoneId zone = assignmentTimeSupport.requireZone(timezoneHeader);
+        ZoneId zone = tenantTimezoneService.requireZoneForCourse(courseId);
         LocalDateTime now = assignmentTimeSupport.nowUtc();
 
         List<AssignmentSubmissionStagingFile> active = activeStagingFiles(assignmentId, userId, now);
@@ -310,9 +314,9 @@ public class AssignmentSubmissionService {
     // ------------------------------------------------------------------ read
 
     public SubmissionResponse getMySubmission(HttpServletRequest request, Integer courseId, Integer assignmentId,
-                                              Integer userId, String timezoneHeader) {
+                                              Integer userId) {
         Assignment assignment = assignmentAccessService.requireAssignmentReadable(request, courseId, assignmentId, userId);
-        ZoneId zone = assignmentTimeSupport.requireZone(timezoneHeader);
+        ZoneId zone = tenantTimezoneService.requireZoneForCourse(courseId);
         if (AssignmentAccessService.SUBMISSION_TYPE_GROUP.equals(assignment.getSubmissionType())) {
             return buildSubmissionResponse(assignment, userId, zone, assignmentTimeSupport.nowUtc());
         }
@@ -326,9 +330,9 @@ public class AssignmentSubmissionService {
     }
 
     public List<SubmissionVersionResponse> listMyVersions(HttpServletRequest request, Integer courseId,
-                                                          Integer assignmentId, Integer userId, String timezoneHeader) {
+                                                          Integer assignmentId, Integer userId) {
         Assignment assignment = assignmentAccessService.requireAssignmentReadable(request, courseId, assignmentId, userId);
-        ZoneId zone = assignmentTimeSupport.requireZone(timezoneHeader);
+        ZoneId zone = tenantTimezoneService.requireZoneForCourse(courseId);
         if (AssignmentAccessService.SUBMISSION_TYPE_GROUP.equals(assignment.getSubmissionType())) {
             if (assignment.getGroupSetId() == null) {
                 return List.of();
@@ -347,10 +351,9 @@ public class AssignmentSubmissionService {
      * Staff (or owner) version history for a specific submission head id.
      */
     public List<SubmissionVersionResponse> listVersions(HttpServletRequest request, Integer courseId,
-                                                        Integer assignmentId, Integer submissionId, Integer userId,
-                                                        String timezoneHeader) {
+                                                        Integer assignmentId, Integer submissionId, Integer userId) {
         Assignment assignment = assignmentAccessService.requireAssignmentReadable(request, courseId, assignmentId, userId);
-        ZoneId zone = assignmentTimeSupport.requireZone(timezoneHeader);
+        ZoneId zone = tenantTimezoneService.requireZoneForCourse(courseId);
         AssignmentSubmission submission = assignmentSubmissionMapper.selectById(submissionId);
         if (submission == null || !assignmentId.equals(submission.getAssignmentId())) {
             throw AssignmentErrors.fail(log, courseId, assignmentId, userId, ErrorType.NOT_FOUND,
@@ -527,8 +530,8 @@ public class AssignmentSubmissionService {
         SubmissionResponse response = new SubmissionResponse();
         response.setAssignmentId(assignment.getId());
         response.setOwnerUserId(viewerUserId);
-        response.setDueAt(assignment.getDueAt());
-        response.setLateUntil(assignment.getLateUntil());
+        response.setDueAtUtc(assignmentTimeSupport.toInstant(assignment.getDueAt()));
+        response.setLateUntilUtc(assignmentTimeSupport.toInstant(assignment.getLateUntil()));
         response.setTimezone(zone == null ? null : zone.getId());
         response.setDueAtLocal(assignmentTimeSupport.toZone(assignment.getDueAt(), zone));
         response.setLateUntilLocal(assignmentTimeSupport.toZone(assignment.getLateUntil(), zone));

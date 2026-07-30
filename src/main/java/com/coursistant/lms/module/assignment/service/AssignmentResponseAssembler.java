@@ -66,7 +66,7 @@ public class AssignmentResponseAssembler {
                                                 ReceiptSummaryResponse receipt) {
         AssignmentResponse response = toBase(assignment, zone, attachments, currentRubric);
         response.setSubmissionStatus(submissionStatus);
-        response.setSubmittedAt(submittedAt);
+        response.setSubmittedAt(assignmentTimeSupport.toInstant(submittedAt));
         response.setVersionNo(versionNo);
         response.setUsedGraceBuffer(usedGraceBuffer);
         response.setWindowOpen(windowOpen);
@@ -87,7 +87,7 @@ public class AssignmentResponseAssembler {
             gradeView.setFeedbackHtml(grade.getFeedbackHtml());
             boolean hasTextFeedback = grade.getFeedbackHtml() != null && !grade.getFeedbackHtml().isBlank();
             gradeView.setHasFeedback(hasTextFeedback);
-            gradeView.setReleasedAt(grade.getReleasedAt());
+            gradeView.setReleasedAt(assignmentTimeSupport.toInstant(grade.getReleasedAt()));
             gradeView.setGradeStatus(AssignmentGradingService.GRADE_RELEASED);
             response.setGrade(gradeView);
         } else if (SubmissionStatusCalculator.NOT_SUBMITTED_CLOSED.equals(submissionStatus)) {
@@ -133,8 +133,8 @@ public class AssignmentResponseAssembler {
         response.setTitle(assignment.getTitle());
         response.setDescription(assignment.getDescription());
         response.setPointsPossible(assignment.getPointsPossible());
-        response.setDueAt(assignment.getDueAt());
-        response.setLateUntil(assignment.getLateUntil());
+        response.setDueAtUtc(assignmentTimeSupport.toInstant(assignment.getDueAt()));
+        response.setLateUntilUtc(assignmentTimeSupport.toInstant(assignment.getLateUntil()));
         response.setSubmissionType(assignment.getSubmissionType());
         response.setGroupSetId(assignment.getGroupSetId());
         response.setAllowedFileTypes(assignmentFilePolicy.parseAllowedTypes(assignment.getAllowedFileTypes()));
@@ -152,12 +152,12 @@ public class AssignmentResponseAssembler {
         }
         response.setAttachments(toAttachmentResponses(assignment.getCourseId(), attachments));
         response.setCreatedBy(assignment.getCreatedBy());
-        response.setCreatedAt(assignment.getCreatedAt());
-        response.setUpdatedAt(assignment.getUpdatedAt());
+        response.setCreatedAt(assignmentTimeSupport.toInstant(assignment.getCreatedAt()));
+        response.setUpdatedAt(assignmentTimeSupport.toInstant(assignment.getUpdatedAt()));
 
         AssignmentResponse.LatePolicyResponse latePolicy = new AssignmentResponse.LatePolicyResponse();
         latePolicy.setAcceptsLate(assignment.getLateUntil() != null);
-        latePolicy.setLateUntil(assignment.getLateUntil());
+        latePolicy.setLateUntilUtc(assignmentTimeSupport.toInstant(assignment.getLateUntil()));
         response.setLatePolicy(latePolicy);
 
         AssignmentResponse.SubmissionAreaResponse submissionArea = new AssignmentResponse.SubmissionAreaResponse();
@@ -168,9 +168,9 @@ public class AssignmentResponseAssembler {
 
         if (zone != null) {
             response.setTimezone(zone.getId());
-            response.setTimezoneLabel(zone.getId());
             response.setDueAtLocal(assignmentTimeSupport.toZone(assignment.getDueAt(), zone));
             response.setLateUntilLocal(assignmentTimeSupport.toZone(assignment.getLateUntil(), zone));
+            latePolicy.setLateUntilLocal(assignmentTimeSupport.toZone(assignment.getLateUntil(), zone));
         }
         return response;
     }
@@ -194,7 +194,7 @@ public class AssignmentResponseAssembler {
         response.setContentType(attachment.getContentType());
         response.setSizeBytes(attachment.getSizeBytes());
         response.setUploadedBy(attachment.getUploadedBy());
-        response.setCreatedAt(attachment.getCreatedAt());
+        response.setCreatedAt(assignmentTimeSupport.toInstant(attachment.getCreatedAt()));
         response.setDownloadUrl(absoluteUrl("/v2/courses/" + courseId + "/assignments/"
                 + attachment.getAssignmentId() + "/attachments/" + attachment.getId() + "/download"));
         return response;

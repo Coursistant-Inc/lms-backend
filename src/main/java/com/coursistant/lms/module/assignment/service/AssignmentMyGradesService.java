@@ -13,6 +13,7 @@ import com.coursistant.lms.module.assignment.repository.AssignmentSubmissionMapp
 import com.coursistant.lms.module.assignment.repository.AssignmentSubmissionVersionMapper;
 import com.coursistant.lms.module.course.group.entity.GroupMembership;
 import com.coursistant.lms.module.course.group.repository.GroupMembershipMapper;
+import com.coursistant.lms.module.tenant.service.TenantTimezoneService;
 import com.coursistant.lms.shared.api.ErrorType;
 import jakarta.annotation.Resource;
 import org.slf4j.Logger;
@@ -68,10 +69,13 @@ public class AssignmentMyGradesService {
     @Resource
     private GroupMembershipMapper groupMembershipMapper;
 
-    public List<MyGradeResponse> listMyGrades(Integer courseId, Integer userId, String timezoneHeader) {
+    @Resource
+    private TenantTimezoneService tenantTimezoneService;
+
+    public List<MyGradeResponse> listMyGrades(Integer courseId, Integer userId) {
         assignmentAccessService.requireCourse(courseId);
         assignmentAccessService.requireStudentMember(courseId, userId);
-        ZoneId zone = assignmentTimeSupport.requireZone(timezoneHeader);
+        ZoneId zone = tenantTimezoneService.requireZoneForCourse(courseId);
         LocalDateTime now = assignmentTimeSupport.nowUtc();
 
         List<Assignment> assignments = assignmentMapper.selectByCourseIdAndState(courseId,
@@ -101,11 +105,12 @@ public class AssignmentMyGradesService {
         response.setAssignmentTitle(assignment.getTitle());
         response.setTitle(assignment.getTitle());
         response.setPointsPossible(assignment.getPointsPossible());
-        response.setDueAt(assignment.getDueAt());
+        response.setDueAtUtc(assignmentTimeSupport.toInstant(assignment.getDueAt()));
         response.setDueAtLocal(assignmentTimeSupport.toZone(assignment.getDueAt(), zone));
+        response.setTimezone(zone.getId());
 
         AssignmentSubmissionVersion version = currentVersionOf(assignment.getId(), userId);
-        response.setSubmittedAt(version == null ? null : version.getSubmittedAt());
+        response.setSubmittedAt(version == null ? null : assignmentTimeSupport.toInstant(version.getSubmittedAt()));
         response.setVersionNo(version == null ? null : version.getVersionNo());
         response.setSubmissionStatus(submissionStatusCalculator.calculate(assignment.getDueAt(),
                 assignment.getLateUntil(), now,
@@ -124,7 +129,7 @@ public class AssignmentMyGradesService {
             response.setFeedbackHtml(grade.getFeedbackHtml());
             boolean hasTextFeedback = grade.getFeedbackHtml() != null && !grade.getFeedbackHtml().isBlank();
             response.setHasFeedback(hasTextFeedback);
-            response.setReleasedAt(grade.getReleasedAt());
+            response.setReleasedAt(assignmentTimeSupport.toInstant(grade.getReleasedAt()));
             boolean hasAnnotated = grade.getAnnotatedObjectKey() != null;
             response.setHasAnnotatedFile(hasAnnotated);
             if (hasAnnotated) {
@@ -149,8 +154,9 @@ public class AssignmentMyGradesService {
         response.setAssignmentTitle(assignment.getTitle());
         response.setTitle(assignment.getTitle());
         response.setPointsPossible(assignment.getPointsPossible());
-        response.setDueAt(assignment.getDueAt());
+        response.setDueAtUtc(assignmentTimeSupport.toInstant(assignment.getDueAt()));
         response.setDueAtLocal(assignmentTimeSupport.toZone(assignment.getDueAt(), zone));
+        response.setTimezone(zone.getId());
         response.setItemType("Group");
 
         AssignmentSubmissionVersion version = null;
@@ -174,7 +180,7 @@ public class AssignmentMyGradesService {
             }
         }
 
-        response.setSubmittedAt(version == null ? null : version.getSubmittedAt());
+        response.setSubmittedAt(version == null ? null : assignmentTimeSupport.toInstant(version.getSubmittedAt()));
         response.setVersionNo(version == null ? null : version.getVersionNo());
         response.setSubmissionStatus(submissionStatusCalculator.calculate(assignment.getDueAt(),
                 assignment.getLateUntil(), now,
@@ -192,7 +198,7 @@ public class AssignmentMyGradesService {
             boolean hasTextFeedback = releasedGrade.getFeedbackHtml() != null
                     && !releasedGrade.getFeedbackHtml().isBlank();
             response.setHasFeedback(hasTextFeedback);
-            response.setReleasedAt(releasedGrade.getReleasedAt());
+            response.setReleasedAt(assignmentTimeSupport.toInstant(releasedGrade.getReleasedAt()));
             boolean hasAnnotated = releasedGrade.getAnnotatedObjectKey() != null;
             response.setHasAnnotatedFile(hasAnnotated);
             if (hasAnnotated) {

@@ -72,7 +72,9 @@
         INNER JOIN enrollment en
             ON en.course_id = e.course_id AND en.user_id = #{userId} AND en.active = 1
         INNER JOIN course c ON c.id = e.course_id
-        WHERE e.event_date &gt;= #{fromDate}
+        INNER JOIN user u ON u.id = #{userId}
+        WHERE c.tenant_id = u.tenant_id
+          AND e.event_date &gt;= #{fromDate}
           AND e.event_date &lt;= #{toDate}
         ORDER BY e.event_date ASC, e.start_time ASC, e.id ASC
     </select>

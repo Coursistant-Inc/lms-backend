@@ -9,7 +9,6 @@ import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -27,9 +26,8 @@ public class AssignmentMyGradesController {
 
     @GetMapping
     public ApiResponse<List<MyGradeResponse>> listMyGrades(HttpServletRequest request,
-                                                           @PathVariable Integer courseId,
-                                                           @RequestHeader(value = "X-Timezone", required = false) String timezone) {
-        return ApiResponse.success(assignmentMyGradesService.listMyGrades(courseId, currentUserId(request), timezone));
+                                                           @PathVariable Integer courseId) {
+        return ApiResponse.success(assignmentMyGradesService.listMyGrades(courseId, currentUserId(request)));
     }
 
     private Integer currentUserId(HttpServletRequest request) {

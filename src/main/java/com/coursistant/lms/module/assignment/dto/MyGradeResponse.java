@@ -3,6 +3,7 @@ package com.coursistant.lms.module.assignment.dto;
 import com.fasterxml.jackson.annotation.JsonInclude;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDateTime;
 
 /**
@@ -18,10 +19,11 @@ public class MyGradeResponse {
     private String title;
     private String itemType = "Individual";
     private BigDecimal pointsPossible;
-    private LocalDateTime dueAt;
+    private Instant dueAtUtc;
     private LocalDateTime dueAtLocal;
+    private String timezone;
     private String submissionStatus;
-    private LocalDateTime submittedAt;
+    private Instant submittedAt;
     private Integer versionNo;
     private boolean released;
     private String gradeDisplay;
@@ -29,7 +31,7 @@ public class MyGradeResponse {
     private BigDecimal pointsEarned;
     private String feedbackHtml;
     private Boolean hasFeedback;
-    private LocalDateTime releasedAt;
+    private Instant releasedAt;
     private Boolean hasAnnotatedFile;
     private String annotatedOriginalName;
     private String annotatedFileUrl;
@@ -76,12 +78,12 @@ public class MyGradeResponse {
         this.pointsPossible = pointsPossible;
     }
 
-    public LocalDateTime getDueAt() {
-        return dueAt;
+    public Instant getDueAtUtc() {
+        return dueAtUtc;
     }
 
-    public void setDueAt(LocalDateTime dueAt) {
-        this.dueAt = dueAt;
+    public void setDueAtUtc(Instant dueAtUtc) {
+        this.dueAtUtc = dueAtUtc;
     }
 
     public LocalDateTime getDueAtLocal() {
@@ -92,6 +94,14 @@ public class MyGradeResponse {
         this.dueAtLocal = dueAtLocal;
     }
 
+    public String getTimezone() {
+        return timezone;
+    }
+
+    public void setTimezone(String timezone) {
+        this.timezone = timezone;
+    }
+
     public String getSubmissionStatus() {
         return submissionStatus;
     }
@@ -100,11 +110,11 @@ public class MyGradeResponse {
         this.submissionStatus = submissionStatus;
     }
 
-    public LocalDateTime getSubmittedAt() {
+    public Instant getSubmittedAt() {
         return submittedAt;
     }
 
-    public void setSubmittedAt(LocalDateTime submittedAt) {
+    public void setSubmittedAt(Instant submittedAt) {
         this.submittedAt = submittedAt;
     }
 
@@ -164,11 +174,11 @@ public class MyGradeResponse {
         this.hasFeedback = hasFeedback;
     }
 
-    public LocalDateTime getReleasedAt() {
+    public Instant getReleasedAt() {
         return releasedAt;
     }
 
-    public void setReleasedAt(LocalDateTime releasedAt) {
+    public void setReleasedAt(Instant releasedAt) {
         this.releasedAt = releasedAt;
     }
 

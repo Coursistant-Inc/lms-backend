@@ -15,6 +15,8 @@ import com.coursistant.lms.module.assignment.repository.AssignmentSubmissionMapp
 import com.coursistant.lms.module.course.group.repository.CourseGroupMapper;
 import com.coursistant.lms.module.course.group.repository.GroupMembershipMapper;
 import com.coursistant.lms.module.course.group.repository.GroupSetMapper;
+import com.coursistant.lms.module.assignment.service.AssignmentTimeSupport;
+import com.coursistant.lms.module.tenant.service.TenantTimezoneService;
 import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.shared.api.ErrorType;
 import jakarta.annotation.Resource;
@@ -22,6 +24,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -49,17 +53,27 @@ public class GroupSetService {
     @Resource
     private AssignmentSubmissionMapper assignmentSubmissionMapper;
 
+    @Resource
+    private TenantTimezoneService tenantTimezoneService;
+
+    @Resource
+    private AssignmentTimeSupport assignmentTimeSupport;
+
     @Transactional
     public GroupSetResponse createGroupSet(Integer courseId, Integer actorUserId, CreateGroupSetRequest request) {
         groupAccessService.requireCanManageGroupsWritable(courseId, actorUserId);
-        validateCreate(request);
+        validateCreate(request, courseId);
+
+        ZoneId zone = tenantTimezoneService.requireZoneForCourse(courseId);
+        LocalDateTime joinOpensAtUtc = assignmentTimeSupport.toUtc(request.getJoinOpensAt(), zone);
+        LocalDateTime joinClosesAtUtc = assignmentTimeSupport.toUtc(request.getJoinClosesAt(), zone);
 
         GroupSet groupSet = new GroupSet();
         groupSet.setCourseId(courseId);
         groupSet.setName(request.getName().trim());
         groupSet.setDefaultCapacity(request.getDefaultCapacity());
-        groupSet.setJoinOpensAt(request.getJoinOpensAt());
-        groupSet.setJoinClosesAt(request.getJoinClosesAt());
+        groupSet.setJoinOpensAt(joinOpensAtUtc);
+        groupSet.setJoinClosesAt(joinClosesAtUtc);
         groupSet.setLocked(Boolean.TRUE.equals(request.getLocked()));
         groupSetMapper.insert(groupSet);
         return getGroupSet(courseId, groupSet.getId(), actorUserId);
@@ -90,6 +104,7 @@ public class GroupSetService {
         if (request == null) {
             throw new ApiException(ErrorType.BAD_REQUEST, "Request body is required");
         }
+        ZoneId zone = tenantTimezoneService.requireZoneForCourse(courseId);
 
         if (StringUtils.hasText(request.getName())) {
             groupSet.setName(request.getName().trim());
@@ -114,7 +129,7 @@ public class GroupSetService {
         if (Boolean.TRUE.equals(request.getClearJoinOpensAt())) {
             groupSet.setJoinOpensAt(null);
         } else if (request.getJoinOpensAt() != null) {
-            groupSet.setJoinOpensAt(request.getJoinOpensAt());
+            groupSet.setJoinOpensAt(assignmentTimeSupport.toUtc(request.getJoinOpensAt(), zone));
         }
         if (Boolean.TRUE.equals(request.getClearJoinClosesAt())) {
             if (groupSet.getJoinClosesAt() != null
@@ -123,13 +138,14 @@ public class GroupSetService {
             }
             groupSet.setJoinClosesAt(null);
         } else if (request.getJoinClosesAt() != null) {
+            LocalDateTime newCloses = assignmentTimeSupport.toUtc(request.getJoinClosesAt(), zone);
             if (groupSet.getJoinClosesAt() != null
-                    && request.getJoinClosesAt().isBefore(groupSet.getJoinClosesAt())
+                    && newCloses.isBefore(groupSet.getJoinClosesAt())
                     && !Boolean.TRUE.equals(request.getConfirmWindowShorten())) {
                 throw new ApiException(ErrorType.CONFLICT,
                         "Confirmation required to shorten join window");
             }
-            groupSet.setJoinClosesAt(request.getJoinClosesAt());
+            groupSet.setJoinClosesAt(newCloses);
         }
 
         validateWindowOrder(groupSet.getJoinOpensAt(), groupSet.getJoinClosesAt());
@@ -255,7 +271,7 @@ public class GroupSetService {
         return max;
     }
 
-    private void validateCreate(CreateGroupSetRequest request) {
+    private void validateCreate(CreateGroupSetRequest request, Integer courseId) {
         if (request == null || !StringUtils.hasText(request.getName())) {
             throw new ApiException(ErrorType.BAD_REQUEST, "Group set name is required");
         }
@@ -263,7 +279,10 @@ public class GroupSetService {
             throw new ApiException(ErrorType.BAD_REQUEST, "defaultCapacity is required");
         }
         validateCapacity(request.getDefaultCapacity());
-        validateWindowOrder(request.getJoinOpensAt(), request.getJoinClosesAt());
+        ZoneId zone = tenantTimezoneService.requireZoneForCourse(courseId);
+        LocalDateTime joinOpensAtUtc = assignmentTimeSupport.toUtc(request.getJoinOpensAt(), zone);
+        LocalDateTime joinClosesAtUtc = assignmentTimeSupport.toUtc(request.getJoinClosesAt(), zone);
+        validateWindowOrder(joinOpensAtUtc, joinClosesAtUtc);
     }
 
     private void validateCapacity(int capacity) {

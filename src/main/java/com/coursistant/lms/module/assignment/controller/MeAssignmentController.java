@@ -8,7 +8,6 @@ import com.coursistant.lms.shared.api.ErrorType;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -25,10 +24,9 @@ public class MeAssignmentController {
     @GetMapping("/upcoming")
     public ApiResponse<List<UpcomingAssignmentDeadlineResponse>> upcoming(
             HttpServletRequest request,
-            @RequestHeader(value = "X-Timezone", required = false) String timezone,
             @RequestParam(required = false) Integer days) {
         return ApiResponse.success(
-                assignmentService.listUpcomingDeadlines(currentUserId(request), timezone, days));
+                assignmentService.listUpcomingDeadlines(currentUserId(request), days));
     }
 
     private Integer currentUserId(HttpServletRequest request) {

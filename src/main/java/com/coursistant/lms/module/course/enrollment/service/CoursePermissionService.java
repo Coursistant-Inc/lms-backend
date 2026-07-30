@@ -1,7 +1,11 @@
 package com.coursistant.lms.module.course.enrollment.service;
 
+import com.coursistant.lms.module.course.course.entity.Course;
+import com.coursistant.lms.module.course.course.repository.CourseMapper;
 import com.coursistant.lms.module.course.enrollment.entity.Enrollment;
 import com.coursistant.lms.module.course.enrollment.repository.EnrollmentMapper;
+import com.coursistant.lms.module.user.account.entity.User;
+import com.coursistant.lms.module.user.account.repository.UserMapper;
 import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.shared.api.ErrorType;
 import com.coursistant.lms.shared.enums.RoleEnum;
@@ -23,10 +27,50 @@ public class CoursePermissionService {
     @Resource
     private EnrollmentMapper enrollmentMapper;
 
+    @Resource
+    private CourseMapper courseMapper;
+
+    @Resource
+    private UserMapper userMapper;
+
+    /**
+     * For non-admin callers: if the user's tenant does not match the course tenant,
+     * throw {@link ErrorType#COURSE_NOT_FOUND} (anti-enumeration).
+     * Admins are exempt.
+     */
+    public void requireUserTenantMatchesCourse(Integer courseId, Integer userId, boolean admin) {
+        if (admin) {
+            return;
+        }
+        if (courseId == null || userId == null) {
+            throw new ApiException(ErrorType.COURSE_NOT_FOUND);
+        }
+        Course course = courseMapper.selectById(courseId);
+        if (course == null) {
+            throw new ApiException(ErrorType.COURSE_NOT_FOUND);
+        }
+        User user = userMapper.selectById(userId);
+        if (user == null) {
+            throw new ApiException(ErrorType.COURSE_NOT_FOUND);
+        }
+        if (user.getTenantId() == null || course.getTenantId() == null) {
+            throw new ApiException(ErrorType.INTERNAL_ERROR, "Persisted tenantId is null");
+        }
+        if (!user.getTenantId().equals(course.getTenantId())) {
+            throw new ApiException(ErrorType.COURSE_NOT_FOUND);
+        }
+    }
+
+    public void requireUserTenantMatchesCourse(HttpServletRequest request, Integer courseId, Integer userId) {
+        requireUserTenantMatchesCourse(courseId, userId, isAdmin(request));
+    }
+
     /**
      * Returns the caller's enrollment for the course, requiring it to exist and be active.
      */
     public Enrollment requireActiveEnrollment(Integer courseId, Integer userId) {
+        // USER paths: cross-tenant course access is indistinguishable from missing course.
+        requireUserTenantMatchesCourse(courseId, userId, false);
         Enrollment enrollment = enrollmentMapper.selectByCourseIdAndUserId(courseId, userId);
         if (enrollment == null) {
             throw new ApiException(ErrorType.NOT_COURSE_MEMBER);

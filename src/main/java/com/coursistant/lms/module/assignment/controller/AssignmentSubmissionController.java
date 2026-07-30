@@ -19,7 +19,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -73,19 +72,17 @@ public class AssignmentSubmissionController {
     public ApiResponse<SubmissionResponse> submit(HttpServletRequest request,
                                                   @PathVariable Integer courseId,
                                                   @PathVariable Integer assignmentId,
-                                                  @RequestHeader(value = "X-Timezone", required = false) String timezone,
                                                   @RequestBody(required = false) SubmitAssignmentRequest body) {
         return ApiResponse.success(assignmentSubmissionService.submit(courseId, assignmentId, currentUserId(request),
-                timezone, body), "Submitted");
+                body), "Submitted");
     }
 
     @GetMapping("/submission")
     public ApiResponse<SubmissionResponse> getMySubmission(HttpServletRequest request,
                                                            @PathVariable Integer courseId,
-                                                           @PathVariable Integer assignmentId,
-                                                           @RequestHeader(value = "X-Timezone", required = false) String timezone) {
+                                                           @PathVariable Integer assignmentId) {
         return ApiResponse.success(assignmentSubmissionService.getMySubmission(request, courseId, assignmentId,
-                currentUserId(request), timezone));
+                currentUserId(request)));
     }
 
     @GetMapping("/submissions/{submissionId}/versions")
@@ -93,10 +90,9 @@ public class AssignmentSubmissionController {
             HttpServletRequest request,
             @PathVariable Integer courseId,
             @PathVariable Integer assignmentId,
-            @PathVariable Integer submissionId,
-            @RequestHeader(value = "X-Timezone", required = false) String timezone) {
+            @PathVariable Integer submissionId) {
         return ApiResponse.success(assignmentSubmissionService.listVersions(request, courseId, assignmentId,
-                submissionId, currentUserId(request), timezone));
+                submissionId, currentUserId(request)));
     }
 
     @GetMapping("/submissions/{submissionId}/files/{fileId}/download")

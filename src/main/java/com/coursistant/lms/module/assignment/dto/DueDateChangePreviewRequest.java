@@ -3,7 +3,7 @@ package com.coursistant.lms.module.assignment.dto;
 import java.time.LocalDateTime;
 
 /**
- * Dry-run payload for a due date change. Times are wall-clock in the caller's X-Timezone.
+ * Dry-run payload for a due date change. Times are wall-clock in the course tenant timezone.
  */
 public class DueDateChangePreviewRequest {
 

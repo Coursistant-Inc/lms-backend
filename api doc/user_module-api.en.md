@@ -127,7 +127,7 @@ At least **8** characters, and must contain both **letters** and **digits**. Oth
 
 1. `POST /v1/auth/email-verifications/register?email=...` send code
 2. `POST /v1/auth/email-verifications/register/validate?email=...&code=...` (Idempotency-Key required)
-3. `POST /v1/auth/register` (`email` `password` `name`; optional `username`)
+3. `POST /v1/auth/register` (`email` `password` `name` **`tenantId`**; optional `username`). Frontend currently hard-codes `tenantId: 1`
 4. Same as login on success: `accessToken` + refresh cookie; fixed `role=USER`, `level=STUDENT`
 
 ### 2.3 Profile / avatar
@@ -185,6 +185,20 @@ Common errors: `INVALID_CREDENTIALS`, `ACCOUNT_LOCKED`, `USER_NOT_FOUND`, `UNAUT
 | List teachers query | `role=instructor` or `role=teacher` (`GET /v2/users`) |
 
 Invalid / missing required → usually `PARAM_MISSING` or `400 BAD_REQUEST`.
+
+### 4.1 `tenantId` (required)
+
+`user.tenant_id` is **NOT NULL**; existing rows were backfilled to `1`. The backend does **not** silently default.
+
+| Scenario | Rule |
+|------|------|
+| Public `POST /v1/auth/register`, OAuth register | Body **requires** `tenantId`; **only `1` allowed**, else `400 BAD_REQUEST`. Frontend currently hard-codes `1` |
+| Admin `POST /v2/users` | Body **requires** `tenantId` for any existing tenant; missing → `PARAM_MISSING`; unknown → `TENANT_NOT_FOUND` |
+| Change user tenant | **Only** `PATCH /v2/admin/users/{id}/tenant` (Admin + Idempotency-Key). Enrollment / instructing / created courses → `409 USER_TENANT_CHANGE_BLOCKED` |
+| `PUT /v2/users/{id}` | Body **must not** include `tenantId` (if present → `400 BAD_REQUEST`) |
+| Profile / password / avatar | Do **not** read or write tenant |
+
+See also [`tenant_module-api.md`](./tenant_module-api.md).
 
 ---
 
@@ -259,12 +273,22 @@ Errors: `PARAM_MISSING`, `USER_NOT_FOUND`, `INVALID_CREDENTIALS`, `ACCOUNT_LOCKE
 | email | string | Yes | |
 | password | string | Yes | See §1.6 |
 | name | string | Yes | Display name |
+| tenantId | int | **Yes** | Public register **only allows `1`** (seed Default). Missing → `PARAM_MISSING`; not `1` → `BAD_REQUEST`. Frontend currently hard-codes `1` |
 | username | string | No | Defaults to the part before `@` in email |
+
+```json
+{
+  "email": "newuser@example.com",
+  "password": "Test12345",
+  "name": "New User",
+  "tenantId": 1
+}
+```
 
 Success: same shape as login `AuthResult` + refresh cookie.  
 Fixed: `role=USER`, `level=STUDENT`, `emailNotifications=true`.
 
-Errors: `PARAM_MISSING`, `INVALID_VERIFICATION_CODE` (not verified), `INVALID_PASSWORD_FORMAT`, `BAD_REQUEST` (e.g. email already exists; message may be anti-enumeration).
+Errors: `PARAM_MISSING`, `INVALID_VERIFICATION_CODE` (not verified), `INVALID_PASSWORD_FORMAT`, `BAD_REQUEST` (e.g. email already exists, `tenantId≠1`; message may be anti-enumeration), `TENANT_NOT_FOUND`.
 
 ---
 
@@ -528,20 +552,57 @@ Bearer required. Writes need Idempotency-Key.
 
 | Method | Path | Notes |
 |------|------|------|
-| POST | `/v2/users` | Create; at least `email`+`password`; `role` forced to `USER` |
+| POST | `/v2/users` | Create; at least `email`+`password`+**`tenantId`**; `role` forced to `USER` |
 | GET | `/v2/users/{id}` | Detail; `USER_NOT_FOUND` |
 | GET | `/v2/users` | List; optional User field query filters; `?role=instructor` / `teacher` → teachers only |
-| PUT | `/v2/users/{id}` | Update |
+| PUT | `/v2/users/{id}` | Update; **cannot** change `tenantId` (body includes it → `400`) |
 | DELETE | `/v2/users/{id}` | Delete |
 | DELETE | `/v2/users/batch` | Body: `[1,2,3]` |
 | PATCH | `/v2/users/{id}/password-status` | Sets `mustChangePassword=false` |
+| PATCH | `/v2/admin/users/{id}/tenant` | **Admin only**; change tenant (below) |
 
-Common `User` fields: `id` `username` `password` `name` `avatar` (**key**) `role` `level` `email` `mustChangePassword` `emailNotifications`.
+Common `User` fields: `id` **`tenantId`** `username` `password` `name` `avatar` (**key**) `role` `level` `email` `mustChangePassword` `emailNotifications`.
+
+**Create body notes**
+
+| Field | Required | Notes |
+|------|------|------|
+| email / password | Yes | |
+| tenantId | **Yes** | Any existing tenant; missing → `PARAM_MISSING`; unknown → `TENANT_NOT_FOUND`. Frontend currently hard-codes `1` |
+| name / username / level | No | `level` defaults to `STUDENT` |
+
+```json
+{
+  "email": "tzuser@example.com",
+  "password": "Test12345",
+  "name": "TZ User",
+  "username": "tzuser",
+  "level": "INSTRUCTOR",
+  "tenantId": 1
+}
+```
+
+### 9.1 Change user tenant — `PATCH /v2/admin/users/{id}/tenant`
+
+| | |
+|--|--|
+| Auth | JWT `role=ADMIN`; else `403 ACCESS_DENIED` |
+| Idempotency-Key | **Yes** |
+
+**Body**
+
+```json
+{ "tenantId": 1 }
+```
+
+- `tenantId` required; tenant must exist
+- Target user has enrollment, or is instructor/creator of a course → `409 USER_TENANT_CHANGE_BLOCKED`
+- Same as current value → success (idempotent)
 
 > Admin APIs return `avatar` as a storage key, not an `<img>` URL. Use §8.3 for display.  
 > Do not show `password` in the UI.
 
-Example errors: `USER_ALREADY_EXISTS`, `PARAM_MISSING`, `INVALID_PASSWORD_FORMAT`, `USER_NOT_FOUND`.
+Example errors: `USER_ALREADY_EXISTS`, `PARAM_MISSING`, `INVALID_PASSWORD_FORMAT`, `USER_NOT_FOUND`, `TENANT_NOT_FOUND`, `USER_TENANT_CHANGE_BLOCKED`, `ACCESS_DENIED`.
 
 ---
 
@@ -609,6 +670,7 @@ Applies to: `GET /v2/users/{userId}/avatar`.
 | GET | `/v2/users/{userId}/avatar` | Public | |
 | GET | `/v2/users`, `/v2/users/{id}` | Logged in (product: Admin) | |
 | POST/PUT/DELETE/PATCH | `/v2/users...` | Logged in (product: Admin) | Yes |
+| PATCH | `/v2/admin/users/{id}/tenant` | Admin | Yes |
 | GET/POST/PUT/DELETE | `/v2/admins...` | Logged in (product: Admin) | Writes yes |
 
 ---

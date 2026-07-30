@@ -1,5 +1,6 @@
 package com.coursistant.lms.module.course.group.dto;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -9,8 +10,11 @@ public class GroupSetResponse {
     private Integer courseId;
     private String name;
     private Integer defaultCapacity;
-    private LocalDateTime joinOpensAt;
-    private LocalDateTime joinClosesAt;
+    private Instant joinOpensAtUtc;
+    private LocalDateTime joinOpensAtLocal;
+    private Instant joinClosesAtUtc;
+    private LocalDateTime joinClosesAtLocal;
+    private String timezone;
     private Boolean locked;
     private Boolean openForSelfService;
     private Boolean capacityShortenWarning;
@@ -50,20 +54,44 @@ public class GroupSetResponse {
         this.defaultCapacity = defaultCapacity;
     }
 
-    public LocalDateTime getJoinOpensAt() {
-        return joinOpensAt;
+    public Instant getJoinOpensAtUtc() {
+        return joinOpensAtUtc;
     }
 
-    public void setJoinOpensAt(LocalDateTime joinOpensAt) {
-        this.joinOpensAt = joinOpensAt;
+    public void setJoinOpensAtUtc(Instant joinOpensAtUtc) {
+        this.joinOpensAtUtc = joinOpensAtUtc;
     }
 
-    public LocalDateTime getJoinClosesAt() {
-        return joinClosesAt;
+    public LocalDateTime getJoinOpensAtLocal() {
+        return joinOpensAtLocal;
     }
 
-    public void setJoinClosesAt(LocalDateTime joinClosesAt) {
-        this.joinClosesAt = joinClosesAt;
+    public void setJoinOpensAtLocal(LocalDateTime joinOpensAtLocal) {
+        this.joinOpensAtLocal = joinOpensAtLocal;
+    }
+
+    public Instant getJoinClosesAtUtc() {
+        return joinClosesAtUtc;
+    }
+
+    public void setJoinClosesAtUtc(Instant joinClosesAtUtc) {
+        this.joinClosesAtUtc = joinClosesAtUtc;
+    }
+
+    public LocalDateTime getJoinClosesAtLocal() {
+        return joinClosesAtLocal;
+    }
+
+    public void setJoinClosesAtLocal(LocalDateTime joinClosesAtLocal) {
+        this.joinClosesAtLocal = joinClosesAtLocal;
+    }
+
+    public String getTimezone() {
+        return timezone;
+    }
+
+    public void setTimezone(String timezone) {
+        this.timezone = timezone;
     }
 
     public Boolean getLocked() {

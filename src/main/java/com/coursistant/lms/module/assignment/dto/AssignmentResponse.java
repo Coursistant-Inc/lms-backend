@@ -3,6 +3,7 @@ package com.coursistant.lms.module.assignment.dto;
 import com.fasterxml.jackson.annotation.JsonInclude;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -20,16 +21,11 @@ public class AssignmentResponse {
     private String description;
     private BigDecimal pointsPossible;
 
-    /** UTC. */
-    private LocalDateTime dueAt;
-    /** UTC, null when the assignment does not accept late submissions. */
-    private LocalDateTime lateUntil;
-    /** {@code dueAt} rendered in the caller's X-Timezone. */
+    private Instant dueAtUtc;
+    private Instant lateUntilUtc;
     private LocalDateTime dueAtLocal;
     private LocalDateTime lateUntilLocal;
     private String timezone;
-    /** Alias of {@link #timezone} for the Part 5 contract. */
-    private String timezoneLabel;
 
     private String submissionType;
     private Integer groupSetId;
@@ -45,8 +41,8 @@ public class AssignmentResponse {
     private List<AssignmentAttachmentResponse> attachments;
 
     private Integer createdBy;
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
+    private Instant createdAt;
+    private Instant updatedAt;
 
     // --- Staff view ---
     private Integer activeStudentCount;
@@ -61,7 +57,7 @@ public class AssignmentResponse {
     private String groupName;
     /** Null when eligible; {@code NO_GROUP_MEMBERSHIP} when the viewer has no group on a Group assignment. */
     private String submissionEligibility;
-    private LocalDateTime submittedAt;
+    private Instant submittedAt;
     private Integer versionNo;
     private Boolean usedGraceBuffer;
     private Boolean windowOpen;
@@ -117,20 +113,20 @@ public class AssignmentResponse {
         this.pointsPossible = pointsPossible;
     }
 
-    public LocalDateTime getDueAt() {
-        return dueAt;
+    public Instant getDueAtUtc() {
+        return dueAtUtc;
     }
 
-    public void setDueAt(LocalDateTime dueAt) {
-        this.dueAt = dueAt;
+    public void setDueAtUtc(Instant dueAtUtc) {
+        this.dueAtUtc = dueAtUtc;
     }
 
-    public LocalDateTime getLateUntil() {
-        return lateUntil;
+    public Instant getLateUntilUtc() {
+        return lateUntilUtc;
     }
 
-    public void setLateUntil(LocalDateTime lateUntil) {
-        this.lateUntil = lateUntil;
+    public void setLateUntilUtc(Instant lateUntilUtc) {
+        this.lateUntilUtc = lateUntilUtc;
     }
 
     public LocalDateTime getDueAtLocal() {
@@ -155,16 +151,6 @@ public class AssignmentResponse {
 
     public void setTimezone(String timezone) {
         this.timezone = timezone;
-        this.timezoneLabel = timezone;
-    }
-
-    public String getTimezoneLabel() {
-        return timezoneLabel;
-    }
-
-    public void setTimezoneLabel(String timezoneLabel) {
-        this.timezoneLabel = timezoneLabel;
-        this.timezone = timezoneLabel;
     }
 
     public String getSubmissionType() {
@@ -255,19 +241,19 @@ public class AssignmentResponse {
         this.createdBy = createdBy;
     }
 
-    public LocalDateTime getCreatedAt() {
+    public Instant getCreatedAt() {
         return createdAt;
     }
 
-    public void setCreatedAt(LocalDateTime createdAt) {
+    public void setCreatedAt(Instant createdAt) {
         this.createdAt = createdAt;
     }
 
-    public LocalDateTime getUpdatedAt() {
+    public Instant getUpdatedAt() {
         return updatedAt;
     }
 
-    public void setUpdatedAt(LocalDateTime updatedAt) {
+    public void setUpdatedAt(Instant updatedAt) {
         this.updatedAt = updatedAt;
     }
 
@@ -343,11 +329,11 @@ public class AssignmentResponse {
         this.submissionEligibility = submissionEligibility;
     }
 
-    public LocalDateTime getSubmittedAt() {
+    public Instant getSubmittedAt() {
         return submittedAt;
     }
 
-    public void setSubmittedAt(LocalDateTime submittedAt) {
+    public void setSubmittedAt(Instant submittedAt) {
         this.submittedAt = submittedAt;
     }
 
@@ -466,7 +452,8 @@ public class AssignmentResponse {
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public static class LatePolicyResponse {
         private Boolean acceptsLate;
-        private LocalDateTime lateUntil;
+        private Instant lateUntilUtc;
+        private LocalDateTime lateUntilLocal;
 
         public Boolean getAcceptsLate() {
             return acceptsLate;
@@ -476,12 +463,20 @@ public class AssignmentResponse {
             this.acceptsLate = acceptsLate;
         }
 
-        public LocalDateTime getLateUntil() {
-            return lateUntil;
+        public Instant getLateUntilUtc() {
+            return lateUntilUtc;
         }
 
-        public void setLateUntil(LocalDateTime lateUntil) {
-            this.lateUntil = lateUntil;
+        public void setLateUntilUtc(Instant lateUntilUtc) {
+            this.lateUntilUtc = lateUntilUtc;
+        }
+
+        public LocalDateTime getLateUntilLocal() {
+            return lateUntilLocal;
+        }
+
+        public void setLateUntilLocal(LocalDateTime lateUntilLocal) {
+            this.lateUntilLocal = lateUntilLocal;
         }
     }
 

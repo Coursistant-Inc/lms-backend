@@ -83,8 +83,10 @@
         INNER JOIN enrollment e
             ON e.course_id = a.course_id AND e.user_id = #{userId} AND e.active = 1
         INNER JOIN course c ON c.id = a.course_id
+        INNER JOIN user u ON u.id = #{userId}
         LEFT JOIN course_announcement_read r
             ON r.announcement_id = a.id AND r.user_id = #{userId}
+        WHERE c.tenant_id = u.tenant_id
         ORDER BY a.posted_at DESC, a.id DESC
         LIMIT #{limit}
     </select>

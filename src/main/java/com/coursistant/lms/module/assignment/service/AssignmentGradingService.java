@@ -32,6 +32,7 @@ import com.coursistant.lms.module.course.group.repository.GroupMembershipMapper;
 import com.coursistant.lms.module.course.group.service.GroupAccessService;
 import com.coursistant.lms.module.user.account.entity.User;
 import com.coursistant.lms.module.user.account.repository.UserMapper;
+import com.coursistant.lms.module.tenant.service.TenantTimezoneService;
 import com.coursistant.lms.shared.api.ErrorType;
 import jakarta.annotation.Resource;
 import org.slf4j.Logger;
@@ -132,6 +133,9 @@ public class AssignmentGradingService {
     @Resource
     private GroupAccessService groupAccessService;
 
+    @Resource
+    private TenantTimezoneService tenantTimezoneService;
+
     // ---------------------------------------------------------------- roster
 
     /**
@@ -147,6 +151,7 @@ public class AssignmentGradingService {
         }
 
         LocalDateTime now = assignmentTimeSupport.nowUtc();
+        ZoneId zone = tenantTimezoneService.requireZoneForCourse(courseId);
         List<Enrollment> students = activeStudents(courseId);
         Map<Integer, AssignmentGrade> gradesByStudent = gradesByStudent(assignmentId);
 
@@ -154,8 +159,7 @@ public class AssignmentGradingService {
         response.setAssignmentId(assignmentId);
         response.setAssignmentTitle(assignment.getTitle());
         response.setPointsPossible(assignment.getPointsPossible());
-        response.setDueAt(assignment.getDueAt());
-        response.setLateUntil(assignment.getLateUntil());
+        populateRosterDeadlines(response, assignment, zone);
         response.setTotalStudents(students.size());
         response.setGradingWritable(assignmentAccessService.isGradingWritable(course));
         response.setGradingWritableUntil(assignmentAccessService.gradingWritableUntil(course));
@@ -200,6 +204,7 @@ public class AssignmentGradingService {
 
     private GradingRosterResponse getGroupRoster(Course course, Assignment assignment, Integer userId) {
         LocalDateTime now = assignmentTimeSupport.nowUtc();
+        ZoneId zone = tenantTimezoneService.requireZoneForCourse(course.getId());
         groupAccessService.requireGroupSetInCourse(course.getId(), assignment.getGroupSetId());
         List<CourseGroup> groups = courseGroupMapper.selectByGroupSetId(assignment.getGroupSetId());
         if (groups == null) {
@@ -212,8 +217,7 @@ public class AssignmentGradingService {
         response.setAssignmentId(assignment.getId());
         response.setAssignmentTitle(assignment.getTitle());
         response.setPointsPossible(assignment.getPointsPossible());
-        response.setDueAt(assignment.getDueAt());
-        response.setLateUntil(assignment.getLateUntil());
+        populateRosterDeadlines(response, assignment, zone);
         response.setTotalStudents(groups.size());
         response.setGradingWritable(assignmentAccessService.isGradingWritable(course));
         response.setGradingWritableUntil(assignmentAccessService.gradingWritableUntil(course));
@@ -255,13 +259,13 @@ public class AssignmentGradingService {
     }
 
     public GradingViewResponse getGradingView(Integer courseId, Integer assignmentId, Integer studentUserId,
-                                              Integer userId, String timezoneHeader) {
+                                              Integer userId) {
         Course course = assignmentAccessService.requireCourse(courseId);
         assignmentAccessService.requireCanGrade(courseId, userId);
         Assignment assignment = requireAssignment(courseId, assignmentId, userId);
         requireInRoster(courseId, assignmentId, studentUserId, userId);
 
-        ZoneId zone = assignmentTimeSupport.zoneOrUtc(timezoneHeader);
+        ZoneId zone = tenantTimezoneService.requireZoneForCourse(courseId);
         LocalDateTime now = assignmentTimeSupport.nowUtc();
         AssignmentGrade grade = assignmentGradeMapper.selectByAssignmentIdAndStudentUserId(assignmentId, studentUserId);
 
@@ -689,14 +693,14 @@ public class AssignmentGradingService {
     }
 
     public GradingViewResponse getGroupGradingView(Integer courseId, Integer assignmentId, Integer groupId,
-                                                   Integer userId, String timezoneHeader) {
+                                                   Integer userId) {
         Course course = assignmentAccessService.requireCourse(courseId);
         assignmentAccessService.requireCanGrade(courseId, userId);
         Assignment assignment = requireAssignment(courseId, assignmentId, userId);
         requireGroupAssignment(courseId, assignmentId, userId, assignment);
         CourseGroup group = requireGroupInRoster(courseId, assignment, groupId, userId);
 
-        ZoneId zone = assignmentTimeSupport.zoneOrUtc(timezoneHeader);
+        ZoneId zone = tenantTimezoneService.requireZoneForCourse(courseId);
         LocalDateTime now = assignmentTimeSupport.nowUtc();
         AssignmentGrade grade = assignmentGradeMapper.selectByAssignmentIdAndGroupId(assignmentId, groupId);
 
@@ -821,7 +825,7 @@ public class AssignmentGradingService {
         if (version != null) {
             item.setSubmissionVersionId(version.getId());
             item.setVersionNo(version.getVersionNo());
-            item.setSubmittedAt(version.getSubmittedAt());
+            item.setSubmittedAt(assignmentTimeSupport.toInstant(version.getSubmittedAt()));
             item.setUsedGraceBuffer(version.getUsedGraceBuffer());
             List<AssignmentSubmissionFile> files =
                     assignmentSubmissionFileMapper.selectBySubmissionVersionId(version.getId());
@@ -844,7 +848,7 @@ public class AssignmentGradingService {
         } else {
             item.setGradeStatus(grade.getStatus());
             item.setScore(grade.getScore());
-            item.setReleasedAt(grade.getReleasedAt());
+            item.setReleasedAt(assignmentTimeSupport.toInstant(grade.getReleasedAt()));
             item.setHasAnnotatedFile(grade.getAnnotatedObjectKey() != null);
         }
         return item;
@@ -871,7 +875,7 @@ public class AssignmentGradingService {
         if (version != null) {
             item.setSubmissionVersionId(version.getId());
             item.setVersionNo(version.getVersionNo());
-            item.setSubmittedAt(version.getSubmittedAt());
+            item.setSubmittedAt(assignmentTimeSupport.toInstant(version.getSubmittedAt()));
             item.setUsedGraceBuffer(version.getUsedGraceBuffer());
             item.setActualSubmitterUserId(version.getActualSubmitterUserId());
             List<AssignmentSubmissionFile> files =
@@ -890,7 +894,7 @@ public class AssignmentGradingService {
         } else {
             item.setGradeStatus(grade.getStatus());
             item.setScore(grade.getScore());
-            item.setReleasedAt(grade.getReleasedAt());
+            item.setReleasedAt(assignmentTimeSupport.toInstant(grade.getReleasedAt()));
             item.setHasAnnotatedFile(grade.getAnnotatedObjectKey() != null);
         }
         return item;
@@ -921,10 +925,10 @@ public class AssignmentGradingService {
             response.setAnnotatedFileUrl(assignmentResponseAssembler.absoluteUrl(annotatedPath));
         }
         response.setEnteredBy(grade.getEnteredBy());
-        response.setEnteredAt(grade.getEnteredAt());
+        response.setEnteredAt(assignmentTimeSupport.toInstant(grade.getEnteredAt()));
         response.setEditedBy(grade.getEditedBy());
-        response.setUpdatedAt(grade.getUpdatedAt());
-        response.setReleasedAt(grade.getReleasedAt());
+        response.setUpdatedAt(assignmentTimeSupport.toInstant(grade.getUpdatedAt()));
+        response.setReleasedAt(assignmentTimeSupport.toInstant(grade.getReleasedAt()));
         response.setAiAssisted(grade.getAiAssisted());
         return response;
     }
@@ -1098,6 +1102,14 @@ public class AssignmentGradingService {
                     "Active student roster query returned null");
         }
         return students;
+    }
+
+    private void populateRosterDeadlines(GradingRosterResponse response, Assignment assignment, ZoneId zone) {
+        response.setDueAtUtc(assignmentTimeSupport.toInstant(assignment.getDueAt()));
+        response.setLateUntilUtc(assignmentTimeSupport.toInstant(assignment.getLateUntil()));
+        response.setDueAtLocal(assignmentTimeSupport.toZone(assignment.getDueAt(), zone));
+        response.setLateUntilLocal(assignmentTimeSupport.toZone(assignment.getLateUntil(), zone));
+        response.setTimezone(zone.getId());
     }
 
     @SafeVarargs

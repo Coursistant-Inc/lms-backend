@@ -10,14 +10,14 @@ import com.coursistant.lms.module.course.event.entity.CourseEvent;
 import com.coursistant.lms.module.course.event.repository.CourseEventMapper;
 import com.coursistant.lms.module.course.schedule.dto.SessionWithCourseCode;
 import com.coursistant.lms.module.course.schedule.repository.CourseSessionMapper;
+import com.coursistant.lms.module.tenant.service.TenantTimezoneService;
 import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.shared.api.ErrorType;
-import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
-import org.springframework.beans.factory.annotation.Value;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import java.time.DateTimeException;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -32,6 +32,8 @@ import java.util.stream.Collectors;
 @Service
 public class CourseEventService {
 
+    private static final Logger log = LoggerFactory.getLogger(CourseEventService.class);
+
     private static final Map<DayOfWeek, String> DAY_CODES = new EnumMap<>(DayOfWeek.class);
 
     static {
@@ -44,11 +46,6 @@ public class CourseEventService {
         DAY_CODES.put(DayOfWeek.SUNDAY, "SUN");
     }
 
-    @Value("${lms.institution-timezone}")
-    private String institutionTimezone;
-
-    private ZoneId institutionZone;
-
     @Resource
     private CourseEventMapper courseEventMapper;
 
@@ -58,18 +55,8 @@ public class CourseEventService {
     @Resource
     private CourseSessionMapper courseSessionMapper;
 
-    @PostConstruct
-    void initInstitutionZone() {
-        if (institutionTimezone == null || institutionTimezone.isBlank()) {
-            throw new IllegalStateException("lms.institution-timezone must be a non-blank IANA timezone");
-        }
-        try {
-            institutionZone = ZoneId.of(institutionTimezone.trim());
-        } catch (DateTimeException ex) {
-            throw new IllegalStateException(
-                    "lms.institution-timezone is not a valid IANA timezone: " + institutionTimezone, ex);
-        }
-    }
+    @Resource
+    private TenantTimezoneService tenantTimezoneService;
 
     public List<CourseEventResponse> listByCourseId(Integer courseId) {
         requireCourse(courseId);
@@ -80,16 +67,18 @@ public class CourseEventService {
 
     /**
      * Dashboard activities: expanded Course Sessions + Course Events for active enrollments
-     * in {@code [today, today+days-1]} using the configured institution timezone calendar date.
+     * in {@code [today, today+days-1]} using the user's tenant timezone calendar date.
      * Finished sessions today are still included.
      */
     public List<UpcomingCourseActivityResponse> listUpcomingActivitiesForUser(Integer userId, Integer days) {
         if (userId == null) {
             throw new ApiException(ErrorType.UNAUTHORIZED);
         }
+        Integer userTenantId = tenantTimezoneService.requireUserTenantId(userId);
+        ZoneId zone = tenantTimezoneService.requireZoneForUser(userId);
         int windowDays = normalizeDays(days, 7, 30);
-        String timezoneId = institutionZone.getId();
-        LocalDate from = LocalDate.now(institutionZone);
+        String timezoneId = zone.getId();
+        LocalDate from = LocalDate.now(zone);
         LocalDate to = from.plusDays(windowDays - 1L);
 
         List<UpcomingCourseActivityResponse> result = new ArrayList<>();
@@ -98,6 +87,9 @@ public class CourseEventService {
                 courseEventMapper.selectUpcomingActivitiesForUser(userId, from, to);
         if (events != null) {
             for (UpcomingCourseActivityResponse event : events) {
+                if (dropIfCrossTenant(userId, userTenantId, event.getCourseId(), "event")) {
+                    continue;
+                }
                 event.setTimezone(timezoneId);
                 result.add(event);
             }
@@ -109,6 +101,9 @@ public class CourseEventService {
                 String dayCode = DAY_CODES.get(d.getDayOfWeek());
                 for (SessionWithCourseCode session : sessions) {
                     if (session.getDayOfWeek() == null || !session.getDayOfWeek().equals(dayCode)) {
+                        continue;
+                    }
+                    if (dropIfCrossTenant(userId, userTenantId, session.getCourseId(), "session")) {
                         continue;
                     }
                     UpcomingCourseActivityResponse item = new UpcomingCourseActivityResponse();
@@ -134,6 +129,24 @@ public class CourseEventService {
                 .thenComparing(UpcomingCourseActivityResponse::getCourseId, Comparator.nullsLast(Comparator.naturalOrder()))
                 .thenComparing(UpcomingCourseActivityResponse::getSourceId, Comparator.nullsLast(Comparator.naturalOrder())));
         return result;
+    }
+
+    private boolean dropIfCrossTenant(Integer userId, Integer userTenantId, Integer courseId, String kind) {
+        if (courseId == null) {
+            return true;
+        }
+        Course course = courseMapper.selectById(courseId);
+        if (course == null || course.getTenantId() == null) {
+            log.error("Dashboard {} dropped: missing course/tenant userId={} courseId={} userTenantId={}",
+                    kind, userId, courseId, userTenantId);
+            return true;
+        }
+        if (!userTenantId.equals(course.getTenantId())) {
+            log.error("Dashboard {} cross-tenant filtered userId={} courseId={} userTenantId={} courseTenantId={}",
+                    kind, userId, courseId, userTenantId, course.getTenantId());
+            return true;
+        }
+        return false;
     }
 
     private int normalizeDays(Integer days, int defaultDays, int maxDays) {

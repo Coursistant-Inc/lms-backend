@@ -14,6 +14,7 @@ import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 
 /**
  * Course/group-set access checks for the group module.
@@ -124,7 +125,7 @@ public class GroupAccessService {
      * Student Join/Leave/Switch gate: locked and join-window rules.
      */
     public void assertStudentSelfServiceAllowed(GroupSet groupSet) {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
         if (Boolean.TRUE.equals(groupSet.getLocked())) {
             throw new ApiException(ErrorType.GROUP_LOCKED);
         }

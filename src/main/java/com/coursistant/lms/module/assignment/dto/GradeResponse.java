@@ -3,7 +3,7 @@ package com.coursistant.lms.module.assignment.dto;
 import com.fasterxml.jackson.annotation.JsonInclude;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /**
  * Grade as seen by grading staff. Students never receive this shape directly; scores are only
@@ -28,10 +28,10 @@ public class GradeResponse {
     private Long annotatedSizeBytes;
     private String annotatedFileUrl;
     private Integer enteredBy;
-    private LocalDateTime enteredAt;
+    private Instant enteredAt;
     private Integer editedBy;
-    private LocalDateTime updatedAt;
-    private LocalDateTime releasedAt;
+    private Instant updatedAt;
+    private Instant releasedAt;
     private Boolean aiAssisted;
 
     public Integer getId() {
@@ -162,11 +162,11 @@ public class GradeResponse {
         this.enteredBy = enteredBy;
     }
 
-    public LocalDateTime getEnteredAt() {
+    public Instant getEnteredAt() {
         return enteredAt;
     }
 
-    public void setEnteredAt(LocalDateTime enteredAt) {
+    public void setEnteredAt(Instant enteredAt) {
         this.enteredAt = enteredAt;
     }
 
@@ -178,19 +178,19 @@ public class GradeResponse {
         this.editedBy = editedBy;
     }
 
-    public LocalDateTime getUpdatedAt() {
+    public Instant getUpdatedAt() {
         return updatedAt;
     }
 
-    public void setUpdatedAt(LocalDateTime updatedAt) {
+    public void setUpdatedAt(Instant updatedAt) {
         this.updatedAt = updatedAt;
     }
 
-    public LocalDateTime getReleasedAt() {
+    public Instant getReleasedAt() {
         return releasedAt;
     }
 
-    public void setReleasedAt(LocalDateTime releasedAt) {
+    public void setReleasedAt(Instant releasedAt) {
         this.releasedAt = releasedAt;
     }
 

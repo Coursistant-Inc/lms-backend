@@ -2,6 +2,7 @@ package com.coursistant.lms.module.assignment.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 
 /**
@@ -17,7 +18,7 @@ public class StagingFileResponse {
     private String contentType;
     private Long sizeBytes;
     private String checksumSha256;
-    private LocalDateTime createdAt;
+    private Instant createdAt;
     private LocalDateTime expiresAt;
 
     public Integer getId() {
@@ -68,11 +69,11 @@ public class StagingFileResponse {
         this.checksumSha256 = checksumSha256;
     }
 
-    public LocalDateTime getCreatedAt() {
+    public Instant getCreatedAt() {
         return createdAt;
     }
 
-    public void setCreatedAt(LocalDateTime createdAt) {
+    public void setCreatedAt(Instant createdAt) {
         this.createdAt = createdAt;
     }
 

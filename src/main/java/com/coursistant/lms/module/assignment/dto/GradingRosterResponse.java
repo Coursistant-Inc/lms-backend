@@ -3,6 +3,7 @@ package com.coursistant.lms.module.assignment.dto;
 import com.fasterxml.jackson.annotation.JsonInclude;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -13,8 +14,11 @@ public class GradingRosterResponse {
     private Integer assignmentId;
     private String assignmentTitle;
     private BigDecimal pointsPossible;
-    private LocalDateTime dueAt;
-    private LocalDateTime lateUntil;
+    private Instant dueAtUtc;
+    private Instant lateUntilUtc;
+    private LocalDateTime dueAtLocal;
+    private LocalDateTime lateUntilLocal;
+    private String timezone;
     private Integer totalStudents;
     private Integer submittedCount;
     private Integer lateCount;
@@ -50,20 +54,44 @@ public class GradingRosterResponse {
         this.pointsPossible = pointsPossible;
     }
 
-    public LocalDateTime getDueAt() {
-        return dueAt;
+    public Instant getDueAtUtc() {
+        return dueAtUtc;
     }
 
-    public void setDueAt(LocalDateTime dueAt) {
-        this.dueAt = dueAt;
+    public void setDueAtUtc(Instant dueAtUtc) {
+        this.dueAtUtc = dueAtUtc;
     }
 
-    public LocalDateTime getLateUntil() {
-        return lateUntil;
+    public Instant getLateUntilUtc() {
+        return lateUntilUtc;
     }
 
-    public void setLateUntil(LocalDateTime lateUntil) {
-        this.lateUntil = lateUntil;
+    public void setLateUntilUtc(Instant lateUntilUtc) {
+        this.lateUntilUtc = lateUntilUtc;
+    }
+
+    public LocalDateTime getDueAtLocal() {
+        return dueAtLocal;
+    }
+
+    public void setDueAtLocal(LocalDateTime dueAtLocal) {
+        this.dueAtLocal = dueAtLocal;
+    }
+
+    public LocalDateTime getLateUntilLocal() {
+        return lateUntilLocal;
+    }
+
+    public void setLateUntilLocal(LocalDateTime lateUntilLocal) {
+        this.lateUntilLocal = lateUntilLocal;
+    }
+
+    public String getTimezone() {
+        return timezone;
+    }
+
+    public void setTimezone(String timezone) {
+        this.timezone = timezone;
     }
 
     public Integer getTotalStudents() {

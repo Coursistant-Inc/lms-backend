@@ -176,7 +176,9 @@
         INNER JOIN enrollment e
             ON e.course_id = a.course_id AND e.user_id = #{userId} AND e.active = 1
         INNER JOIN course c ON c.id = a.course_id
+        INNER JOIN user u ON u.id = #{userId}
         WHERE a.state = 'Published'
+          AND c.tenant_id = u.tenant_id
           AND a.due_at IS NOT NULL
           AND a.due_at &gt;= #{fromUtc}
           AND a.due_at &lt;= #{toUtc}

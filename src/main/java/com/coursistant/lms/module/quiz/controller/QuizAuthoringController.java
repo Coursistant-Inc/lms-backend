@@ -22,26 +22,23 @@ public class QuizAuthoringController {
 
     @GetMapping
     public ApiResponse<List<QuizResponse>> list(HttpServletRequest request,
-                                                @PathVariable Integer courseId,
-                                                @RequestHeader(value = "X-Timezone", required = false) String timezone) {
-        return ApiResponse.success(quizAuthoringService.list(request, courseId, currentUserId(request), timezone));
+                                                @PathVariable Integer courseId) {
+        return ApiResponse.success(quizAuthoringService.list(request, courseId, currentUserId(request)));
     }
 
     @GetMapping("/{quizId}")
     public ApiResponse<QuizResponse> detail(HttpServletRequest request,
                                             @PathVariable Integer courseId,
-                                            @PathVariable Integer quizId,
-                                            @RequestHeader(value = "X-Timezone", required = false) String timezone) {
+                                            @PathVariable Integer quizId) {
         return ApiResponse.success(quizAuthoringService.detail(request, courseId, quizId,
-                currentUserId(request), timezone));
+                currentUserId(request)));
     }
 
     @PostMapping
     public ApiResponse<QuizResponse> create(HttpServletRequest request,
                                             @PathVariable Integer courseId,
-                                            @RequestHeader(value = "X-Timezone", required = false) String timezone,
                                             @RequestBody CreateQuizRequest body) {
-        return ApiResponse.success(quizAuthoringService.create(courseId, currentUserId(request), timezone, body),
+        return ApiResponse.success(quizAuthoringService.create(courseId, currentUserId(request), body),
                 "Quiz created");
     }
 
@@ -49,25 +46,22 @@ public class QuizAuthoringController {
     public ApiResponse<QuizResponse> patch(HttpServletRequest request,
                                            @PathVariable Integer courseId,
                                            @PathVariable Integer quizId,
-                                           @RequestHeader(value = "X-Timezone", required = false) String timezone,
                                            @RequestBody PatchQuizRequest body) {
-        return ApiResponse.success(quizAuthoringService.patch(courseId, quizId, currentUserId(request), timezone, body));
+        return ApiResponse.success(quizAuthoringService.patch(courseId, quizId, currentUserId(request), body));
     }
 
     @PostMapping("/{quizId}/publish")
     public ApiResponse<QuizResponse> publish(HttpServletRequest request,
                                              @PathVariable Integer courseId,
-                                             @PathVariable Integer quizId,
-                                             @RequestHeader(value = "X-Timezone", required = false) String timezone) {
-        return ApiResponse.success(quizAuthoringService.publish(courseId, quizId, currentUserId(request), timezone));
+                                             @PathVariable Integer quizId) {
+        return ApiResponse.success(quizAuthoringService.publish(courseId, quizId, currentUserId(request)));
     }
 
     @PostMapping("/{quizId}/unpublish")
     public ApiResponse<QuizResponse> unpublish(HttpServletRequest request,
                                                @PathVariable Integer courseId,
-                                               @PathVariable Integer quizId,
-                                               @RequestHeader(value = "X-Timezone", required = false) String timezone) {
-        return ApiResponse.success(quizAuthoringService.unpublish(courseId, quizId, currentUserId(request), timezone));
+                                               @PathVariable Integer quizId) {
+        return ApiResponse.success(quizAuthoringService.unpublish(courseId, quizId, currentUserId(request)));
     }
 
     @DeleteMapping("/{quizId}")

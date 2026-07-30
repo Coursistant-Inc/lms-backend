@@ -1,5 +1,6 @@
 package com.coursistant.lms.module.assignment.dto;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 
 /** Dashboard card: assignment due within the upcoming window across enrolled courses. */
@@ -9,6 +10,7 @@ public class UpcomingAssignmentDeadlineResponse {
     private String courseCode;
     private Integer assignmentId;
     private String title;
+    private Instant dueAtUtc;
     private LocalDateTime dueAtLocal;
     private String timezone;
     private String submissionStatus;
@@ -21,6 +23,8 @@ public class UpcomingAssignmentDeadlineResponse {
     public void setAssignmentId(Integer assignmentId) { this.assignmentId = assignmentId; }
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }
+    public Instant getDueAtUtc() { return dueAtUtc; }
+    public void setDueAtUtc(Instant dueAtUtc) { this.dueAtUtc = dueAtUtc; }
     public LocalDateTime getDueAtLocal() { return dueAtLocal; }
     public void setDueAtLocal(LocalDateTime dueAtLocal) { this.dueAtLocal = dueAtLocal; }
     public String getTimezone() { return timezone; }

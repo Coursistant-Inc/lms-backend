@@ -127,7 +127,7 @@ Token 无效 → `401`（`INVALID_TOKEN` / `UNAUTHORIZED`）。
 
 1. `POST /v1/auth/email-verifications/register?email=...` 发验证码
 2. `POST /v1/auth/email-verifications/register/validate?email=...&code=...`（需幂等 Key）
-3. `POST /v1/auth/register`（`email` `password` `name`；可选 `username`）
+3. `POST /v1/auth/register`（`email` `password` `name` **`tenantId`**；可选 `username`）。当前前端写死传 `tenantId: 1`
 4. 成功同登录：拿 `accessToken` + refresh Cookie；固定 `role=USER`、`level=STUDENT`
 
 ### 2.3 个人资料 / 头像
@@ -185,6 +185,20 @@ Token 无效 → `401`（`INVALID_TOKEN` / `UNAUTHORIZED`）。
 | 列表教师 query | `role=instructor` 或 `role=teacher`（`GET /v2/users`） |
 
 非法 / 缺必填 → 多为 `PARAM_MISSING` 或 `400 BAD_REQUEST`。
+
+### 4.1 `tenantId`（必传）
+
+`user.tenant_id` **NOT NULL**；存量已回填为 `1`。后端**不**静默默认。
+
+| 场景 | 规则 |
+|------|------|
+| 公开注册 `POST /v1/auth/register`、OAuth 注册 | body **必填** `tenantId`；**仅允许** `1`，否则 `400 BAD_REQUEST`。当前前端写死传 `1` |
+| Admin `POST /v2/users` | body **必填** `tenantId`，可为任意已存在租户；缺 → `PARAM_MISSING`；不存在 → `TENANT_NOT_FOUND` |
+| 改用户租户 | **仅** `PATCH /v2/admin/users/{id}/tenant`（Admin + 幂等 Key）。有 enrollment / 授课 / 创建课程 → `409 USER_TENANT_CHANGE_BLOCKED` |
+| `PUT /v2/users/{id}` | body **禁止**带 `tenantId`（带了 → `400 BAD_REQUEST`） |
+| Profile / 密码 / 头像 | **不**读写租户 |
+
+详见 [`tenant_module-api.md`](./tenant_module-api.md)。
 
 ---
 
@@ -259,12 +273,22 @@ Token 无效 → `401`（`INVALID_TOKEN` / `UNAUTHORIZED`）。
 | email | string | 是 | |
 | password | string | 是 | 见 §1.6 |
 | name | string | 是 | 显示名 |
+| tenantId | int | **是** | 公开注册**仅允许 `1`**（种子 Default）。缺 → `PARAM_MISSING`；非 1 → `BAD_REQUEST`。当前前端写死传 `1` |
 | username | string | 否 | 默认取邮箱 `@` 前缀 |
+
+```json
+{
+  "email": "newuser@example.com",
+  "password": "Test12345",
+  "name": "New User",
+  "tenantId": 1
+}
+```
 
 成功：形状同登录 `AuthResult` + refresh Cookie。  
 固定：`role=USER`、`level=STUDENT`、`emailNotifications=true`。
 
-错误：`PARAM_MISSING`、`INVALID_VERIFICATION_CODE`（未验证）、`INVALID_PASSWORD_FORMAT`、`BAD_REQUEST`（邮箱已存在等，文案可能防枚举）。
+错误：`PARAM_MISSING`、`INVALID_VERIFICATION_CODE`（未验证）、`INVALID_PASSWORD_FORMAT`、`BAD_REQUEST`（邮箱已存在、`tenantId≠1` 等，文案可能防枚举）、`TENANT_NOT_FOUND`。
 
 ---
 
@@ -528,20 +552,57 @@ DB 存的是 MinIO key（如 `385/xxxx.png`），前端只用响应里的完整 
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| POST | `/v2/users` | 创建；至少 `email`+`password`；`role` 强制 `USER` |
+| POST | `/v2/users` | 创建；至少 `email`+`password`+**`tenantId`**；`role` 强制 `USER` |
 | GET | `/v2/users/{id}` | 详情；`USER_NOT_FOUND` |
 | GET | `/v2/users` | 列表；可按 User 字段 query 过滤；`?role=instructor` / `teacher` → 仅教师 |
-| PUT | `/v2/users/{id}` | 更新 |
+| PUT | `/v2/users/{id}` | 更新；**不可**改 `tenantId`（body 带了 → `400`） |
 | DELETE | `/v2/users/{id}` | 删除 |
 | DELETE | `/v2/users/batch` | body：`[1,2,3]` |
 | PATCH | `/v2/users/{id}/password-status` | 将 `mustChangePassword=false` |
+| PATCH | `/v2/admin/users/{id}/tenant` | **Admin 专用**；改租户（见下） |
 
-`User` 常见字段：`id` `username` `password` `name` `avatar`（**key**）`role` `level` `email` `mustChangePassword` `emailNotifications`。
+`User` 常见字段：`id` **`tenantId`** `username` `password` `name` `avatar`（**key**）`role` `level` `email` `mustChangePassword` `emailNotifications`。
+
+**创建 Body 要点**
+
+| 字段 | 必填 | 说明 |
+|------|------|------|
+| email / password | 是 | |
+| tenantId | **是** | 任意已存在租户；缺 → `PARAM_MISSING`；不存在 → `TENANT_NOT_FOUND`。当前前端写死传 `1` |
+| name / username / level | 否 | `level` 默认 `STUDENT` |
+
+```json
+{
+  "email": "tzuser@example.com",
+  "password": "Test12345",
+  "name": "TZ User",
+  "username": "tzuser",
+  "level": "INSTRUCTOR",
+  "tenantId": 1
+}
+```
+
+### 9.1 更改用户租户 — `PATCH /v2/admin/users/{id}/tenant`
+
+| | |
+|--|--|
+| 鉴权 | JWT `role=ADMIN`；否则 `403 ACCESS_DENIED` |
+| 需要幂等 Key | **是** |
+
+**Body**
+
+```json
+{ "tenantId": 1 }
+```
+
+- `tenantId` 必填；租户须存在
+- 目标用户已有 enrollment，或作为 instructor/creator 关联课程 → `409 USER_TENANT_CHANGE_BLOCKED`
+- 与现值相同 → 成功（幂等）
 
 > 管理接口返回的 `avatar` 是存储 key，不是可直接 `<img>` 的 URL。展示请用 §8.3。  
 > 勿在 UI 展示 `password`。
 
-错误示例：`USER_ALREADY_EXISTS`、`PARAM_MISSING`、`INVALID_PASSWORD_FORMAT`、`USER_NOT_FOUND`。
+错误示例：`USER_ALREADY_EXISTS`、`PARAM_MISSING`、`INVALID_PASSWORD_FORMAT`、`USER_NOT_FOUND`、`TENANT_NOT_FOUND`、`USER_TENANT_CHANGE_BLOCKED`、`ACCESS_DENIED`。
 
 ---
 
@@ -609,6 +670,7 @@ Admin **没有** `/v2/me/profile`；资料改走本表 CRUD。登录用 `role: "
 | GET | `/v2/users/{userId}/avatar` | 公开 | |
 | GET | `/v2/users`、`/v2/users/{id}` | 已登录（产品：Admin） | |
 | POST/PUT/DELETE/PATCH | `/v2/users...` | 已登录（产品：Admin） | 是 |
+| PATCH | `/v2/admin/users/{id}/tenant` | Admin | 是 |
 | GET/POST/PUT/DELETE | `/v2/admins...` | 已登录（产品：Admin） | 写是 |
 
 ---

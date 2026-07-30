@@ -2,7 +2,7 @@ package com.coursistant.lms.module.assignment.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class SubmissionFileResponse {
@@ -17,7 +17,7 @@ public class SubmissionFileResponse {
     private boolean previewAvailable;
     private String downloadUrl;
     private String previewUrl;
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     public Integer getId() {
         return id;
@@ -99,11 +99,11 @@ public class SubmissionFileResponse {
         this.previewUrl = previewUrl;
     }
 
-    public LocalDateTime getCreatedAt() {
+    public Instant getCreatedAt() {
         return createdAt;
     }
 
-    public void setCreatedAt(LocalDateTime createdAt) {
+    public void setCreatedAt(Instant createdAt) {
         this.createdAt = createdAt;
     }
 }

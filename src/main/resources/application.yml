@@ -63,7 +63,7 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
-    url: jdbc:mysql://localhost:3306/lms_v2?useUnicode=true&characterEncoding=utf-8&allowMultiQueries=true&useSSL=false&serverTimezone=GMT%2b8&allowPublicKeyRetrieval=true
+    url: jdbc:mysql://localhost:3306/lms_v2?useUnicode=true&characterEncoding=utf-8&allowMultiQueries=true&useSSL=false&connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true&allowPublicKeyRetrieval=true
 
     hikari:
       maximum-pool-size: 32
@@ -133,7 +133,6 @@ minio:
   secret-key: ${MINIO_SECRET_KEY}
 
 lms:
-  institution-timezone: America/Los_Angeles
   content:
     max-file-bytes: 209715200
 

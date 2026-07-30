@@ -212,12 +212,13 @@ Token 无效 → `401`（`INVALID_TOKEN` / `UNAUTHORIZED`）。
 | termStartDate | date | 是 | |
 | termEndDate | date | 是 | ≥ start |
 | instructorId | int | 是 | 通常填自己的 userId |
+| tenantId | int | **是** | 必须传；缺省 → `400 PARAM_MISSING`。创建者与 `instructorId` 的 `user.tenantId` 必须等于该值，否则 `400 TENANT_MISMATCH`；租户不存在 → `404 TENANT_NOT_FOUND`。当前前端写死传 `1`（种子 Default 租户），后端仍按真实 `tenantId` 校验 |
 | description | string | 否 | |
 | location | string | 否 | |
-| tenantId | int | 否 | |
 
 ```json
 {
+  "tenantId": 1,
   "courseCode": "DEMO-ENROLL",
   "title": "Demo Course With Students",
   "termStartDate": "2026-01-01",
@@ -248,7 +249,7 @@ Token 无效 → `401`（`INVALID_TOKEN` / `UNAUTHORIZED`）。
 }
 ```
 
-错误：`PARAM_MISSING`、`BAD_REQUEST`、`USER_NOT_FOUND`。
+错误：`PARAM_MISSING`（含缺 `tenantId`）、`BAD_REQUEST`、`USER_NOT_FOUND`、`TENANT_NOT_FOUND`、`TENANT_MISMATCH`。
 
 ---
 
@@ -256,7 +257,7 @@ Token 无效 → `401`（`INVALID_TOKEN` / `UNAUTHORIZED`）。
 
 | | |
 |--|--|
-| 谁可以调 | 已入课成员；未入课 → `403 NOT_COURSE_MEMBER` |
+| 谁可以调 | 已入课成员；未入课 → `403 NOT_COURSE_MEMBER`。跨租户（`user.tenantId ≠ course.tenantId`，非 Admin）→ `404 COURSE_NOT_FOUND` |
 
 成功 `data` 形状同创建。
 

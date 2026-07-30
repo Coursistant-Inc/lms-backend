@@ -1,11 +1,9 @@
 package com.coursistant.lms.module.quiz.service;
 
-import com.coursistant.lms.shared.api.ApiException;
-import com.coursistant.lms.shared.api.ErrorType;
-import com.coursistant.lms.shared.exception.CustomException;
 import com.coursistant.lms.shared.util.TimeZoneUtils;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
@@ -16,21 +14,6 @@ public class QuizTimeSupport {
 
     public LocalDateTime nowUtc() {
         return LocalDateTime.now(ZoneOffset.UTC).truncatedTo(ChronoUnit.MILLIS);
-    }
-
-    public ZoneId requireZone(String timezoneHeader) {
-        try {
-            return TimeZoneUtils.resolveZoneId(timezoneHeader);
-        } catch (CustomException e) {
-            throw new ApiException(ErrorType.INVALID_TIMEZONE);
-        }
-    }
-
-    public ZoneId zoneOrUtc(String timezoneHeader) {
-        if (timezoneHeader == null || timezoneHeader.trim().isEmpty()) {
-            return ZoneOffset.UTC;
-        }
-        return requireZone(timezoneHeader);
     }
 
     public LocalDateTime toUtc(LocalDateTime localWallClock, ZoneId zone) {
@@ -45,6 +28,10 @@ public class QuizTimeSupport {
             return null;
         }
         return TimeZoneUtils.fromUtcLocalDateTime(utc, zone);
+    }
+
+    public Instant toInstant(LocalDateTime utc) {
+        return TimeZoneUtils.toInstant(utc);
     }
 
     public LocalDateTime computeDeadline(LocalDateTime startedAt, LocalDateTime closesAt, Integer timeLimitSeconds) {

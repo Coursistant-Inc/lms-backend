@@ -458,7 +458,7 @@ public class GroupMembershipService {
     }
 
     private List<GroupResponse> studentShapedGroups(GroupSet groupSet, Integer viewerUserId) {
-        boolean open = groupAccessService.isStudentSelfServiceOpen(groupSet, LocalDateTime.now());
+        boolean open = groupAccessService.isStudentSelfServiceOpen(groupSet, LocalDateTime.now(java.time.ZoneOffset.UTC));
         if (open) {
             return groupResponseAssembler.toGroupResponses(groupSet, true);
         }

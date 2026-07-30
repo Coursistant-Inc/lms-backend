@@ -395,10 +395,23 @@ public class EnrollmentService {
     }
 
     public List<DashboardCourseResponse> listMyCourses(Integer userId) {
+        User user = userMapper.selectById(userId);
+        if (user == null) {
+            throw new ApiException(ErrorType.USER_NOT_FOUND);
+        }
+        if (user.getTenantId() == null) {
+            throw new ApiException(ErrorType.INTERNAL_ERROR, "Persisted user.tenantId is null");
+        }
+        Integer userTenantId = user.getTenantId();
         List<DashboardCourseResponse> result = new ArrayList<>();
         for (Enrollment enrollment : enrollmentMapper.selectActiveByUserId(userId)) {
             Course course = courseMapper.selectById(enrollment.getCourseId());
             if (course == null) {
+                continue;
+            }
+            if (course.getTenantId() == null || !userTenantId.equals(course.getTenantId())) {
+                log.error("MyCourses cross-tenant filtered userId={} courseId={} userTenantId={} courseTenantId={}",
+                        userId, course.getId(), userTenantId, course.getTenantId());
                 continue;
             }
             result.add(toDashboardCourseResponse(enrollment, course));

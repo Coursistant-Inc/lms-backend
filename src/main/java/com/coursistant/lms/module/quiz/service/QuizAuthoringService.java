@@ -6,6 +6,7 @@ import com.coursistant.lms.module.quiz.dto.authoring.QuizResponse;
 import com.coursistant.lms.module.quiz.entity.Quiz;
 import com.coursistant.lms.module.quiz.repository.QuizMapper;
 import com.coursistant.lms.module.quiz.repository.QuizQuestionMapper;
+import com.coursistant.lms.module.tenant.service.TenantTimezoneService;
 import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.shared.api.ErrorType;
 import jakarta.annotation.Resource;
@@ -30,18 +31,20 @@ public class QuizAuthoringService {
     @Resource
     private QuizTimeSupport quizTimeSupport;
     @Resource
+    private TenantTimezoneService tenantTimezoneService;
+    @Resource
     private QuizAuditService quizAuditService;
     @Lazy
     @Resource
     private QuizQuestionService quizQuestionService;
 
-    public List<QuizResponse> list(HttpServletRequest request, Integer courseId, Integer userId, String timezone) {
+    public List<QuizResponse> list(HttpServletRequest request, Integer courseId, Integer userId) {
         quizAccessService.requireCourse(courseId);
         boolean staff = quizAccessService.isStaffViewer(request, courseId, userId);
         List<Quiz> quizzes = staff
                 ? quizMapper.selectByCourseId(courseId)
                 : quizMapper.selectByCourseIdAndState(courseId, QuizConstants.STATE_PUBLISHED);
-        ZoneId zone = quizTimeSupport.zoneOrUtc(timezone);
+        ZoneId zone = tenantTimezoneService.requireZoneForCourse(courseId);
         List<QuizResponse> out = new ArrayList<>();
         for (Quiz q : quizzes) {
             out.add(toResponse(q, zone));
@@ -50,17 +53,17 @@ public class QuizAuthoringService {
     }
 
     public QuizResponse detail(HttpServletRequest request, Integer courseId, Integer quizId,
-                               Integer userId, String timezone) {
+                               Integer userId) {
         Quiz quiz = quizAccessService.requireQuizReadable(request, courseId, quizId, userId);
-        return toResponse(quiz, quizTimeSupport.zoneOrUtc(timezone));
+        return toResponse(quiz, tenantTimezoneService.requireZoneForCourse(courseId));
     }
 
     @Transactional
-    public QuizResponse create(Integer courseId, Integer userId, String timezone, CreateQuizRequest body) {
+    public QuizResponse create(Integer courseId, Integer userId, CreateQuizRequest body) {
         quizAccessService.requireNewActivityEnabled();
         quizAccessService.requireCourseWritable(courseId, userId);
         validateCreate(body);
-        ZoneId zone = quizTimeSupport.zoneOrUtc(timezone);
+        ZoneId zone = tenantTimezoneService.requireZoneForCourse(courseId);
         var now = quizTimeSupport.nowUtc();
         Quiz quiz = new Quiz();
         quiz.setCourseId(courseId);
@@ -83,13 +86,13 @@ public class QuizAuthoringService {
     }
 
     @Transactional
-    public QuizResponse patch(Integer courseId, Integer quizId, Integer userId, String timezone, PatchQuizRequest body) {
+    public QuizResponse patch(Integer courseId, Integer quizId, Integer userId, PatchQuizRequest body) {
         Quiz quiz = quizAccessService.requireQuizConfigurable(courseId, quizId, userId);
         if (body.getExpectedVersion() != null && !body.getExpectedVersion().equals(quiz.getVersion())) {
             throw new ApiException(ErrorType.QUIZ_VERSION_CONFLICT);
         }
         boolean hasAttempts = quizMapper.countAttemptsByQuizId(quizId) > 0;
-        ZoneId zone = quizTimeSupport.zoneOrUtc(timezone);
+        ZoneId zone = tenantTimezoneService.requireZoneForCourse(courseId);
         if (body.getTitle() != null) {
             quiz.setTitle(trim(body.getTitle(), 200));
         }
@@ -135,24 +138,24 @@ public class QuizAuthoringService {
     }
 
     @Transactional
-    public QuizResponse publish(Integer courseId, Integer quizId, Integer userId, String timezone) {
+    public QuizResponse publish(Integer courseId, Integer quizId, Integer userId) {
         quizAccessService.requireNewActivityEnabled();
         Quiz quiz = quizAccessService.requireQuizConfigurable(courseId, quizId, userId);
         validatePublishable(quiz);
         quizMapper.updateState(quizId, QuizConstants.STATE_PUBLISHED);
         quizAuditService.log(courseId, quizId, null, userId, "QUIZ_PUBLISHED", null, null);
-        return toResponse(quizMapper.selectById(quizId), quizTimeSupport.zoneOrUtc(timezone));
+        return toResponse(quizMapper.selectById(quizId), tenantTimezoneService.requireZoneForCourse(courseId));
     }
 
     @Transactional
-    public QuizResponse unpublish(Integer courseId, Integer quizId, Integer userId, String timezone) {
+    public QuizResponse unpublish(Integer courseId, Integer quizId, Integer userId) {
         Quiz quiz = quizAccessService.requireQuizConfigurable(courseId, quizId, userId);
         if (quizMapper.countAttemptsByQuizId(quizId) > 0) {
             throw new ApiException(ErrorType.QUIZ_HAS_ATTEMPTS);
         }
         quizMapper.updateState(quizId, QuizConstants.STATE_DRAFT);
         quizAuditService.log(courseId, quizId, null, userId, "QUIZ_UNPUBLISHED", null, null);
-        return toResponse(quizMapper.selectById(quizId), quizTimeSupport.zoneOrUtc(timezone));
+        return toResponse(quizMapper.selectById(quizId), tenantTimezoneService.requireZoneForCourse(courseId));
     }
 
     @Transactional
@@ -198,8 +201,11 @@ public class QuizAuthoringService {
         r.setCourseId(quiz.getCourseId());
         r.setTitle(quiz.getTitle());
         r.setInstructions(quiz.getInstructions());
-        r.setOpensAt(quizTimeSupport.toZone(quiz.getOpensAt(), zone));
-        r.setClosesAt(quizTimeSupport.toZone(quiz.getClosesAt(), zone));
+        r.setOpensAtUtc(quizTimeSupport.toInstant(quiz.getOpensAt()));
+        r.setOpensAtLocal(quizTimeSupport.toZone(quiz.getOpensAt(), zone));
+        r.setClosesAtUtc(quizTimeSupport.toInstant(quiz.getClosesAt()));
+        r.setClosesAtLocal(quizTimeSupport.toZone(quiz.getClosesAt(), zone));
+        r.setTimezone(zone.getId());
         r.setTimeLimitSeconds(quiz.getTimeLimitSeconds());
         r.setAttemptsAllowed(quiz.getAttemptsAllowed());
         r.setResultVisibility(quiz.getResultVisibility());
@@ -208,8 +214,8 @@ public class QuizAuthoringService {
         r.setTotalPoints(quizQuestionMapper.sumPointsByQuizId(quiz.getId()));
         r.setQuestionCount(quizQuestionMapper.countByQuizId(quiz.getId()));
         r.setHasAttempts(quizMapper.countAttemptsByQuizId(quiz.getId()) > 0);
-        r.setCreatedAt(quizTimeSupport.toZone(quiz.getCreatedAt(), zone));
-        r.setUpdatedAt(quizTimeSupport.toZone(quiz.getUpdatedAt(), zone));
+        r.setCreatedAt(quizTimeSupport.toInstant(quiz.getCreatedAt()));
+        r.setUpdatedAt(quizTimeSupport.toInstant(quiz.getUpdatedAt()));
         return r;
     }
 

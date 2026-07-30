@@ -3,6 +3,7 @@ package com.coursistant.lms.module.quiz.dto.attempt;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -17,7 +18,7 @@ public class AttemptResponse {
     private String receiptId;
     private LocalDateTime startedAt;
     private LocalDateTime deadlineAt;
-    private LocalDateTime submittedAt;
+    private Instant submittedAt;
     private LocalDateTime serverNowUtc;
     private BigDecimal autoScore;
     private BigDecimal manualScore;

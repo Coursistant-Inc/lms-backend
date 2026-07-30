@@ -2,6 +2,7 @@ package com.coursistant.lms.module.assignment.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 
 /**
@@ -13,12 +14,9 @@ public class AssignmentSummaryResponse {
 
     private Integer id;
     private String title;
-    /** UTC. */
-    private LocalDateTime dueAt;
-    /** {@code dueAt} in the caller's X-Timezone. */
+    private Instant dueAtUtc;
     private LocalDateTime dueAtLocal;
     private String timezone;
-    private String timezoneLabel;
     private String submissionType;
     private String submissionStatus;
 
@@ -38,12 +36,12 @@ public class AssignmentSummaryResponse {
         this.title = title;
     }
 
-    public LocalDateTime getDueAt() {
-        return dueAt;
+    public Instant getDueAtUtc() {
+        return dueAtUtc;
     }
 
-    public void setDueAt(LocalDateTime dueAt) {
-        this.dueAt = dueAt;
+    public void setDueAtUtc(Instant dueAtUtc) {
+        this.dueAtUtc = dueAtUtc;
     }
 
     public LocalDateTime getDueAtLocal() {
@@ -60,14 +58,6 @@ public class AssignmentSummaryResponse {
 
     public void setTimezone(String timezone) {
         this.timezone = timezone;
-    }
-
-    public String getTimezoneLabel() {
-        return timezoneLabel;
-    }
-
-    public void setTimezoneLabel(String timezoneLabel) {
-        this.timezoneLabel = timezoneLabel;
     }
 
     public String getSubmissionType() {

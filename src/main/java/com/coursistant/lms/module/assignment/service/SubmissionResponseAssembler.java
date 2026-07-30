@@ -55,8 +55,7 @@ public class SubmissionResponseAssembler {
         response.setAssignmentId(version.getAssignmentId());
         response.setOwnerUserId(version.getOwnerUserId());
         response.setVersionNo(version.getVersionNo());
-        response.setSubmittedAt(version.getSubmittedAt());
-        response.setSubmittedAtLocal(assignmentTimeSupport.toZone(version.getSubmittedAt(), zone));
+        response.setSubmittedAt(assignmentTimeSupport.toInstant(version.getSubmittedAt()));
         response.setUsedGraceBuffer(version.getUsedGraceBuffer());
         response.setSubmissionStatus(submissionStatusCalculator.calculateForVersion(
                 assignment.getDueAt(), version.getSubmittedAt(), version.getUsedGraceBuffer()));
@@ -98,7 +97,7 @@ public class SubmissionResponseAssembler {
         response.setSizeBytes(file.getSizeBytes());
         response.setChecksumSha256(file.getChecksumSha256());
         response.setSortOrder(file.getSortOrder());
-        response.setCreatedAt(file.getCreatedAt());
+        response.setCreatedAt(assignmentTimeSupport.toInstant(file.getCreatedAt()));
 
         String base = "/v2/courses/" + courseId + "/assignments/" + assignmentId
                 + "/submissions/" + version.getSubmissionId() + "/files/" + file.getId();
@@ -130,7 +129,7 @@ public class SubmissionResponseAssembler {
         response.setContentType(stagingFile.getContentType());
         response.setSizeBytes(stagingFile.getSizeBytes());
         response.setChecksumSha256(stagingFile.getChecksumSha256());
-        response.setCreatedAt(stagingFile.getCreatedAt());
+        response.setCreatedAt(assignmentTimeSupport.toInstant(stagingFile.getCreatedAt()));
         response.setExpiresAt(stagingFile.getExpiresAt());
         return response;
     }

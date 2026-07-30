@@ -75,7 +75,14 @@ public class TenantService {
             changed = true;
         }
         if (request.getTimezone() != null) {
-            update.setTimezone(requireValidTimezone(request.getTimezone()));
+            String newTz = requireValidTimezone(request.getTimezone());
+            if (!newTz.equals(existing.getTimezone())) {
+                if (courseMapper.countByTenantId(id) > 0) {
+                    throw new ApiException(ErrorType.TENANT_IN_USE,
+                            "Cannot change timezone while the tenant has courses");
+                }
+            }
+            update.setTimezone(newTz);
             changed = true;
         }
         if (!changed) {

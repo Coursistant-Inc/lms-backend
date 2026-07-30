@@ -22,7 +22,6 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -34,8 +33,8 @@ import java.util.List;
  * Assignment CRUD and instructor attachments.
  *
  * <p>Reads are role-shaped: students only ever see Published assignments and receive
- * {@code ASSIGNMENT_NOT_FOUND} for drafts. All write endpoints require an {@code X-Timezone}
- * header because dates arrive as wall-clock times.</p>
+ * {@code ASSIGNMENT_NOT_FOUND} for drafts. Write endpoints interpret date fields as
+ * wall-clock times in the course tenant timezone.</p>
  */
 @RestController
 @RequestMapping("/v2/courses/{courseId}/assignments")
@@ -46,9 +45,8 @@ public class AssignmentController {
 
     @GetMapping
     public ApiResponse<List<AssignmentResponse>> list(HttpServletRequest request,
-                                                      @PathVariable Integer courseId,
-                                                      @RequestHeader(value = "X-Timezone", required = false) String timezone) {
-        return ApiResponse.success(assignmentService.list(request, courseId, currentUserId(request), timezone));
+                                                      @PathVariable Integer courseId) {
+        return ApiResponse.success(assignmentService.list(request, courseId, currentUserId(request)));
     }
 
     /**
@@ -58,27 +56,24 @@ public class AssignmentController {
     @GetMapping("/summaries")
     public ApiResponse<List<AssignmentSummaryResponse>> listSummaries(
             HttpServletRequest request,
-            @PathVariable Integer courseId,
-            @RequestHeader(value = "X-Timezone", required = false) String timezone) {
-        return ApiResponse.success(assignmentService.listSummaries(request, courseId, currentUserId(request), timezone));
+            @PathVariable Integer courseId) {
+        return ApiResponse.success(assignmentService.listSummaries(request, courseId, currentUserId(request)));
     }
 
     @GetMapping("/{assignmentId}")
     public ApiResponse<AssignmentResponse> detail(HttpServletRequest request,
                                                   @PathVariable Integer courseId,
-                                                  @PathVariable Integer assignmentId,
-                                                  @RequestHeader(value = "X-Timezone", required = false) String timezone) {
+                                                  @PathVariable Integer assignmentId) {
         return ApiResponse.success(assignmentService.detail(request, courseId, assignmentId,
-                currentUserId(request), timezone));
+                currentUserId(request)));
     }
 
     @PostMapping
     public ApiResponse<AssignmentResponse> create(HttpServletRequest request,
                                                   @PathVariable Integer courseId,
-                                                  @RequestHeader(value = "X-Timezone", required = false) String timezone,
                                                   @RequestBody CreateAssignmentRequest body) {
         return ApiResponse.success(
-                assignmentService.create(courseId, currentUserId(request), timezone, body),
+                assignmentService.create(courseId, currentUserId(request), body),
                 "Assignment created");
     }
 
@@ -86,26 +81,22 @@ public class AssignmentController {
     public ApiResponse<AssignmentResponse> patch(HttpServletRequest request,
                                                  @PathVariable Integer courseId,
                                                  @PathVariable Integer assignmentId,
-                                                 @RequestHeader(value = "X-Timezone", required = false) String timezone,
                                                  @RequestBody PatchAssignmentRequest body) {
-        return ApiResponse.success(assignmentService.patch(courseId, assignmentId, currentUserId(request),
-                timezone, body));
+        return ApiResponse.success(assignmentService.patch(courseId, assignmentId, currentUserId(request), body));
     }
 
     @PostMapping("/{assignmentId}/publish")
     public ApiResponse<AssignmentResponse> publish(HttpServletRequest request,
                                                    @PathVariable Integer courseId,
-                                                   @PathVariable Integer assignmentId,
-                                                   @RequestHeader(value = "X-Timezone", required = false) String timezone) {
-        return ApiResponse.success(assignmentService.publish(courseId, assignmentId, currentUserId(request), timezone));
+                                                   @PathVariable Integer assignmentId) {
+        return ApiResponse.success(assignmentService.publish(courseId, assignmentId, currentUserId(request)));
     }
 
     @PostMapping("/{assignmentId}/unpublish")
     public ApiResponse<AssignmentResponse> unpublish(HttpServletRequest request,
                                                      @PathVariable Integer courseId,
-                                                     @PathVariable Integer assignmentId,
-                                                     @RequestHeader(value = "X-Timezone", required = false) String timezone) {
-        return ApiResponse.success(assignmentService.unpublish(courseId, assignmentId, currentUserId(request), timezone));
+                                                     @PathVariable Integer assignmentId) {
+        return ApiResponse.success(assignmentService.unpublish(courseId, assignmentId, currentUserId(request)));
     }
 
     @DeleteMapping("/{assignmentId}")
@@ -124,10 +115,9 @@ public class AssignmentController {
             HttpServletRequest request,
             @PathVariable Integer courseId,
             @PathVariable Integer assignmentId,
-            @RequestHeader(value = "X-Timezone", required = false) String timezone,
             @RequestBody DueDateChangePreviewRequest body) {
         return ApiResponse.success(assignmentService.previewDueDateChange(courseId, assignmentId,
-                currentUserId(request), timezone, body));
+                currentUserId(request), body));
     }
 
     @PostMapping(value = "/{assignmentId}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

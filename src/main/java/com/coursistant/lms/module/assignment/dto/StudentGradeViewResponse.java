@@ -3,7 +3,7 @@ package com.coursistant.lms.module.assignment.dto;
 import com.fasterxml.jackson.annotation.JsonInclude;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /**
  * Student-visible grade block. Only populated when status is Released.
@@ -16,7 +16,7 @@ public class StudentGradeViewResponse {
     private BigDecimal pointsPossible;
     private String feedbackHtml;
     private Boolean hasFeedback;
-    private LocalDateTime releasedAt;
+    private Instant releasedAt;
     private String gradeStatus;
 
     public BigDecimal getScore() {
@@ -59,11 +59,11 @@ public class StudentGradeViewResponse {
         this.hasFeedback = hasFeedback;
     }
 
-    public LocalDateTime getReleasedAt() {
+    public Instant getReleasedAt() {
         return releasedAt;
     }
 
-    public void setReleasedAt(LocalDateTime releasedAt) {
+    public void setReleasedAt(Instant releasedAt) {
         this.releasedAt = releasedAt;
     }
 

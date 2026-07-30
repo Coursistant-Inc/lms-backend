@@ -15,10 +15,12 @@
             c.term_end_date AS termEndDate
         FROM enrollment e
         INNER JOIN course c ON c.id = e.course_id
+        INNER JOIN user u ON u.id = #{userId}
         WHERE e.user_id = #{userId}
           AND e.active = 1
           AND e.course_role = 'Instructor'
           AND c.state &lt;&gt; 'Archived'
+          AND c.tenant_id = u.tenant_id
         ORDER BY c.course_code ASC, c.id ASC
     </select>
 

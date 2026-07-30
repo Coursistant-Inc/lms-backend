@@ -3,7 +3,7 @@ package com.coursistant.lms.module.assignment.dto;
 import com.fasterxml.jackson.annotation.JsonInclude;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 /**
@@ -25,13 +25,13 @@ public class GradingRosterItemResponse {
     private Integer submissionId;
     private Integer submissionVersionId;
     private Integer versionNo;
-    private LocalDateTime submittedAt;
+    private Instant submittedAt;
     private Boolean usedGraceBuffer;
     private Integer fileCount;
     /** {@code Ungraded} when no grade row exists, otherwise {@code Entered} / {@code Released}. */
     private String gradeStatus;
     private BigDecimal score;
-    private LocalDateTime releasedAt;
+    private Instant releasedAt;
     private Boolean hasAnnotatedFile;
 
     public Integer getStudentUserId() {
@@ -130,11 +130,11 @@ public class GradingRosterItemResponse {
         this.versionNo = versionNo;
     }
 
-    public LocalDateTime getSubmittedAt() {
+    public Instant getSubmittedAt() {
         return submittedAt;
     }
 
-    public void setSubmittedAt(LocalDateTime submittedAt) {
+    public void setSubmittedAt(Instant submittedAt) {
         this.submittedAt = submittedAt;
     }
 
@@ -170,11 +170,11 @@ public class GradingRosterItemResponse {
         this.score = score;
     }
 
-    public LocalDateTime getReleasedAt() {
+    public Instant getReleasedAt() {
         return releasedAt;
     }
 
-    public void setReleasedAt(LocalDateTime releasedAt) {
+    public void setReleasedAt(Instant releasedAt) {
         this.releasedAt = releasedAt;
     }
 

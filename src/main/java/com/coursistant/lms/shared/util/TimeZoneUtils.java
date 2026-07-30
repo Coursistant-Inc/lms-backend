@@ -1,52 +1,75 @@
 package com.coursistant.lms.shared.util;
 
-import com.coursistant.lms.shared.enums.ResultCodeEnum;
-import com.coursistant.lms.shared.exception.CustomException;
+import com.coursistant.lms.shared.api.ApiException;
+import com.coursistant.lms.shared.api.ErrorType;
 import org.springframework.stereotype.Component;
-import java.time.*;
 
+import java.time.DateTimeException;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.zone.ZoneRules;
+import java.util.List;
 
+/**
+ * Wall-clock &lt;-&gt; UTC helpers. DB stores UTC as {@link LocalDateTime} without zone;
+ * API {@code *Utc} fields use {@link Instant} (JSON with {@code Z}).
+ */
 @Component
 public class TimeZoneUtils {
 
-    /**
-     * 将某个时区的 LocalDateTime 转换成对应 UTC 的 LocalDateTime
-     * Convert a local datetime with a specific zone to its equivalent UTC time (still as LocalDateTime)
-     */
     public static LocalDateTime toUtcLocalDateTime(LocalDateTime local, ZoneId localZone) {
-        return local
-                .atZone(localZone)                  // 先绑定时区
-                .withZoneSameInstant(ZoneOffset.UTC) // 转为 UTC
-                .toLocalDateTime();                 // 去掉时区，返回 LocalDateTime 表示的 UTC 时间
+        if (local == null) {
+            return null;
+        }
+        ZoneId zone = localZone == null ? ZoneOffset.UTC : localZone;
+        ZoneRules rules = zone.getRules();
+        List<ZoneOffset> offsets = rules.getValidOffsets(local);
+        if (offsets.isEmpty()) {
+            throw new ApiException(ErrorType.INVALID_LOCAL_TIME);
+        }
+        if (offsets.size() > 1) {
+            throw new ApiException(ErrorType.INVALID_LOCAL_TIME);
+        }
+        return local.atOffset(offsets.get(0)).withOffsetSameInstant(ZoneOffset.UTC).toLocalDateTime();
     }
 
-    /**
-     * 将 UTC 的 LocalDateTime 转换回指定时区的 LocalDateTime
-     * Convert a UTC-localdatetime (no zone info) back to a specific time zone's local time
-     */
     public static LocalDateTime fromUtcLocalDateTime(LocalDateTime utcLocal, ZoneId targetZone) {
-        return utcLocal
-                .atZone(ZoneOffset.UTC)             // 声明它是 UTC 时间
-                .withZoneSameInstant(targetZone)    // 转换到目标时区
-                .toLocalDateTime();                 // 去掉时区信息
+        if (utcLocal == null || targetZone == null) {
+            return null;
+        }
+        return utcLocal.atZone(ZoneOffset.UTC).withZoneSameInstant(targetZone).toLocalDateTime();
     }
 
-    /**
-     * 解析并验证时区字符串（IANA 格式），若为空或非法则抛出自定义异常
-     *
-     * @param timezoneHeader 从请求头传入的时区字符串
-     * @return 解析后的 ZoneId 对象
-     */
-    public static ZoneId resolveZoneId(String timezoneHeader) {
-        if (timezoneHeader == null || timezoneHeader.trim().isEmpty()) {
-            // 空或只包含空格
-            throw new CustomException(ResultCodeEnum.INVALID_TIMEZONE);
+    public static Instant toInstant(LocalDateTime utcLocal) {
+        if (utcLocal == null) {
+            return null;
+        }
+        return utcLocal.toInstant(ZoneOffset.UTC);
+    }
+
+    public static LocalDateTime toUtcLocalDateTime(Instant instant) {
+        if (instant == null) {
+            return null;
+        }
+        return LocalDateTime.ofInstant(instant, ZoneOffset.UTC);
+    }
+
+    public static ZoneId resolveZoneId(String timezone) {
+        if (timezone == null || timezone.trim().isEmpty()) {
+            throw new ApiException(ErrorType.INVALID_TIMEZONE);
         }
         try {
-            return ZoneId.of(timezoneHeader.trim());
+            return ZoneId.of(timezone.trim());
         } catch (DateTimeException e) {
-            // 非法时区字符串
-            throw new CustomException(ResultCodeEnum.INVALID_TIMEZONE);
+            throw new ApiException(ErrorType.INVALID_TIMEZONE);
         }
+    }
+
+    /** Exposed for tests: whether {@code local} is a DST gap or overlap in {@code zone}. */
+    public static boolean isAmbiguousOrGap(LocalDateTime local, ZoneId zone) {
+        List<ZoneOffset> offsets = zone.getRules().getValidOffsets(local);
+        return offsets.isEmpty() || offsets.size() > 1;
     }
 }

@@ -212,12 +212,13 @@ Success `data`:
 | termStartDate | date | Yes | |
 | termEndDate | date | Yes | ≥ start |
 | instructorId | int | Yes | Usually your own userId |
+| tenantId | int | **Yes** | Required; missing → `400 PARAM_MISSING`. Creator and `instructorId` must have `user.tenantId` equal to this value, else `400 TENANT_MISMATCH`; unknown tenant → `404 TENANT_NOT_FOUND`. The frontend currently hard-codes `1` (seed Default tenant); the backend still validates the real `tenantId` |
 | description | string | No | |
 | location | string | No | |
-| tenantId | int | No | |
 
 ```json
 {
+  "tenantId": 1,
   "courseCode": "DEMO-ENROLL",
   "title": "Demo Course With Students",
   "termStartDate": "2026-01-01",
@@ -248,7 +249,7 @@ Success `data`:
 }
 ```
 
-Errors: `PARAM_MISSING`, `BAD_REQUEST`, `USER_NOT_FOUND`.
+Errors: `PARAM_MISSING` (including missing `tenantId`), `BAD_REQUEST`, `USER_NOT_FOUND`, `TENANT_NOT_FOUND`, `TENANT_MISMATCH`.
 
 ---
 
@@ -256,7 +257,7 @@ Errors: `PARAM_MISSING`, `BAD_REQUEST`, `USER_NOT_FOUND`.
 
 | | |
 |--|--|
-| Who can call | Enrolled members; not enrolled → `403 NOT_COURSE_MEMBER` |
+| Who can call | Enrolled members; not enrolled → `403 NOT_COURSE_MEMBER`. Cross-tenant (`user.tenantId ≠ course.tenantId`, non-Admin) → `404 COURSE_NOT_FOUND` |
 
 Success `data` shape matches create.
 

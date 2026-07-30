@@ -1,52 +1,23 @@
 package com.coursistant.lms.module.assignment.service;
 
-import com.coursistant.lms.shared.api.ApiException;
-import com.coursistant.lms.shared.api.ErrorType;
-import com.coursistant.lms.shared.exception.CustomException;
 import com.coursistant.lms.shared.util.TimeZoneUtils;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 
 /**
- * X-Timezone handling for the assignment module. Everything is stored as UTC
- * {@code LocalDateTime}; the header only says how to interpret inbound wall-clock times and how
- * to render outbound ones.
+ * Assignment times are stored as UTC {@link LocalDateTime}. Wall-clock request fields are
+ * interpreted in the course tenant timezone (not a request header).
  */
 @Component
 public class AssignmentTimeSupport {
 
-    /**
-     * Truncated to seconds so a timestamp echoed straight back in a response matches what a
-     * later read returns: the DATETIME columns backing these values hold no sub-second precision.
-     */
     public LocalDateTime nowUtc() {
         return LocalDateTime.now(ZoneOffset.UTC).truncatedTo(ChronoUnit.SECONDS);
-    }
-
-    /**
-     * Resolves a required IANA timezone header. {@link TimeZoneUtils} still speaks the legacy
-     * exception type, so translate it to the shared/api error contract.
-     */
-    public ZoneId requireZone(String timezoneHeader) {
-        try {
-            return TimeZoneUtils.resolveZoneId(timezoneHeader);
-        } catch (CustomException e) {
-            throw new ApiException(ErrorType.INVALID_TIMEZONE);
-        }
-    }
-
-    /**
-     * Resolves an optional header, falling back to UTC when absent.
-     */
-    public ZoneId zoneOrUtc(String timezoneHeader) {
-        if (timezoneHeader == null || timezoneHeader.trim().isEmpty()) {
-            return ZoneOffset.UTC;
-        }
-        return requireZone(timezoneHeader);
     }
 
     public LocalDateTime toUtc(LocalDateTime localWallClock, ZoneId zone) {
@@ -61,5 +32,9 @@ public class AssignmentTimeSupport {
             return null;
         }
         return TimeZoneUtils.fromUtcLocalDateTime(utc, zone);
+    }
+
+    public Instant toInstant(LocalDateTime utc) {
+        return TimeZoneUtils.toInstant(utc);
     }
 }

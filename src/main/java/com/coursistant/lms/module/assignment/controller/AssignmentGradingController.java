@@ -21,7 +21,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -51,10 +50,9 @@ public class AssignmentGradingController {
     public ApiResponse<GradingViewResponse> getGradingView(HttpServletRequest request,
                                                            @PathVariable Integer courseId,
                                                            @PathVariable Integer assignmentId,
-                                                           @PathVariable Integer studentUserId,
-                                                           @RequestHeader(value = "X-Timezone", required = false) String timezone) {
+                                                           @PathVariable Integer studentUserId) {
         return ApiResponse.success(assignmentGradingService.getGradingView(courseId, assignmentId, studentUserId,
-                currentUserId(request), timezone));
+                currentUserId(request)));
     }
 
     @PutMapping("/students/{studentUserId}/grade")
@@ -128,11 +126,9 @@ public class AssignmentGradingController {
     public ApiResponse<GradingViewResponse> getGroupGradingView(HttpServletRequest request,
                                                                 @PathVariable Integer courseId,
                                                                 @PathVariable Integer assignmentId,
-                                                                @PathVariable Integer groupId,
-                                                                @RequestHeader(value = "X-Timezone", required = false)
-                                                                String timezone) {
+                                                                @PathVariable Integer groupId) {
         return ApiResponse.success(assignmentGradingService.getGroupGradingView(courseId, assignmentId, groupId,
-                currentUserId(request), timezone));
+                currentUserId(request)));
     }
 
     @PutMapping("/groups/{groupId}/grade")

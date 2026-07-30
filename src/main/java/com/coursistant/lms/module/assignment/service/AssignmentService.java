@@ -29,6 +29,8 @@ import com.coursistant.lms.module.assignment.repository.AssignmentSubmissionMapp
 import com.coursistant.lms.module.assignment.repository.AssignmentSubmissionReceiptMapper;
 import com.coursistant.lms.module.assignment.repository.AssignmentSubmissionStagingFileMapper;
 import com.coursistant.lms.module.assignment.repository.AssignmentSubmissionVersionMapper;
+import com.coursistant.lms.module.course.course.entity.Course;
+import com.coursistant.lms.module.course.course.repository.CourseMapper;
 import com.coursistant.lms.module.course.enrollment.entity.Enrollment;
 import com.coursistant.lms.module.course.enrollment.repository.EnrollmentMapper;
 import com.coursistant.lms.module.course.group.entity.CourseGroup;
@@ -36,6 +38,7 @@ import com.coursistant.lms.module.course.group.entity.GroupMembership;
 import com.coursistant.lms.module.course.group.repository.CourseGroupMapper;
 import com.coursistant.lms.module.course.group.repository.GroupMembershipMapper;
 import com.coursistant.lms.module.course.group.service.GroupAccessService;
+import com.coursistant.lms.module.tenant.service.TenantTimezoneService;
 import com.coursistant.lms.shared.api.ErrorType;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
@@ -70,6 +73,9 @@ public class AssignmentService {
 
     @Resource
     private AssignmentMapper assignmentMapper;
+
+    @Resource
+    private CourseMapper courseMapper;
 
     @Resource
     private AssignmentAttachmentMapper assignmentAttachmentMapper;
@@ -134,19 +140,19 @@ public class AssignmentService {
     @Resource
     private AssignmentNotificationService assignmentNotificationService;
 
+    @Resource
+    private TenantTimezoneService tenantTimezoneService;
+
     // ------------------------------------------------------------------ read
 
     /**
-     * Lists assignments ordered by due date then id. Students see Published assignments only and
-     * must supply X-Timezone; staff see drafts as well.
+     * Lists assignments ordered by due date then id. Students see Published assignments only;
+     * staff see drafts as well.
      */
-    public List<AssignmentResponse> list(HttpServletRequest request, Integer courseId, Integer userId,
-                                         String timezoneHeader) {
+    public List<AssignmentResponse> list(HttpServletRequest request, Integer courseId, Integer userId) {
         assignmentAccessService.requireCourse(courseId);
         boolean staffView = assignmentAccessService.isStaffViewer(request, courseId, userId);
-        ZoneId zone = staffView
-                ? assignmentTimeSupport.zoneOrUtc(timezoneHeader)
-                : assignmentTimeSupport.requireZone(timezoneHeader);
+        ZoneId zone = tenantTimezoneService.requireZoneForCourse(courseId);
 
         List<Assignment> assignments = staffView
                 ? assignmentMapper.selectByCourseId(courseId)
@@ -178,13 +184,11 @@ public class AssignmentService {
      * {@code submissionStatus} (they are not gradees on the roster).
      */
     public List<AssignmentSummaryResponse> listSummaries(HttpServletRequest request, Integer courseId,
-                                                         Integer userId, String timezoneHeader) {
+                                                         Integer userId) {
         assignmentAccessService.requireCourse(courseId);
         assignmentAccessService.requireActiveMember(courseId, userId);
         boolean staffView = assignmentAccessService.isStaffViewer(request, courseId, userId);
-        ZoneId zone = staffView
-                ? assignmentTimeSupport.zoneOrUtc(timezoneHeader)
-                : assignmentTimeSupport.requireZone(timezoneHeader);
+        ZoneId zone = tenantTimezoneService.requireZoneForCourse(courseId);
 
         List<Assignment> assignments = staffView
                 ? assignmentMapper.selectByCourseId(courseId)
@@ -203,10 +207,9 @@ public class AssignmentService {
             AssignmentSummaryResponse item = new AssignmentSummaryResponse();
             item.setId(assignment.getId());
             item.setTitle(assignment.getTitle());
-            item.setDueAt(assignment.getDueAt());
+            item.setDueAtUtc(assignmentTimeSupport.toInstant(assignment.getDueAt()));
             item.setDueAtLocal(assignmentTimeSupport.toZone(assignment.getDueAt(), zone));
             item.setTimezone(zone.getId());
-            item.setTimezoneLabel(zone.getId());
             item.setSubmissionType(assignment.getSubmissionType());
             if (!staffView) {
                 AssignmentSubmissionVersion version = resolveCurrentVersion(assignment, userId);
@@ -230,15 +233,13 @@ public class AssignmentService {
 
     /**
      * Dashboard: Published assignments across the user's active enrollments with dueAt in
-     * {@code [now, now+days]} (UTC, inclusive). Requires {@code X-Timezone}.
+     * {@code [now, now+days]} (UTC, inclusive).
      */
-    public List<UpcomingAssignmentDeadlineResponse> listUpcomingDeadlines(Integer userId,
-                                                                          String timezoneHeader,
-                                                                          Integer days) {
+    public List<UpcomingAssignmentDeadlineResponse> listUpcomingDeadlines(Integer userId, Integer days) {
         if (userId == null) {
             throw new ApiException(ErrorType.UNAUTHORIZED);
         }
-        ZoneId zone = assignmentTimeSupport.requireZone(timezoneHeader);
+        ZoneId zone = tenantTimezoneService.requireZoneForUser(userId);
         int windowDays = normalizeDays(days, 14, 30);
         LocalDateTime now = assignmentTimeSupport.nowUtc();
         LocalDateTime toUtc = now.plusDays(windowDays);
@@ -249,8 +250,12 @@ public class AssignmentService {
             throw new ApiException(ErrorType.INTERNAL_ERROR, "Upcoming assignment query returned null");
         }
 
+        Integer userTenantId = tenantTimezoneService.requireUserTenantId(userId);
         List<UpcomingAssignmentDeadlineResponse> result = new ArrayList<>();
         for (UpcomingAssignmentQueryRow row : rows) {
+            if (dropIfCrossTenant(userId, userTenantId, row.getCourseId())) {
+                continue;
+            }
             Assignment assignment = new Assignment();
             assignment.setId(row.getId());
             assignment.setCourseId(row.getCourseId());
@@ -272,6 +277,7 @@ public class AssignmentService {
             item.setCourseCode(row.getCourseCode());
             item.setAssignmentId(row.getId());
             item.setTitle(row.getTitle());
+            item.setDueAtUtc(assignmentTimeSupport.toInstant(row.getDueAt()));
             item.setDueAtLocal(assignmentTimeSupport.toZone(row.getDueAt(), zone));
             item.setTimezone(zone.getId());
             item.setSubmissionStatus(submissionStatusCalculator.calculate(
@@ -286,6 +292,24 @@ public class AssignmentService {
         return result;
     }
 
+    private boolean dropIfCrossTenant(Integer userId, Integer userTenantId, Integer courseId) {
+        if (courseId == null) {
+            return true;
+        }
+        Course course = courseMapper.selectById(courseId);
+        if (course == null || course.getTenantId() == null) {
+            log.error("Upcoming deadlines dropped: missing course/tenant userId={} courseId={} userTenantId={}",
+                    userId, courseId, userTenantId);
+            return true;
+        }
+        if (!userTenantId.equals(course.getTenantId())) {
+            log.error("Upcoming deadlines cross-tenant filtered userId={} courseId={} userTenantId={} courseTenantId={}",
+                    userId, courseId, userTenantId, course.getTenantId());
+            return true;
+        }
+        return false;
+    }
+
     private int normalizeDays(Integer days, int defaultDays, int maxDays) {
         if (days == null || days < 1) {
             return defaultDays;
@@ -294,12 +318,10 @@ public class AssignmentService {
     }
 
     public AssignmentResponse detail(HttpServletRequest request, Integer courseId, Integer assignmentId,
-                                     Integer userId, String timezoneHeader) {
+                                     Integer userId) {
         Assignment assignment = assignmentAccessService.requireAssignmentReadable(request, courseId, assignmentId, userId);
         boolean staffView = assignmentAccessService.isStaffViewer(request, courseId, userId);
-        ZoneId zone = staffView
-                ? assignmentTimeSupport.zoneOrUtc(timezoneHeader)
-                : assignmentTimeSupport.requireZone(timezoneHeader);
+        ZoneId zone = tenantTimezoneService.requireZoneForCourse(courseId);
         if (staffView) {
             return buildStaffResponse(assignment, zone, activeStudents(courseId).size());
         }
@@ -313,13 +335,12 @@ public class AssignmentService {
      * Creates a Draft assignment. Individual is the default; Group requires {@code groupSetId}.
      */
     @Transactional
-    public AssignmentResponse create(Integer courseId, Integer userId, String timezoneHeader,
-                                     CreateAssignmentRequest body) {
+    public AssignmentResponse create(Integer courseId, Integer userId, CreateAssignmentRequest body) {
         assignmentAccessService.requireCourseWritable(courseId, userId);
         if (body == null) {
             throw AssignmentErrors.fail(log, courseId, null, userId, ErrorType.PARAM_MISSING, "Request body is required");
         }
-        ZoneId zone = assignmentTimeSupport.requireZone(timezoneHeader);
+        ZoneId zone = tenantTimezoneService.requireZoneForCourse(courseId);
 
         String title = requireText(courseId, null, userId, body.getTitle(), "title");
         BigDecimal points = requirePositivePoints(courseId, null, userId, body.getPointsPossible());
@@ -361,14 +382,14 @@ public class AssignmentService {
     }
 
     @Transactional
-    public AssignmentResponse patch(Integer courseId, Integer assignmentId, Integer userId, String timezoneHeader,
+    public AssignmentResponse patch(Integer courseId, Integer assignmentId, Integer userId,
                                     PatchAssignmentRequest body) {
         Assignment existing = assignmentAccessService.requireAssignmentConfigurable(courseId, assignmentId, userId);
         if (body == null) {
             throw AssignmentErrors.fail(log, courseId, assignmentId, userId, ErrorType.PARAM_MISSING,
                     "Request body is required");
         }
-        ZoneId zone = assignmentTimeSupport.requireZone(timezoneHeader);
+        ZoneId zone = tenantTimezoneService.requireZoneForCourse(courseId);
 
         boolean typeOrSetTouched = body.getSubmissionType() != null || body.getGroupSetId() != null;
         if (typeOrSetTouched && assignmentMapper.countSubmissionVersionsByAssignmentId(assignmentId) >= 1) {
@@ -501,9 +522,9 @@ public class AssignmentService {
     }
 
     @Transactional
-    public AssignmentResponse publish(Integer courseId, Integer assignmentId, Integer userId, String timezoneHeader) {
+    public AssignmentResponse publish(Integer courseId, Integer assignmentId, Integer userId) {
         Assignment assignment = assignmentAccessService.requireAssignmentConfigurable(courseId, assignmentId, userId);
-        ZoneId zone = assignmentTimeSupport.zoneOrUtc(timezoneHeader);
+        ZoneId zone = tenantTimezoneService.requireZoneForCourse(courseId);
         if (AssignmentAccessService.STATE_PUBLISHED.equals(assignment.getState())) {
             return buildStaffResponse(assignment, zone, activeStudents(courseId).size());
         }
@@ -528,9 +549,9 @@ public class AssignmentService {
     }
 
     @Transactional
-    public AssignmentResponse unpublish(Integer courseId, Integer assignmentId, Integer userId, String timezoneHeader) {
+    public AssignmentResponse unpublish(Integer courseId, Integer assignmentId, Integer userId) {
         Assignment assignment = assignmentAccessService.requireAssignmentConfigurable(courseId, assignmentId, userId);
-        ZoneId zone = assignmentTimeSupport.zoneOrUtc(timezoneHeader);
+        ZoneId zone = tenantTimezoneService.requireZoneForCourse(courseId);
         requireNoSubmissions(courseId, assignmentId, userId, "unpublish");
 
         if (AssignmentAccessService.STATE_DRAFT.equals(assignment.getState())) {
@@ -578,14 +599,14 @@ public class AssignmentService {
      * instructor must confirm. Nothing is written.
      */
     public DueDateChangePreviewResponse previewDueDateChange(Integer courseId, Integer assignmentId, Integer userId,
-                                                             String timezoneHeader, DueDateChangePreviewRequest body) {
+                                                             DueDateChangePreviewRequest body) {
         Assignment assignment = assignmentAccessService.requireAssignmentConfigurable(courseId, assignmentId, userId);
         if (body == null || (body.getDueAt() == null && body.getLateUntil() == null
                 && !Boolean.TRUE.equals(body.getClearLateUntil()))) {
             throw AssignmentErrors.fail(log, courseId, assignmentId, userId, ErrorType.PARAM_MISSING,
                     "dueAt or lateUntil is required");
         }
-        ZoneId zone = assignmentTimeSupport.requireZone(timezoneHeader);
+        ZoneId zone = tenantTimezoneService.requireZoneForCourse(courseId);
 
         LocalDateTime newDueAt = body.getDueAt() == null
                 ? assignment.getDueAt() : assignmentTimeSupport.toUtc(body.getDueAt(), zone);

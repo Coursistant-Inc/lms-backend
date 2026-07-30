@@ -1,5 +1,7 @@
 package com.coursistant.lms.module.course.teaching.service;
 
+import com.coursistant.lms.module.course.course.entity.Course;
+import com.coursistant.lms.module.course.course.repository.CourseMapper;
 import com.coursistant.lms.module.course.teaching.dto.TeachingActivityResponse;
 import com.coursistant.lms.module.course.teaching.dto.TeachingCourseResponse;
 import com.coursistant.lms.module.course.teaching.dto.TeachingCourseRow;
@@ -11,18 +13,18 @@ import com.coursistant.lms.module.course.teaching.dto.TeachingRecentActivityResp
 import com.coursistant.lms.module.course.teaching.dto.TeachingRecentActivityRow;
 import com.coursistant.lms.module.course.teaching.dto.TeachingSessionRow;
 import com.coursistant.lms.module.course.teaching.repository.TeachingDashboardMapper;
+import com.coursistant.lms.module.tenant.service.TenantTimezoneService;
 import com.coursistant.lms.module.user.account.entity.User;
 import com.coursistant.lms.module.user.account.repository.UserMapper;
 import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.shared.api.ErrorType;
 import com.coursistant.lms.shared.enums.LevelEnum;
 import com.coursistant.lms.shared.util.TimeZoneUtils;
-import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
-import org.springframework.beans.factory.annotation.Value;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import java.time.DateTimeException;
 import java.time.DayOfWeek;
 import java.time.Duration;
 import java.time.LocalDate;
@@ -40,6 +42,8 @@ import java.util.stream.Collectors;
 @Service
 public class TeachingDashboardService {
 
+    private static final Logger log = LoggerFactory.getLogger(TeachingDashboardService.class);
+
     private static final Map<DayOfWeek, String> DAY_CODES = new EnumMap<>(DayOfWeek.class);
 
     static {
@@ -52,29 +56,17 @@ public class TeachingDashboardService {
         DAY_CODES.put(DayOfWeek.SUNDAY, "SUN");
     }
 
-    @Value("${lms.institution-timezone}")
-    private String institutionTimezone;
-
-    private ZoneId institutionZone;
-
     @Resource
     private UserMapper userMapper;
 
     @Resource
+    private CourseMapper courseMapper;
+
+    @Resource
     private TeachingDashboardMapper teachingDashboardMapper;
 
-    @PostConstruct
-    void initInstitutionZone() {
-        if (institutionTimezone == null || institutionTimezone.isBlank()) {
-            throw new IllegalStateException("lms.institution-timezone must be a non-blank IANA timezone");
-        }
-        try {
-            institutionZone = ZoneId.of(institutionTimezone.trim());
-        } catch (DateTimeException ex) {
-            throw new IllegalStateException(
-                    "lms.institution-timezone is not a valid IANA timezone: " + institutionTimezone, ex);
-        }
-    }
+    @Resource
+    private TenantTimezoneService tenantTimezoneService;
 
     public List<TeachingCourseResponse> listCourses(Integer userId) {
         requireInstructorLevel(userId);
@@ -83,6 +75,7 @@ public class TeachingDashboardService {
 
     public List<TeachingGradingQueueItemResponse> listGradingQueue(Integer userId) {
         requireInstructorLevel(userId);
+        ZoneId zone = tenantTimezoneService.requireZoneForUser(userId);
         List<Integer> courseIds = teachingCourseIds(userId);
         if (courseIds.isEmpty()) {
             return List.of();
@@ -96,7 +89,7 @@ public class TeachingDashboardService {
         addAll(rows, teachingDashboardMapper.selectQuizAwaitingRelease(courseIds));
 
         LocalDateTime nowUtc = LocalDateTime.now(ZoneOffset.UTC);
-        String tz = institutionZone.getId();
+        String tz = zone.getId();
         List<TeachingGradingQueueItemResponse> result = new ArrayList<>();
         for (TeachingGradingQueueRow row : rows) {
             if (row.getPendingCount() == null || row.getPendingCount() <= 0) {
@@ -108,7 +101,7 @@ public class TeachingDashboardService {
             item.setCourseCode(row.getCourseCode());
             item.setTitle(row.getTitle());
             item.setPendingCount(row.getPendingCount());
-            LocalDateTime oldestLocal = toInstitution(row.getOldestWaitingAt());
+            LocalDateTime oldestLocal = toUserZone(row.getOldestWaitingAt(), zone);
             item.setOldestWaitingAt(oldestLocal);
             item.setWaitingMinutes(waitingMinutes(row.getOldestWaitingAt(), nowUtc));
             item.setTimezone(tz);
@@ -126,14 +119,15 @@ public class TeachingDashboardService {
 
     public List<TeachingActivityResponse> listUpcomingActivities(Integer userId, Integer days) {
         requireInstructorLevel(userId);
+        ZoneId zone = tenantTimezoneService.requireZoneForUser(userId);
         List<Integer> courseIds = teachingCourseIds(userId);
         if (courseIds.isEmpty()) {
             return List.of();
         }
         int windowDays = normalizeDays(days, 7, 30);
-        LocalDate from = LocalDate.now(institutionZone);
+        LocalDate from = LocalDate.now(zone);
         LocalDate to = from.plusDays(windowDays - 1L);
-        String tz = institutionZone.getId();
+        String tz = zone.getId();
 
         List<TeachingActivityResponse> result = new ArrayList<>();
         List<TeachingActivityResponse> events =
@@ -186,6 +180,7 @@ public class TeachingDashboardService {
 
     public List<TeachingDeadlineResponse> listUpcomingDeadlines(Integer userId, Integer days) {
         requireInstructorLevel(userId);
+        ZoneId zone = tenantTimezoneService.requireZoneForUser(userId);
         List<Integer> courseIds = teachingCourseIds(userId);
         if (courseIds.isEmpty()) {
             return List.of();
@@ -193,7 +188,7 @@ public class TeachingDashboardService {
         int windowDays = normalizeDays(days, 14, 30);
         LocalDateTime nowUtc = LocalDateTime.now(ZoneOffset.UTC);
         LocalDateTime toUtc = nowUtc.plusDays(windowDays);
-        String tz = institutionZone.getId();
+        String tz = zone.getId();
 
         List<TeachingDeadlineRow> rows = new ArrayList<>();
         addAll(rows, teachingDashboardMapper.selectAssignmentDeadlines(courseIds, nowUtc, toUtc));
@@ -206,7 +201,7 @@ public class TeachingDashboardService {
             item.setCourseId(row.getCourseId());
             item.setCourseCode(row.getCourseCode());
             item.setTitle(row.getTitle());
-            item.setAtLocal(toInstitution(row.getAtUtc()));
+            item.setAtLocal(toUserZone(row.getAtUtc(), zone));
             item.setTimezone(tz);
             item.setSubmittedCount(row.getSubmittedCount() == null ? 0 : row.getSubmittedCount());
             item.setTotalStudents(row.getTotalStudents() == null ? 0 : row.getTotalStudents());
@@ -222,17 +217,17 @@ public class TeachingDashboardService {
 
     public List<TeachingRecentActivityResponse> listRecentActivity(Integer userId, Integer limit) {
         requireInstructorLevel(userId);
+        ZoneId zone = tenantTimezoneService.requireZoneForUser(userId);
         List<Integer> courseIds = teachingCourseIds(userId);
         if (courseIds.isEmpty()) {
             return List.of();
         }
         int lim = normalizeLimit(limit, 10, 50);
-        // Fetch enough from each source then merge (each query uses lim).
         List<TeachingRecentActivityRow> rows = new ArrayList<>();
         addAll(rows, teachingDashboardMapper.selectGroupMembershipChanges(courseIds, lim));
         addAll(rows, teachingDashboardMapper.selectLateSubmissions(courseIds, lim));
 
-        String tz = institutionZone.getId();
+        String tz = zone.getId();
         List<TeachingRecentActivityResponse> result = new ArrayList<>();
         for (TeachingRecentActivityRow row : rows) {
             TeachingRecentActivityResponse item = new TeachingRecentActivityResponse();
@@ -240,7 +235,7 @@ public class TeachingDashboardService {
             item.setCourseId(row.getCourseId());
             item.setCourseCode(row.getCourseCode());
             item.setSummary(row.getSummary());
-            item.setOccurredAt(toInstitution(row.getOccurredAt()));
+            item.setOccurredAt(toUserZone(row.getOccurredAt(), zone));
             item.setTimezone(tz);
             item.setAssignmentId(row.getAssignmentId());
             item.setGroupSetId(row.getGroupSetId());
@@ -271,8 +266,27 @@ public class TeachingDashboardService {
     }
 
     private List<TeachingCourseRow> loadTeachingCourses(Integer userId) {
+        Integer userTenantId = tenantTimezoneService.requireUserTenantId(userId);
         List<TeachingCourseRow> rows = teachingDashboardMapper.selectTeachingCourses(userId);
-        return rows == null ? List.of() : rows;
+        if (rows == null || rows.isEmpty()) {
+            return List.of();
+        }
+        List<TeachingCourseRow> filtered = new ArrayList<>();
+        for (TeachingCourseRow row : rows) {
+            Course course = courseMapper.selectById(row.getId());
+            if (course == null || course.getTenantId() == null) {
+                log.error("Teaching dashboard course dropped: missing course/tenant userId={} courseId={} userTenantId={}",
+                        userId, row.getId(), userTenantId);
+                continue;
+            }
+            if (!userTenantId.equals(course.getTenantId())) {
+                log.error("Teaching dashboard cross-tenant filtered userId={} courseId={} userTenantId={} courseTenantId={}",
+                        userId, row.getId(), userTenantId, course.getTenantId());
+                continue;
+            }
+            filtered.add(row);
+        }
+        return filtered;
     }
 
     private List<Integer> teachingCourseIds(Integer userId) {
@@ -291,11 +305,11 @@ public class TeachingDashboardService {
         return response;
     }
 
-    private LocalDateTime toInstitution(LocalDateTime utc) {
+    private LocalDateTime toUserZone(LocalDateTime utc, ZoneId zone) {
         if (utc == null) {
             return null;
         }
-        return TimeZoneUtils.fromUtcLocalDateTime(utc, institutionZone);
+        return TimeZoneUtils.fromUtcLocalDateTime(utc, zone);
     }
 
     private long waitingMinutes(LocalDateTime oldestUtc, LocalDateTime nowUtc) {

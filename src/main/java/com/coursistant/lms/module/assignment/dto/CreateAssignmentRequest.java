@@ -5,8 +5,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * Create payload. {@code dueAt}/{@code lateUntil} are wall-clock times in the caller's
- * {@code X-Timezone} and are converted to UTC before persisting.
+ * Create payload. {@code dueAt}/{@code lateUntil} are wall-clock times in the course tenant
+ * timezone and are converted to UTC before persisting.
  * Group assignments require {@code submissionType=Group} and a {@code groupSetId}.
  */
 public class CreateAssignmentRequest {

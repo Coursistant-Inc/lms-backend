@@ -2,6 +2,7 @@ package com.coursistant.lms.module.assignment.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -17,8 +18,7 @@ public class SubmissionVersionResponse {
     private Integer assignmentId;
     private Integer ownerUserId;
     private Integer versionNo;
-    private LocalDateTime submittedAt;
-    private LocalDateTime submittedAtLocal;
+    private Instant submittedAt;
     private Boolean usedGraceBuffer;
     private String submissionStatus;
     private Integer fileCount;
@@ -65,20 +65,12 @@ public class SubmissionVersionResponse {
         this.versionNo = versionNo;
     }
 
-    public LocalDateTime getSubmittedAt() {
+    public Instant getSubmittedAt() {
         return submittedAt;
     }
 
-    public void setSubmittedAt(LocalDateTime submittedAt) {
+    public void setSubmittedAt(Instant submittedAt) {
         this.submittedAt = submittedAt;
-    }
-
-    public LocalDateTime getSubmittedAtLocal() {
-        return submittedAtLocal;
-    }
-
-    public void setSubmittedAtLocal(LocalDateTime submittedAtLocal) {
-        this.submittedAtLocal = submittedAtLocal;
     }
 
     public Boolean getUsedGraceBuffer() {

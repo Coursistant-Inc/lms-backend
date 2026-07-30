@@ -57,8 +57,11 @@ public class CourseController {
 
     @GetMapping("/{id}")
     public ApiResponse<CourseResponse> getById(HttpServletRequest request, @PathVariable Integer id) {
-        if (!coursePermissionService.isAdmin(request)) {
-            coursePermissionService.requireActiveEnrollment(id, currentUserId(request));
+        Integer userId = currentUserId(request);
+        boolean admin = coursePermissionService.isAdmin(request);
+        coursePermissionService.requireUserTenantMatchesCourse(id, userId, admin);
+        if (!admin) {
+            coursePermissionService.requireActiveEnrollment(id, userId);
         }
         return ApiResponse.success(courseService.getById(id));
     }

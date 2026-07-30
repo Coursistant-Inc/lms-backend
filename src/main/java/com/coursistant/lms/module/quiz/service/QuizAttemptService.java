@@ -128,7 +128,7 @@ public class QuizAttemptService {
             s.setStatus(a.getStatus());
             s.setCloseReason(a.getCloseReason());
             s.setStartedAt(a.getStartedAt());
-            s.setSubmittedAt(a.getSubmittedAt());
+            s.setSubmittedAt(quizTimeSupport.toInstant(a.getSubmittedAt()));
             s.setReceiptId(a.getReceiptId());
             out.add(s);
         }
@@ -156,7 +156,7 @@ public class QuizAttemptService {
         ReceiptResponse r = new ReceiptResponse();
         r.setAttemptId(attemptId);
         r.setReceiptId(attempt.getReceiptId());
-        r.setSubmittedAt(attempt.getSubmittedAt());
+        r.setSubmittedAt(quizTimeSupport.toInstant(attempt.getSubmittedAt()));
         return r;
     }
 
@@ -252,7 +252,7 @@ public class QuizAttemptService {
         r.setReceiptId(attempt.getReceiptId());
         r.setStartedAt(attempt.getStartedAt());
         r.setDeadlineAt(attempt.getDeadlineAt());
-        r.setSubmittedAt(attempt.getSubmittedAt());
+        r.setSubmittedAt(quizTimeSupport.toInstant(attempt.getSubmittedAt()));
         r.setServerNowUtc(quizTimeSupport.nowUtc());
         r.setAutoScore(attempt.getAutoScore());
         r.setManualScore(attempt.getManualScore());

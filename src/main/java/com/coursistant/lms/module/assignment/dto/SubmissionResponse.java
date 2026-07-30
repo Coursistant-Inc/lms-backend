@@ -2,6 +2,7 @@ package com.coursistant.lms.module.assignment.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -22,8 +23,8 @@ public class SubmissionResponse {
     /** Null when eligible; {@code NO_GROUP_MEMBERSHIP} when the viewer has no group. */
     private String submissionEligibility;
     private String submissionStatus;
-    private LocalDateTime dueAt;
-    private LocalDateTime lateUntil;
+    private Instant dueAtUtc;
+    private Instant lateUntilUtc;
     private LocalDateTime dueAtLocal;
     private LocalDateTime lateUntilLocal;
     private String timezone;
@@ -113,20 +114,20 @@ public class SubmissionResponse {
         this.submissionStatus = submissionStatus;
     }
 
-    public LocalDateTime getDueAt() {
-        return dueAt;
+    public Instant getDueAtUtc() {
+        return dueAtUtc;
     }
 
-    public void setDueAt(LocalDateTime dueAt) {
-        this.dueAt = dueAt;
+    public void setDueAtUtc(Instant dueAtUtc) {
+        this.dueAtUtc = dueAtUtc;
     }
 
-    public LocalDateTime getLateUntil() {
-        return lateUntil;
+    public Instant getLateUntilUtc() {
+        return lateUntilUtc;
     }
 
-    public void setLateUntil(LocalDateTime lateUntil) {
-        this.lateUntil = lateUntil;
+    public void setLateUntilUtc(Instant lateUntilUtc) {
+        this.lateUntilUtc = lateUntilUtc;
     }
 
     public LocalDateTime getDueAtLocal() {
