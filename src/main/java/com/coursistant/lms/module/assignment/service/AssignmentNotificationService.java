@@ -8,6 +8,7 @@ import com.coursistant.lms.module.interaction.notification.enums.NotificationTyp
 import com.coursistant.lms.module.interaction.notification.enums.SubjectType;
 import com.coursistant.lms.module.interaction.notification.service.NotificationDispatcher;
 import com.coursistant.lms.module.interaction.notification.service.NotificationMessageFactory;
+import com.coursistant.lms.module.interaction.notification.service.NotificationTimeSupport;
 import jakarta.annotation.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,6 +38,9 @@ public class AssignmentNotificationService {
 
     @Resource
     private NotificationDispatcher notificationDispatcher;
+
+    @Resource
+    private NotificationTimeSupport notificationTimeSupport;
 
     /**
      * Runs {@code action} once the current transaction commits, swallowing any failure.
@@ -77,7 +81,7 @@ public class AssignmentNotificationService {
             payload.setEventKey("published");
             payload.setDeepLink("/courses/" + assignment.getCourseId() + "/assignments/" + assignment.getId());
             payload.setRecipientIds(copyRecipients(studentUserIds));
-            payload.setCreatedAt(LocalDateTime.now());
+            payload.setCreatedAt(notificationTimeSupport.nowUtc());
             notificationDispatcher.dispatchAsync(payload);
         });
     }
@@ -119,7 +123,7 @@ public class AssignmentNotificationService {
             payload.setEventKey("release:" + auditId);
             payload.setDeepLink("/courses/" + assignment.getCourseId() + "/assignments/" + assignment.getId() + "/my-grade");
             payload.setRecipientIds(copyRecipients(studentUserIds));
-            payload.setCreatedAt(LocalDateTime.now());
+            payload.setCreatedAt(notificationTimeSupport.nowUtc());
             notificationDispatcher.dispatchAsync(payload);
         });
     }
@@ -146,7 +150,7 @@ public class AssignmentNotificationService {
             payload.setEventKey("correct:" + auditId);
             payload.setDeepLink("/courses/" + assignment.getCourseId() + "/assignments/" + assignment.getId() + "/my-grade");
             payload.setRecipientIds(copyRecipients(studentUserIds));
-            payload.setCreatedAt(LocalDateTime.now());
+            payload.setCreatedAt(notificationTimeSupport.nowUtc());
             notificationDispatcher.dispatchAsync(payload);
         });
     }

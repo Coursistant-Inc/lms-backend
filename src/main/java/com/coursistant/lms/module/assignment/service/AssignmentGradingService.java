@@ -510,8 +510,9 @@ public class AssignmentGradingService {
                     AssignmentAuditService.GRADE_CORRECTED_AFTER_RELEASE,
                     Map.of("groupId", groupId, "annotatedFileChanged", true));
             Course course = assignmentAccessService.requireCourse(courseId);
-            List<Integer> memberIds = groupMemberUserIds(groupId);
-            List<Integer> recipients = notificationRecipientResolver.filterCandidateRecipients(course, memberIds);
+            List<Integer> snapshotUserIds = releaseRecipientUserIds(existing.getId());
+            List<Integer> recipients = notificationRecipientResolver.filterCandidateRecipients(
+                    course, snapshotUserIds);
             Assignment assignmentForNotify = assignment;
             Integer auditIdForNotify = correctionAuditId;
             assignmentNotificationService.afterCommit(
@@ -738,8 +739,9 @@ public class AssignmentGradingService {
                     AssignmentAuditService.GRADE_CORRECTED_AFTER_RELEASE,
                     Map.of("groupId", groupId, "score", score));
             Course course = assignmentAccessService.requireCourse(courseId);
-            List<Integer> memberIds = groupMemberUserIds(groupId);
-            List<Integer> recipients = notificationRecipientResolver.filterCandidateRecipients(course, memberIds);
+            List<Integer> snapshotUserIds = releaseRecipientUserIds(existing.getId());
+            List<Integer> recipients = notificationRecipientResolver.filterCandidateRecipients(
+                    course, snapshotUserIds);
             Assignment assignmentForNotify = assignment;
             Integer auditIdForNotify = correctionAuditId;
             assignmentNotificationService.afterCommit(
@@ -1018,6 +1020,24 @@ public class AssignmentGradingService {
             }
         }
         return false;
+    }
+
+    private List<Integer> releaseRecipientUserIds(Integer gradeId) {
+        List<Integer> result = new ArrayList<>();
+        if (gradeId == null) {
+            return result;
+        }
+        List<AssignmentGradeReleaseRecipient> recipients =
+                assignmentGradeReleaseRecipientMapper.selectByGradeId(gradeId);
+        if (recipients == null) {
+            return result;
+        }
+        for (AssignmentGradeReleaseRecipient recipient : recipients) {
+            if (recipient != null && recipient.getStudentUserId() != null) {
+                result.add(recipient.getStudentUserId());
+            }
+        }
+        return result;
     }
 
     private List<GroupMemberSummary> groupMemberSummaries(Integer groupId) {

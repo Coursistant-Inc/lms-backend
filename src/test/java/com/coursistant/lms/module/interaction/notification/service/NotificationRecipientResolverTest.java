@@ -65,4 +65,20 @@ class NotificationRecipientResolverTest {
         List<Integer> result = resolver.filterCandidateRecipients(course, List.of(10, 11, 12));
         assertEquals(List.of(10), result);
     }
+
+    @Test
+    void resolveActiveStudentRecipients_mapperThrows_returnsEmpty() {
+        when(courseMapper.selectById(1)).thenThrow(new RuntimeException("db down"));
+        assertTrue(resolver.resolveActiveStudentRecipients(1).isEmpty());
+    }
+
+    @Test
+    void filterCandidateRecipients_mapperThrows_returnsEmpty() {
+        Course course = new Course();
+        course.setId(1);
+        course.setTenantId(1);
+        when(enrollmentMapper.selectActiveStudentsByCourseId(1)).thenThrow(new RuntimeException("db down"));
+
+        assertTrue(resolver.filterCandidateRecipients(course, List.of(10)).isEmpty());
+    }
 }

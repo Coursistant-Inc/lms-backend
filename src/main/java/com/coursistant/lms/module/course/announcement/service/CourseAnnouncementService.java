@@ -18,6 +18,7 @@ import com.coursistant.lms.module.interaction.notification.enums.SubjectType;
 import com.coursistant.lms.module.interaction.notification.service.NotificationCommitHook;
 import com.coursistant.lms.module.interaction.notification.service.NotificationMessageFactory;
 import com.coursistant.lms.module.interaction.notification.service.NotificationRecipientResolver;
+import com.coursistant.lms.module.interaction.notification.service.NotificationTimeSupport;
 import com.coursistant.lms.module.user.account.entity.User;
 import com.coursistant.lms.module.user.account.repository.UserMapper;
 import com.coursistant.lms.shared.api.ApiException;
@@ -62,6 +63,9 @@ public class CourseAnnouncementService {
 
     @Resource
     private NotificationCommitHook notificationCommitHook;
+
+    @Resource
+    private NotificationTimeSupport notificationTimeSupport;
 
     public List<AnnouncementSummaryResponse> listByCourse(Integer courseId, Integer userId) {
         requireCourseNotArchived(courseId);
@@ -114,7 +118,7 @@ public class CourseAnnouncementService {
         payload.setEventKey("published");
         payload.setDeepLink("/courses/" + courseId + "/announcements/" + persisted.getId());
         payload.setRecipientIds(recipientIds);
-        payload.setCreatedAt(now);
+        payload.setCreatedAt(notificationTimeSupport.nowUtc());
         notificationCommitHook.afterCommitDispatch(payload);
         return toDetail(persisted, false);
     }

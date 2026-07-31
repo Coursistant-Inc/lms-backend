@@ -8,6 +8,7 @@ import com.coursistant.lms.module.interaction.notification.enums.SubjectType;
 import com.coursistant.lms.module.interaction.notification.service.NotificationCommitHook;
 import com.coursistant.lms.module.interaction.notification.service.NotificationMessageFactory;
 import com.coursistant.lms.module.interaction.notification.service.NotificationRecipientResolver;
+import com.coursistant.lms.module.interaction.notification.service.NotificationTimeSupport;
 import com.coursistant.lms.module.quiz.dto.authoring.PatchAnswerKeyRequest;
 import com.coursistant.lms.module.quiz.dto.authoring.QuestionResponse;
 import com.coursistant.lms.module.quiz.entity.*;
@@ -19,11 +20,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 @Service
@@ -57,6 +58,9 @@ public class QuizRegradeService {
     private NotificationMessageFactory notificationMessageFactory;
     @Resource
     private NotificationCommitHook notificationCommitHook;
+
+    @Resource
+    private NotificationTimeSupport notificationTimeSupport;
 
     @Transactional
     public QuestionResponse regradeAnswerKey(Integer courseId, Integer quizId, Integer questionId,
@@ -104,7 +108,10 @@ public class QuizRegradeService {
             QuizGrade grade = quizGradeMapper.selectByQuizIdAndUserId(quizId, attempt.getUserId());
             if (grade != null) {
                 quizGradeMapper.incrementVersion(grade.getId());
-                if (scoreChanged && QuizConstants.GRADE_RELEASED.equals(grade.getStatus())) {
+                boolean releasedCountedAttempt =
+                        QuizConstants.GRADE_RELEASED.equals(grade.getStatus())
+                                && Objects.equals(attempt.getId(), grade.getCountedAttemptId());
+                if (scoreChanged && releasedCountedAttempt) {
                     affectedReleasedUsers.add(attempt.getUserId());
                 }
             }
@@ -130,7 +137,7 @@ public class QuizRegradeService {
                 payload.setEventKey("correct:regrade:" + questionId + ":" + question.getVersion());
                 payload.setDeepLink("/courses/" + courseId + "/quizzes/" + quizId + "/my-grade");
                 payload.setRecipientIds(recipients);
-                payload.setCreatedAt(LocalDateTime.now());
+                payload.setCreatedAt(notificationTimeSupport.nowUtc());
                 notificationCommitHook.afterCommitDispatch(payload);
             }
         }

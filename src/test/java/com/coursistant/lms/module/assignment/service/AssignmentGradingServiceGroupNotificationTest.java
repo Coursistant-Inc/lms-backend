@@ -1,0 +1,199 @@
+package com.coursistant.lms.module.assignment.service;
+
+import com.coursistant.lms.module.assignment.dto.UpsertGradeRequest;
+import com.coursistant.lms.module.assignment.entity.Assignment;
+import com.coursistant.lms.module.assignment.entity.AssignmentGrade;
+import com.coursistant.lms.module.assignment.entity.AssignmentGradeReleaseRecipient;
+import com.coursistant.lms.module.assignment.repository.AssignmentGradeMapper;
+import com.coursistant.lms.module.assignment.repository.AssignmentGradeReleaseRecipientMapper;
+import com.coursistant.lms.module.assignment.repository.AssignmentMapper;
+import com.coursistant.lms.module.assignment.repository.AssignmentSubmissionFileMapper;
+import com.coursistant.lms.module.assignment.repository.AssignmentSubmissionMapper;
+import com.coursistant.lms.module.assignment.repository.AssignmentSubmissionVersionMapper;
+import com.coursistant.lms.module.course.course.entity.Course;
+import com.coursistant.lms.module.course.enrollment.repository.EnrollmentMapper;
+import com.coursistant.lms.module.course.group.entity.CourseGroup;
+import com.coursistant.lms.module.course.group.repository.CourseGroupMapper;
+import com.coursistant.lms.module.course.group.repository.GroupMembershipMapper;
+import com.coursistant.lms.module.course.group.service.GroupAccessService;
+import com.coursistant.lms.module.interaction.notification.service.NotificationRecipientResolver;
+import com.coursistant.lms.module.tenant.service.TenantTimezoneService;
+import com.coursistant.lms.module.user.account.repository.UserMapper;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.mock.web.MockMultipartFile;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+@ExtendWith(MockitoExtension.class)
+class AssignmentGradingServiceGroupNotificationTest {
+
+    @Mock private AssignmentMapper assignmentMapper;
+    @Mock private AssignmentGradeMapper assignmentGradeMapper;
+    @Mock private AssignmentSubmissionMapper assignmentSubmissionMapper;
+    @Mock private AssignmentSubmissionVersionMapper assignmentSubmissionVersionMapper;
+    @Mock private AssignmentSubmissionFileMapper assignmentSubmissionFileMapper;
+    @Mock private EnrollmentMapper enrollmentMapper;
+    @Mock private UserMapper userMapper;
+    @Mock private AssignmentAccessService assignmentAccessService;
+    @Mock private AssignmentFilePolicy assignmentFilePolicy;
+    @Mock private AssignmentStorageService assignmentStorageService;
+    @Mock private AssignmentTimeSupport assignmentTimeSupport;
+    @Mock private SubmissionStatusCalculator submissionStatusCalculator;
+    @Mock private SubmissionResponseAssembler submissionResponseAssembler;
+    @Mock private AssignmentRubricService assignmentRubricService;
+    @Mock private AssignmentSubmissionService assignmentSubmissionService;
+    @Mock private AssignmentResponseAssembler assignmentResponseAssembler;
+    @Mock private AssignmentAuditService assignmentAuditService;
+    @Mock private AssignmentNotificationService assignmentNotificationService;
+    @Mock private NotificationRecipientResolver notificationRecipientResolver;
+    @Mock private AssignmentGradeReleaseRecipientMapper assignmentGradeReleaseRecipientMapper;
+    @Mock private CourseGroupMapper courseGroupMapper;
+    @Mock private GroupMembershipMapper groupMembershipMapper;
+    @Mock private GroupAccessService groupAccessService;
+    @Mock private TenantTimezoneService tenantTimezoneService;
+
+    @InjectMocks
+    private AssignmentGradingService assignmentGradingService;
+
+    @Test
+    void upsertGroupGrade_releasedCorrection_usesExistingIdSnapshotNotCurrentMembership() {
+        Assignment assignment = groupAssignment();
+        when(assignmentAccessService.requireGradingWritable(1, 20)).thenReturn(new Course());
+        when(assignmentMapper.selectByCourseIdAndId(1, 9)).thenReturn(assignment);
+        when(groupAccessService.requireGroupInSet(1, 5, 3)).thenReturn(new CourseGroup());
+
+        AssignmentGrade existing = releasedGroupGrade(88);
+        existing.setScore(new BigDecimal("5.0"));
+        when(assignmentGradeMapper.selectByAssignmentIdAndGroupId(9, 3)).thenReturn(existing);
+        when(assignmentSubmissionMapper.selectByAssignmentIdAndGroupId(9, 3)).thenReturn(null);
+        when(assignmentTimeSupport.nowUtc()).thenReturn(LocalDateTime.of(2026, 7, 1, 0, 0));
+        when(assignmentAuditService.write(eq(1), eq(9), eq(20), any(), anyMap())).thenReturn(11);
+        when(assignmentAuditService.write(eq(1), eq(9), eq(20),
+                eq(AssignmentAuditService.GRADE_CORRECTED_AFTER_RELEASE), anyMap())).thenReturn(77);
+
+        Course course = new Course();
+        course.setId(1);
+        course.setTenantId(3);
+        when(assignmentAccessService.requireCourse(1)).thenReturn(course);
+
+        AssignmentGradeReleaseRecipient snap = new AssignmentGradeReleaseRecipient();
+        snap.setGradeId(88);
+        snap.setStudentUserId(50);
+        when(assignmentGradeReleaseRecipientMapper.selectByGradeId(88)).thenReturn(List.of(snap));
+        when(notificationRecipientResolver.filterCandidateRecipients(eq(course), eq(List.of(50))))
+                .thenReturn(List.of(50));
+
+        UpsertGradeRequest body = new UpsertGradeRequest();
+        body.setScore(new BigDecimal("8.0"));
+
+        assignmentGradingService.upsertGroupGrade(1, 9, 3, 20, body);
+
+        ArgumentCaptor<List> candidates = ArgumentCaptor.forClass(List.class);
+        verify(notificationRecipientResolver).filterCandidateRecipients(eq(course), candidates.capture());
+        assertEquals(List.of(50), candidates.getValue());
+        verify(assignmentGradeReleaseRecipientMapper).selectByGradeId(88);
+        verify(groupMembershipMapper, never()).selectByGroupId(any());
+        verify(assignmentNotificationService).afterCommit(any());
+    }
+
+    @Test
+    void upsertGroupGrade_emptySnapshot_stillInvokesAfterCommitWithEmptyRecipients() {
+        Assignment assignment = groupAssignment();
+        when(assignmentAccessService.requireGradingWritable(1, 20)).thenReturn(new Course());
+        when(assignmentMapper.selectByCourseIdAndId(1, 9)).thenReturn(assignment);
+        when(groupAccessService.requireGroupInSet(1, 5, 3)).thenReturn(new CourseGroup());
+
+        AssignmentGrade existing = releasedGroupGrade(88);
+        existing.setScore(new BigDecimal("5.0"));
+        when(assignmentGradeMapper.selectByAssignmentIdAndGroupId(9, 3)).thenReturn(existing);
+        when(assignmentSubmissionMapper.selectByAssignmentIdAndGroupId(9, 3)).thenReturn(null);
+        when(assignmentTimeSupport.nowUtc()).thenReturn(LocalDateTime.of(2026, 7, 1, 0, 0));
+        when(assignmentAuditService.write(eq(1), eq(9), eq(20), any(), anyMap())).thenReturn(11);
+
+        Course course = new Course();
+        course.setId(1);
+        when(assignmentAccessService.requireCourse(1)).thenReturn(course);
+        when(assignmentGradeReleaseRecipientMapper.selectByGradeId(88)).thenReturn(Collections.emptyList());
+        when(notificationRecipientResolver.filterCandidateRecipients(eq(course), eq(List.of())))
+                .thenReturn(List.of());
+
+        UpsertGradeRequest body = new UpsertGradeRequest();
+        body.setScore(new BigDecimal("8.0"));
+
+        assignmentGradingService.upsertGroupGrade(1, 9, 3, 20, body);
+
+        verify(notificationRecipientResolver).filterCandidateRecipients(eq(course), eq(List.of()));
+        verify(assignmentNotificationService).afterCommit(any());
+    }
+
+    @Test
+    void uploadGroupAnnotatedFile_releasedCorrection_usesExistingIdSnapshot() {
+        Assignment assignment = groupAssignment();
+        when(assignmentAccessService.requireGradingWritable(1, 20)).thenReturn(new Course());
+        when(assignmentMapper.selectByCourseIdAndId(1, 9)).thenReturn(assignment);
+        when(groupAccessService.requireGroupInSet(1, 5, 3)).thenReturn(new CourseGroup());
+
+        AssignmentGrade existing = releasedGroupGrade(88);
+        existing.setAnnotatedObjectKey("old-key");
+        when(assignmentGradeMapper.selectByAssignmentIdAndGroupId(9, 3)).thenReturn(existing);
+
+        MockMultipartFile file = new MockMultipartFile("file", "a.pdf", "application/pdf", new byte[]{1});
+        when(assignmentFilePolicy.annotatedGroupKey(1, 9, 3, "a.pdf")).thenReturn("new-key");
+        when(assignmentFilePolicy.sanitizeFilename("a.pdf")).thenReturn("a.pdf");
+        when(assignmentAuditService.write(eq(1), eq(9), eq(20), any(), anyMap())).thenReturn(11);
+
+        Course course = new Course();
+        course.setId(1);
+        when(assignmentAccessService.requireCourse(1)).thenReturn(course);
+
+        AssignmentGradeReleaseRecipient snap = new AssignmentGradeReleaseRecipient();
+        snap.setStudentUserId(50);
+        when(assignmentGradeReleaseRecipientMapper.selectByGradeId(88)).thenReturn(List.of(snap));
+        when(notificationRecipientResolver.filterCandidateRecipients(eq(course), eq(List.of(50))))
+                .thenReturn(List.of(50));
+
+        assignmentGradingService.uploadGroupAnnotatedFile(1, 9, 3, 20, file);
+
+        verify(assignmentGradeReleaseRecipientMapper).selectByGradeId(88);
+        verify(notificationRecipientResolver).filterCandidateRecipients(eq(course), eq(List.of(50)));
+        verify(groupMembershipMapper, never()).selectByGroupId(any());
+        verify(assignmentNotificationService).afterCommit(any());
+    }
+
+    private static Assignment groupAssignment() {
+        Assignment assignment = new Assignment();
+        assignment.setId(9);
+        assignment.setCourseId(1);
+        assignment.setSubmissionType(AssignmentAccessService.SUBMISSION_TYPE_GROUP);
+        assignment.setGroupSetId(5);
+        assignment.setPointsPossible(new BigDecimal("10.0"));
+        assignment.setTitle("Group HW");
+        return assignment;
+    }
+
+    private static AssignmentGrade releasedGroupGrade(Integer id) {
+        AssignmentGrade grade = new AssignmentGrade();
+        grade.setId(id);
+        grade.setAssignmentId(9);
+        grade.setGroupId(3);
+        grade.setStatus(AssignmentGradingService.GRADE_RELEASED);
+        return grade;
+    }
+}

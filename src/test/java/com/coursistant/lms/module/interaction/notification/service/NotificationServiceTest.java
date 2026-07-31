@@ -31,6 +31,9 @@ class NotificationServiceTest {
     @Mock
     private UserMapper userMapper;
 
+    @Mock
+    private NotificationTimeSupport notificationTimeSupport;
+
     @InjectMocks
     private NotificationService notificationService;
 
@@ -61,6 +64,7 @@ class NotificationServiceTest {
         existing.setTenantId(1);
         existing.setReadAt(null);
         when(userNotificationMapper.selectByIdForRecipient(99, 1, 10)).thenReturn(existing);
+        when(notificationTimeSupport.nowUtc()).thenReturn(java.time.LocalDateTime.of(2026, 7, 1, 12, 0, 0));
 
         notificationService.markRead(10, 99);
 

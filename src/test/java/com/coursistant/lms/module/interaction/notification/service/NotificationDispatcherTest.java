@@ -23,12 +23,16 @@ class NotificationDispatcherTest {
     @Mock
     private NotificationWriteService notificationWriteService;
 
+    @Mock
+    private NotificationTimeSupport notificationTimeSupport;
+
     @InjectMocks
     private NotificationDispatcher notificationDispatcher;
 
     @Test
     void dispatchAsync_chunks501RecipientsIntoTwoInserts() {
         when(notificationWriteService.insertChunk(anyList())).thenReturn(500);
+        when(notificationTimeSupport.nowUtc()).thenReturn(java.time.LocalDateTime.of(2026, 1, 1, 0, 0, 0));
 
         List<Integer> recipients = new ArrayList<>();
         for (int i = 1; i <= 501; i++) {

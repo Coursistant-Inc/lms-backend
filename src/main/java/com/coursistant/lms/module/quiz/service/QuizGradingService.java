@@ -8,6 +8,7 @@ import com.coursistant.lms.module.interaction.notification.enums.SubjectType;
 import com.coursistant.lms.module.interaction.notification.service.NotificationCommitHook;
 import com.coursistant.lms.module.interaction.notification.service.NotificationMessageFactory;
 import com.coursistant.lms.module.interaction.notification.service.NotificationRecipientResolver;
+import com.coursistant.lms.module.interaction.notification.service.NotificationTimeSupport;
 import com.coursistant.lms.module.quiz.dto.grading.GradeAnswerRequest;
 import com.coursistant.lms.module.quiz.dto.grading.GradingSummaryResponse;
 import com.coursistant.lms.module.quiz.dto.grading.ReleaseGradesRequest;
@@ -57,6 +58,9 @@ public class QuizGradingService {
     private NotificationMessageFactory notificationMessageFactory;
     @Resource
     private NotificationCommitHook notificationCommitHook;
+
+    @Resource
+    private NotificationTimeSupport notificationTimeSupport;
 
     public GradingSummaryResponse summary(Integer courseId, Integer quizId, Integer userId) {
         quizAccessService.requireGradingAccess(courseId, quizId, userId);
@@ -110,8 +114,11 @@ public class QuizGradingService {
             throw new ApiException(ErrorType.QUIZ_ANSWER_INVALID);
         }
         QuizGrade grade = quizGradeMapper.selectByQuizIdAndUserId(quizId, attempt.getUserId());
-        boolean released = grade != null && QuizConstants.GRADE_RELEASED.equals(grade.getStatus());
-        if (released) {
+        boolean releasedCountedAttempt =
+                grade != null
+                        && QuizConstants.GRADE_RELEASED.equals(grade.getStatus())
+                        && Objects.equals(attempt.getId(), grade.getCountedAttemptId());
+        if (releasedCountedAttempt) {
             quizAccessService.requireInstructor(courseId, userId);
             if (body.getReason() == null || body.getReason().isBlank()) {
                 throw new ApiException(ErrorType.BAD_REQUEST, "Reason required to change released score");
@@ -148,7 +155,7 @@ public class QuizGradingService {
             audit.setCreatedAt(now);
             quizScoreAuditMapper.insert(audit);
 
-            if (released) {
+            if (releasedCountedAttempt) {
                 dispatchQuizGradeCorrected(courseId, quizId, attempt.getUserId(), audit.getId(), now);
             }
         }
@@ -197,7 +204,7 @@ public class QuizGradingService {
                 payload.setEventKey("release:" + auditId);
                 payload.setDeepLink("/courses/" + courseId + "/quizzes/" + quizId + "/my-grade");
                 payload.setRecipientIds(recipients);
-                payload.setCreatedAt(LocalDateTime.now());
+                payload.setCreatedAt(notificationTimeSupport.nowUtc());
                 notificationCommitHook.afterCommitDispatch(payload);
             }
         }
@@ -233,7 +240,7 @@ public class QuizGradingService {
         payload.setEventKey("correct:" + scoreAuditId);
         payload.setDeepLink("/courses/" + courseId + "/quizzes/" + quizId + "/my-grade");
         payload.setRecipientIds(recipients);
-        payload.setCreatedAt(createdAt != null ? createdAt : LocalDateTime.now());
+        payload.setCreatedAt(createdAt != null ? createdAt : notificationTimeSupport.nowUtc());
         notificationCommitHook.afterCommitDispatch(payload);
     }
 

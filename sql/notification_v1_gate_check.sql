@@ -1,5 +1,6 @@
 -- Gate checks after running notification_v1.sql
--- Expect: orphan_remaining=0, uk_notification_dedupe present, legacy event_key on old rows
+-- Expect: orphan_remaining=0, uk_notification_dedupe present, legacy event_key on old rows,
+--         legacy columns event_type/ref_id/title absent
 
 SELECT COUNT(*) AS orphan_remaining FROM user_notification WHERE tenant_id IS NULL;
 
@@ -12,3 +13,10 @@ WHERE table_schema = DATABASE()
 SELECT COUNT(*) AS legacy_keys
 FROM user_notification
 WHERE event_key LIKE 'legacy:%';
+
+SELECT COUNT(*) AS legacy_columns_remaining
+FROM information_schema.columns
+WHERE table_schema = DATABASE()
+  AND table_name = 'user_notification'
+  AND column_name IN ('event_type', 'ref_id', 'title');
+-- Expect: legacy_columns_remaining = 0

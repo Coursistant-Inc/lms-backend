@@ -7,6 +7,8 @@ import com.coursistant.lms.module.course.enrollment.repository.EnrollmentMapper;
 import com.coursistant.lms.module.user.account.entity.User;
 import com.coursistant.lms.module.user.account.repository.UserMapper;
 import jakarta.annotation.Resource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -18,9 +20,12 @@ import java.util.Set;
 /**
  * Resolves / filters notification recipients in the business transaction.
  * Active Student only; course not archived; user exists; tenant matches course.
+ * Fail-open: mapper/DB failures return empty recipients so core business TX still commits.
  */
 @Component
 public class NotificationRecipientResolver {
+
+    private static final Logger log = LoggerFactory.getLogger(NotificationRecipientResolver.class);
 
     @Resource
     private CourseMapper courseMapper;
@@ -32,6 +37,28 @@ public class NotificationRecipientResolver {
     private UserMapper userMapper;
 
     public List<Integer> resolveActiveStudentRecipients(Integer courseId) {
+        try {
+            return resolveActiveStudentRecipientsInternal(courseId);
+        } catch (Exception e) {
+            log.warn("Notification recipient resolve failed; skipping notifications. courseId={}",
+                    courseId, e);
+            return Collections.emptyList();
+        }
+    }
+
+    public List<Integer> filterCandidateRecipients(Course course, List<Integer> candidateIds) {
+        try {
+            return filterCandidateRecipientsInternal(course, candidateIds);
+        } catch (Exception e) {
+            Integer courseId = course != null ? course.getId() : null;
+            int candidateSize = candidateIds == null ? 0 : candidateIds.size();
+            log.warn("Notification recipient filter failed; skipping notifications. courseId={} candidateSize={}",
+                    courseId, candidateSize, e);
+            return Collections.emptyList();
+        }
+    }
+
+    private List<Integer> resolveActiveStudentRecipientsInternal(Integer courseId) {
         if (courseId == null) {
             return Collections.emptyList();
         }
@@ -49,10 +76,10 @@ public class NotificationRecipientResolver {
                 candidateIds.add(enrollment.getUserId());
             }
         }
-        return filterCandidateRecipients(course, candidateIds);
+        return filterCandidateRecipientsInternal(course, candidateIds);
     }
 
-    public List<Integer> filterCandidateRecipients(Course course, List<Integer> candidateIds) {
+    private List<Integer> filterCandidateRecipientsInternal(Course course, List<Integer> candidateIds) {
         if (!isEligibleCourse(course) || candidateIds == null || candidateIds.isEmpty()) {
             return Collections.emptyList();
         }

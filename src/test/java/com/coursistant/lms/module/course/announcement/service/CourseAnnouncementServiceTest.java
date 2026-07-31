@@ -14,6 +14,7 @@ import com.coursistant.lms.module.interaction.notification.enums.SubjectType;
 import com.coursistant.lms.module.interaction.notification.service.NotificationCommitHook;
 import com.coursistant.lms.module.interaction.notification.service.NotificationMessageFactory;
 import com.coursistant.lms.module.interaction.notification.service.NotificationRecipientResolver;
+import com.coursistant.lms.module.interaction.notification.service.NotificationTimeSupport;
 import com.coursistant.lms.module.user.account.entity.User;
 import com.coursistant.lms.module.user.account.repository.UserMapper;
 import com.coursistant.lms.shared.api.ApiException;
@@ -65,6 +66,9 @@ class CourseAnnouncementServiceTest {
     @Mock
     private NotificationCommitHook notificationCommitHook;
 
+    @Mock
+    private NotificationTimeSupport notificationTimeSupport;
+
     @InjectMocks
     private CourseAnnouncementService courseAnnouncementService;
 
@@ -100,6 +104,7 @@ class CourseAnnouncementServiceTest {
         when(notificationRecipientResolver.resolveActiveStudentRecipients(17))
                 .thenReturn(new ArrayList<>(List.of(10, 385, 50)));
         when(notificationMessageFactory.announcementPosted("Hello")).thenReturn("New announcement: Hello");
+        when(notificationTimeSupport.nowUtc()).thenReturn(java.time.LocalDateTime.of(2026, 7, 1, 12, 0, 0));
         doNothing().when(notificationCommitHook).afterCommitDispatch(any());
 
         CreateAnnouncementRequest request = new CreateAnnouncementRequest();
@@ -124,6 +129,55 @@ class CourseAnnouncementServiceTest {
         assertEquals("/courses/17/announcements/99", payload.getDeepLink());
         assertEquals(List.of(385, 50), payload.getRecipientIds());
         assertFalse(payload.getRecipientIds().contains(10));
+    }
+
+    @Test
+    void create_whenResolverReturnsEmpty_stillSucceedsWithoutFailingBusiness() {
+        Course course = new Course();
+        course.setId(17);
+        course.setTenantId(3);
+        course.setState("Active");
+        when(courseMapper.selectById(17)).thenReturn(course);
+        doNothing().when(coursePermissionService).requireCanPostAnnouncements(17, 10);
+
+        User user = new User();
+        user.setId(10);
+        user.setName("Teacher");
+        when(userMapper.selectById(10)).thenReturn(user);
+
+        when(courseAnnouncementMapper.insert(any(CourseAnnouncement.class))).thenAnswer(invocation -> {
+            CourseAnnouncement a = invocation.getArgument(0);
+            a.setId(99);
+            return 1;
+        });
+        when(courseAnnouncementMapper.selectById(99)).thenAnswer(invocation -> {
+            CourseAnnouncement a = new CourseAnnouncement();
+            a.setId(99);
+            a.setCourseId(17);
+            a.setTitle("Hello");
+            a.setBodyHtml("Body");
+            a.setAuthorUserId(10);
+            a.setAuthorName("Teacher");
+            return a;
+        });
+        when(notificationRecipientResolver.resolveActiveStudentRecipients(17))
+                .thenReturn(List.of());
+        when(notificationMessageFactory.announcementPosted("Hello")).thenReturn("New announcement: Hello");
+        when(notificationTimeSupport.nowUtc()).thenReturn(java.time.LocalDateTime.of(2026, 7, 1, 12, 0, 0));
+        doNothing().when(notificationCommitHook).afterCommitDispatch(any());
+
+        CreateAnnouncementRequest request = new CreateAnnouncementRequest();
+        request.setTitle("Hello");
+        request.setBody("Body");
+
+        AnnouncementResponse response = courseAnnouncementService.create(17, 10, request);
+        assertNotNull(response);
+        assertEquals(99, response.getId());
+
+        ArgumentCaptor<NotificationDispatchPayload> captor =
+                ArgumentCaptor.forClass(NotificationDispatchPayload.class);
+        verify(notificationCommitHook).afterCommitDispatch(captor.capture());
+        assertEquals(List.of(), captor.getValue().getRecipientIds());
     }
 
     @Test

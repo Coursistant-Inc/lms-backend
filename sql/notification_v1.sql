@@ -92,3 +92,41 @@ ALTER TABLE user_notification
   ),
   ADD KEY idx_notification_recipient_created (tenant_id, recipient_user_id, created_at, id),
   ADD KEY idx_notification_recipient_unread (tenant_id, recipient_user_id, read_at);
+
+-- ---------------------------------------------------------------------------
+-- 7) Drop legacy columns (event_type / ref_id / title)
+-- Idempotent: full leftover, partial leftover (1–2 columns), or already dropped.
+-- Run with mysql CLI (DELIMITER required). Do not execute via JDBC Statement/ScriptUtils.
+-- ---------------------------------------------------------------------------
+DROP PROCEDURE IF EXISTS drop_user_notification_legacy_columns;
+DELIMITER //
+CREATE PROCEDURE drop_user_notification_legacy_columns()
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = DATABASE()
+      AND table_name = 'user_notification'
+      AND column_name = 'event_type'
+  ) THEN
+    ALTER TABLE user_notification DROP COLUMN event_type;
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = DATABASE()
+      AND table_name = 'user_notification'
+      AND column_name = 'ref_id'
+  ) THEN
+    ALTER TABLE user_notification DROP COLUMN ref_id;
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = DATABASE()
+      AND table_name = 'user_notification'
+      AND column_name = 'title'
+  ) THEN
+    ALTER TABLE user_notification DROP COLUMN title;
+  END IF;
+END //
+DELIMITER ;
+CALL drop_user_notification_legacy_columns();
+DROP PROCEDURE IF EXISTS drop_user_notification_legacy_columns;

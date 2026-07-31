@@ -12,7 +12,6 @@ import com.coursistant.lms.shared.api.ErrorType;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -27,6 +26,9 @@ public class NotificationService {
 
     @Resource
     private UserMapper userMapper;
+
+    @Resource
+    private NotificationTimeSupport notificationTimeSupport;
 
     public NotificationPageResponse list(Integer userId, Integer page, Integer size) {
         Integer tenantId = requireTenantId(userId);
@@ -63,12 +65,12 @@ public class NotificationService {
         if (existing.getReadAt() != null) {
             return;
         }
-        userNotificationMapper.markRead(notificationId, tenantId, userId, LocalDateTime.now());
+        userNotificationMapper.markRead(notificationId, tenantId, userId, notificationTimeSupport.nowUtc());
     }
 
     public UnreadCountResponse markAllRead(Integer userId) {
         Integer tenantId = requireTenantId(userId);
-        userNotificationMapper.markAllRead(tenantId, userId, LocalDateTime.now());
+        userNotificationMapper.markAllRead(tenantId, userId, notificationTimeSupport.nowUtc());
         return new UnreadCountResponse(0);
     }
 

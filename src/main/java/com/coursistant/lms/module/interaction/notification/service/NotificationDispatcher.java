@@ -25,6 +25,9 @@ public class NotificationDispatcher {
     @Resource
     private NotificationWriteService notificationWriteService;
 
+    @Resource
+    private NotificationTimeSupport notificationTimeSupport;
+
     @Async("notificationExecutor")
     public void dispatchAsync(NotificationDispatchPayload payload) {
         if (payload == null) {
@@ -70,7 +73,9 @@ public class NotificationDispatcher {
                     payload.getEventKey());
             return rows;
         }
-        LocalDateTime createdAt = payload.getCreatedAt() != null ? payload.getCreatedAt() : LocalDateTime.now();
+        LocalDateTime createdAt = payload.getCreatedAt() != null
+                ? payload.getCreatedAt()
+                : notificationTimeSupport.nowUtc();
         String type = payload.getNotificationType().name();
         String subjectType = payload.getSubjectType().name();
         for (Integer recipientId : recipientIds) {
