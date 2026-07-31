@@ -1,8 +1,6 @@
 package com.coursistant.lms.module.auth.session.controller;
 
-import com.coursistant.lms.module.auth.session.controller.WebController;
 import com.coursistant.lms.module.auth.token.dto.RefreshResult;
-import com.coursistant.lms.module.chat.service.CoursistanceService;
 import com.coursistant.lms.module.auth.admin.service.AdminService;
 import com.coursistant.lms.module.auth.token.service.RefreshTokenService;
 import com.coursistant.lms.module.user.account.service.UserService;
@@ -35,8 +33,6 @@ class WebControllerTokenTest {
     private AdminService adminService;
     @Mock
     private UserService userService;
-    @Mock
-    private CoursistanceService coursistanceService;
     @Mock
     private RefreshTokenService refreshTokenService;
     @Mock

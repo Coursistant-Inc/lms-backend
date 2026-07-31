@@ -62,7 +62,6 @@ public enum ResultCodeEnum {
     TEACH_NOT_EXIST_ERROR("4040", "Teach Relation Not Exist"),
     LEARN_NOT_EXIST_ERROR("4041", "Learn Relation Not Exist"),
     COURSE_NOT_EXIST_ERROR("4042", "Course Not Exist"),
-    CHAT_NOT_EXIST_ERROR("4043", "Chat Not Exist"),
     INVITATION_NOT_EXIST_ERROR("4044", "Invitation Not Exist"),
     ASSIGNMENT_NOT_EXIST_ERROR("4045", "Assignment Not Exist"),
     SUBMISSION_NOT_EXIST_ERROR("4046", "Submission Not Exist"),

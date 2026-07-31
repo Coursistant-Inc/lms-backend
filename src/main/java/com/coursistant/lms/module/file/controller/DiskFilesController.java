@@ -12,7 +12,6 @@ import org.springframework.web.multipart.MultipartFile;
 import jakarta.annotation.Resource;
 import java.util.List;
 import java.util.logging.Logger;
-import com.coursistant.lms.module.chat.entity.Query;
 
 /**
  * 磁盘文件前端操作接口

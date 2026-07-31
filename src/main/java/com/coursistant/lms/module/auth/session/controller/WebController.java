@@ -12,16 +12,11 @@ import com.coursistant.lms.module.user.account.entity.Account;
 import com.coursistant.lms.module.auth.admin.dto.PasswordDTO;
 import com.coursistant.lms.module.auth.session.dto.AuthResult;
 import com.coursistant.lms.module.auth.token.dto.RefreshResult;
-import com.coursistant.lms.module.chat.entity.Query;
-import com.coursistant.lms.module.chat.service.CoursistanceService;
 import com.coursistant.lms.module.auth.admin.service.AdminService;
 import com.coursistant.lms.module.user.account.service.UserService;
-import com.coursistant.lms.shared.util.TimeZoneUtils;
 import com.coursistant.lms.shared.idempotency.Idempotent;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.Cookie;
@@ -31,15 +26,11 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 
-import java.io.File;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.concurrent.TimeUnit;
-import java.time.ZoneId;
 
 /**
  * Auth session endpoints under /v1/auth.
- * Health check is at /v1; /query is kept at root until moved to chat module.
+ * Health check is at /v1.
  */
 @Slf4j
 @RestController
@@ -49,8 +40,6 @@ public class WebController {
     private AdminService adminService;
     @Resource
     private UserService userService;
-    @Resource
-    private CoursistanceService coursistanceService;
     @Resource
     private RefreshTokenService refreshTokenService;
     @Resource
@@ -204,55 +193,6 @@ public class WebController {
         }
         userService.resetPassword(dto.getEmail(), dto.getNewPassword());
         return ApiResponse.success();
-    }
-
-    /**
-     * Chat query — kept at /query until moved to chat module.
-     */
-    @PostMapping(value = "/query", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ApiResponse<Query> query(@RequestParam(value = "file", required = false) MultipartFile file,
-                        @RequestParam("courseId") Integer courseId,
-                        @RequestParam("query") String query,
-                        @RequestParam("dialogueId") Integer dialogueId,
-                        @RequestParam("userId") Integer userId,
-                        @RequestHeader(value = "X-Timezone", required = false) String timezone) {
-
-        String savedFilePath = "N/A";
-
-        try {
-            if (file != null && !file.isEmpty()) {
-                String datePath = new SimpleDateFormat("yyyy/MM/dd").format(new Date());
-                String baseDir = "/home/ubuntu/SpringBoot/saved_images/query_images";
-                String uploadDir = baseDir + datePath + "/";
-                File dir = new File(uploadDir);
-                if (!dir.exists() && !dir.mkdirs()) {
-                    throw new RuntimeException("Failed to create directory: " + uploadDir);
-                }
-
-                String fileName = System.currentTimeMillis() + "_" + file.getOriginalFilename();
-                File destFile = new File(uploadDir + fileName);
-
-                file.transferTo(destFile);
-                savedFilePath = destFile.getAbsolutePath();
-
-                log.info("File saved at: {}", savedFilePath);
-            }
-        } catch (Exception e) {
-            log.error("Error saving file: {}", e.getMessage());
-        }
-
-        log.info("Start {}: {}", "query", String.format("filePath=%s, courseId=%s, query=%s, dialogueId=%d",
-                savedFilePath, courseId, query, dialogueId));
-        Query re_query;
-        System.out.println(query);
-        ZoneId zone = TimeZoneUtils.resolveZoneId(timezone);
-        if (file != null && !file.isEmpty()) {
-            re_query = coursistanceService.query(new File(savedFilePath), courseId, query, dialogueId, userId, zone);
-        } else {
-            re_query = coursistanceService.query(null, courseId, query, dialogueId, userId, zone);
-        }
-        log.info("End {}: {}", "query", re_query.toString());
-        return ApiResponse.success(re_query);
     }
 
     private void setRefreshTokenCookie(HttpServletResponse response, String refreshToken) {

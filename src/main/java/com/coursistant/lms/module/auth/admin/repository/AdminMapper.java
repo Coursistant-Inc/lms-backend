@@ -4,7 +4,6 @@ import com.coursistant.lms.module.auth.admin.entity.Admin;
 import org.apache.ibatis.annotations.Select;
 
 import java.util.List;
-import com.coursistant.lms.module.chat.entity.Query;
 
 /**
  * 操作 admin 相关数据接口

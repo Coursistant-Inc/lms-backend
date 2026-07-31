@@ -6,7 +6,6 @@ import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
 import java.util.List;
-import com.coursistant.lms.module.chat.entity.Query;
 
 
 /**

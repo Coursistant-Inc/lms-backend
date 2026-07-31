@@ -5,7 +5,6 @@ import java.util.List;
 import org.apache.ibatis.annotations.Select;
 
 import com.coursistant.lms.module.user.account.entity.User;
-import com.coursistant.lms.module.chat.entity.Query;
 
 /**
  * 操作 user 相关数据接口

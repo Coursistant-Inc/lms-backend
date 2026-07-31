@@ -24,7 +24,6 @@ import org.springframework.data.redis.core.RedisTemplate;
 
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
-import com.coursistant.lms.module.chat.entity.Query;
 import com.coursistant.lms.module.user.account.entity.User;
 
 /**
