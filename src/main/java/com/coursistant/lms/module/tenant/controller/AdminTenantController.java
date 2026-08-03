@@ -1,14 +1,12 @@
 package com.coursistant.lms.module.tenant.controller;
 
-import com.coursistant.lms.module.course.enrollment.service.CoursePermissionService;
 import com.coursistant.lms.module.tenant.dto.CreateTenantRequest;
 import com.coursistant.lms.module.tenant.dto.PatchTenantRequest;
 import com.coursistant.lms.module.tenant.dto.TenantResponse;
 import com.coursistant.lms.module.tenant.service.TenantService;
-import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.shared.api.ApiResponse;
-import com.coursistant.lms.shared.api.ErrorType;
 import com.coursistant.lms.shared.idempotency.Idempotent;
+import com.coursistant.lms.shared.security.AuthzService;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -30,24 +28,25 @@ public class AdminTenantController {
     private TenantService tenantService;
 
     @Resource
-    private CoursePermissionService coursePermissionService;
+    private AuthzService authzService;
 
     @GetMapping
     public ApiResponse<List<TenantResponse>> list(HttpServletRequest request) {
-        requireAdmin(request);
+        // Platform administrative: SYSTEM_ADMIN only
+        authzService.requireSystemAdmin(request);
         return ApiResponse.success(tenantService.list());
     }
 
     @GetMapping("/{id}")
     public ApiResponse<TenantResponse> get(HttpServletRequest request, @PathVariable Integer id) {
-        requireAdmin(request);
+        authzService.requireSystemAdmin(request);
         return ApiResponse.success(tenantService.getById(id));
     }
 
     @Idempotent
     @PostMapping
     public ApiResponse<TenantResponse> create(HttpServletRequest request, @RequestBody CreateTenantRequest body) {
-        requireAdmin(request);
+        authzService.requireSystemAdmin(request);
         return ApiResponse.success(tenantService.create(body));
     }
 
@@ -56,21 +55,15 @@ public class AdminTenantController {
     public ApiResponse<TenantResponse> patch(HttpServletRequest request,
                                              @PathVariable Integer id,
                                              @RequestBody PatchTenantRequest body) {
-        requireAdmin(request);
+        authzService.requireSystemAdmin(request);
         return ApiResponse.success(tenantService.patch(id, body));
     }
 
     @Idempotent
     @DeleteMapping("/{id}")
     public ApiResponse<Void> delete(HttpServletRequest request, @PathVariable Integer id) {
-        requireAdmin(request);
+        authzService.requireSystemAdmin(request);
         tenantService.delete(id);
         return ApiResponse.success();
-    }
-
-    private void requireAdmin(HttpServletRequest request) {
-        if (!coursePermissionService.isAdmin(request)) {
-            throw new ApiException(ErrorType.ACCESS_DENIED, "Admin role required");
-        }
     }
 }

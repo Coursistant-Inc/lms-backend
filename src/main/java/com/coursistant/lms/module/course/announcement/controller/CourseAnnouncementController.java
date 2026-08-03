@@ -40,7 +40,7 @@ public class CourseAnnouncementController {
     public ApiResponse<List<AnnouncementSummaryResponse>> list(HttpServletRequest request,
                                                                @PathVariable Integer courseId) {
         Integer userId = currentUserId(request);
-        if (!coursePermissionService.isAdmin(request)) {
+        if (!coursePermissionService.isSystemAdmin(request)) {
             coursePermissionService.requireActiveEnrollment(courseId, userId);
         }
         return ApiResponse.success(courseAnnouncementService.listByCourse(courseId, userId));
@@ -51,7 +51,7 @@ public class CourseAnnouncementController {
                                                  @PathVariable Integer courseId,
                                                  @PathVariable Integer announcementId) {
         Integer userId = currentUserId(request);
-        if (!coursePermissionService.isAdmin(request)) {
+        if (!coursePermissionService.isSystemAdmin(request)) {
             coursePermissionService.requireActiveEnrollment(courseId, userId);
         }
         return ApiResponse.success(courseAnnouncementService.getById(courseId, announcementId, userId));

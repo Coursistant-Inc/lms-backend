@@ -68,7 +68,7 @@ public class CourseContentAccessService {
      * (TA / Student) see Published only. Non-admin callers must be actively enrolled.
      */
     public boolean resolveInstructorView(HttpServletRequest request, Integer courseId, Integer userId) {
-        if (coursePermissionService.isAdmin(request)) {
+        if (coursePermissionService.isSystemAdmin(request)) {
             return true;
         }
         coursePermissionService.requireActiveEnrollment(courseId, userId);

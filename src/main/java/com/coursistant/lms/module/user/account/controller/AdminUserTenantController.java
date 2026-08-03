@@ -1,6 +1,5 @@
 package com.coursistant.lms.module.user.account.controller;
 
-import com.coursistant.lms.module.course.enrollment.service.CoursePermissionService;
 import com.coursistant.lms.module.user.account.dto.PatchUserTenantRequest;
 import com.coursistant.lms.module.user.account.entity.User;
 import com.coursistant.lms.module.user.account.service.UserService;
@@ -8,6 +7,7 @@ import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.shared.api.ApiResponse;
 import com.coursistant.lms.shared.api.ErrorType;
 import com.coursistant.lms.shared.idempotency.Idempotent;
+import com.coursistant.lms.shared.security.AuthzService;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -24,16 +24,15 @@ public class AdminUserTenantController {
     private UserService userService;
 
     @Resource
-    private CoursePermissionService coursePermissionService;
+    private AuthzService authzService;
 
     @Idempotent
     @PatchMapping("/{id}/tenant")
     public ApiResponse<User> changeTenant(HttpServletRequest request,
                                           @PathVariable Integer id,
                                           @RequestBody PatchUserTenantRequest body) {
-        if (!coursePermissionService.isAdmin(request)) {
-            throw new ApiException(ErrorType.ACCESS_DENIED, "Admin role required");
-        }
+        // Platform administrative tenant migration
+        authzService.requireSystemAdmin(request);
         if (body == null || body.getTenantId() == null) {
             throw new ApiException(ErrorType.PARAM_MISSING, "tenantId is required");
         }

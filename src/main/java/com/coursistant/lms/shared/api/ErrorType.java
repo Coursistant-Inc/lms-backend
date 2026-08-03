@@ -19,6 +19,10 @@ public enum ErrorType {
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "User Does Not Exist"),
     INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "Invalid email or password"),
     ACCOUNT_LOCKED(HttpStatus.LOCKED, "Account is locked"),
+    ACCOUNT_DISABLED(HttpStatus.FORBIDDEN, "Account is disabled"),
+    PASSWORD_CHANGE_REQUIRED(HttpStatus.FORBIDDEN, "Password change required"),
+    ENROLLMENT_ROLE_FORBIDDEN(HttpStatus.FORBIDDEN, "Account cannot be enrolled in courses"),
+    LEVEL_ENROLLMENT_MISMATCH(HttpStatus.CONFLICT, "User level is incompatible with enrollment role"),
 
     // --- Auth: Token ---
     INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "Invalid Access Token"),

@@ -33,19 +33,19 @@ public class CourseSyllabusController {
 
     @GetMapping
     public ApiResponse<SyllabusResponse> get(HttpServletRequest request, @PathVariable Integer courseId) {
-        boolean admin = coursePermissionService.isAdmin(request);
+        boolean admin = coursePermissionService.isSystemAdmin(request);
         return ApiResponse.success(courseSyllabusService.getSyllabus(courseId, currentUserId(request), admin));
     }
 
     @GetMapping("/preview")
     public ResponseEntity<InputStreamResource> preview(HttpServletRequest request, @PathVariable Integer courseId) {
-        boolean admin = coursePermissionService.isAdmin(request);
+        boolean admin = coursePermissionService.isSystemAdmin(request);
         return courseSyllabusService.preview(courseId, currentUserId(request), admin);
     }
 
     @GetMapping("/download")
     public ResponseEntity<InputStreamResource> download(HttpServletRequest request, @PathVariable Integer courseId) {
-        boolean admin = coursePermissionService.isAdmin(request);
+        boolean admin = coursePermissionService.isSystemAdmin(request);
         return courseSyllabusService.download(courseId, currentUserId(request), admin);
     }
 

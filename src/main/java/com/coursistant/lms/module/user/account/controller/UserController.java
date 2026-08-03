@@ -1,9 +1,9 @@
 package com.coursistant.lms.module.user.account.controller;
 
 import java.util.List;
-import java.util.logging.Logger;
 
 import jakarta.annotation.Resource;
+import jakarta.servlet.http.HttpServletRequest;
 
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -11,19 +11,21 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.coursistant.lms.shared.api.ApiResponse;
-import com.coursistant.lms.shared.idempotency.Idempotent;
 import com.coursistant.lms.module.user.account.entity.User;
 import com.coursistant.lms.module.user.account.service.UserService;
+import com.coursistant.lms.shared.api.ApiException;
+import com.coursistant.lms.shared.api.ApiResponse;
+import com.coursistant.lms.shared.api.ErrorType;
+import com.coursistant.lms.shared.security.AuthzService;
 
 /**
- * User frontend operation API
- **/
+ * User read API (SYSTEM_ADMIN only). Write endpoints disabled until Phase 2.
+ * Profile self-service uses dedicated controllers, not this one.
+ */
 @RestController
 @RequestMapping("/v2/users")
 public class UserController {
@@ -31,86 +33,50 @@ public class UserController {
     @Resource
     private UserService userService;
 
-    private static final Logger logger = Logger.getLogger(UserController.class.getName());
-
-    private void logRequest(String methodName, String requestBody) {
-        logger.info(() -> String.format("Start %s: %s", methodName, requestBody));
-    }
-
-    private void logResponse(String methodName, String response) {
-        logger.info(() -> String.format("End %s: %s", methodName, response));
-    }
-
-    @Idempotent
-    @PostMapping
-    public ApiResponse<Void> add(@RequestBody User user) {
-        logRequest("add", user.toString());
-        userService.add(user);
-        logResponse("add", user.toString());
-        return ApiResponse.success();
-    }
-
-    @Idempotent
-    @DeleteMapping("/{id}")
-    public ApiResponse<Void> deleteById(@PathVariable Integer id) {
-        logRequest("deleteById", id.toString());
-        userService.deleteById(id);
-        logResponse("deleteById", id.toString());
-        return ApiResponse.success();
-    }
-
-    @Idempotent
-    @DeleteMapping("/batch")
-    public ApiResponse<Void> deleteBatch(@RequestBody List<Integer> ids) {
-        logRequest("deleteBatch", ids.toString());
-        userService.deleteBatch(ids);
-        logResponse("deleteBatch", ids.toString());
-        return ApiResponse.success();
-    }
-
-    @Idempotent
-    @PutMapping("/{id}")
-    public ApiResponse<Void> updateById(@PathVariable Integer id, @RequestBody User user) {
-        user.setId(id);
-        logRequest("updateById", user.toString());
-        userService.updateById(user);
-        logResponse("updateById", user.toString());
-        return ApiResponse.success();
-    }
+    @Resource
+    private AuthzService authzService;
 
     @GetMapping("/{id}")
-    public ApiResponse<User> selectById(@PathVariable Integer id) {
-        logRequest("selectById", id.toString());
+    public ApiResponse<User> selectById(HttpServletRequest request, @PathVariable Integer id) {
+        authzService.requireSystemAdmin(request);
         User user = userService.selectById(id);
-        logResponse("selectById", user.toString());
         return ApiResponse.success(user);
     }
 
-    /**
-     * List users. Pass role=instructor to return instructors only.
-     */
     @GetMapping
     public ApiResponse<List<User>> selectAll(
+            HttpServletRequest request,
             User user,
             @RequestParam(value = "role", required = false) String role) {
+        authzService.requireSystemAdmin(request);
         if ("instructor".equalsIgnoreCase(role) || "teacher".equalsIgnoreCase(role)) {
-            logRequest("selectTeachers", "role=instructor");
-            List<User> list = userService.selectTeachers();
-            logResponse("selectTeachers", "null");
-            return ApiResponse.success(list);
+            return ApiResponse.success(userService.selectTeachers());
         }
-        logRequest("selectAll", user != null ? user.toString() : "null");
-        List<User> list = userService.selectAll(user);
-        logResponse("selectAll", null);
-        return ApiResponse.success(list);
+        return ApiResponse.success(userService.selectAll(user));
     }
 
-    @Idempotent
+    @PostMapping
+    public ApiResponse<Void> addDisabled() {
+        throw new ApiException(ErrorType.FORBIDDEN, "User write APIs are disabled until secure management APIs ship");
+    }
+
+    @DeleteMapping("/{id}")
+    public ApiResponse<Void> deleteDisabled(@PathVariable Integer id) {
+        throw new ApiException(ErrorType.FORBIDDEN, "User write APIs are disabled until secure management APIs ship");
+    }
+
+    @DeleteMapping("/batch")
+    public ApiResponse<Void> deleteBatchDisabled() {
+        throw new ApiException(ErrorType.FORBIDDEN, "User write APIs are disabled until secure management APIs ship");
+    }
+
+    @PutMapping("/{id}")
+    public ApiResponse<Void> updateDisabled(@PathVariable Integer id) {
+        throw new ApiException(ErrorType.FORBIDDEN, "User write APIs are disabled until secure management APIs ship");
+    }
+
     @PatchMapping("/{id}/password-status")
-    public ApiResponse<Void> markPasswordChanged(@PathVariable Integer id) {
-        logRequest("markPasswordChanged", id.toString());
-        userService.markPasswordChanged(id);
-        logResponse("markPasswordChanged", "User " + id + " must_change_password set to false");
-        return ApiResponse.success();
+    public ApiResponse<Void> passwordStatusDisabled(@PathVariable Integer id) {
+        throw new ApiException(ErrorType.FORBIDDEN, "password-status is disabled; password flows clear mustChangePassword");
     }
 }

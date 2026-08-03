@@ -109,3 +109,10 @@ token:
   private-key-path: private.pem
   public-key-path: public.pem
 
+# Role cutover: set AUTH_JWT_MIN_ISSUED_AT to an ISO-8601 Instant (e.g. 2026-07-28T12:00:00Z)
+# so all Access Tokens issued before that moment are rejected. Rotate private.pem/public.pem
+# at the same maintenance window and keep the new keys on rollback.
+auth:
+  jwt:
+    min-issued-at: ${AUTH_JWT_MIN_ISSUED_AT:}
+

@@ -10,6 +10,7 @@ import com.coursistant.lms.module.course.enrollment.dto.DashboardCourseResponse;
 import com.coursistant.lms.module.course.enrollment.dto.PromoteTaResponse;
 import com.coursistant.lms.module.course.enrollment.dto.UpdateTaPermissionsRequest;
 import com.coursistant.lms.shared.enums.LevelEnum;
+import com.coursistant.lms.shared.enums.RoleEnum;
 import com.coursistant.lms.module.course.enrollment.entity.Enrollment;
 import com.coursistant.lms.module.course.enrollment.entity.EnrollmentAuditLog;
 import com.coursistant.lms.module.course.enrollment.repository.EnrollmentAuditLogMapper;
@@ -82,6 +83,7 @@ public class EnrollmentService {
      */
     @Transactional
     public void createInstructorEnrollment(Integer courseId, Integer instructorUserId) {
+        requireUserForCourseRole(instructorUserId, ROLE_INSTRUCTOR);
         Enrollment enrollment = new Enrollment();
         enrollment.setCourseId(courseId);
         enrollment.setUserId(instructorUserId);
@@ -101,7 +103,7 @@ public class EnrollmentService {
     public MemberResponse adminEnrollStudent(Integer courseId, Integer userId, Integer adminId) {
         Course course = requireCourse(courseId);
         requireNotArchived(course);
-        requireUser(userId);
+        requireUserForCourseRole(userId, ROLE_STUDENT);
 
         Enrollment existing = enrollmentMapper.selectByCourseIdAndUserId(courseId, userId);
         if (existing != null) {
@@ -240,11 +242,7 @@ public class EnrollmentService {
      */
     @Transactional
     public void transferInstructorRole(Integer courseId, Integer oldInstructorUserId, Integer newInstructorUserId, Integer actorId) {
-        requireUser(newInstructorUserId);
-        User newUser = userMapper.selectById(newInstructorUserId);
-        if (!LevelEnum.INSTRUCTOR.level.equalsIgnoreCase(newUser.getLevel())) {
-            throw new ApiException(ErrorType.ACCESS_DENIED, "newInstructorId must have platform level INSTRUCTOR");
-        }
+        requireUserForCourseRole(newInstructorUserId, ROLE_INSTRUCTOR);
         if (oldInstructorUserId.equals(newInstructorUserId)) {
             return;
         }
@@ -523,6 +521,27 @@ public class EnrollmentService {
         User user = userMapper.selectById(userId);
         if (user == null) {
             throw new ApiException(ErrorType.USER_NOT_FOUND);
+        }
+        if (RoleEnum.TENANT_ADMIN.name().equals(user.getRole())
+                || LevelEnum.NOT_APPLICABLE.level.equalsIgnoreCase(user.getLevel())) {
+            throw new ApiException(ErrorType.ENROLLMENT_ROLE_FORBIDDEN);
+        }
+    }
+
+    private void requireUserForCourseRole(Integer userId, String courseRole) {
+        User user = userMapper.selectById(userId);
+        if (user == null) {
+            throw new ApiException(ErrorType.USER_NOT_FOUND);
+        }
+        if (RoleEnum.TENANT_ADMIN.name().equals(user.getRole())
+                || LevelEnum.NOT_APPLICABLE.level.equalsIgnoreCase(user.getLevel())) {
+            throw new ApiException(ErrorType.ENROLLMENT_ROLE_FORBIDDEN);
+        }
+        String expectedLevel = ROLE_INSTRUCTOR.equals(courseRole)
+                ? LevelEnum.INSTRUCTOR.level
+                : LevelEnum.STUDENT.level;
+        if (user.getLevel() == null || !expectedLevel.equalsIgnoreCase(user.getLevel())) {
+            throw new ApiException(ErrorType.LEVEL_ENROLLMENT_MISMATCH);
         }
     }
 

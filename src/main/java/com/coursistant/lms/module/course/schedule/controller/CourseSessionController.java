@@ -34,7 +34,7 @@ public class CourseSessionController {
 
     @GetMapping
     public ApiResponse<List<SessionResponse>> list(HttpServletRequest request, @PathVariable Integer courseId) {
-        if (!coursePermissionService.isAdmin(request)) {
+        if (!coursePermissionService.isSystemAdmin(request)) {
             coursePermissionService.requireActiveEnrollment(courseId, currentUserId(request));
         }
         return ApiResponse.success(courseSessionService.listByCourseId(courseId));
@@ -44,7 +44,7 @@ public class CourseSessionController {
     public ApiResponse<SessionResponse> get(HttpServletRequest request,
                                             @PathVariable Integer courseId,
                                             @PathVariable Integer sessionId) {
-        if (!coursePermissionService.isAdmin(request)) {
+        if (!coursePermissionService.isSystemAdmin(request)) {
             coursePermissionService.requireActiveEnrollment(courseId, currentUserId(request));
         }
         return ApiResponse.success(courseSessionService.getById(courseId, sessionId));

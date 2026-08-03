@@ -47,7 +47,7 @@ public class CourseController {
                                                 @RequestParam(value = "page", required = false) Integer page,
                                                 @RequestParam(value = "size", required = false) Integer size) {
         return ApiResponse.success(courseService.listForBrowse(
-                coursePermissionService.isAdmin(request),
+                coursePermissionService.isSystemAdmin(request),
                 currentUserId(request),
                 q,
                 state,
@@ -58,7 +58,7 @@ public class CourseController {
     @GetMapping("/{id}")
     public ApiResponse<CourseResponse> getById(HttpServletRequest request, @PathVariable Integer id) {
         Integer userId = currentUserId(request);
-        boolean admin = coursePermissionService.isAdmin(request);
+        boolean admin = coursePermissionService.isSystemAdmin(request);
         coursePermissionService.requireUserTenantMatchesCourse(id, userId, admin);
         if (!admin) {
             coursePermissionService.requireActiveEnrollment(id, userId);

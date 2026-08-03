@@ -55,16 +55,24 @@ public class TokenUtils {
     }
 
     public static String createAccessToken(Integer userId, String role) {
-        return JWT.create()
+        return createAccessToken(userId, role, 1, null);
+    }
+
+    public static String createAccessToken(Integer userId, String role, Integer authVersion, Integer tenantSecurityVersion) {
+        var builder = JWT.create()
                 .withSubject(userId.toString())
                 .withClaim("userId", userId)
                 .withClaim("role", role)
                 .withClaim("type", "access")
+                .withClaim("authVersion", authVersion == null ? 1 : authVersion)
                 .withIssuedAt(new Date())
                 .withExpiresAt(DateUtil.offsetHour(new Date(), staticAccessExpireHours))
                 .withAudience("com.coursistant.lms")
-                .withIssuer("https://usc.xlearnedu.com")
-                .sign(Algorithm.RSA256(null, staticPrivateKey));
+                .withIssuer("https://usc.xlearnedu.com");
+        if (tenantSecurityVersion != null) {
+            builder.withClaim("tenantSecurityVersion", tenantSecurityVersion);
+        }
+        return builder.sign(Algorithm.RSA256(null, staticPrivateKey));
     }
 
     /**
@@ -81,10 +89,10 @@ public class TokenUtils {
                 return new Account();
             }
 
-            if (RoleEnum.ADMIN.name().equals(role)) {
+            if (RoleEnum.SYSTEM_ADMIN.name().equals(role)) {
                 return staticAdminService.selectById(userId);
             }
-            if (RoleEnum.USER.name().equals(role)) {
+            if (RoleEnum.USER.name().equals(role) || RoleEnum.TENANT_ADMIN.name().equals(role)) {
                 return staticUserService.selectById(userId);
             }
         } catch (Exception e) {

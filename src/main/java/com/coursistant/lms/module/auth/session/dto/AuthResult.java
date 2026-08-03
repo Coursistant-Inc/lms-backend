@@ -22,4 +22,6 @@ public class AuthResult {
     private String refreshToken;
 
     private String accessToken;
+
+    private Boolean mustChangePassword;
 }

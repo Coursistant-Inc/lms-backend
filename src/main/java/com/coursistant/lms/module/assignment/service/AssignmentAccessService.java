@@ -8,6 +8,8 @@ import com.coursistant.lms.module.course.enrollment.entity.Enrollment;
 import com.coursistant.lms.module.course.enrollment.service.CoursePermissionService;
 import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.shared.api.ErrorType;
+import com.coursistant.lms.shared.enums.RoleEnum;
+import com.coursistant.lms.shared.security.AuthzService;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.stereotype.Service;
@@ -39,6 +41,9 @@ public class AssignmentAccessService {
     @Resource
     private CoursePermissionService coursePermissionService;
 
+    @Resource
+    private AuthzService authzService;
+
     public Course requireCourse(Integer courseId) {
         if (courseId == null) {
             throw new ApiException(ErrorType.BAD_REQUEST, "Course id is required");
@@ -68,7 +73,13 @@ public class AssignmentAccessService {
     }
 
     public boolean isStaffViewer(HttpServletRequest request, Integer courseId, Integer userId) {
-        if (coursePermissionService.isAdmin(request)) {
+        // Administrative read for SYSTEM_ADMIN (any tenant) and TENANT_ADMIN (same tenant)
+        if (coursePermissionService.isSystemAdmin(request)) {
+            return true;
+        }
+        if (authzService.isTenantAdmin(request)) {
+            Course course = requireCourse(courseId);
+            authzService.requireTenantAdminOrSystem(request, course.getTenantId());
             return true;
         }
         Enrollment enrollment = coursePermissionService.requireActiveEnrollment(courseId, userId);
@@ -86,6 +97,14 @@ public class AssignmentAccessService {
         if (!canGrade(courseId, userId)) {
             throw new ApiException(ErrorType.ACCESS_DENIED, "Not permitted to grade assignments");
         }
+    }
+
+    public void requireCanGrade(HttpServletRequest request, Integer courseId, Integer userId) {
+        Object role = request.getAttribute("userRole");
+        if (RoleEnum.SYSTEM_ADMIN.name().equals(role) || RoleEnum.TENANT_ADMIN.name().equals(role)) {
+            throw new ApiException(ErrorType.FORBIDDEN, "Admins cannot perform daily grading");
+        }
+        requireCanGrade(courseId, userId);
     }
 
     public void requireInstructor(Integer courseId, Integer userId) {

@@ -28,10 +28,10 @@ import org.springframework.stereotype.Service;
 import jakarta.annotation.Resource;
 import java.util.List;
 import java.util.Objects;
-import java.util.Random;
+import java.security.SecureRandom;
+import java.util.concurrent.TimeUnit;
 import java.util.ArrayList;
 import java.util.stream.Collectors;
-import java.util.concurrent.TimeUnit;
 
 /**
  * User???? // User business processing
@@ -321,7 +321,7 @@ public class UserService {
         generalRedisTemplate.delete(lockKey);
 
         try {
-            String accessToken = TokenUtils.createAccessToken(dbUser.getId(), RoleEnum.USER.name());
+            String accessToken = TokenUtils.createAccessToken(dbUser.getId(), dbUser.getRole());
             String refreshToken = refreshTokenService.createAndStoreRefreshToken(dbUser.getId(), dbUser.getRole());
             return toAuthResult(dbUser, accessToken, refreshToken);
         } catch (ApiException e) {
@@ -463,7 +463,7 @@ public class UserService {
             return;
         }
 
-        String verificationCode = String.format("%06d", new Random().nextInt(1000000));
+        String verificationCode = String.format("%06d", new SecureRandom().nextInt(1_000_000));
         String redisKey = "email:verification:" + type + ":" + email;
         generalRedisTemplate.opsForValue().set(redisKey, verificationCode, 10, TimeUnit.MINUTES);
 
@@ -511,6 +511,9 @@ public class UserService {
         result.setAvatar(AvatarUrlBuilder.buildStatic(user.getId(), user.getAvatar()));
         result.setAccessToken(accessToken);
         result.setRefreshToken(refreshToken);
+        if (user instanceof User u) {
+            result.setMustChangePassword(Boolean.TRUE.equals(u.getMustChangePassword()));
+        }
         return result;
     }
 

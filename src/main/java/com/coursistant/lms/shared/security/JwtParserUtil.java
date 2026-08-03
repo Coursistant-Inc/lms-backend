@@ -35,6 +35,8 @@ public class JwtParserUtil {
     public DecodedJWT verify(String token) {
         try {
             return JWT.require(Algorithm.RSA256(publicKey, null))
+                    .withIssuer("https://usc.xlearnedu.com")
+                    .withAudience("com.coursistant.lms")
                     .build()
                     .verify(token);
         } catch (Exception e) {

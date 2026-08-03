@@ -6,7 +6,7 @@ import com.coursistant.lms.module.auth.token.service.RefreshTokenService;
 import com.coursistant.lms.shared.api.ApiResponse;
 import com.coursistant.lms.shared.api.ErrorType;
 import com.coursistant.lms.shared.api.ApiException;
-import com.coursistant.lms.shared.enums.RoleEnum;
+import com.coursistant.lms.shared.enums.LoginAccountType;
 import com.coursistant.lms.module.user.account.dto.RegisterRequest;
 import com.coursistant.lms.module.user.account.entity.Account;
 import com.coursistant.lms.module.auth.admin.dto.PasswordDTO;
@@ -57,15 +57,17 @@ public class WebController {
             throw new ApiException(ErrorType.PARAM_MISSING, "Parameter Missing");
         }
 
-        AuthResult result = null;
-        if (RoleEnum.ADMIN.name().equals(account.getRole())) {
-            result = adminService.login(account);
-        }
-        if (RoleEnum.USER.name().equals(account.getRole())) {
-            result = userService.login(account);
+        LoginAccountType accountType = LoginAccountType.fromRequestRole(account.getRole());
+        if (accountType == null) {
+            throw new ApiException(ErrorType.PARAM_MISSING, "Parameter Missing");
         }
 
-        if (result == null) {
+        AuthResult result;
+        if (accountType.routesToAdminTable()) {
+            result = adminService.login(account);
+        } else if (accountType.routesToUserTable()) {
+            result = userService.login(account);
+        } else {
             throw new ApiException(ErrorType.PARAM_MISSING, "Parameter Missing");
         }
 
@@ -176,10 +178,13 @@ public class WebController {
                 || ObjectUtil.isEmpty(account.getNewPassword())) {
             throw new ApiException(ErrorType.PARAM_MISSING, "Parameter Missing");
         }
-        if (RoleEnum.ADMIN.name().equals(account.getRole())) {
-            adminService.updatePassword(account);
+        LoginAccountType accountType = LoginAccountType.fromRequestRole(account.getRole());
+        if (accountType == null) {
+            throw new ApiException(ErrorType.PARAM_MISSING, "Parameter Missing");
         }
-        if (RoleEnum.USER.name().equals(account.getRole())) {
+        if (accountType.routesToAdminTable()) {
+            adminService.updatePassword(account);
+        } else {
             userService.updatePassword(account);
         }
         return ApiResponse.success();

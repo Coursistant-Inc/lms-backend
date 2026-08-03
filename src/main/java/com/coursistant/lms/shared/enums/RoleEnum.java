@@ -1,8 +1,7 @@
 package com.coursistant.lms.shared.enums;
 
 public enum RoleEnum {
-    // 管理员
-    ADMIN,
-    // user
+    SYSTEM_ADMIN,
+    TENANT_ADMIN,
     USER
 }

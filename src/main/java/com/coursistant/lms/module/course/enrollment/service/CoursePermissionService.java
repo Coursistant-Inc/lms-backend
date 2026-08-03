@@ -62,7 +62,7 @@ public class CoursePermissionService {
     }
 
     public void requireUserTenantMatchesCourse(HttpServletRequest request, Integer courseId, Integer userId) {
-        requireUserTenantMatchesCourse(courseId, userId, isAdmin(request));
+        requireUserTenantMatchesCourse(courseId, userId, isSystemAdmin(request));
     }
 
     /**
@@ -216,11 +216,19 @@ public class CoursePermissionService {
 
     /**
      * Reads the {@code userRole} request attribute set by the JWT interceptor and
-     * returns whether the caller is a platform Admin.
+     * returns whether the caller is a platform system admin.
      */
-    public boolean isAdmin(HttpServletRequest request) {
+    public boolean isSystemAdmin(HttpServletRequest request) {
         Object role = request.getAttribute("userRole");
-        return RoleEnum.ADMIN.name().equals(role);
+        return RoleEnum.SYSTEM_ADMIN.name().equals(role);
+    }
+
+    /**
+     * @deprecated Use {@link #isSystemAdmin(HttpServletRequest)} instead.
+     */
+    @Deprecated
+    public boolean isAdmin(HttpServletRequest request) {
+        return isSystemAdmin(request);
     }
 
     private boolean hasActiveRole(Integer courseId, Integer userId, String role) {

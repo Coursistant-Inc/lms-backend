@@ -61,13 +61,29 @@ public class QuizAccessService {
     }
 
     public boolean isStaffViewer(HttpServletRequest request, Integer courseId, Integer userId) {
-        if (coursePermissionService.isAdmin(request)) {
+        if (coursePermissionService.isSystemAdmin(request)) {
             return true;
         }
         Enrollment enrollment = coursePermissionService.requireActiveEnrollment(courseId, userId);
         String role = enrollment.getCourseRole();
         return CoursePermissionService.ROLE_INSTRUCTOR.equals(role)
                 || CoursePermissionService.ROLE_TA.equals(role);
+    }
+
+    public void requireCanTakeQuiz(Integer courseId, Integer userId) {
+        requireActiveMember(courseId, userId);
+        if (!coursePermissionService.canTakeQuizzes(courseId, userId)) {
+            throw new ApiException(ErrorType.ACCESS_DENIED, "Only students can take quizzes");
+        }
+    }
+
+    public void requireCanTakeQuiz(HttpServletRequest request, Integer courseId, Integer userId) {
+        Object role = request.getAttribute("userRole");
+        if (com.coursistant.lms.shared.enums.RoleEnum.SYSTEM_ADMIN.name().equals(role)
+                || com.coursistant.lms.shared.enums.RoleEnum.TENANT_ADMIN.name().equals(role)) {
+            throw new ApiException(ErrorType.FORBIDDEN, "Admins cannot take quizzes");
+        }
+        requireCanTakeQuiz(courseId, userId);
     }
 
     public boolean isInstructor(Integer courseId, Integer userId) {
@@ -87,13 +103,6 @@ public class QuizAccessService {
 
     public void requireInstructor(Integer courseId, Integer userId) {
         coursePermissionService.requireInstructor(courseId, userId);
-    }
-
-    public void requireCanTakeQuiz(Integer courseId, Integer userId) {
-        requireActiveMember(courseId, userId);
-        if (!coursePermissionService.canTakeQuizzes(courseId, userId)) {
-            throw new ApiException(ErrorType.ACCESS_DENIED, "Only students can take quizzes");
-        }
     }
 
     public Quiz requireQuizReadable(HttpServletRequest request, Integer courseId, Integer quizId, Integer userId) {

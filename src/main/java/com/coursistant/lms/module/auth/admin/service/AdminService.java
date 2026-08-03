@@ -74,7 +74,7 @@ public class AdminService {
         if (ObjectUtil.isEmpty(admin.getName())) {
             admin.setName(admin.getUsername());
         }
-        admin.setRole(RoleEnum.ADMIN.name());
+        admin.setRole(RoleEnum.SYSTEM_ADMIN.name());
         adminMapper.insert(admin);
         // 清理相关缓存 // Clear related caches
         clearAdminAllCache();
@@ -211,8 +211,8 @@ public class AdminService {
         generalRedisTemplate.delete(loginAttemptsKey);
         generalRedisTemplate.delete(lockKey);
 
-        String accessToken = TokenUtils.createAccessToken(dbAdmin.getId(), RoleEnum.ADMIN.name());
-        String refreshToken = refreshTokenService.createAndStoreRefreshToken(dbAdmin.getId(), dbAdmin.getRole());
+        String accessToken = TokenUtils.createAccessToken(dbAdmin.getId(), RoleEnum.SYSTEM_ADMIN.name());
+        String refreshToken = refreshTokenService.createAndStoreRefreshToken(dbAdmin.getId(), RoleEnum.SYSTEM_ADMIN.name());
 
         AuthResult result = new AuthResult();
         result.setUserId(dbAdmin.getId());
