@@ -1,7 +1,7 @@
 package com.coursistant.lms.module.user.account.dto;
 
 /**
- * Public / OAuth registration payload. Includes {@code tenantId} (required);
+ * Public registration payload. Includes {@code tenantId} (required);
  * not part of shared {@code Account} to avoid polluting login bodies.
  */
 public class RegisterRequest {

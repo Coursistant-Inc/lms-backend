@@ -19,46 +19,6 @@ spring:
   config:
     import: optional:file:.env[.properties]
 
-  security:
-      oauth2:
-        client:
-          registration:
-            google:
-              client-id: ${GOOGLE_CLIENT_ID}
-              client-secret: ${GOOGLE_CLIENT_SECRET}
-              redirect-uri: https://usc.xlearnedu.com/login/oauth2/code/google
-            microsoft:
-              client-id: ${MICROSOFT_CLIENT_ID}
-              client-secret: ${MICROSOFT_CLIENT_SECRET}
-              authorization-grant-type: authorization_code
-              scope: openid, profile, email
-              redirect-uri: https://usc.xlearnedu.com/login/oauth2/code/microsoft
-              client-name: Microsoft
-              provider: microsoft
-            facebook:
-              client-id: ${FACEBOOK_CLIENT_ID}
-              client-secret: ${FACEBOOK_CLIENT_SECRET}
-              redirect-uri: https://usc.xlearnedu.com/login/oauth2/code/facebook
-              
-          provider:
-            google:
-              token-uri: https://oauth2.googleapis.com/token
-              user-info-uri: https://www.googleapis.com/oauth2/v3/userinfo
-            microsoft:
-              authorization-uri: https://login.microsoftonline.com/common/oauth2/v2.0/authorize
-              token-uri: https://login.microsoftonline.com/common/oauth2/v2.0/token
-              user-info-uri: https://graph.microsoft.com/oidc/userinfo
-              user-name-attribute: sub
-              jwk-set-uri: https://login.microsoftonline.com/common/discovery/v2.0/keys
-    
-  linkedin:
-    client-id: ${LINKEDIN_CLIENT_ID}
-    client-secret: ${LINKEDIN_CLIENT_SECRET}
-    redirect-uri: https://usc.xlearnedu.com/login/oauth2/code/linkedin
-    token-url: https://www.linkedin.com/oauth/v2/accessToken
-    auth-url: https://www.linkedin.com/oauth/v2/authorization
-    scope: openid profile email
-              
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     username: ${DB_USERNAME}

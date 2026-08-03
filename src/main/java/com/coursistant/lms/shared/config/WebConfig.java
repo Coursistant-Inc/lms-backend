@@ -39,14 +39,11 @@ public class WebConfig implements WebMvcConfigurer {
                 .excludePathPatterns("/swagger-ui/**")
                 .excludePathPatterns("/swagger-ui.html")
                 .excludePathPatterns("/v3/api-docs/**")
-                .excludePathPatterns("/login/oauth2/**")
-                .excludePathPatterns("/thirdParty/**")
-                .excludePathPatterns("/oauth2/authorization/**")
                 .excludePathPatterns("/v2/users/*/avatar")
         ;
 
-        // Idempotency exclude is intentionally narrower than JWT: keep email-verifications,
-        // password-resets, and thirdParty so @Idempotent on those endpoints can run.
+        // Idempotency exclude is intentionally narrower than JWT: keep email-verifications
+        // and password-resets so @Idempotent on those endpoints can run.
         registry.addInterceptor(idempotencyInterceptor).addPathPatterns("/**")
                 .excludePathPatterns("/v1")
                 .excludePathPatterns("/v1/auth/login")
@@ -56,8 +53,6 @@ public class WebConfig implements WebMvcConfigurer {
                 .excludePathPatterns("/swagger-ui/**")
                 .excludePathPatterns("/swagger-ui.html")
                 .excludePathPatterns("/v3/api-docs/**")
-                .excludePathPatterns("/login/oauth2/**")
-                .excludePathPatterns("/oauth2/authorization/**")
         ;
     }
 
