@@ -66,7 +66,7 @@ public class Admin extends Account implements Serializable {
         StringBuilder sb = new StringBuilder("{");
         if (id != null) sb.append("\"id\":").append(id).append(",");
         if (username != null) sb.append("\"username\":\"").append(username).append("\",");
-        if (password != null) sb.append("\"password\":\"").append(password).append("\",");
+        if (password != null) sb.append("\"password\":\"***\",");
         if (name != null) sb.append("\"name\":\"").append(name).append("\",");
         if (avatar != null) sb.append("\"avatar\":\"").append(avatar).append("\",");
         if (role != null) sb.append("\"role\":\"").append(role).append("\",");

@@ -65,4 +65,79 @@ class AuthzServiceTest {
 
         assertDoesNotThrow(() -> authzService.requireTenantAdminOrSystem(request, 1));
     }
+
+    @Test
+    void isSystemAdmin_falseForTenantAdmin() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setAttribute("userRole", "TENANT_ADMIN");
+        assertFalse(authzService.isSystemAdmin(request));
+    }
+
+    @Test
+    void isTenantAdmin_trueForTenantAdmin() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setAttribute("userRole", "TENANT_ADMIN");
+        assertTrue(authzService.isTenantAdmin(request));
+    }
+
+    @Test
+    void requireUserId_missing_unauthorized() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        ApiException ex = assertThrows(ApiException.class, () -> authzService.requireUserId(request));
+        assertEquals(ErrorType.UNAUTHORIZED, ex.getErrorType());
+    }
+
+    @Test
+    void systemAdmin_mayAccessAnyTenant() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setAttribute("userRole", "SYSTEM_ADMIN");
+        assertDoesNotThrow(() -> authzService.requireTenantAdminOrSystem(request, 99));
+    }
+
+    @Test
+    void requireTenantAdminOrSystem_user_forbidden() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setAttribute("userId", 21);
+        request.setAttribute("userRole", "USER");
+        ApiException ex = assertThrows(ApiException.class,
+                () -> authzService.requireTenantAdminOrSystem(request, 1));
+        assertEquals(ErrorType.FORBIDDEN, ex.getErrorType());
+    }
+
+    @Test
+    void requireRole_missing_unauthorized() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        ApiException ex = assertThrows(ApiException.class, () -> authzService.requireRole(request));
+        assertEquals(ErrorType.UNAUTHORIZED, ex.getErrorType());
+    }
+
+    @Test
+    void resolveActorTenantId_systemAdmin_returnsNull() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setAttribute("userRole", "SYSTEM_ADMIN");
+        assertNull(authzService.resolveActorTenantId(request));
+    }
+
+    @Test
+    void resolveActorTenantId_userWithoutTenant_unauthorized() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setAttribute("userId", 21);
+        request.setAttribute("userRole", "USER");
+        User user = new User();
+        user.setId(21);
+        user.setTenantId(null);
+        when(userMapper.selectById(21)).thenReturn(user);
+        ApiException ex = assertThrows(ApiException.class, () -> authzService.resolveActorTenantId(request));
+        assertEquals(ErrorType.UNAUTHORIZED, ex.getErrorType());
+    }
+
+    @Test
+    void requireTenantAdminOrSystem_nullResourceTenant_notFound() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setAttribute("userId", 5);
+        request.setAttribute("userRole", "TENANT_ADMIN");
+        ApiException ex = assertThrows(ApiException.class,
+                () -> authzService.requireTenantAdminOrSystem(request, null));
+        assertEquals(ErrorType.NOT_FOUND, ex.getErrorType());
+    }
 }

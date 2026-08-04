@@ -70,7 +70,7 @@ public class User extends Account implements Serializable {
         if (id != null) sb.append("\"id\":").append(id).append(",");
         if (tenantId != null) sb.append("\"tenantId\":").append(tenantId).append(",");
         if (username != null) sb.append("\"username\":\"").append(username).append("\",");
-        if (password != null) sb.append("\"password\":\"").append(password).append("\",");
+        if (password != null) sb.append("\"password\":\"***\",");
         if (name != null) sb.append("\"name\":\"").append(name).append("\",");
         if (avatar != null) sb.append("\"avatar\":\"").append(avatar).append("\",");
         if (role != null) sb.append("\"role\":\"").append(role).append("\",");

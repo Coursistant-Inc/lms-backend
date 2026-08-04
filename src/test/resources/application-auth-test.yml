@@ -1,0 +1,29 @@
+# Auth unit/MVC tests only — no real DB, Redis, or SMTP.
+# Activate with: @ActiveProfiles("auth-test")
+
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+      - org.springframework.boot.autoconfigure.mail.MailSenderAutoConfiguration
+
+token:
+  access-expire-hours: 2
+  refresh-expire-days: 14
+  refresh-rotation-grace-seconds: 30
+  private-key-path: classpath:test-private.pem
+  public-key-path: classpath:test-public.pem
+
+auth:
+  docs-public: false
+  jwt:
+    issuer: https://usc.xlearnedu.com
+    audience: com.coursistant.lms
+    min-issued-at:
+
+logging:
+  level:
+    root: WARN
+    com.coursistant.lms: INFO

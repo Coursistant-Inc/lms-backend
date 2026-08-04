@@ -95,6 +95,61 @@ class TokenAndJwtParserTest {
         assertEquals(ErrorType.INVALID_TOKEN, ex.getErrorType());
     }
 
+    @Test
+    void verify_wrongIssuer_throwsApiException() {
+        String token = JWT.create()
+                .withSubject("1")
+                .withClaim("userId", 1)
+                .withClaim("role", "USER")
+                .withClaim("type", "access")
+                .withIssuer("https://evil.example.com")
+                .withAudience("com.coursistant.lms")
+                .withExpiresAt(new Date(System.currentTimeMillis() + 3600_000))
+                .sign(Algorithm.RSA256(null, privateKey));
+
+        ApiException ex = assertThrows(ApiException.class, () -> jwtParserUtil.verify(token));
+        assertEquals(ErrorType.INVALID_TOKEN, ex.getErrorType());
+    }
+
+    @Test
+    void verify_wrongAudience_throwsApiException() {
+        String token = JWT.create()
+                .withSubject("1")
+                .withClaim("userId", 1)
+                .withClaim("role", "USER")
+                .withClaim("type", "access")
+                .withIssuer("https://usc.xlearnedu.com")
+                .withAudience("other.audience")
+                .withExpiresAt(new Date(System.currentTimeMillis() + 3600_000))
+                .sign(Algorithm.RSA256(null, privateKey));
+
+        ApiException ex = assertThrows(ApiException.class, () -> jwtParserUtil.verify(token));
+        assertEquals(ErrorType.INVALID_TOKEN, ex.getErrorType());
+    }
+
+    @Test
+    void verify_algNone_throwsApiException() {
+        // unsigned / none algorithm must not verify under RSA256 requirement
+        String header = java.util.Base64.getUrlEncoder().withoutPadding()
+                .encodeToString("{\"alg\":\"none\",\"typ\":\"JWT\"}".getBytes());
+        String payload = java.util.Base64.getUrlEncoder().withoutPadding()
+                .encodeToString(("{\"sub\":\"1\",\"userId\":1,\"role\":\"USER\",\"type\":\"access\","
+                        + "\"iss\":\"https://usc.xlearnedu.com\",\"aud\":\"com.coursistant.lms\"}").getBytes());
+        String noneToken = header + "." + payload + ".";
+
+        ApiException ex = assertThrows(ApiException.class, () -> jwtParserUtil.verify(noneToken));
+        assertEquals(ErrorType.INVALID_TOKEN, ex.getErrorType());
+    }
+
+    @Test
+    void createAccessToken_includesAuthAndTenantSecurityVersions() {
+        String token = TokenUtils.createAccessToken(7, "TENANT_ADMIN", 3, 4);
+        DecodedJWT jwt = jwtParserUtil.verify(token);
+        assertEquals(3, jwt.getClaim("authVersion").asInt());
+        assertEquals(4, jwt.getClaim("tenantSecurityVersion").asInt());
+        assertEquals("TENANT_ADMIN", jwt.getClaim("role").asString());
+    }
+
     private static void setStaticField(Class<?> clazz, String name, Object value) throws Exception {
         Field field = clazz.getDeclaredField(name);
         field.setAccessible(true);

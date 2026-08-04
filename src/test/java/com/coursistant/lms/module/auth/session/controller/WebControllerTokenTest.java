@@ -2,9 +2,12 @@ package com.coursistant.lms.module.auth.session.controller;
 
 import com.coursistant.lms.module.auth.token.dto.RefreshResult;
 import com.coursistant.lms.module.auth.admin.service.AdminService;
+import com.coursistant.lms.module.auth.session.dto.AuthResult;
 import com.coursistant.lms.module.auth.token.service.RefreshTokenService;
+import com.coursistant.lms.module.user.account.entity.Account;
 import com.coursistant.lms.module.user.account.service.UserService;
 import com.coursistant.lms.shared.api.ApiExceptionHandler;
+import com.coursistant.lms.shared.security.AuthzService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -40,6 +43,9 @@ class WebControllerTokenTest {
     @Mock
     private ValueOperations<String, String> valueOperations;
 
+    @Mock
+    private AuthzService authzService;
+
     @InjectMocks
     private WebController webController;
 
@@ -66,12 +72,21 @@ class WebControllerTokenTest {
                 .andExpect(jsonPath("$.status").value(200))
                 .andExpect(jsonPath("$.code").value("SUCCESS"))
                 .andExpect(jsonPath("$.data").value("new-access-token"))
+                .andExpect(jsonPath("$.data").value(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("refresh"))))
                 .andReturn();
+
+        String body = result.getResponse().getContentAsString();
+        assertFalse(body.contains("new-refresh-token"));
+        assertFalse(body.contains("old-refresh"));
 
         String setCookie = result.getResponse().getHeader("Set-Cookie");
         assertNotNull(setCookie);
         assertTrue(setCookie.contains("refreshToken=new-refresh-token"));
         assertTrue(setCookie.toLowerCase().contains("httponly"));
+        assertTrue(setCookie.toLowerCase().contains("secure"));
+        assertTrue(setCookie.contains("Path=/") || setCookie.toLowerCase().contains("path=/"));
+        assertTrue(setCookie.contains("SameSite=Lax") || setCookie.contains("SameSite=Lax".toLowerCase())
+                || setCookie.toLowerCase().contains("samesite=lax"));
         verify(stringRedisTemplate).expire(startsWith("ratelimit:refresh:"), eq(60L), any());
     }
 
@@ -116,5 +131,37 @@ class WebControllerTokenTest {
         assertNotNull(setCookie);
         assertTrue(setCookie.contains("refreshToken="));
         assertTrue(setCookie.contains("Max-Age=0") || setCookie.toLowerCase().contains("max-age=0"));
+    }
+
+    @Test
+    void login_jsonBody_omitsRefreshToken_andSetsSecureCookie() throws Exception {
+        AuthResult auth = new AuthResult();
+        auth.setUserId(21);
+        auth.setEmail("student@example.com");
+        auth.setRole("USER");
+        auth.setAccessToken("access-abc");
+        auth.setRefreshToken("refresh-secret-xyz");
+        when(userService.login(any(Account.class))).thenReturn(auth);
+
+        String bodyJson = "{\"email\":\"student@example.com\",\"password\":\"Passw0rd1\",\"role\":\"USER\"}";
+
+        MvcResult result = mockMvc.perform(post("/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(bodyJson)
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.accessToken").value("access-abc"))
+                .andExpect(jsonPath("$.data.refreshToken").doesNotExist())
+                .andReturn();
+
+        String body = result.getResponse().getContentAsString();
+        assertFalse(body.contains("refresh-secret-xyz"));
+
+        String setCookie = result.getResponse().getHeader("Set-Cookie");
+        assertNotNull(setCookie);
+        assertTrue(setCookie.contains("refreshToken=refresh-secret-xyz"));
+        assertTrue(setCookie.toLowerCase().contains("httponly"));
+        assertTrue(setCookie.toLowerCase().contains("secure"));
+        assertTrue(setCookie.toLowerCase().contains("samesite=lax"));
     }
 }

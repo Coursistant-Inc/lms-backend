@@ -52,7 +52,21 @@ public class LoginGuardService {
         try {
             Long count = generalRedisTemplate.opsForValue().increment(attemptsKey);
             if (count != null && count == 1L) {
-                generalRedisTemplate.expire(attemptsKey, ATTEMPTS_TTL_MINUTES, TimeUnit.MINUTES);
+                Boolean expired;
+                try {
+                    expired = generalRedisTemplate.expire(attemptsKey, ATTEMPTS_TTL_MINUTES, TimeUnit.MINUTES);
+                } catch (Exception expireEx) {
+                    try {
+                        generalRedisTemplate.delete(attemptsKey);
+                    } catch (Exception ignored) {
+                        // best-effort cleanup to avoid permanent keys without TTL
+                    }
+                    throw expireEx;
+                }
+                if (!Boolean.TRUE.equals(expired)) {
+                    generalRedisTemplate.delete(attemptsKey);
+                    throw new IllegalStateException("Failed to set TTL on login attempts key");
+                }
             }
             log.info("Login failure reason={} accountTable={} emailHash={} attempts={}",
                     reason, accountTable, hashEmail(normalized), count);

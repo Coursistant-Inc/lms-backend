@@ -52,6 +52,9 @@ public class AccessTokenAuthService {
             throw new ApiException(ErrorType.INVALID_TOKEN, "Invalid Access Token");
         }
         String token = authorizationHeader.substring(7);
+        if (token.isBlank()) {
+            throw new ApiException(ErrorType.INVALID_TOKEN, "Invalid Access Token");
+        }
         DecodedJWT jwt = jwtParserUtil.verify(token);
 
         String type = jwt.getClaim("type").asString();
