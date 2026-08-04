@@ -41,9 +41,13 @@ public interface AdminMapper {
      */
     List<Admin> selectAll(Admin admin);
 
-    @Select("select * from admin where username = #{username}")
+    @Select("select id, username, password, name, phone, email, avatar, role, status, "
+            + "auth_version AS authVersion from admin where username = #{username}")
     Admin selectByUsername(String username);
 
-    @Select("select * from admin where email = #{email}")
+    @Select("select id, username, password, name, phone, email, avatar, role, status, "
+            + "auth_version AS authVersion from admin where email = #{email}")
     Admin selectByEmail(String email);
+
+    void incrementAuthVersion(Integer id);
 }

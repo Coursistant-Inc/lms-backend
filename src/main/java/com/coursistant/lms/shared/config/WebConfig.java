@@ -28,27 +28,28 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
+        // Keep interceptor as compatibility layer; Security filter is primary auth gate.
+        // Exact public auth paths only — no /files/** or avatar bypass.
         registry.addInterceptor(jwtInterceptor).addPathPatterns("/**")
                 .excludePathPatterns("/v1")
                 .excludePathPatterns("/v1/auth/login")
                 .excludePathPatterns("/v1/auth/register")
                 .excludePathPatterns("/v1/auth/refresh-token")
-                .excludePathPatterns("/v1/auth/email-verifications/**")
-                .excludePathPatterns("/v1/auth/password-resets/**")
-                .excludePathPatterns("/files/**")
+                .excludePathPatterns("/v1/auth/logout")
+                .excludePathPatterns("/v1/auth/email-verifications/register")
+                .excludePathPatterns("/v1/auth/email-verifications/reset")
+                .excludePathPatterns("/v1/auth/password-resets")
                 .excludePathPatterns("/swagger-ui/**")
                 .excludePathPatterns("/swagger-ui.html")
                 .excludePathPatterns("/v3/api-docs/**")
-                .excludePathPatterns("/v2/users/*/avatar")
         ;
 
-        // Idempotency exclude is intentionally narrower than JWT: keep email-verifications
-        // and password-resets so @Idempotent on those endpoints can run.
         registry.addInterceptor(idempotencyInterceptor).addPathPatterns("/**")
                 .excludePathPatterns("/v1")
                 .excludePathPatterns("/v1/auth/login")
                 .excludePathPatterns("/v1/auth/register")
                 .excludePathPatterns("/v1/auth/refresh-token")
+                .excludePathPatterns("/v1/auth/logout")
                 .excludePathPatterns("/files/**")
                 .excludePathPatterns("/swagger-ui/**")
                 .excludePathPatterns("/swagger-ui.html")

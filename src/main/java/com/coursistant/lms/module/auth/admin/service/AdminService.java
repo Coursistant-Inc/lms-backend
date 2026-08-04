@@ -1,21 +1,29 @@
 package com.coursistant.lms.module.auth.admin.service;
 
 import cn.hutool.core.util.ObjectUtil;
-import com.coursistant.lms.module.auth.admin.dto.PasswordDTO;
+import com.coursistant.lms.module.auth.session.dto.ChangePasswordRequest;
 import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.shared.api.ErrorType;
 import com.coursistant.lms.module.auth.admin.repository.AdminMapper;
-import com.coursistant.lms.module.auth.token.service.RefreshTokenService;
+import com.coursistant.lms.module.auth.identity.service.AccountIdentityService;
+import com.coursistant.lms.module.auth.identity.service.IdentityAuditService;
+import com.coursistant.lms.module.auth.session.service.LoginGuardService;
 import com.coursistant.lms.shared.web.Constants;
+import com.coursistant.lms.shared.enums.AccountStatus;
 import com.coursistant.lms.shared.enums.RoleEnum;
 import com.coursistant.lms.module.auth.session.dto.AuthResult;
 import com.coursistant.lms.module.user.account.entity.Account;
 import com.coursistant.lms.module.auth.admin.entity.Admin;
 import com.coursistant.lms.shared.util.PasswordEncoderUtil;
+import com.coursistant.lms.shared.util.PasswordValidator;
+import com.coursistant.lms.shared.security.SessionInvalidationService;
 import com.coursistant.lms.shared.security.TokenUtils;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import jakarta.annotation.Resource;
 import java.util.List;
@@ -24,7 +32,6 @@ import org.springframework.data.redis.core.RedisTemplate;
 
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
-import com.coursistant.lms.module.user.account.entity.User;
 
 /**
  * 管理员业务处理 // Administrator business logic handling
@@ -32,11 +39,22 @@ import com.coursistant.lms.module.user.account.entity.User;
 @Service
 public class AdminService {
 
+    private static final Logger log = LoggerFactory.getLogger(AdminService.class);
+
     @Resource
     private AdminMapper adminMapper;
 
     @Resource
-    private RefreshTokenService refreshTokenService;
+    private LoginGuardService loginGuardService;
+
+    @Resource
+    private SessionInvalidationService sessionInvalidationService;
+
+    @Resource
+    private IdentityAuditService identityAuditService;
+
+    @Resource
+    private com.coursistant.lms.module.auth.token.service.RefreshTokenService refreshTokenService;
 
     @Resource(name = "generalRedisTemplate")
     private RedisTemplate<String, Object> generalRedisTemplate;
@@ -170,49 +188,32 @@ public class AdminService {
 
 
     /**
-     * 登录 // Admin login
+     * SYSTEM_ADMIN login against the admin table.
      */
     public AuthResult login(Account account) {
+        String email = AccountIdentityService.normalizeEmail(account.getEmail());
+        loginGuardService.assertNotLocked(LoginGuardService.ACCOUNT_ADMIN, email);
 
-        // Redis keys for lockout only — credentials are always loaded from DB.
-        // Account.password is WRITE_ONLY; Jackson Redis serialization drops the hash.
-        String loginAttemptsKey = "admin:login:attempts:" + account.getEmail();
-        String lockKey = "admin:login:lock:" + account.getEmail();
-
-        // 检查是否被锁定 // Check if the account is locked
-        if (Boolean.TRUE.equals(generalRedisTemplate.hasKey(lockKey))) {
-            throw new ApiException(ErrorType.ACCOUNT_LOCKED, "Your account is locked. Please try again later.");
-        }
-
-        Admin dbAdmin = adminMapper.selectByEmail(account.getEmail());
-        // 如果用户不存在 // If the user does not exist
+        Admin dbAdmin = adminMapper.selectByEmail(email);
         if (ObjectUtil.isNull(dbAdmin)) {
-            throw new ApiException(ErrorType.USER_NOT_FOUND, "User Does Not Exist");
+            loginGuardService.recordFailure(LoginGuardService.ACCOUNT_ADMIN, email, "USER_NOT_FOUND");
+        }
+        if (dbAdmin.getStatus() != null && !AccountStatus.ACTIVE.name().equals(dbAdmin.getStatus())) {
+            log.info("Login rejected: disabled admin id={}", dbAdmin.getId());
+            loginGuardService.recordFailure(LoginGuardService.ACCOUNT_ADMIN, email, "ACCOUNT_DISABLED");
         }
 
-        // 验证密码 // Validate password
         if (!PasswordEncoderUtil.matches(account.getPassword(), dbAdmin.getPassword())) {
-            // 更新登录尝试次数 // Update login attempt count
-            Integer attempts = (Integer) generalRedisTemplate.opsForValue().get(loginAttemptsKey);
-            attempts = (attempts == null) ? 1 : attempts + 1;
-            generalRedisTemplate.opsForValue().set(loginAttemptsKey, attempts, 15, TimeUnit.MINUTES); // 保存尝试次数 15 分钟 // Store attempts for 15 minutes
-
-            // 判断锁定条件 // Check lock conditions
-            if (attempts >= 6) {
-                long lockTime = (attempts < 10) ? 60 : 600;
-                generalRedisTemplate.opsForValue().set(lockKey, "LOCKED", lockTime, TimeUnit.SECONDS);
-                throw new ApiException(ErrorType.ACCOUNT_LOCKED, "Your account is locked. Please try again in " + (lockTime / 60) + " minutes.");
-            }
-
-            throw new ApiException(ErrorType.INVALID_CREDENTIALS, "Invalid email or password. Remaining attempts: " + (6 - attempts));
+            loginGuardService.recordFailure(LoginGuardService.ACCOUNT_ADMIN, email, "BAD_PASSWORD");
         }
 
-        // 登录成功后，清除登录尝试限制和锁定状态 // Upon successful login, clear login attempt restrictions and lock status
-        generalRedisTemplate.delete(loginAttemptsKey);
-        generalRedisTemplate.delete(lockKey);
+        loginGuardService.clearOnSuccess(LoginGuardService.ACCOUNT_ADMIN, email);
 
-        String accessToken = TokenUtils.createAccessToken(dbAdmin.getId(), RoleEnum.SYSTEM_ADMIN.name());
-        String refreshToken = refreshTokenService.createAndStoreRefreshToken(dbAdmin.getId(), RoleEnum.SYSTEM_ADMIN.name());
+        Integer authVersion = dbAdmin.getAuthVersion() == null ? 1 : dbAdmin.getAuthVersion();
+        String accessToken = TokenUtils.createAccessToken(
+                dbAdmin.getId(), RoleEnum.SYSTEM_ADMIN.name(), authVersion, null);
+        String refreshToken = refreshTokenService.createAndStoreRefreshToken(
+                dbAdmin.getId(), RoleEnum.SYSTEM_ADMIN.name());
 
         AuthResult result = new AuthResult();
         result.setUserId(dbAdmin.getId());
@@ -240,22 +241,30 @@ public class AdminService {
     }
 
     /**
-     * 修改密码 // Update password
+     * Change password for the authenticated SYSTEM_ADMIN principal.
      */
-    public void updatePassword(PasswordDTO account) {
-        Admin dbAdmin = adminMapper.selectByEmail(account.getEmail());
+    @Transactional
+    public void updatePasswordForPrincipal(Integer adminId, ChangePasswordRequest request) {
+        if (request == null || request.getCurrentPassword() == null || request.getCurrentPassword().isBlank()
+                || request.getNewPassword() == null || request.getNewPassword().isBlank()) {
+            throw new ApiException(ErrorType.PARAM_MISSING, "Parameter Missing");
+        }
+        Admin dbAdmin = adminMapper.selectById(adminId);
         if (ObjectUtil.isNull(dbAdmin)) {
             throw new ApiException(ErrorType.USER_NOT_FOUND, "User Does Not Exist");
         }
-        if (!PasswordEncoderUtil.matches(account.getPassword(), dbAdmin.getPassword())) {
+        if (!PasswordEncoderUtil.matches(request.getCurrentPassword(), dbAdmin.getPassword())) {
             throw new ApiException(ErrorType.INVALID_PASSWORD, "Incorrect Original Password");
         }
-        // 加密新密码然后设置 // Encrypt new password and set it
-        String encryptedNewPassword = PasswordEncoderUtil.encodePassword(account.getNewPassword());
-        dbAdmin.setPassword(encryptedNewPassword);
+        PasswordValidator.validate(request.getNewPassword());
+        dbAdmin.setPassword(PasswordEncoderUtil.encodePassword(request.getNewPassword()));
         adminMapper.updateById(dbAdmin);
-
-        generalRedisTemplate.delete("admin:email:" + account.getEmail());
+        adminMapper.incrementAuthVersion(dbAdmin.getId());
+        sessionInvalidationService.invalidatePrincipal(dbAdmin.getId(), RoleEnum.SYSTEM_ADMIN.name());
+        generalRedisTemplate.delete("admin:email:" + dbAdmin.getEmail());
         generalRedisTemplate.delete("admin:" + dbAdmin.getId());
+        identityAuditService.writeSuccess(dbAdmin.getId(), RoleEnum.SYSTEM_ADMIN.name(), null,
+                "CHANGE_PASSWORD", "ADMIN", dbAdmin.getId(), null,
+                null, "{\"authVersion\":\"bumped\"}", null, null);
     }
 }

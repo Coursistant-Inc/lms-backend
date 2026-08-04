@@ -8,6 +8,8 @@
         id,
         name,
         timezone,
+        status,
+        security_version AS securityVersion,
         created_at AS createdAt,
         updated_at AS updatedAt
     </sql>

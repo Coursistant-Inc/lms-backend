@@ -6,15 +6,28 @@
 <mapper namespace="com.coursistant.lms.module.auth.token.repository.RefreshTokenMapper">
 
     <sql id="Base_Column_List">
-        id, user_id, token, ip_address, user_agent, expire_time, created_time, updated_time,role
+        id,
+        session_id AS sessionId,
+        user_id AS userId,
+        token,
+        previous_token AS previousToken,
+        previous_valid_until AS previousValidUntil,
+        ip_address AS ipAddress,
+        user_agent AS userAgent,
+        expire_time AS expireTime,
+        created_time AS createdTime,
+        updated_time AS updatedTime,
+        role
     </sql>
 
-    <!-- 插入 refresh token（动态） -->
     <insert id="insert" parameterType="com.coursistant.lms.module.auth.token.entity.RefreshToken" useGeneratedKeys="true" keyProperty="id">
         insert into refresh_tokens
         <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="sessionId != null">session_id,</if>
             <if test="userId != null">user_id,</if>
             <if test="token != null">token,</if>
+            <if test="previousToken != null">previous_token,</if>
+            <if test="previousValidUntil != null">previous_valid_until,</if>
             <if test="ipAddress != null">ip_address,</if>
             <if test="userAgent != null">user_agent,</if>
             <if test="expireTime != null">expire_time,</if>
@@ -23,8 +36,11 @@
             updated_time
         </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="sessionId != null">#{sessionId},</if>
             <if test="userId != null">#{userId},</if>
             <if test="token != null">#{token},</if>
+            <if test="previousToken != null">#{previousToken},</if>
+            <if test="previousValidUntil != null">#{previousValidUntil},</if>
             <if test="ipAddress != null">#{ipAddress},</if>
             <if test="userAgent != null">#{userAgent},</if>
             <if test="expireTime != null">#{expireTime},</if>
@@ -34,12 +50,14 @@
         </trim>
     </insert>
 
-    <!-- 更新 refresh token -->
     <update id="updateById" parameterType="com.coursistant.lms.module.auth.token.entity.RefreshToken">
         update refresh_tokens
         <set>
+            <if test="sessionId != null">session_id = #{sessionId},</if>
             <if test="userId != null">user_id = #{userId},</if>
             <if test="token != null">token = #{token},</if>
+            <if test="previousToken != null">previous_token = #{previousToken},</if>
+            <if test="previousValidUntil != null">previous_valid_until = #{previousValidUntil},</if>
             <if test="ipAddress != null">ip_address = #{ipAddress},</if>
             <if test="userAgent != null">user_agent = #{userAgent},</if>
             <if test="expireTime != null">expire_time = #{expireTime},</if>
@@ -50,33 +68,33 @@
     </update>
 
     <select id="selectByUserIdAndRoleOrderByCreateTime" resultType="com.coursistant.lms.module.auth.token.entity.RefreshToken">
-        SELECT * FROM refresh_tokens
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM refresh_tokens
         WHERE user_id = #{userId} AND role = #{role}
         ORDER BY created_time ASC
     </select>
 
-
-    <!-- 删除 by ID -->
     <delete id="deleteById">
         delete from refresh_tokens where id = #{id}
     </delete>
 
-    <!-- 删除 by userId -->
     <delete id="deleteByUserId">
         delete from refresh_tokens where user_id = #{userId}
     </delete>
 
-    <!-- 删除 by token（单设备退出） -->
     <delete id="deleteByToken">
-        delete from refresh_tokens where token = #{token}
+        delete from refresh_tokens where token = #{token} OR previous_token = #{token}
     </delete>
 
-    <!-- 删除所有过期 token（定时任务用） -->
+    <delete id="deleteBySessionId">
+        delete from refresh_tokens where session_id = #{sessionId}
+    </delete>
+
     <delete id="deleteExpiredTokens">
         delete from refresh_tokens where expire_time &lt; now()
     </delete>
 
-    <!-- 查询 by ID -->
     <select id="selectById" resultType="com.coursistant.lms.module.auth.token.entity.RefreshToken">
         select
         <include refid="Base_Column_List" />
@@ -84,7 +102,6 @@
         where id = #{id}
     </select>
 
-    <!-- 查询 by userId（最近一条） -->
     <select id="selectByUserId" resultType="com.coursistant.lms.module.auth.token.entity.RefreshToken">
         select
         <include refid="Base_Column_List" />
@@ -94,15 +111,23 @@
         limit 1
     </select>
 
-    <!-- 查询 by token（防止伪造） -->
     <select id="selectByToken" resultType="com.coursistant.lms.module.auth.token.entity.RefreshToken">
         select
         <include refid="Base_Column_List" />
         from refresh_tokens
         where token = #{token}
+           or previous_token = #{token}
+        limit 1
     </select>
 
-    <!-- 查询 user 所有 token（多端支持时用） -->
+    <select id="selectBySessionIdForUpdate" resultType="com.coursistant.lms.module.auth.token.entity.RefreshToken">
+        select
+        <include refid="Base_Column_List" />
+        from refresh_tokens
+        where session_id = #{sessionId}
+        for update
+    </select>
+
     <select id="selectAllByUserId" resultType="com.coursistant.lms.module.auth.token.entity.RefreshToken">
         select
         <include refid="Base_Column_List" />

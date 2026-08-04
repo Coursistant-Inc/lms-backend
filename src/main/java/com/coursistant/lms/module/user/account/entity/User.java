@@ -59,6 +59,11 @@ public class User extends Account implements Serializable {
     /** Whether the user receives email notifications (default true). */
     private Boolean emailNotifications;
 
+    /** ACTIVE / DISABLED */
+    private String status;
+
+    private Integer authVersion;
+
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder("{");
@@ -178,6 +183,22 @@ public class User extends Account implements Serializable {
 
     public void setMustChangePassword(Boolean mustChangePassword) {
         this.mustChangePassword = mustChangePassword;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public Integer getAuthVersion() {
+        return authVersion;
+    }
+
+    public void setAuthVersion(Integer authVersion) {
+        this.authVersion = authVersion;
     }
 
     public Boolean getEmailNotifications() {

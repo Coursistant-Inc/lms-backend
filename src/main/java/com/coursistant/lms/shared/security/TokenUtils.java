@@ -30,6 +30,8 @@ public class TokenUtils {
     private static UserService staticUserService;
     private static int staticAccessExpireHours = 2;
     private static RSAPrivateKey staticPrivateKey;
+    private static String staticIssuer = "https://usc.xlearnedu.com";
+    private static String staticAudience = "com.coursistant.lms";
 
     @Resource
     AdminService adminService;
@@ -42,11 +44,19 @@ public class TokenUtils {
     @Value("${token.private-key-path:private.pem}")
     private String privateKeyPath;
 
+    @Value("${auth.jwt.issuer:https://usc.xlearnedu.com}")
+    private String issuer;
+
+    @Value("${auth.jwt.audience:com.coursistant.lms}")
+    private String audience;
+
     @PostConstruct
     public void init() {
         staticAdminService = adminService;
         staticUserService = userService;
         staticAccessExpireHours = accessExpireHours;
+        staticIssuer = issuer;
+        staticAudience = audience;
         try {
             staticPrivateKey = (RSAPrivateKey) RsaKeyUtil.loadPrivateKey(privateKeyPath);
         } catch (Exception e) {
@@ -67,8 +77,8 @@ public class TokenUtils {
                 .withClaim("authVersion", authVersion == null ? 1 : authVersion)
                 .withIssuedAt(new Date())
                 .withExpiresAt(DateUtil.offsetHour(new Date(), staticAccessExpireHours))
-                .withAudience("com.coursistant.lms")
-                .withIssuer("https://usc.xlearnedu.com");
+                .withAudience(staticAudience)
+                .withIssuer(staticIssuer);
         if (tenantSecurityVersion != null) {
             builder.withClaim("tenantSecurityVersion", tenantSecurityVersion);
         }

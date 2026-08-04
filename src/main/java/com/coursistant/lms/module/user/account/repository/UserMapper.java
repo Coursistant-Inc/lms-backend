@@ -53,6 +53,7 @@ public interface UserMapper {
      * Query a User record by username
      */
     @Select("SELECT id, tenant_id AS tenantId, username, password, name, email, avatar, role, level, "
+            + "status, auth_version AS authVersion, "
             + "must_change_password AS mustChangePassword, email_notifications AS emailNotifications "
             + "FROM user WHERE username = #{username}")
     User selectByUsername(String username);
@@ -62,6 +63,7 @@ public interface UserMapper {
      * Query a User record by email
      */
     @Select("SELECT id, tenant_id AS tenantId, username, password, name, email, avatar, role, level, "
+            + "status, auth_version AS authVersion, "
             + "must_change_password AS mustChangePassword, email_notifications AS emailNotifications "
             + "FROM user WHERE email = #{email}")
     User selectByEmail(String email);
@@ -71,6 +73,7 @@ public interface UserMapper {
      * Query all teachers
      */
     @Select("SELECT id, tenant_id AS tenantId, username, password, name, email, avatar, role, level, "
+            + "status, auth_version AS authVersion, "
             + "must_change_password AS mustChangePassword, email_notifications AS emailNotifications "
             + "FROM user WHERE level = 'INSTRUCTOR'")
     List<User> selectTeachers();
@@ -88,4 +91,6 @@ public interface UserMapper {
     void updateMustChangePassword( Integer id, boolean mustChangePassword);
 
     void clearAvatar(Integer id);
+
+    void incrementAuthVersion(Integer id);
 }

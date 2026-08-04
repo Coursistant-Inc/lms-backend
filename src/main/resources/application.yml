@@ -14,8 +14,7 @@ server:
       matching-strategy: ant_path_matcher
 
 
-# 数据库配置
-spring:
+# ??????spring:
   config:
     import: optional:file:.env[.properties]
 
@@ -39,19 +38,16 @@ spring:
       max-request-size: 1000MB
   hadoop:
     fs:
-      defaultFS: hdfs://labserver101.ddns.net:9666 # HDFS 的地址 (替换为你的 Hadoop 集群地址)
-      user: admir  # 访问 HDFS 的用户
-
+      defaultFS: hdfs://labserver101.ddns.net:9666 # HDFS ??? (??????Hadoop ????)
+      user: admir  # ?? HDFS ????
   mvc:
     pathmatch:
       matching-strategy: ant_path_matcher
   
   mail:
-    host: mail.privateemail.com  # 你的邮件服务器
-    port: 587
-    username: ${MAIL_USERNAME}  # 你的邮箱
-    password: ${MAIL_PASSWORD}  # 你的邮箱授权码
-    properties:
+    host: mail.privateemail.com  # ????????    port: 587
+    username: ${MAIL_USERNAME}  # ????
+    password: ${MAIL_PASSWORD}  # ????????    properties:
       mail:
         smtp:
           auth: true
@@ -60,7 +56,7 @@ spring:
 
 
 
-# 配置mybatis实体和xml映射
+# ??mybatis???xml??
 mybatis:
   mapper-locations: classpath:mapper/**/*.xml
   type-aliases-package: com.coursistant.lms.module
@@ -69,18 +65,16 @@ mybatis:
     map-underscore-to-camel-case: true
 
 mail:
-    host: mail.privateemail.com  # 你的邮件服务器
-    port: 587
-    username: ${MAIL_USERNAME}  # 你的邮箱
-    password: ${MAIL_PASSWORD}  # 你的邮箱授权码
-    properties:
+    host: mail.privateemail.com  # ????????    port: 587
+    username: ${MAIL_USERNAME}  # ????
+    password: ${MAIL_PASSWORD}  # ????????    properties:
       mail:
         smtp:
           auth: true
           starttls:
             enable: true
 
-# 分页
+# ??
 pagehelper:
   helper-dialect: mysql
   reasonable: true
@@ -106,13 +100,18 @@ api:
 token:
   access-expire-hours: 2
   refresh-expire-days: 14
+  refresh-rotation-grace-seconds: 30
   private-key-path: private.pem
   public-key-path: public.pem
 
 # Role cutover: set AUTH_JWT_MIN_ISSUED_AT to an ISO-8601 Instant (e.g. 2026-07-28T12:00:00Z)
 # so all Access Tokens issued before that moment are rejected. Rotate private.pem/public.pem
 # at the same maintenance window and keep the new keys on rollback.
+# AUTH_DOCS_PUBLIC=false in production to close swagger.
 auth:
+  docs-public: ${AUTH_DOCS_PUBLIC:true}
   jwt:
+    issuer: ${AUTH_JWT_ISSUER:https://usc.xlearnedu.com}
+    audience: ${AUTH_JWT_AUDIENCE:com.coursistant.lms}
     min-issued-at: ${AUTH_JWT_MIN_ISSUED_AT:}
 

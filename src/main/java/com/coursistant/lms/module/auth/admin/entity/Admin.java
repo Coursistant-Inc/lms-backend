@@ -57,6 +57,10 @@ public class Admin extends Account implements Serializable {
      */
     private String invitation;
 
+    private String status;
+
+    private Integer authVersion;
+
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder("{");
@@ -163,5 +167,21 @@ public class Admin extends Account implements Serializable {
 
     public void setInvitation(String invitation) {
         this.invitation = invitation;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public Integer getAuthVersion() {
+        return authVersion;
+    }
+
+    public void setAuthVersion(Integer authVersion) {
+        this.authVersion = authVersion;
     }
 }

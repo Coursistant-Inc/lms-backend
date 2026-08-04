@@ -3,8 +3,8 @@ package com.coursistant.lms.shared.security;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.DecodedJWT;
-import com.coursistant.lms.shared.enums.ResultCodeEnum;
-import com.coursistant.lms.shared.exception.CustomException;
+import com.coursistant.lms.shared.api.ApiException;
+import com.coursistant.lms.shared.api.ErrorType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -28,9 +28,13 @@ class TokenAndJwtParserTest {
 
         setStaticField(TokenUtils.class, "staticPrivateKey", privateKey);
         setStaticField(TokenUtils.class, "staticAccessExpireHours", 2);
+        setStaticField(TokenUtils.class, "staticIssuer", "https://usc.xlearnedu.com");
+        setStaticField(TokenUtils.class, "staticAudience", "com.coursistant.lms");
 
         jwtParserUtil = new JwtParserUtil();
         setField(jwtParserUtil, "publicKey", publicKey);
+        setField(jwtParserUtil, "issuer", "https://usc.xlearnedu.com");
+        setField(jwtParserUtil, "audience", "com.coursistant.lms");
     }
 
     @Test
@@ -46,47 +50,49 @@ class TokenAndJwtParserTest {
     }
 
     @Test
-    void verify_expiredToken_throwsCustomException() {
+    void verify_expiredToken_throwsApiException() {
         String expired = JWT.create()
                 .withSubject("1")
                 .withClaim("userId", 1)
                 .withClaim("role", "USER")
                 .withClaim("type", "access")
+                .withIssuer("https://usc.xlearnedu.com")
+                .withAudience("com.coursistant.lms")
                 .withIssuedAt(new Date(System.currentTimeMillis() - 7200_000))
                 .withExpiresAt(new Date(System.currentTimeMillis() - 3600_000))
                 .sign(Algorithm.RSA256(null, privateKey));
 
-        CustomException ex = assertThrows(CustomException.class, () -> jwtParserUtil.verify(expired));
-        assertEquals(ResultCodeEnum.TOKEN_CHECK_ERROR.code, ex.getCode());
+        ApiException ex = assertThrows(ApiException.class, () -> jwtParserUtil.verify(expired));
+        assertEquals(ErrorType.INVALID_TOKEN, ex.getErrorType());
     }
 
     @Test
-    void verify_tamperedToken_throwsCustomException() {
+    void verify_tamperedToken_throwsApiException() {
         String token = TokenUtils.createAccessToken(1, "USER");
         String[] parts = token.split("\\.");
-        // flip a character in the payload segment
         char[] payload = parts[1].toCharArray();
         payload[0] = payload[0] == 'A' ? 'B' : 'A';
         String tampered = parts[0] + "." + new String(payload) + "." + parts[2];
 
-        CustomException ex = assertThrows(CustomException.class, () -> jwtParserUtil.verify(tampered));
-        assertEquals(ResultCodeEnum.TOKEN_CHECK_ERROR.code, ex.getCode());
+        ApiException ex = assertThrows(ApiException.class, () -> jwtParserUtil.verify(tampered));
+        assertEquals(ErrorType.INVALID_TOKEN, ex.getErrorType());
     }
 
     @Test
-    void verify_wrongKey_throwsCustomException() throws Exception {
+    void verify_wrongKey_throwsApiException() throws Exception {
         RSAPrivateKey altPrivate = (RSAPrivateKey) RsaKeyUtil.loadPrivateKey("classpath:test-private-alt.pem");
         String token = JWT.create()
                 .withSubject("1")
                 .withClaim("userId", 1)
                 .withClaim("role", "USER")
                 .withClaim("type", "access")
-                .withIssuedAt(new Date())
+                .withIssuer("https://usc.xlearnedu.com")
+                .withAudience("com.coursistant.lms")
                 .withExpiresAt(new Date(System.currentTimeMillis() + 3600_000))
                 .sign(Algorithm.RSA256(null, altPrivate));
 
-        CustomException ex = assertThrows(CustomException.class, () -> jwtParserUtil.verify(token));
-        assertEquals(ResultCodeEnum.TOKEN_CHECK_ERROR.code, ex.getCode());
+        ApiException ex = assertThrows(ApiException.class, () -> jwtParserUtil.verify(token));
+        assertEquals(ErrorType.INVALID_TOKEN, ex.getErrorType());
     }
 
     private static void setStaticField(Class<?> clazz, String name, Object value) throws Exception {

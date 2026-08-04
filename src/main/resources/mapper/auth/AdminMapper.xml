@@ -5,7 +5,7 @@
 <mapper namespace="com.coursistant.lms.module.auth.admin.repository.AdminMapper">
 
     <sql id="Base_Column_List">
-        id,username,password,name,phone,email,avatar,role
+        id,username,password,name,phone,email,avatar,role,status,auth_version AS authVersion
     </sql>
 
     <select id="selectAll" resultType="com.coursistant.lms.module.auth.admin.entity.Admin">
@@ -84,8 +84,20 @@
             <if test="role != null">
                 role = #{role},
             </if>
+            <if test="status != null">
+                status = #{status},
+            </if>
+            <if test="authVersion != null">
+                auth_version = #{authVersion},
+            </if>
         </set>
         where id = #{id}
+    </update>
+
+    <update id="incrementAuthVersion">
+        UPDATE admin
+        SET auth_version = IFNULL(auth_version, 1) + 1
+        WHERE id = #{id}
     </update>
 
 </mapper>

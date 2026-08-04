@@ -15,6 +15,7 @@ public interface RefreshTokenMapper {
     int deleteById(Integer id);
     int deleteByUserId(Integer userId);
     int deleteByToken(String token);
+    int deleteBySessionId(String sessionId);
     int deleteExpiredTokens();
 
     int updateById(RefreshToken refreshToken);
@@ -22,10 +23,9 @@ public interface RefreshTokenMapper {
     RefreshToken selectById(Integer id);
     RefreshToken selectByUserId(Integer userId);
     RefreshToken selectByToken(String token);
-
+    RefreshToken selectBySessionIdForUpdate(String sessionId);
 
     List<RefreshToken> selectAllByUserId(Integer userId);
-
 
     List<RefreshToken> selectByUserIdAndRoleOrderByCreateTime(Integer userId, String role);
 }

@@ -5,25 +5,38 @@ import cn.hutool.core.util.StrUtil;
 import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.shared.api.ErrorType;
 import com.coursistant.lms.module.auth.session.dto.AuthResult;
+import com.coursistant.lms.module.auth.session.dto.ChangePasswordRequest;
+import com.coursistant.lms.module.auth.session.dto.PasswordResetRequest;
+import com.coursistant.lms.module.auth.session.service.EmailVerificationService;
+import com.coursistant.lms.module.auth.session.service.LoginGuardService;
 import com.coursistant.lms.module.auth.token.service.RefreshTokenService;
 import com.coursistant.lms.shared.util.EmailUtil;
 import com.coursistant.lms.shared.util.PasswordValidator;
 
+import com.coursistant.lms.shared.enums.AccountStatus;
 import com.coursistant.lms.shared.enums.LevelEnum;
 import com.coursistant.lms.shared.enums.RoleEnum;
 import com.coursistant.lms.module.user.account.entity.Account;
-import com.coursistant.lms.module.auth.admin.dto.PasswordDTO;
 import com.coursistant.lms.module.user.account.dto.RegisterRequest;
 import com.coursistant.lms.module.user.account.entity.User;
 import com.coursistant.lms.module.user.account.repository.UserMapper;
+import com.coursistant.lms.module.tenant.entity.Tenant;
 import com.coursistant.lms.module.tenant.repository.TenantMapper;
 import com.coursistant.lms.module.course.course.repository.CourseMapper;
 import com.coursistant.lms.module.course.enrollment.repository.EnrollmentMapper;
+import com.coursistant.lms.module.auth.admin.entity.Admin;
+import com.coursistant.lms.module.auth.admin.repository.AdminMapper;
+import com.coursistant.lms.module.auth.identity.entity.AccountIdentity;
+import com.coursistant.lms.module.auth.identity.repository.AccountIdentityMapper;
+import com.coursistant.lms.module.auth.identity.service.AccountIdentityService;
+import com.coursistant.lms.module.auth.identity.service.IdentityAuditService;
 import com.coursistant.lms.module.user.profile.AvatarUrlBuilder;
 import com.coursistant.lms.shared.util.PasswordEncoderUtil;
+import com.coursistant.lms.shared.security.SessionInvalidationService;
 import com.coursistant.lms.shared.security.TokenUtils;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import jakarta.annotation.Resource;
 import java.util.List;
@@ -32,6 +45,8 @@ import java.security.SecureRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.ArrayList;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * User???? // User business processing
@@ -39,8 +54,13 @@ import java.util.stream.Collectors;
 @Service
 public class UserService {
 
+    private static final Logger log = LoggerFactory.getLogger(UserService.class);
+
     @Resource
     private UserMapper userMapper;
+
+    @Resource
+    private AdminMapper adminMapper;
 
     @Resource
     private TenantMapper tenantMapper;
@@ -53,6 +73,24 @@ public class UserService {
 
     @Resource
     private RefreshTokenService refreshTokenService;
+
+    @Resource
+    private LoginGuardService loginGuardService;
+
+    @Resource
+    private EmailVerificationService emailVerificationService;
+
+    @Resource
+    private AccountIdentityService accountIdentityService;
+
+    @Resource
+    private AccountIdentityMapper accountIdentityMapper;
+
+    @Resource
+    private IdentityAuditService identityAuditService;
+
+    @Resource
+    private SessionInvalidationService sessionInvalidationService;
 
     @Resource(name = "generalRedisTemplate")
     private RedisTemplate<String, Object> generalRedisTemplate;
@@ -93,18 +131,16 @@ public class UserService {
     }
 
     /**
-     * Public registration. {@code tenantId} is required and must be {@code 1}.
+     * Public registration. Forces USER + STUDENT + tenantId=1. Consumes verification code atomically.
      */
+    @Transactional
     public AuthResult register(RegisterRequest request) {
-        if (request == null || StrUtil.isBlank(request.getEmail())) {
+        if (request == null || StrUtil.isBlank(request.getEmail()) || StrUtil.isBlank(request.getVerificationCode())) {
             throw new ApiException(ErrorType.PARAM_MISSING, "Parameter Missing");
         }
-        String email = request.getEmail().trim().toLowerCase();
-
-        String verifiedKey = "email:verified:register:" + email;
-        if (!Boolean.TRUE.equals(generalRedisTemplate.hasKey(verifiedKey))) {
-            throw new ApiException(ErrorType.INVALID_VERIFICATION_CODE, "Email not verified");
-        }
+        String email = AccountIdentityService.normalizeEmail(request.getEmail());
+        emailVerificationService.requireConsumeSuccess(
+                EmailVerificationService.TYPE_REGISTER, email, request.getVerificationCode());
 
         PasswordValidator.validate(request.getPassword());
 
@@ -112,7 +148,12 @@ public class UserService {
             throw new ApiException(ErrorType.PARAM_MISSING, "Display name is required");
         }
 
-        requirePublicRegistrationTenant(request.getTenantId());
+        // Public registration always binds to tenant 1 (ignore client tenantId for role/level).
+        requirePublicRegistrationTenant(1);
+        Tenant tenant = tenantMapper.selectById(1);
+        if (tenant == null || (tenant.getStatus() != null && !AccountStatus.ACTIVE.name().equals(tenant.getStatus()))) {
+            throw new ApiException(ErrorType.BAD_REQUEST, "Registration failed");
+        }
 
         User existing = userMapper.selectByEmail(email);
         if (existing != null) {
@@ -123,19 +164,23 @@ public class UserService {
         user.setEmail(email);
         user.setName(request.getName());
         user.setUsername(request.getUsername());
-        user.setTenantId(request.getTenantId());
+        user.setTenantId(1);
         user.setLevel(LevelEnum.STUDENT.level);
         user.setRole(RoleEnum.USER.name());
+        user.setStatus(AccountStatus.ACTIVE.name());
+        user.setAuthVersion(1);
         user.setEmailNotifications(true);
         if (StrUtil.isBlank(user.getUsername())) {
             user.setUsername(email.split("@")[0]);
         }
         user.setEncryptPassword(request.getPassword());
         userMapper.insert(user);
+        accountIdentityService.claimEmail(email, AccountIdentityService.PRINCIPAL_USER, user.getId());
 
-        generalRedisTemplate.delete(verifiedKey);
-
-        String accessToken = TokenUtils.createAccessToken(user.getId(), RoleEnum.USER.name());
+        Integer authVersion = user.getAuthVersion() == null ? 1 : user.getAuthVersion();
+        Integer tenantSecurityVersion = tenant.getSecurityVersion() == null ? 1 : tenant.getSecurityVersion();
+        String accessToken = TokenUtils.createAccessToken(
+                user.getId(), RoleEnum.USER.name(), authVersion, tenantSecurityVersion);
         String refreshToken = refreshTokenService.createAndStoreRefreshToken(user.getId(), RoleEnum.USER.name());
         return toAuthResult(user, accessToken, refreshToken);
     }
@@ -283,137 +328,128 @@ public class UserService {
     }
 
     /**
-     * ?? / User login
+     * User / TENANT_ADMIN login against the user table.
      */
     public AuthResult login(Account account) {
-        String loginAttemptsKey = "user:login:attempts:" + account.getEmail();
-        String lockKey = "user:login:lock:" + account.getEmail();
+        String email = AccountIdentityService.normalizeEmail(account.getEmail());
+        loginGuardService.assertNotLocked(LoginGuardService.ACCOUNT_USER, email);
 
-        if (Boolean.TRUE.equals(generalRedisTemplate.hasKey(lockKey))) {
-            throw new ApiException(ErrorType.ACCOUNT_LOCKED, "Your account is locked. Please try again later.");
-        }
-
-        // Always load from DB for password verification. Redis must not cache credentials:
-        // Account.password is WRITE_ONLY, so Jackson Redis serialization drops the hash.
-        User dbUser = userMapper.selectByEmail(account.getEmail());
-
+        User dbUser = userMapper.selectByEmail(email);
         if (ObjectUtil.isNull(dbUser)) {
-            throw new ApiException(ErrorType.USER_NOT_FOUND, "User Does Not Exist");
+            loginGuardService.recordFailure(LoginGuardService.ACCOUNT_USER, email, "USER_NOT_FOUND");
+        }
+        if (dbUser.getStatus() != null && !AccountStatus.ACTIVE.name().equals(dbUser.getStatus())) {
+            log.info("Login rejected: disabled user id={}", dbUser.getId());
+            loginGuardService.recordFailure(LoginGuardService.ACCOUNT_USER, email, "ACCOUNT_DISABLED");
+        }
+        Tenant tenant = dbUser.getTenantId() == null ? null : tenantMapper.selectById(dbUser.getTenantId());
+        if (tenant == null
+                || (tenant.getStatus() != null && !AccountStatus.ACTIVE.name().equals(tenant.getStatus()))) {
+            log.info("Login rejected: inactive tenant userId={} tenantId={}", dbUser.getId(), dbUser.getTenantId());
+            loginGuardService.recordFailure(LoginGuardService.ACCOUNT_USER, email, "TENANT_DISABLED");
         }
 
         if (!PasswordEncoderUtil.matches(account.getPassword(), dbUser.getPassword())) {
-            Integer attempts = (Integer) generalRedisTemplate.opsForValue().get(loginAttemptsKey);
-            attempts = (attempts == null) ? 1 : attempts + 1;
-            generalRedisTemplate.opsForValue().set(loginAttemptsKey, attempts, 15, TimeUnit.MINUTES);
-
-            if (attempts >= 6) {
-                long lockTime = (attempts < 10) ? 60 : 600;
-                generalRedisTemplate.opsForValue().set(lockKey, "LOCKED", lockTime, TimeUnit.SECONDS);
-                throw new ApiException(ErrorType.ACCOUNT_LOCKED,
-                        "Your account is locked. Please try again in " + (lockTime / 60) + " minutes.");
-            }
-
-            throw new ApiException(ErrorType.INVALID_CREDENTIALS,
-                    "Invalid email or password. Remaining attempts: " + (6 - attempts));
+            loginGuardService.recordFailure(LoginGuardService.ACCOUNT_USER, email, "BAD_PASSWORD");
         }
 
-        generalRedisTemplate.delete(loginAttemptsKey);
-        generalRedisTemplate.delete(lockKey);
+        loginGuardService.clearOnSuccess(LoginGuardService.ACCOUNT_USER, email);
 
         try {
-            String accessToken = TokenUtils.createAccessToken(dbUser.getId(), dbUser.getRole());
+            Integer authVersion = dbUser.getAuthVersion() == null ? 1 : dbUser.getAuthVersion();
+            Integer tenantSecurityVersion = tenant.getSecurityVersion() == null ? 1 : tenant.getSecurityVersion();
+            String accessToken = TokenUtils.createAccessToken(
+                    dbUser.getId(), dbUser.getRole(), authVersion, tenantSecurityVersion);
             String refreshToken = refreshTokenService.createAndStoreRefreshToken(dbUser.getId(), dbUser.getRole());
             return toAuthResult(dbUser, accessToken, refreshToken);
         } catch (ApiException e) {
             throw e;
         } catch (Exception e) {
-            throw new ApiException(ErrorType.TOKEN_CREATION_FAILED, "Error When Creating Token: " + e.getMessage());
+            throw new ApiException(ErrorType.TOKEN_CREATION_FAILED, "Error When Creating Token");
         }
     }
 
     /**
-     * Validate email verification code and set verified mark.
+     * Change password for the authenticated USER / TENANT_ADMIN principal.
      */
-    public void validateEmailVerificationCode(String email, String code, String type) {
-        if (StrUtil.isBlank(email) || StrUtil.isBlank(code) || StrUtil.isBlank(type)) {
+    @Transactional
+    public void updatePasswordForPrincipal(Integer userId, ChangePasswordRequest request) {
+        if (request == null || StrUtil.isBlank(request.getCurrentPassword())
+                || StrUtil.isBlank(request.getNewPassword())) {
             throw new ApiException(ErrorType.PARAM_MISSING, "Parameter Missing");
         }
-        email = email.trim().toLowerCase();
-
-        String attemptsKey = "email:verification:attempts:" + type + ":" + email;
-        Integer attempts = toInteger(generalRedisTemplate.opsForValue().get(attemptsKey));
-        if (attempts != null && attempts >= 5) {
-            throw new ApiException(ErrorType.VERIFICATION_ATTEMPTS_EXCEEDED);
-        }
-
-        String redisKey = "email:verification:" + type + ":" + email;
-        String cachedCode = (String) generalRedisTemplate.opsForValue().get(redisKey);
-        if (cachedCode == null) {
-            throw new ApiException(ErrorType.VERIFICATION_CODE_EXPIRED);
-        }
-        if (!cachedCode.equals(code)) {
-            int next = (attempts == null) ? 1 : attempts + 1;
-            generalRedisTemplate.opsForValue().set(attemptsKey, next, 10, TimeUnit.MINUTES);
-            throw new ApiException(ErrorType.INVALID_VERIFICATION_CODE);
-        }
-
-        generalRedisTemplate.delete(redisKey);
-        generalRedisTemplate.delete(attemptsKey);
-        generalRedisTemplate.opsForValue().set(
-                "email:verified:" + type + ":" + email, "true", 15, TimeUnit.MINUTES);
-    }
-
-    /**
-     * ???? Change Password (logged-in user updating password)
-     */
-    public void updatePassword(PasswordDTO account) {
-        User dbUser = userMapper.selectByEmail(account.getEmail());
+        User dbUser = userMapper.selectById(userId);
         if (ObjectUtil.isNull(dbUser)) {
             throw new ApiException(ErrorType.USER_NOT_FOUND, "User Does Not Exist");
         }
-        if (!PasswordEncoderUtil.matches(account.getPassword(), dbUser.getPassword())) {
+        if (!PasswordEncoderUtil.matches(request.getCurrentPassword(), dbUser.getPassword())) {
             throw new ApiException(ErrorType.INVALID_PASSWORD, "Incorrect Original Password");
         }
-
-        PasswordValidator.validate(account.getNewPassword());
-        String encryptedNewPassword = PasswordEncoderUtil.encodePassword(account.getNewPassword());
-        dbUser.setPassword(encryptedNewPassword);
+        PasswordValidator.validate(request.getNewPassword());
+        dbUser.setPassword(PasswordEncoderUtil.encodePassword(request.getNewPassword()));
         dbUser.setMustChangePassword(false);
         userMapper.updateById(dbUser);
-
-        refreshTokenService.deleteByUserId(dbUser.getId(), dbUser.getRole());
-
-        generalRedisTemplate.delete("user:email:" + account.getEmail());
+        userMapper.incrementAuthVersion(dbUser.getId());
+        sessionInvalidationService.invalidatePrincipal(dbUser.getId(), dbUser.getRole());
+        generalRedisTemplate.delete("user:email:" + dbUser.getEmail());
         generalRedisTemplate.delete("user:" + dbUser.getId());
+        identityAuditService.writeSuccess(dbUser.getId(), dbUser.getRole(), dbUser.getTenantId(),
+                "CHANGE_PASSWORD", "USER", dbUser.getId(), dbUser.getTenantId(),
+                null, "{\"authVersion\":\"bumped\"}", null, null);
     }
 
     /**
-     * Reset password after email verification mark is set.
+     * Reset password via verification code + account_identity (admin or user table).
      */
-    public void resetPassword(String email, String newPassword) {
-        email = email.trim().toLowerCase();
-
-        String verifiedKey = "email:verified:reset:" + email;
-        if (!Boolean.TRUE.equals(generalRedisTemplate.hasKey(verifiedKey))) {
-            throw new ApiException(ErrorType.INVALID_VERIFICATION_CODE, "Email not verified");
+    @Transactional
+    public void resetPassword(PasswordResetRequest request) {
+        if (request == null || StrUtil.isBlank(request.getEmail())
+                || StrUtil.isBlank(request.getVerificationCode())
+                || StrUtil.isBlank(request.getNewPassword())) {
+            throw new ApiException(ErrorType.PARAM_MISSING, "Parameter Missing");
         }
+        String email = AccountIdentityService.normalizeEmail(request.getEmail());
+        emailVerificationService.requireConsumeSuccess(
+                EmailVerificationService.TYPE_RESET, email, request.getVerificationCode());
+        PasswordValidator.validate(request.getNewPassword());
 
-        PasswordValidator.validate(newPassword);
-
-        User dbUser = userMapper.selectByEmail(email);
-        if (dbUser == null) {
+        AccountIdentity identity = accountIdentityMapper.selectByEmail(email);
+        if (identity == null) {
             throw new ApiException(ErrorType.BAD_REQUEST, "Password reset failed");
         }
 
-        dbUser.setPassword(PasswordEncoderUtil.encodePassword(newPassword));
+        String encoded = PasswordEncoderUtil.encodePassword(request.getNewPassword());
+        if (AccountIdentityService.PRINCIPAL_ADMIN.equals(identity.getPrincipalType())) {
+            Admin admin = adminMapper.selectById(identity.getPrincipalId());
+            if (admin == null) {
+                throw new ApiException(ErrorType.BAD_REQUEST, "Password reset failed");
+            }
+            admin.setPassword(encoded);
+            adminMapper.updateById(admin);
+            adminMapper.incrementAuthVersion(admin.getId());
+            sessionInvalidationService.invalidatePrincipal(admin.getId(), RoleEnum.SYSTEM_ADMIN.name());
+            generalRedisTemplate.delete("admin:email:" + email);
+            generalRedisTemplate.delete("admin:" + admin.getId());
+            identityAuditService.writeSuccess(admin.getId(), RoleEnum.SYSTEM_ADMIN.name(), null,
+                    "RESET_PASSWORD", "ADMIN", admin.getId(), null,
+                    null, "{\"authVersion\":\"bumped\"}", null, null);
+            return;
+        }
+
+        User dbUser = userMapper.selectById(identity.getPrincipalId());
+        if (dbUser == null) {
+            throw new ApiException(ErrorType.BAD_REQUEST, "Password reset failed");
+        }
+        dbUser.setPassword(encoded);
         dbUser.setMustChangePassword(false);
         userMapper.updateById(dbUser);
-
-        refreshTokenService.deleteByUserId(dbUser.getId(), dbUser.getRole());
-
-        generalRedisTemplate.delete(verifiedKey);
+        userMapper.incrementAuthVersion(dbUser.getId());
+        sessionInvalidationService.invalidatePrincipal(dbUser.getId(), dbUser.getRole());
         generalRedisTemplate.delete("user:email:" + email);
         generalRedisTemplate.delete("user:" + dbUser.getId());
+        identityAuditService.writeSuccess(dbUser.getId(), dbUser.getRole(), dbUser.getTenantId(),
+                "RESET_PASSWORD", "USER", dbUser.getId(), dbUser.getTenantId(),
+                null, "{\"authVersion\":\"bumped\"}", null, null);
     }
 
     /**
@@ -424,52 +460,32 @@ public class UserService {
     }
 
     /**
-     * ??????? // Send email verification code
+     * Send email verification code (register / reset). Forgot-password is not gated by login lock.
      */
     public void sendEmailVerificationCode(String email, String type) {
         if (ObjectUtil.isEmpty(email)) {
             throw new ApiException(ErrorType.PARAM_MISSING, "Parameter Missing");
         }
-        email = email.trim().toLowerCase();
+        email = AccountIdentityService.normalizeEmail(email);
+        emailVerificationService.assertCanSend(type, email);
 
-        if (!"register".equals(type) && !"reset".equals(type)) {
-            throw new ApiException(ErrorType.BAD_REQUEST, "Invalid request data");
-        }
-
-        String cooldownKey = "email:verification:cooldown:" + type + ":" + email;
-        if (Boolean.TRUE.equals(generalRedisTemplate.hasKey(cooldownKey))) {
-            throw new ApiException(ErrorType.VERIFICATION_RESEND_COOLDOWN);
-        }
-
-        String hourlyKey = "email:verification:hourly:" + type + ":" + email;
-        Integer hourlyCount = toInteger(generalRedisTemplate.opsForValue().get(hourlyKey));
-        if (hourlyCount != null && hourlyCount >= 5) {
-            throw new ApiException(ErrorType.VERIFICATION_HOURLY_LIMIT);
-        }
-
-        // Set cooldown + hourly counter BEFORE existence check (anti side-channel)
-        generalRedisTemplate.opsForValue().set(cooldownKey, "1", 60, TimeUnit.SECONDS);
-        if (hourlyCount == null) {
-            generalRedisTemplate.opsForValue().set(hourlyKey, 1, 1, TimeUnit.HOURS);
+        boolean shouldSend;
+        if (EmailVerificationService.TYPE_REGISTER.equals(type)) {
+            shouldSend = userMapper.selectByEmail(email) == null
+                    && accountIdentityMapper.selectByEmail(email) == null;
         } else {
-            generalRedisTemplate.opsForValue().set(hourlyKey, hourlyCount + 1, 1, TimeUnit.HOURS);
+            shouldSend = accountIdentityMapper.selectByEmail(email) != null;
         }
-
-        User dbUser = userMapper.selectByEmail(email);
-        if ("register".equals(type) && dbUser != null) {
-            return;
-        }
-        if ("reset".equals(type) && dbUser == null) {
+        if (!shouldSend) {
             return;
         }
 
         String verificationCode = String.format("%06d", new SecureRandom().nextInt(1_000_000));
-        String redisKey = "email:verification:" + type + ":" + email;
-        generalRedisTemplate.opsForValue().set(redisKey, verificationCode, 10, TimeUnit.MINUTES);
+        emailVerificationService.storeCode(type, email, verificationCode);
 
         String subject;
         String content;
-        if ("register".equals(type)) {
+        if (EmailVerificationService.TYPE_REGISTER.equals(type)) {
             subject = "Registration Verification Code";
             content = "Dear User,\n\n"
                     + "Thank you for registering with Coursistant. Your verification code is: "
@@ -515,18 +531,5 @@ public class UserService {
             result.setMustChangePassword(Boolean.TRUE.equals(u.getMustChangePassword()));
         }
         return result;
-    }
-
-    private Integer toInteger(Object value) {
-        if (value == null) {
-            return null;
-        }
-        if (value instanceof Integer integer) {
-            return integer;
-        }
-        if (value instanceof Number number) {
-            return number.intValue();
-        }
-        return Integer.parseInt(value.toString());
     }
 }

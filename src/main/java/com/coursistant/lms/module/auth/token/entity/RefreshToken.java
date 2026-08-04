@@ -4,16 +4,18 @@ import java.io.Serializable;
 import java.util.Date;
 
 /**
- * 刷新令牌实体类
- * Refresh Token Entity
+ * Refresh Token Entity (device session row).
  */
 public class RefreshToken implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private Integer id;
+    private String sessionId;
     private Integer userId;
     private String role;
     private String token;
+    private String previousToken;
+    private Date previousValidUntil;
     private String ipAddress;
     private String userAgent;
     private Date expireTime;
@@ -30,6 +32,14 @@ public class RefreshToken implements Serializable {
         this.id = id;
     }
 
+    public String getSessionId() {
+        return sessionId;
+    }
+
+    public void setSessionId(String sessionId) {
+        this.sessionId = sessionId;
+    }
+
     public Integer getUserId() {
         return userId;
     }
@@ -44,6 +54,22 @@ public class RefreshToken implements Serializable {
 
     public void setToken(String token) {
         this.token = token;
+    }
+
+    public String getPreviousToken() {
+        return previousToken;
+    }
+
+    public void setPreviousToken(String previousToken) {
+        this.previousToken = previousToken;
+    }
+
+    public Date getPreviousValidUntil() {
+        return previousValidUntil;
+    }
+
+    public void setPreviousValidUntil(Date previousValidUntil) {
+        this.previousValidUntil = previousValidUntil;
     }
 
     public String getIpAddress() {

@@ -21,12 +21,14 @@ public enum ErrorType {
     ACCOUNT_LOCKED(HttpStatus.LOCKED, "Account is locked"),
     ACCOUNT_DISABLED(HttpStatus.FORBIDDEN, "Account is disabled"),
     PASSWORD_CHANGE_REQUIRED(HttpStatus.FORBIDDEN, "Password change required"),
+    AUTH_SERVICE_TEMPORARILY_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "Auth service temporarily unavailable"),
     ENROLLMENT_ROLE_FORBIDDEN(HttpStatus.FORBIDDEN, "Account cannot be enrolled in courses"),
     LEVEL_ENROLLMENT_MISMATCH(HttpStatus.CONFLICT, "User level is incompatible with enrollment role"),
 
     // --- Auth: Token ---
     INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "Invalid Access Token"),
     REFRESH_TOKEN_INVALID(HttpStatus.UNAUTHORIZED, "Refresh Token Validation Failed"),
+    REFRESH_TOKEN_REUSED(HttpStatus.UNAUTHORIZED, "Refresh token reused"),
     TOKEN_CREATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "Error When Creating Token"),
 
     // --- Auth: Params ---

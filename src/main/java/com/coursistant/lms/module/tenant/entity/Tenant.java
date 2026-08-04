@@ -9,6 +9,8 @@ public class Tenant implements Serializable {
     private Integer id;
     private String name;
     private String timezone;
+    private String status;
+    private Integer securityVersion;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -34,6 +36,22 @@ public class Tenant implements Serializable {
 
     public void setTimezone(String timezone) {
         this.timezone = timezone;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public Integer getSecurityVersion() {
+        return securityVersion;
+    }
+
+    public void setSecurityVersion(Integer securityVersion) {
+        this.securityVersion = securityVersion;
     }
 
     public LocalDateTime getCreatedAt() {

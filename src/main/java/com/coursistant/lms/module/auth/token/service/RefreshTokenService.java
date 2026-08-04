@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
@@ -30,8 +31,7 @@ public class RefreshTokenService {
     private static final Logger log = LoggerFactory.getLogger(RefreshTokenService.class);
 
     private static final String REDIS_PREFIX = "refresh:token:";
-    private static final String REDIS_USED_PREFIX = "refresh:used:";
-    private static final int GRACE_WINDOW_SECONDS = 30;
+    private static final String REDIS_SESSION_PREFIX = "refresh:session:";
     private static final int MAX_DEVICES = 5;
 
     @Resource
@@ -43,7 +43,13 @@ public class RefreshTokenService {
     @Value("${token.refresh-expire-days:14}")
     private int refreshExpireDays;
 
+    @Value("${token.refresh-rotation-grace-seconds:30}")
+    private int refreshRotationGraceSeconds;
+
     public String createAndStoreRefreshToken(Integer userId, String role) {
+        requireRedis();
+
+        String sessionId = UUID.randomUUID().toString().replace("-", "");
         String token = UUID.randomUUID().toString().replace("-", "");
 
         HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.getRequestAttributes()).getRequest();
@@ -54,13 +60,13 @@ public class RefreshTokenService {
         while (existingTokens.size() >= MAX_DEVICES) {
             RefreshToken oldest = existingTokens.remove(0);
             refreshTokenMapper.deleteById(oldest.getId());
-            refreshTokenRedisTemplate.delete(REDIS_PREFIX + oldest.getToken());
+            bestEffortDeleteRedis(oldest);
         }
 
-        refreshTokenRedisTemplate.opsForValue().set(
-                REDIS_PREFIX + token, userId + ":" + role, Duration.ofDays(refreshExpireDays));
+        writeRedisSession(sessionId, token, userId, role);
 
         RefreshToken refreshToken = new RefreshToken();
+        refreshToken.setSessionId(sessionId);
         refreshToken.setUserId(userId);
         refreshToken.setRole(role);
         refreshToken.setToken(token);
@@ -73,6 +79,7 @@ public class RefreshTokenService {
     }
 
     public boolean validateRefreshToken(String token) {
+        requireRedis();
         String redisKey = REDIS_PREFIX + token;
         if (Boolean.TRUE.equals(refreshTokenRedisTemplate.hasKey(redisKey))) {
             return true;
@@ -82,106 +89,112 @@ public class RefreshTokenService {
         if (dbToken == null) {
             return false;
         }
-
-        boolean isValid = dbToken.getExpireTime().after(new Date());
-        if (!isValid) {
+        boolean isValid = dbToken.getExpireTime() != null && dbToken.getExpireTime().after(new Date())
+                && token.equals(dbToken.getToken());
+        if (!isValid && token.equals(dbToken.getToken())) {
             refreshTokenMapper.deleteById(dbToken.getId());
         }
         return isValid;
     }
 
     /**
-     * Refresh with token rotation + 30-second concurrency grace window.
-     *
-     * Flow:
-     * 1. If the incoming token is a "used" old token within the 30s grace window,
-     *    return the same new token (idempotent).
-     * 2. If the incoming token is the current valid token, rotate: generate a new UUID,
-     *    mark the old one as "used" in Redis with 30s TTL, and persist the new one.
-     * 3. If the incoming token is a used token AFTER the grace window expired,
-     *    it may be stolen — revoke all tokens for this user.
+     * Atomic rotation with configurable grace. Replay outside grace revokes only this device session.
      */
+    @Transactional
     public RefreshResult getNewAccessToken(String token) {
-        // 1. Check if this is a used old token within the grace window
-        String usedKey = REDIS_USED_PREFIX + token;
-        Object mappedNewTokenObj = refreshTokenRedisTemplate.opsForValue().get(usedKey);
-        if (mappedNewTokenObj != null) {
-            String mappedNewToken = mappedNewTokenObj.toString();
-            RefreshToken dbToken = refreshTokenMapper.selectByToken(mappedNewToken);
-            if (dbToken != null) {
-                String accessToken = TokenUtils.createAccessToken(dbToken.getUserId(), dbToken.getRole());
-                return new RefreshResult(accessToken, mappedNewToken);
+        requireRedis();
+
+        Object sessionIdObj = refreshTokenRedisTemplate.opsForValue().get(REDIS_PREFIX + token);
+        String sessionId = null;
+        if (sessionIdObj != null) {
+            String payload = sessionIdObj.toString();
+            // format sessionId:userId:role OR legacy userId:role
+            String[] parts = payload.split(":", 3);
+            if (parts.length >= 3) {
+                sessionId = parts[0];
             }
         }
 
-        // 2. Validate the current token
-        if (!validateRefreshToken(token)) {
-            // Could be a used token whose grace window expired — possible theft
-            RefreshToken dbToken = refreshTokenMapper.selectByToken(token);
-            if (dbToken == null) {
-                log.warn("Refresh token not found, possible token reuse attack: {}", token.substring(0, Math.min(8, token.length())));
+        RefreshToken located = refreshTokenMapper.selectByToken(token);
+        if (located == null) {
+            throw new ApiException(ErrorType.REFRESH_TOKEN_INVALID, "Refresh Token Validation Failed");
+        }
+        if (sessionId == null) {
+            sessionId = located.getSessionId();
+        }
+        if (sessionId == null || sessionId.isBlank()) {
+            throw new ApiException(ErrorType.REFRESH_TOKEN_INVALID, "Refresh Token Validation Failed");
+        }
+
+        RefreshToken locked = refreshTokenMapper.selectBySessionIdForUpdate(sessionId);
+        if (locked == null) {
+            throw new ApiException(ErrorType.REFRESH_TOKEN_INVALID, "Refresh Token Validation Failed");
+        }
+        if (locked.getExpireTime() != null && locked.getExpireTime().before(new Date())) {
+            refreshTokenMapper.deleteById(locked.getId());
+            bestEffortDeleteRedis(locked);
+            throw new ApiException(ErrorType.REFRESH_TOKEN_INVALID, "Refresh Token Validation Failed");
+        }
+
+        Date now = new Date();
+        if (token.equals(locked.getToken())) {
+            String newRefreshToken = UUID.randomUUID().toString().replace("-", "");
+            locked.setPreviousToken(locked.getToken());
+            locked.setPreviousValidUntil(Date.from(now.toInstant().plusSeconds(refreshRotationGraceSeconds)));
+            locked.setToken(newRefreshToken);
+            locked.setExpireTime(Date.from(LocalDateTime.now().plusDays(refreshExpireDays)
+                    .atZone(ZoneId.systemDefault()).toInstant()));
+            locked.setUpdatedTime(now);
+            refreshTokenMapper.updateById(locked);
+
+            writeRedisSession(locked.getSessionId(), newRefreshToken, locked.getUserId(), locked.getRole());
+            bestEffortDeleteKey(REDIS_PREFIX + token);
+
+            String accessToken = TokenUtils.createAccessToken(locked.getUserId(), locked.getRole());
+            return new RefreshResult(accessToken, newRefreshToken);
+        }
+
+        if (token.equals(locked.getPreviousToken())) {
+            if (locked.getPreviousValidUntil() != null && !now.after(locked.getPreviousValidUntil())) {
+                String accessToken = TokenUtils.createAccessToken(locked.getUserId(), locked.getRole());
+                return new RefreshResult(accessToken, locked.getToken());
             }
-            throw new ApiException(ErrorType.REFRESH_TOKEN_INVALID, "Refresh Token Validation Failed");
+            log.warn("Refresh token replay outside grace for session {}", sessionId);
+            refreshTokenMapper.deleteBySessionId(sessionId);
+            bestEffortDeleteRedis(locked);
+            throw new ApiException(ErrorType.REFRESH_TOKEN_REUSED);
         }
 
-        RefreshToken dbToken = refreshTokenMapper.selectByToken(token);
-        if (dbToken == null) {
-            throw new ApiException(ErrorType.REFRESH_TOKEN_INVALID, "Refresh Token Validation Failed");
-        }
-
-        Integer userId = dbToken.getUserId();
-        String role = dbToken.getRole();
-
-        // Generate new refresh token UUID
-        String newRefreshToken = UUID.randomUUID().toString().replace("-", "");
-
-        // Mark old token as "used" with 30s grace window
-        refreshTokenRedisTemplate.opsForValue().set(
-                REDIS_USED_PREFIX + token, newRefreshToken,
-                Duration.ofSeconds(GRACE_WINDOW_SECONDS));
-
-        // Replace Redis key: delete old, create new
-        refreshTokenRedisTemplate.delete(REDIS_PREFIX + token);
-        refreshTokenRedisTemplate.opsForValue().set(
-                REDIS_PREFIX + newRefreshToken, userId + ":" + role, Duration.ofDays(refreshExpireDays));
-
-        // Update database record
-        Date newExpireTime = Date.from(LocalDateTime.now()
-                .plusDays(refreshExpireDays)
-                .atZone(ZoneId.systemDefault())
-                .toInstant());
-        dbToken.setToken(newRefreshToken);
-        dbToken.setExpireTime(newExpireTime);
-        dbToken.setUpdatedTime(new Date());
-        refreshTokenMapper.updateById(dbToken);
-
-        String accessToken = TokenUtils.createAccessToken(userId, role);
-        return new RefreshResult(accessToken, newRefreshToken);
+        throw new ApiException(ErrorType.REFRESH_TOKEN_INVALID, "Refresh Token Validation Failed");
     }
 
-    /**
-     * Revoke all sessions for a user (password change / reset).
-     * Deletes DB first, then Redis keys (residual keys expire via TTL).
-     */
     public void deleteByUserId(Integer userId, String role) {
         List<RefreshToken> tokens = refreshTokenMapper.selectAllByUserId(userId);
         refreshTokenMapper.deleteByUserId(userId);
         for (RefreshToken t : tokens) {
-            if (t.getToken() != null) {
-                refreshTokenRedisTemplate.delete(REDIS_PREFIX + t.getToken());
-            }
+            bestEffortDeleteRedis(t);
         }
     }
 
     /**
-     * Revoke a single device session.
+     * Logout: DB revoke succeeds even if Redis cleanup fails.
      */
     public void deleteByToken(String token) {
         if (token == null || token.isBlank()) {
             return;
         }
+        RefreshToken existing = null;
+        try {
+            existing = refreshTokenMapper.selectByToken(token);
+        } catch (Exception ignored) {
+            // fall through to best-effort token delete
+        }
         refreshTokenMapper.deleteByToken(token);
-        refreshTokenRedisTemplate.delete(REDIS_PREFIX + token);
+        if (existing != null) {
+            bestEffortDeleteRedis(existing);
+        } else {
+            bestEffortDeleteKey(REDIS_PREFIX + token);
+        }
     }
 
     public RefreshToken getByToken(String token) {
@@ -191,5 +204,50 @@ public class RefreshTokenService {
     @Scheduled(cron = "0 0 3 * * ?")
     public void cleanExpiredTokens() {
         refreshTokenMapper.deleteExpiredTokens();
+    }
+
+    private void writeRedisSession(String sessionId, String token, Integer userId, String role) {
+        requireRedis();
+        String payload = sessionId + ":" + userId + ":" + role;
+        refreshTokenRedisTemplate.opsForValue().set(
+                REDIS_PREFIX + token, payload, Duration.ofDays(refreshExpireDays));
+        refreshTokenRedisTemplate.opsForValue().set(
+                REDIS_SESSION_PREFIX + sessionId, token, Duration.ofDays(refreshExpireDays));
+    }
+
+    private void requireRedis() {
+        try {
+            Boolean pong = refreshTokenRedisTemplate.hasKey("__auth_refresh_ping__");
+            // hasKey against missing key is fine; connection failure throws
+            if (pong != null && pong) {
+                // no-op
+            }
+        } catch (Exception e) {
+            log.warn("Refresh Redis unavailable: {}", e.toString());
+            throw new ApiException(ErrorType.AUTH_SERVICE_TEMPORARILY_UNAVAILABLE);
+        }
+    }
+
+    private void bestEffortDeleteRedis(RefreshToken token) {
+        if (token == null) {
+            return;
+        }
+        if (token.getToken() != null) {
+            bestEffortDeleteKey(REDIS_PREFIX + token.getToken());
+        }
+        if (token.getPreviousToken() != null) {
+            bestEffortDeleteKey(REDIS_PREFIX + token.getPreviousToken());
+        }
+        if (token.getSessionId() != null) {
+            bestEffortDeleteKey(REDIS_SESSION_PREFIX + token.getSessionId());
+        }
+    }
+
+    private void bestEffortDeleteKey(String key) {
+        try {
+            refreshTokenRedisTemplate.delete(key);
+        } catch (Exception e) {
+            log.debug("Best-effort Redis delete failed for key prefix {}", key.substring(0, Math.min(16, key.length())));
+        }
     }
 }
