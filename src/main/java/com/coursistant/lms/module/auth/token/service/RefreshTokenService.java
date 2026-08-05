@@ -18,7 +18,9 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
+import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Date;
@@ -39,6 +41,9 @@ public class RefreshTokenService {
 
     @Resource(name = "refreshTokenRedisTemplate")
     private RedisTemplate<String, Object> refreshTokenRedisTemplate;
+
+    @Resource
+    private Clock clock;
 
     @Value("${token.refresh-expire-days:14}")
     private int refreshExpireDays;
@@ -72,7 +77,8 @@ public class RefreshTokenService {
         refreshToken.setToken(token);
         refreshToken.setIpAddress(ipAddress);
         refreshToken.setUserAgent(userAgent);
-        refreshToken.setExpireTime(Date.from(LocalDateTime.now().plusDays(refreshExpireDays).atZone(ZoneId.systemDefault()).toInstant()));
+        refreshToken.setExpireTime(Date.from(LocalDateTime.now(clock).plusDays(refreshExpireDays)
+                .atZone(ZoneId.systemDefault()).toInstant()));
         refreshTokenMapper.insert(refreshToken);
 
         return token;
@@ -89,7 +95,8 @@ public class RefreshTokenService {
         if (dbToken == null) {
             return false;
         }
-        boolean isValid = dbToken.getExpireTime() != null && dbToken.getExpireTime().after(new Date())
+        Date now = Date.from(Instant.now(clock));
+        boolean isValid = dbToken.getExpireTime() != null && dbToken.getExpireTime().after(now)
                 && token.equals(dbToken.getToken());
         if (!isValid && token.equals(dbToken.getToken())) {
             refreshTokenMapper.deleteById(dbToken.getId());
@@ -99,8 +106,9 @@ public class RefreshTokenService {
 
     /**
      * Atomic rotation with configurable grace. Replay outside grace revokes only this device session.
+     * ApiException after intentional revoke must not roll back the delete.
      */
-    @Transactional
+    @Transactional(noRollbackFor = ApiException.class)
     public RefreshResult getNewAccessToken(String token) {
         requireRedis();
 
@@ -130,19 +138,19 @@ public class RefreshTokenService {
         if (locked == null) {
             throw new ApiException(ErrorType.REFRESH_TOKEN_INVALID, "Refresh Token Validation Failed");
         }
-        if (locked.getExpireTime() != null && locked.getExpireTime().before(new Date())) {
+        Date now = Date.from(Instant.now(clock));
+        if (locked.getExpireTime() != null && locked.getExpireTime().before(now)) {
             refreshTokenMapper.deleteById(locked.getId());
             bestEffortDeleteRedis(locked);
             throw new ApiException(ErrorType.REFRESH_TOKEN_INVALID, "Refresh Token Validation Failed");
         }
 
-        Date now = new Date();
         if (token.equals(locked.getToken())) {
             String newRefreshToken = UUID.randomUUID().toString().replace("-", "");
             locked.setPreviousToken(locked.getToken());
             locked.setPreviousValidUntil(Date.from(now.toInstant().plusSeconds(refreshRotationGraceSeconds)));
             locked.setToken(newRefreshToken);
-            locked.setExpireTime(Date.from(LocalDateTime.now().plusDays(refreshExpireDays)
+            locked.setExpireTime(Date.from(LocalDateTime.now(clock).plusDays(refreshExpireDays)
                     .atZone(ZoneId.systemDefault()).toInstant()));
             locked.setUpdatedTime(now);
             refreshTokenMapper.updateById(locked);

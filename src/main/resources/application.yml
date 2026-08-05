@@ -14,7 +14,8 @@ server:
       matching-strategy: ant_path_matcher
 
 
-# ??????spring:
+# Spring core configuration
+spring:
   config:
     import: optional:file:.env[.properties]
 
@@ -45,9 +46,11 @@ server:
       matching-strategy: ant_path_matcher
   
   mail:
-    host: mail.privateemail.com  # ????????    port: 587
-    username: ${MAIL_USERNAME}  # ????
-    password: ${MAIL_PASSWORD}  # ????????    properties:
+    host: mail.privateemail.com
+    port: 587
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties:
       mail:
         smtp:
           auth: true
@@ -56,7 +59,7 @@ server:
 
 
 
-# ??mybatis???xml??
+# MyBatis mapper locations
 mybatis:
   mapper-locations: classpath:mapper/**/*.xml
   type-aliases-package: com.coursistant.lms.module
@@ -65,16 +68,18 @@ mybatis:
     map-underscore-to-camel-case: true
 
 mail:
-    host: mail.privateemail.com  # ????????    port: 587
-    username: ${MAIL_USERNAME}  # ????
-    password: ${MAIL_PASSWORD}  # ????????    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
+  host: mail.privateemail.com
+  port: 587
+  username: ${MAIL_USERNAME}
+  password: ${MAIL_PASSWORD}
+  properties:
+    mail:
+      smtp:
+        auth: true
+        starttls:
+          enable: true
 
-# ??
+# PageHelper
 pagehelper:
   helper-dialect: mysql
   reasonable: true

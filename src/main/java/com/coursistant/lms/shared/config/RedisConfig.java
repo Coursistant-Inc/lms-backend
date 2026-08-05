@@ -22,12 +22,13 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 @Configuration
 public class RedisConfig {
 
-    private static final String REDIS_HOST = "localhost";
-    private static final int REDIS_PORT = 6379;
-    //@Value("${REDIS_DEFAULT_USERNAME}")
-    //private String redisUsername;
+    @Value("${spring.data.redis.host:localhost}")
+    private String redisHost;
 
-    @Value("${REDIS_DEFAULT_PASSWORD}")
+    @Value("${spring.data.redis.port:6379}")
+    private int redisPort;
+
+    @Value("${REDIS_DEFAULT_PASSWORD:#{null}}")
     private String redisPassword;
 
     /**
@@ -83,11 +84,12 @@ public class RedisConfig {
      */
     private LettuceConnectionFactory createLettuceConnectionFactory(int database) {
         RedisStandaloneConfiguration redisConfig = new RedisStandaloneConfiguration();
-        redisConfig.setHostName(REDIS_HOST);
-        redisConfig.setPort(REDIS_PORT);
+        redisConfig.setHostName(redisHost);
+        redisConfig.setPort(redisPort);
         redisConfig.setDatabase(database);
-        //redisConfig.setUsername(redisUsername); // 设置用户名 / Set username
-        redisConfig.setPassword(redisPassword); // 设置密码 / Set password
+        if (redisPassword != null && !redisPassword.isBlank()) {
+            redisConfig.setPassword(redisPassword);
+        }
 
         LettuceConnectionFactory factory = new LettuceConnectionFactory(redisConfig);
         factory.afterPropertiesSet();

@@ -1,0 +1,57 @@
+# Auth integration profile — container URLs injected by AuthIntegrationTestBase.
+# Never point this file at the developer lms_v2 database.
+
+spring:
+  main:
+    allow-bean-definition-overriding: true
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 16
+      minimum-idle: 2
+      connection-timeout: 10000
+  data:
+    redis:
+      host: localhost
+      port: 6379
+  mail:
+    host: localhost
+    port: 25
+    username: test
+    password: test
+
+server:
+  servlet:
+    context-path: /api
+
+mybatis:
+  mapper-locations: classpath:mapper/**/*.xml
+  type-aliases-package: com.coursistant.lms.module
+  configuration:
+    map-underscore-to-camel-case: true
+
+token:
+  access-expire-hours: 2
+  refresh-expire-days: 14
+  refresh-rotation-grace-seconds: 5
+  private-key-path: classpath:test-private.pem
+  public-key-path: classpath:test-public.pem
+
+auth:
+  docs-public: false
+  jwt:
+    issuer: https://usc.xlearnedu.com
+    audience: com.coursistant.lms
+    min-issued-at:
+
+minio:
+  url: http://127.0.0.1:9
+  access-key: test
+  secret-key: test
+
+REDIS_DEFAULT_PASSWORD:
+
+logging:
+  level:
+    root: WARN
+    com.coursistant.lms: INFO

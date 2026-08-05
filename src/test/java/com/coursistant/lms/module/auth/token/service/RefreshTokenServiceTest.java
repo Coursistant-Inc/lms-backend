@@ -44,6 +44,7 @@ class RefreshTokenServiceTest {
     void setUp() {
         ReflectionTestUtils.setField(refreshTokenService, "refreshExpireDays", 14);
         ReflectionTestUtils.setField(refreshTokenService, "refreshRotationGraceSeconds", 30);
+        ReflectionTestUtils.setField(refreshTokenService, "clock", java.time.Clock.systemUTC());
         lenient().when(refreshTokenRedisTemplate.opsForValue()).thenReturn(valueOperations);
         lenient().when(refreshTokenRedisTemplate.hasKey(anyString())).thenReturn(false);
     }
