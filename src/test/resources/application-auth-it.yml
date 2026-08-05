@@ -4,16 +4,21 @@
 spring:
   main:
     allow-bean-definition-overriding: true
+  task:
+    scheduling:
+      enabled: false
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       maximum-pool-size: 16
       minimum-idle: 2
-      connection-timeout: 10000
+      connection-timeout: 3000
+      validation-timeout: 2000
   data:
     redis:
       host: localhost
       port: 6379
+      timeout: 2s
   mail:
     host: localhost
     port: 25

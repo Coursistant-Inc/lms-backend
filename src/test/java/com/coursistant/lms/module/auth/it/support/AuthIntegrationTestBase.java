@@ -80,7 +80,8 @@ public abstract class AuthIntegrationTestBase {
             registry.add("spring.datasource.url", () -> {
                 String base = MYSQL.getJdbcUrl();
                 String sep = base.contains("?") ? "&" : "?";
-                return base + sep + "connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true&allowPublicKeyRetrieval=true";
+                return base + sep + "connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true"
+                        + "&allowPublicKeyRetrieval=true&connectTimeout=2000&socketTimeout=3000";
             });
             registry.add("spring.datasource.username", MYSQL::getUsername);
             registry.add("spring.datasource.password", MYSQL::getPassword);

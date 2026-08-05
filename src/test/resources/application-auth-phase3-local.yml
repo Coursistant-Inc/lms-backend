@@ -1,0 +1,26 @@
+# Phase-3 local resilience profile overlays.
+# Active together with auth-it via @ActiveProfiles({"auth-it","auth-phase3-local"}).
+# Never point at developer lms_v2 / production.
+
+spring:
+  task:
+    scheduling:
+      enabled: false
+  datasource:
+    hikari:
+      maximum-pool-size: 8
+      minimum-idle: 1
+      connection-timeout: 2500
+      validation-timeout: 1000
+      max-lifetime: 30000
+      idle-timeout: 10000
+  data:
+    redis:
+      timeout: 1500ms
+      connect-timeout: 1500ms
+
+logging:
+  level:
+    root: WARN
+    com.coursistant.lms: INFO
+    com.coursistant.lms.module.auth: DEBUG

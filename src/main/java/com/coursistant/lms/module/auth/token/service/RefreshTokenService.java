@@ -106,9 +106,9 @@ public class RefreshTokenService {
 
     /**
      * Atomic rotation with configurable grace. Replay outside grace revokes only this device session.
-     * ApiException after intentional revoke must not roll back the delete.
+     * Only {@link RefreshTokenReusedException} skips rollback so the revoke commits.
      */
-    @Transactional(noRollbackFor = ApiException.class)
+    @Transactional(noRollbackFor = RefreshTokenReusedException.class)
     public RefreshResult getNewAccessToken(String token) {
         requireRedis();
 
@@ -170,7 +170,7 @@ public class RefreshTokenService {
             log.warn("Refresh token replay outside grace for session {}", sessionId);
             refreshTokenMapper.deleteBySessionId(sessionId);
             bestEffortDeleteRedis(locked);
-            throw new ApiException(ErrorType.REFRESH_TOKEN_REUSED);
+            throw new RefreshTokenReusedException();
         }
 
         throw new ApiException(ErrorType.REFRESH_TOKEN_INVALID, "Refresh Token Validation Failed");
