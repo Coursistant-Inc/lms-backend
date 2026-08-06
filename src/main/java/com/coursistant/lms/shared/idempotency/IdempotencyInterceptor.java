@@ -64,7 +64,13 @@ public class IdempotencyInterceptor implements HandlerInterceptor {
         String redisKey = "idem:" + userId + ":" + request.getRequestURI() + ":" + headerKey;
 
         String pendingValue = IdempotencyRecord.pending(fingerprint);
-        Boolean claimed = idempotencyRedisTemplate.opsForValue().setIfAbsent(redisKey, pendingValue, PENDING_TTL);
+        Boolean claimed;
+        try {
+            claimed = idempotencyRedisTemplate.opsForValue().setIfAbsent(redisKey, pendingValue, PENDING_TTL);
+        } catch (Exception e) {
+            log.warn("Idempotency Redis unavailable on claim: {}", e.getMessage());
+            throw new ApiException(ErrorType.IDEMPOTENCY_STORE_UNAVAILABLE);
+        }
 
         if (Boolean.TRUE.equals(claimed)) {
             request.setAttribute(ATTR_REDIS_KEY, redisKey);
@@ -73,12 +79,23 @@ public class IdempotencyInterceptor implements HandlerInterceptor {
             return true;
         }
 
-        String existing = idempotencyRedisTemplate.opsForValue().get(redisKey);
+        String existing;
+        try {
+            existing = idempotencyRedisTemplate.opsForValue().get(redisKey);
+        } catch (Exception e) {
+            log.warn("Idempotency Redis unavailable on get: {}", e.getMessage());
+            throw new ApiException(ErrorType.IDEMPOTENCY_STORE_UNAVAILABLE);
+        }
         if (existing == null) {
             request.setAttribute(ATTR_REDIS_KEY, redisKey);
             request.setAttribute(ATTR_FINGERPRINT, fingerprint);
             request.setAttribute(ATTR_TTL, annotation.ttlSeconds());
-            idempotencyRedisTemplate.opsForValue().set(redisKey, pendingValue, PENDING_TTL);
+            try {
+                idempotencyRedisTemplate.opsForValue().set(redisKey, pendingValue, PENDING_TTL);
+            } catch (Exception e) {
+                log.warn("Idempotency Redis unavailable on set: {}", e.getMessage());
+                throw new ApiException(ErrorType.IDEMPOTENCY_STORE_UNAVAILABLE);
+            }
             return true;
         }
 
@@ -114,19 +131,24 @@ public class IdempotencyInterceptor implements HandlerInterceptor {
         long ttlSeconds = (long) request.getAttribute(ATTR_TTL);
 
         int status = response.getStatus();
-        if (status < 200 || status >= 300) {
-            idempotencyRedisTemplate.delete(redisKey);
-            return;
-        }
+        try {
+            if (status < 200 || status >= 300) {
+                idempotencyRedisTemplate.delete(redisKey);
+                return;
+            }
 
-        byte[] body = extractResponseBody(request, response);
-        if (body == null || body.length > MAX_RESPONSE_CACHE_BYTES) {
-            idempotencyRedisTemplate.delete(redisKey);
-            return;
-        }
+            byte[] body = extractResponseBody(request, response);
+            if (body == null || body.length > MAX_RESPONSE_CACHE_BYTES) {
+                idempotencyRedisTemplate.delete(redisKey);
+                return;
+            }
 
-        String doneValue = IdempotencyRecord.done(fingerprint, status, body);
-        idempotencyRedisTemplate.opsForValue().set(redisKey, doneValue, Duration.ofSeconds(ttlSeconds));
+            String doneValue = IdempotencyRecord.done(fingerprint, status, body);
+            idempotencyRedisTemplate.opsForValue().set(redisKey, doneValue, Duration.ofSeconds(ttlSeconds));
+        } catch (Exception e) {
+            // DB may already have committed; do not convert to client error here.
+            log.warn("Idempotency Redis unavailable after completion for key={}: {}", redisKey, e.getMessage());
+        }
     }
 
     private byte[] extractResponseBody(HttpServletRequest request, HttpServletResponse response) {

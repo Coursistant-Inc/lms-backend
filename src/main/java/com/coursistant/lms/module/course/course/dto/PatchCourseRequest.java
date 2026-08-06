@@ -2,19 +2,24 @@ package com.coursistant.lms.module.course.course.dto;
 
 import java.time.LocalDate;
 
-public class CreateCourseRequest {
+/**
+ * Partial update. Only non-null whitelist fields are applied.
+ * Use {@code clearDescription}/{@code clearLocation} to explicitly null those fields.
+ * {@code tenantId} and instructor identity are rejected if present.
+ */
+public class PatchCourseRequest {
 
     private Integer tenantId;
+    private Integer primaryInstructorUserId;
+    private Integer instructorId;
     private String courseCode;
     private String title;
     private LocalDate termStartDate;
     private LocalDate termEndDate;
     private String description;
     private String location;
-    /** Preferred field for admin create. */
-    private Integer primaryInstructorUserId;
-    /** Legacy alias of {@link #primaryInstructorUserId}. */
-    private Integer instructorId;
+    private Boolean clearDescription;
+    private Boolean clearLocation;
 
     public Integer getTenantId() {
         return tenantId;
@@ -22,6 +27,22 @@ public class CreateCourseRequest {
 
     public void setTenantId(Integer tenantId) {
         this.tenantId = tenantId;
+    }
+
+    public Integer getPrimaryInstructorUserId() {
+        return primaryInstructorUserId;
+    }
+
+    public void setPrimaryInstructorUserId(Integer primaryInstructorUserId) {
+        this.primaryInstructorUserId = primaryInstructorUserId;
+    }
+
+    public Integer getInstructorId() {
+        return instructorId;
+    }
+
+    public void setInstructorId(Integer instructorId) {
+        this.instructorId = instructorId;
     }
 
     public String getCourseCode() {
@@ -72,24 +93,19 @@ public class CreateCourseRequest {
         this.location = location;
     }
 
-    public Integer getPrimaryInstructorUserId() {
-        return primaryInstructorUserId;
+    public Boolean getClearDescription() {
+        return clearDescription;
     }
 
-    public void setPrimaryInstructorUserId(Integer primaryInstructorUserId) {
-        this.primaryInstructorUserId = primaryInstructorUserId;
+    public void setClearDescription(Boolean clearDescription) {
+        this.clearDescription = clearDescription;
     }
 
-    public Integer getInstructorId() {
-        return instructorId;
+    public Boolean getClearLocation() {
+        return clearLocation;
     }
 
-    public void setInstructorId(Integer instructorId) {
-        this.instructorId = instructorId;
-    }
-
-    /** Resolves primary instructor from preferred or legacy field. */
-    public Integer resolvePrimaryInstructorUserId() {
-        return primaryInstructorUserId != null ? primaryInstructorUserId : instructorId;
+    public void setClearLocation(Boolean clearLocation) {
+        this.clearLocation = clearLocation;
     }
 }

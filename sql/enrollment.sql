@@ -14,7 +14,8 @@ CREATE TABLE IF NOT EXISTS enrollment (
   enrolled_at DATETIME NOT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  instructor_course_id INT GENERATED ALWAYS AS (IF(course_role = 'Instructor', course_id, NULL)) STORED,
+  -- Part 1: only Active Instructor rows occupy the unique slot (see sql/course_part1_active_instructor_uk.sql).
+  instructor_course_id INT GENERATED ALWAYS AS (IF(course_role = 'Instructor' AND active = 1, course_id, NULL)) STORED,
   PRIMARY KEY (id),
   UNIQUE KEY uk_enrollment_course_user (course_id, user_id),
   UNIQUE KEY uk_enrollment_one_instructor (instructor_course_id),

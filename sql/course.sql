@@ -14,7 +14,13 @@ CREATE TABLE course (
   instructor_id INT NOT NULL,
   state ENUM('Active', 'Archived') NOT NULL DEFAULT 'Active',
   archived_at DATETIME NULL,
+  archived_by_actor_type VARCHAR(16) NULL,
+  archived_by_actor_id INT NULL,
   creator_id INT NOT NULL,
+  -- Part 1 actor fields (see sql/course_part1_expand.sql); creator_id retained for one release.
+  creator_actor_type VARCHAR(16) NULL,
+  creator_actor_id INT NULL,
+  creator_role VARCHAR(32) NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
@@ -26,6 +32,8 @@ CREATE TABLE course (
   CONSTRAINT fk_course_creator FOREIGN KEY (creator_id) REFERENCES user (id),
   CONSTRAINT chk_course_term CHECK (term_end_date >= term_start_date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- course_audit_log: see sql/course_part1_expand.sql
 
 -- If the table was created with the old unique index, run:
 -- ALTER TABLE Course DROP INDEX uk_tenant_course_code;

@@ -16,7 +16,12 @@
         instructor_id AS instructorId,
         state,
         archived_at AS archivedAt,
+        archived_by_actor_type AS archivedByActorType,
+        archived_by_actor_id AS archivedByActorId,
         creator_id AS creatorId,
+        creator_actor_type AS creatorActorType,
+        creator_actor_id AS creatorActorId,
+        creator_role AS creatorRole,
         created_at AS createdAt,
         updated_at AS updatedAt
     </sql>
@@ -26,6 +31,14 @@
         <include refid="Base_Column_List"/>
         FROM course
         WHERE id = #{id}
+    </select>
+
+    <select id="selectByIdForUpdate" resultType="com.coursistant.lms.module.course.course.entity.Course">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM course
+        WHERE id = #{id}
+        FOR UPDATE
     </select>
 
     <insert id="insert" parameterType="com.coursistant.lms.module.course.course.entity.Course"
@@ -41,7 +54,10 @@
             instructor_id,
             state,
             archived_at,
-            creator_id
+            creator_id,
+            creator_actor_type,
+            creator_actor_id,
+            creator_role
         ) VALUES (
             #{tenantId},
             #{courseCode},
@@ -53,7 +69,10 @@
             #{instructorId},
             #{state},
             #{archivedAt},
-            #{creatorId}
+            #{creatorId},
+            #{creatorActorType},
+            #{creatorActorId},
+            #{creatorRole}
         )
     </insert>
 
@@ -71,17 +90,37 @@
         WHERE id = #{id}
     </update>
 
+    <update id="patchById">
+        UPDATE course
+        <set>
+            <if test="course.courseCode != null">course_code = #{course.courseCode},</if>
+            <if test="course.title != null">title = #{course.title},</if>
+            <if test="course.termStartDate != null">term_start_date = #{course.termStartDate},</if>
+            <if test="course.termEndDate != null">term_end_date = #{course.termEndDate},</if>
+            <if test="course.description != null">description = #{course.description},</if>
+            <if test="clearDescription">description = NULL,</if>
+            <if test="course.location != null">location = #{course.location},</if>
+            <if test="clearLocation">location = NULL,</if>
+            <if test="course.instructorId != null">instructor_id = #{course.instructorId},</if>
+        </set>
+        WHERE id = #{course.id}
+    </update>
+
     <update id="archiveById">
         UPDATE course
         SET state = 'Archived',
-            archived_at = #{archivedAt}
+            archived_at = #{archivedAt},
+            archived_by_actor_type = #{archivedByActorType},
+            archived_by_actor_id = #{archivedByActorId}
         WHERE id = #{id}
     </update>
 
     <update id="unarchiveById">
         UPDATE course
         SET state = 'Active',
-            archived_at = NULL
+            archived_at = NULL,
+            archived_by_actor_type = NULL,
+            archived_by_actor_id = NULL
         WHERE id = #{id}
     </update>
 
@@ -92,6 +131,9 @@
             </if>
             <if test="state != null and state != ''">
                 AND state = #{state}
+            </if>
+            <if test="tenantId != null">
+                AND tenant_id = #{tenantId}
             </if>
             <if test="instructorUserId != null">
                 AND (

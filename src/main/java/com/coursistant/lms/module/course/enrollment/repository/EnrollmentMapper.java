@@ -17,6 +17,12 @@ public interface EnrollmentMapper {
 
     Enrollment selectByCourseIdAndUserId(@Param("courseId") Integer courseId, @Param("userId") Integer userId);
 
+    Enrollment selectByCourseIdAndUserIdForUpdate(@Param("courseId") Integer courseId, @Param("userId") Integer userId);
+
+    Enrollment selectActiveInstructorByCourseIdForUpdate(@Param("courseId") Integer courseId);
+
+    int deleteById(@Param("id") Integer id);
+
     List<Enrollment> selectByCourseId(@Param("courseId") Integer courseId);
 
     List<Enrollment> selectActiveByUserId(@Param("userId") Integer userId);

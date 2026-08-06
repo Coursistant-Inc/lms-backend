@@ -50,7 +50,8 @@ public enum ErrorType {
     IDEMPOTENCY_KEY_REQUIRED(HttpStatus.BAD_REQUEST, "Idempotency-Key header is required"),
     IDEMPOTENCY_KEY_INVALID(HttpStatus.BAD_REQUEST, "Idempotency-Key format is invalid"),
     IDEMPOTENCY_REQUEST_IN_PROGRESS(HttpStatus.CONFLICT, "A request with this key is already being processed"),
-    IDEMPOTENCY_KEY_MISMATCH(HttpStatus.UNPROCESSABLE_ENTITY, "Idempotency-Key was reused with a different request body"),
+    IDEMPOTENCY_KEY_MISMATCH(HttpStatus.CONFLICT, "Idempotency-Key was reused with a different request body"),
+    IDEMPOTENCY_STORE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "Idempotency store temporarily unavailable"),
 
     // --- Profile ---
     INVALID_AVATAR_FILE(HttpStatus.BAD_REQUEST, "Invalid avatar file"),

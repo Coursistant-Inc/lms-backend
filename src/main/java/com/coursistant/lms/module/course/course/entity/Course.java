@@ -18,7 +18,12 @@ public class Course implements Serializable {
     private Integer instructorId;
     private String state;
     private LocalDateTime archivedAt;
+    private String archivedByActorType;
+    private Integer archivedByActorId;
     private Integer creatorId;
+    private String creatorActorType;
+    private Integer creatorActorId;
+    private String creatorRole;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -110,12 +115,52 @@ public class Course implements Serializable {
         this.archivedAt = archivedAt;
     }
 
+    public String getArchivedByActorType() {
+        return archivedByActorType;
+    }
+
+    public void setArchivedByActorType(String archivedByActorType) {
+        this.archivedByActorType = archivedByActorType;
+    }
+
+    public Integer getArchivedByActorId() {
+        return archivedByActorId;
+    }
+
+    public void setArchivedByActorId(Integer archivedByActorId) {
+        this.archivedByActorId = archivedByActorId;
+    }
+
     public Integer getCreatorId() {
         return creatorId;
     }
 
     public void setCreatorId(Integer creatorId) {
         this.creatorId = creatorId;
+    }
+
+    public String getCreatorActorType() {
+        return creatorActorType;
+    }
+
+    public void setCreatorActorType(String creatorActorType) {
+        this.creatorActorType = creatorActorType;
+    }
+
+    public Integer getCreatorActorId() {
+        return creatorActorId;
+    }
+
+    public void setCreatorActorId(Integer creatorActorId) {
+        this.creatorActorId = creatorActorId;
+    }
+
+    public String getCreatorRole() {
+        return creatorRole;
+    }
+
+    public void setCreatorRole(String creatorRole) {
+        this.creatorRole = creatorRole;
     }
 
     public LocalDateTime getCreatedAt() {

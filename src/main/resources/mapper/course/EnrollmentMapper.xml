@@ -78,6 +78,30 @@
         WHERE course_id = #{courseId} AND user_id = #{userId}
     </select>
 
+    <select id="selectByCourseIdAndUserIdForUpdate" resultType="com.coursistant.lms.module.course.enrollment.entity.Enrollment">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM enrollment
+        WHERE course_id = #{courseId} AND user_id = #{userId}
+        FOR UPDATE
+    </select>
+
+    <select id="selectActiveInstructorByCourseIdForUpdate" resultType="com.coursistant.lms.module.course.enrollment.entity.Enrollment">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM enrollment
+        WHERE course_id = #{courseId}
+          AND course_role = 'Instructor'
+          AND active = 1
+        LIMIT 1
+        FOR UPDATE
+    </select>
+
+    <delete id="deleteById">
+        DELETE FROM enrollment
+        WHERE id = #{id}
+    </delete>
+
     <select id="selectByCourseId" resultType="com.coursistant.lms.module.course.enrollment.entity.Enrollment">
         SELECT
         <include refid="Base_Column_List"/>
