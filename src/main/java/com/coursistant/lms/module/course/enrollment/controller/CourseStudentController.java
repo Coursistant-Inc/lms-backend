@@ -11,7 +11,6 @@ import com.coursistant.lms.shared.api.ErrorType;
 import com.coursistant.lms.shared.idempotency.Idempotent;
 import com.coursistant.lms.shared.security.ActorContext;
 import com.coursistant.lms.shared.security.ActorContextResolver;
-import com.coursistant.lms.shared.security.AuthzService;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -21,27 +20,20 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/**
- * Legacy admin enrollment paths; delegates to Part 3 membership service.
- * Prefer {@code /v2/courses/{id}/students}.
- */
 @RestController
-@RequestMapping("/v2/admin/courses/{courseId}/enrollments")
-public class AdminEnrollmentController {
+@RequestMapping("/v2/courses/{courseId}/students")
+public class CourseStudentController {
 
     @Resource
     private EnrollmentMembershipService enrollmentMembershipService;
     @Resource
     private ActorContextResolver actorContextResolver;
-    @Resource
-    private AuthzService authzService;
 
     @Idempotent
     @PostMapping
-    public ApiResponse<MemberResponse> enroll(HttpServletRequest request,
-                                              @PathVariable Integer courseId,
-                                              @RequestBody AdminEnrollRequest body) {
-        authzService.requireSystemAdmin(request);
+    public ApiResponse<MemberResponse> add(HttpServletRequest request,
+                                           @PathVariable Integer courseId,
+                                           @RequestBody AdminEnrollRequest body) {
         ActorContext actor = actorContextResolver.resolve(request);
         if (body == null || body.getUserId() == null) {
             throw new ApiException(ErrorType.PARAM_MISSING, "userId is required");
@@ -52,10 +44,9 @@ public class AdminEnrollmentController {
 
     @Idempotent
     @PostMapping("/batch")
-    public ApiResponse<BatchStudentEnrollResponse> enrollBatch(HttpServletRequest request,
-                                                               @PathVariable Integer courseId,
-                                                               @RequestBody AdminBatchEnrollRequest body) {
-        authzService.requireSystemAdmin(request);
+    public ApiResponse<BatchStudentEnrollResponse> batch(HttpServletRequest request,
+                                                         @PathVariable Integer courseId,
+                                                         @RequestBody AdminBatchEnrollRequest body) {
         ActorContext actor = actorContextResolver.resolve(request);
         if (body == null) {
             throw new ApiException(ErrorType.PARAM_MISSING, "Request body is required");
@@ -65,13 +56,13 @@ public class AdminEnrollmentController {
     }
 
     @DeleteMapping("/{userId}")
-    public ApiResponse<MemberResponse> deactivate(HttpServletRequest request,
-                                                  @PathVariable Integer courseId,
-                                                  @PathVariable Integer userId) {
-        authzService.requireSystemAdmin(request);
+    public ApiResponse<MemberResponse> withdraw(HttpServletRequest request,
+                                                @PathVariable Integer courseId,
+                                                @PathVariable Integer userId) {
         ActorContext actor = actorContextResolver.resolve(request);
-        return ApiResponse.success(enrollmentMembershipService.withdrawStudent(
-                actor, courseId, userId, requestId(request)));
+        MemberResponse resp = enrollmentMembershipService.withdrawStudent(
+                actor, courseId, userId, requestId(request));
+        return ApiResponse.success(resp);
     }
 
     private static String requestId(HttpServletRequest request) {
@@ -79,6 +70,7 @@ public class AdminEnrollmentController {
         if (idem != null && !idem.isBlank()) {
             return idem.trim();
         }
-        return null;
+        String req = request.getHeader("X-Request-Id");
+        return req == null || req.isBlank() ? null : req.trim();
     }
 }

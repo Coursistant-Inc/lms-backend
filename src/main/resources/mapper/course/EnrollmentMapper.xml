@@ -16,6 +16,9 @@
         active,
         assignment_submit_frozen AS assignmentSubmitFrozen,
         enrolled_at AS enrolledAt,
+        withdrawn_at AS withdrawnAt,
+        withdrawn_by_actor_type AS withdrawnByActorType,
+        withdrawn_by_actor_id AS withdrawnByActorId,
         created_at AS createdAt,
         updated_at AS updatedAt
     </sql>
@@ -32,7 +35,10 @@
             can_manage_course_events,
             active,
             assignment_submit_frozen,
-            enrolled_at
+            enrolled_at,
+            withdrawn_at,
+            withdrawn_by_actor_type,
+            withdrawn_by_actor_id
         ) VALUES (
             #{courseId},
             #{userId},
@@ -46,7 +52,10 @@
                 <when test="assignmentSubmitFrozen != null">#{assignmentSubmitFrozen}</when>
                 <otherwise>0</otherwise>
             </choose>,
-            #{enrolledAt}
+            #{enrolledAt},
+            #{withdrawnAt},
+            #{withdrawnByActorType},
+            #{withdrawnByActorId}
         )
     </insert>
 
@@ -60,6 +69,14 @@
             <if test="canManageCourseEvents != null">can_manage_course_events = #{canManageCourseEvents},</if>
             <if test="active != null">active = #{active},</if>
             <if test="assignmentSubmitFrozen != null">assignment_submit_frozen = #{assignmentSubmitFrozen},</if>
+            <if test="withdrawnAt != null">withdrawn_at = #{withdrawnAt},</if>
+            <if test="withdrawnByActorType != null">withdrawn_by_actor_type = #{withdrawnByActorType},</if>
+            <if test="withdrawnByActorId != null">withdrawn_by_actor_id = #{withdrawnByActorId},</if>
+            <if test="clearWithdrawn != null and clearWithdrawn">
+                withdrawn_at = NULL,
+                withdrawn_by_actor_type = NULL,
+                withdrawn_by_actor_id = NULL,
+            </if>
         </set>
         WHERE id = #{id}
     </update>
@@ -94,6 +111,14 @@
           AND course_role = 'Instructor'
           AND active = 1
         LIMIT 1
+        FOR UPDATE
+    </select>
+
+    <select id="selectActiveByUserIdForUpdate" resultType="com.coursistant.lms.module.course.enrollment.entity.Enrollment">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM enrollment
+        WHERE user_id = #{userId} AND active = 1
         FOR UPDATE
     </select>
 
@@ -156,6 +181,22 @@
         FROM enrollment
         WHERE user_id = #{userId}
           AND course_role = 'Instructor'
+          AND active = 1
+    </select>
+
+    <select id="countActiveTaEnrollmentsByUserId" resultType="int">
+        SELECT COUNT(*)
+        FROM enrollment
+        WHERE user_id = #{userId}
+          AND course_role = 'TA'
+          AND active = 1
+    </select>
+
+    <select id="countActiveStudentEnrollmentsByUserId" resultType="int">
+        SELECT COUNT(*)
+        FROM enrollment
+        WHERE user_id = #{userId}
+          AND course_role = 'Student'
           AND active = 1
     </select>
 

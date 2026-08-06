@@ -1,12 +1,16 @@
 package com.coursistant.lms.module.auth.identity.service;
 
+import com.coursistant.lms.module.course.enrollment.service.EnrollmentIdentityGuard;
 import com.coursistant.lms.module.user.account.entity.User;
 import com.coursistant.lms.module.user.account.repository.UserMapper;
 import com.coursistant.lms.module.user.account.service.UserService;
 import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.shared.api.ErrorType;
+import com.coursistant.lms.shared.enums.AccountStatus;
 import com.coursistant.lms.shared.enums.LevelEnum;
 import com.coursistant.lms.shared.enums.RoleEnum;
+import com.coursistant.lms.shared.security.ActorContext;
+import com.coursistant.lms.shared.security.ActorContextResolver;
 import com.coursistant.lms.shared.security.AuthzService;
 import com.coursistant.lms.shared.security.SessionInvalidationService;
 import jakarta.annotation.Resource;
@@ -34,6 +38,10 @@ public class ManagedUserService {
     private SessionInvalidationService sessionInvalidationService;
     @Resource
     private AuthzService authzService;
+    @Resource
+    private EnrollmentIdentityGuard enrollmentIdentityGuard;
+    @Resource
+    private ActorContextResolver actorContextResolver;
 
     public record CreateManagedUserCommand(String email, String name, String role, String level, Integer tenantId) {}
 
@@ -112,26 +120,31 @@ public class ManagedUserService {
             throw new ApiException(ErrorType.FORBIDDEN);
         }
         if (RoleEnum.SYSTEM_ADMIN.name().equals(newRole)) {
-            throw new ApiException(ErrorType.FORBIDDEN);
+            throw new ApiException(ErrorType.FORBIDDEN, "Cannot assign SYSTEM_ADMIN via user management");
         }
         if (RoleEnum.TENANT_ADMIN.name().equals(target.getRole())
                 && RoleEnum.USER.name().equals(newRole)) {
             ensureNotLastTenantAdmin(target.getTenantId(), targetUserId);
         }
 
-        String before = "{\"role\":\"" + target.getRole() + "\",\"level\":\"" + target.getLevel() + "\"}";
-        target.setRole(newRole);
+        String resolvedLevel;
         if (RoleEnum.TENANT_ADMIN.name().equals(newRole)) {
-            target.setLevel(LevelEnum.NOT_APPLICABLE.level);
+            resolvedLevel = LevelEnum.NOT_APPLICABLE.level;
         } else {
             if (newLevelIfUser == null
                     || (!LevelEnum.INSTRUCTOR.level.equals(newLevelIfUser)
                     && !LevelEnum.STUDENT.level.equals(newLevelIfUser))) {
                 throw new ApiException(ErrorType.BAD_REQUEST, "USER requires INSTRUCTOR or STUDENT level");
             }
-            target.setLevel(newLevelIfUser);
+            resolvedLevel = newLevelIfUser;
         }
-        userMapper.updateById(target);
+        User locked = enrollmentIdentityGuard.assertCanChangeRoleOrLevel(targetUserId, newRole, resolvedLevel);
+
+        String before = "{\"role\":\"" + locked.getRole() + "\",\"level\":\"" + locked.getLevel() + "\"}";
+        locked.setRole(newRole);
+        locked.setLevel(resolvedLevel);
+        userMapper.updateById(locked);
+        target = locked;
         sessionInvalidationService.invalidatePrincipal(targetUserId, beforeRoleOr(target, newRole));
         // Invalidate using previous role family (user table roles)
         sessionInvalidationService.invalidatePrincipal(targetUserId, RoleEnum.USER.name());
@@ -141,6 +154,38 @@ public class ManagedUserService {
                 "CHANGE_ROLE", "USER", targetUserId, target.getTenantId(), before,
                 "{\"role\":\"" + newRole + "\",\"level\":\"" + target.getLevel() + "\"}",
                 null, request.getRemoteAddr());
+    }
+
+    @Transactional
+    public void disableUser(HttpServletRequest request, Integer targetUserId) {
+        Integer actorId = authzService.requireUserId(request);
+        String actorRole = authzService.requireRole(request);
+        User target = userService.selectById(targetUserId);
+        if (target == null) {
+            throw new ApiException(ErrorType.USER_NOT_FOUND);
+        }
+        if (authzService.isSystemAdmin(request)) {
+            // ok
+        } else if (authzService.isTenantAdmin(request)) {
+            authzService.requireTenantAdminOrSystem(request, target.getTenantId());
+            if (actorId.equals(targetUserId)) {
+                throw new ApiException(ErrorType.FORBIDDEN, "Cannot modify self");
+            }
+        } else {
+            throw new ApiException(ErrorType.FORBIDDEN);
+        }
+        ActorContext actor = actorContextResolver.resolve(request);
+        String before = "{\"status\":\"" + target.getStatus() + "\"}";
+        enrollmentIdentityGuard.disableAccountWithEnrollmentWithdraw(actor, targetUserId,
+                request.getHeader("Idempotency-Key"));
+        User locked = userMapper.selectById(targetUserId);
+        locked.setStatus(AccountStatus.DISABLED.name());
+        userMapper.updateById(locked);
+        sessionInvalidationService.invalidatePrincipal(targetUserId, RoleEnum.USER.name());
+        sessionInvalidationService.invalidatePrincipal(targetUserId, RoleEnum.TENANT_ADMIN.name());
+        identityAuditService.writeSuccess(actorId, actorRole, authzService.resolveActorTenantId(request),
+                "DISABLE_USER", "USER", targetUserId, locked.getTenantId(), before,
+                "{\"status\":\"DISABLED\"}", null, request.getRemoteAddr());
     }
 
     private String beforeRoleOr(User target, String newRole) {

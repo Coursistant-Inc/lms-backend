@@ -61,4 +61,12 @@ public class SystemManagedUserController {
         managedUserService.changeRole(request, id, body.role, body.level);
         return ApiResponse.success();
     }
+
+    @Idempotent
+    @PostMapping("/{id}/disable")
+    public ApiResponse<Void> disable(HttpServletRequest request, @PathVariable Integer id) {
+        authzService.requireSystemAdmin(request);
+        managedUserService.disableUser(request, id);
+        return ApiResponse.success();
+    }
 }

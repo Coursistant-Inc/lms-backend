@@ -15,7 +15,10 @@ public class MemberResponse {
     private Boolean canManageGroups;
     private Boolean canManageCourseEvents;
     private Boolean active;
+    private String level;
     private LocalDateTime enrolledAt;
+    private LocalDateTime joinedAt;
+    private LocalDateTime withdrawnAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -107,12 +110,36 @@ public class MemberResponse {
         this.active = active;
     }
 
+    public String getLevel() {
+        return level;
+    }
+
+    public void setLevel(String level) {
+        this.level = level;
+    }
+
     public LocalDateTime getEnrolledAt() {
         return enrolledAt;
     }
 
     public void setEnrolledAt(LocalDateTime enrolledAt) {
         this.enrolledAt = enrolledAt;
+    }
+
+    public LocalDateTime getJoinedAt() {
+        return joinedAt;
+    }
+
+    public void setJoinedAt(LocalDateTime joinedAt) {
+        this.joinedAt = joinedAt;
+    }
+
+    public LocalDateTime getWithdrawnAt() {
+        return withdrawnAt;
+    }
+
+    public void setWithdrawnAt(LocalDateTime withdrawnAt) {
+        this.withdrawnAt = withdrawnAt;
     }
 
     public LocalDateTime getCreatedAt() {

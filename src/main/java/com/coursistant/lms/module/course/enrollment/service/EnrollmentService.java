@@ -12,8 +12,6 @@ import com.coursistant.lms.module.course.enrollment.dto.UpdateTaPermissionsReque
 import com.coursistant.lms.shared.enums.LevelEnum;
 import com.coursistant.lms.shared.enums.RoleEnum;
 import com.coursistant.lms.module.course.enrollment.entity.Enrollment;
-import com.coursistant.lms.module.course.enrollment.entity.EnrollmentAuditLog;
-import com.coursistant.lms.module.course.enrollment.repository.EnrollmentAuditLogMapper;
 import com.coursistant.lms.module.course.enrollment.repository.EnrollmentMapper;
 import com.coursistant.lms.module.course.group.entity.GroupMembershipAudit;
 import com.coursistant.lms.module.course.group.service.GroupMembershipService;
@@ -23,7 +21,6 @@ import com.coursistant.lms.module.user.account.repository.UserMapper;
 import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.shared.api.ErrorType;
 import com.coursistant.lms.shared.util.EmailUtil;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,14 +46,8 @@ public class EnrollmentService {
     private static final String ROLE_STUDENT = "Student";
     private static final String STATE_ARCHIVED = "Archived";
 
-    private static final String ACTOR_TYPE_USER = "USER";
-    private static final String ACTOR_TYPE_ADMIN = "ADMIN";
-
     @Resource
     private EnrollmentMapper enrollmentMapper;
-
-    @Resource
-    private EnrollmentAuditLogMapper enrollmentAuditLogMapper;
 
     @Resource
     private CourseMapper courseMapper;
@@ -74,8 +65,6 @@ public class EnrollmentService {
     @Lazy
     @Resource
     private QuizLifecycleHooks quizLifecycleHooks;
-
-    private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
      * Enrolls the course's instructor. Called from {@code CourseService.create} within the
@@ -95,8 +84,7 @@ public class EnrollmentService {
         enrollment.setActive(true);
         enrollment.setEnrolledAt(LocalDateTime.now(ZoneOffset.UTC));
         enrollmentMapper.insert(enrollment);
-
-        writeAudit(courseId, instructorUserId, ACTOR_TYPE_USER, instructorUserId, "INSTRUCTOR_ENROLLED", null);
+        // Part 3: enrollment mutations audit via course_audit_log (CourseService create / reassign).
     }
 
     @Transactional
@@ -122,7 +110,7 @@ public class EnrollmentService {
         enrollment.setEnrolledAt(LocalDateTime.now(ZoneOffset.UTC));
         enrollmentMapper.insert(enrollment);
 
-        writeAudit(courseId, userId, ACTOR_TYPE_ADMIN, adminId, "STUDENT_ENROLLED", null);
+        // Part 3: new enrollment audits go to course_audit_log via EnrollmentMembershipService.
         return toMemberResponse(requireEnrollmentById(enrollment.getId()));
     }
 
@@ -204,7 +192,6 @@ public class EnrollmentService {
         groupMembershipService.endGroupMembershipsOnEnrollmentDeactivated(
                 courseId, userId, GroupMembershipAudit.ACTOR_ADMIN, adminId);
         quizLifecycleHooks.onMembershipIneligible(courseId, userId);
-        writeAudit(courseId, userId, ACTOR_TYPE_ADMIN, adminId, "DEACTIVATE", null);
         return toMemberResponse(requireEnrollmentById(enrollment.getId()));
     }
 
@@ -232,7 +219,6 @@ public class EnrollmentService {
         groupMembershipService.endGroupMembershipsOnEnrollmentDeactivated(
                 courseId, userId, GroupMembershipAudit.ACTOR_USER, actorId);
         quizLifecycleHooks.onMembershipIneligible(courseId, userId);
-        writeAudit(courseId, userId, ACTOR_TYPE_USER, actorId, "DEACTIVATE", null);
         return toMemberResponse(requireEnrollmentById(enrollment.getId()));
     }
 
@@ -287,8 +273,6 @@ public class EnrollmentService {
             enrollmentMapper.updateById(promote);
         }
 
-        writeAudit(courseId, newInstructorUserId, ACTOR_TYPE_USER, actorId, "TRANSFER_INSTRUCTOR",
-                "{\"fromUserId\":" + oldInstructorUserId + ",\"toUserId\":" + newInstructorUserId + "}");
     }
 
     public boolean hasActiveInstructorEnrollment(Integer userId) {
@@ -327,7 +311,6 @@ public class EnrollmentService {
         enrollmentMapper.updateById(patch);
         quizLifecycleHooks.onMembershipIneligible(courseId, userId);
 
-        writeAudit(courseId, userId, ACTOR_TYPE_USER, actorId, "PROMOTED_TO_TA", toJson(request));
         sendTaChangeEmailBestEffort(userId, course, "promoted to Teaching Assistant");
 
         PromoteTaResponse response = new PromoteTaResponse();
@@ -354,7 +337,6 @@ public class EnrollmentService {
         patch.setCanManageCourseEvents(false);
         enrollmentMapper.updateById(patch);
 
-        writeAudit(courseId, userId, ACTOR_TYPE_USER, actorId, "TA_REVOKED", null);
         sendTaChangeEmailBestEffort(userId, course, "removed as Teaching Assistant");
 
         return toMemberResponse(requireEnrollmentById(enrollment.getId()));
@@ -380,7 +362,6 @@ public class EnrollmentService {
         patch.setCanManageCourseEvents(request.getCanManageCourseEvents());
         enrollmentMapper.updateById(patch);
 
-        writeAudit(courseId, userId, ACTOR_TYPE_USER, actorId, "TA_PERMISSIONS_UPDATED", toJson(request));
         sendTaChangeEmailBestEffort(userId, course, "had their Teaching Assistant permissions updated");
 
         return toMemberResponse(requireEnrollmentById(enrollment.getId()));
@@ -436,7 +417,6 @@ public class EnrollmentService {
             enrollment.setActive(true);
             enrollment.setEnrolledAt(LocalDateTime.now(ZoneOffset.UTC));
             enrollmentMapper.insert(enrollment);
-            writeAudit(courseId, userId, ACTOR_TYPE_ADMIN, adminId, "STUDENT_ENROLLED", null);
             return toMemberResponse(requireEnrollmentById(enrollment.getId()));
         }
         if (Boolean.TRUE.equals(existing.getActive())) {
@@ -451,7 +431,6 @@ public class EnrollmentService {
             patch.setCourseRole(ROLE_STUDENT);
         }
         enrollmentMapper.updateById(patch);
-        writeAudit(courseId, userId, ACTOR_TYPE_ADMIN, adminId, "STUDENT_REENROLLED", null);
         return toMemberResponse(requireEnrollmentById(existing.getId()));
     }
 
@@ -464,17 +443,6 @@ public class EnrollmentService {
         return failure;
     }
 
-    private void writeAudit(Integer courseId, Integer targetUserId, String actorType, Integer actorId, String action, String detailJson) {
-        EnrollmentAuditLog auditLog = new EnrollmentAuditLog();
-        auditLog.setCourseId(courseId);
-        auditLog.setTargetUserId(targetUserId);
-        auditLog.setActorType(actorType);
-        auditLog.setActorId(actorId);
-        auditLog.setAction(action);
-        auditLog.setDetailJson(detailJson);
-        enrollmentAuditLogMapper.insert(auditLog);
-    }
-
     private void sendTaChangeEmailBestEffort(Integer userId, Course course, String actionDescription) {
         try {
             User user = userMapper.selectById(userId);
@@ -485,18 +453,6 @@ public class EnrollmentService {
             }
         } catch (Exception e) {
             log.warn("Failed to send TA change email to user {} for course {}: {}", userId, course.getId(), e.getMessage());
-        }
-    }
-
-    private String toJson(Object value) {
-        if (value == null) {
-            return null;
-        }
-        try {
-            return objectMapper.writeValueAsString(value);
-        } catch (Exception e) {
-            log.warn("Failed to serialize audit detail: {}", e.getMessage());
-            return null;
         }
     }
 

@@ -42,6 +42,12 @@ public interface UserMapper {
      */
     User selectById(Integer id);
 
+    @Select("SELECT id, tenant_id AS tenantId, username, password, name, email, avatar, role, level, "
+            + "status, auth_version AS authVersion, "
+            + "must_change_password AS mustChangePassword, email_notifications AS emailNotifications "
+            + "FROM user WHERE id = #{id} FOR UPDATE")
+    User selectByIdForUpdate(Integer id);
+
     /**
      * 查询所有
      * Query all User records

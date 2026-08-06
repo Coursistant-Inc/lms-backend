@@ -15,6 +15,8 @@ import com.coursistant.lms.module.course.enrollment.entity.Enrollment;
 import com.coursistant.lms.module.course.enrollment.repository.EnrollmentMapper;
 import com.coursistant.lms.module.course.enrollment.service.CoursePermissionService;
 import com.coursistant.lms.module.course.enrollment.service.EnrollmentService;
+import com.coursistant.lms.module.course.group.entity.GroupMembershipAudit;
+import com.coursistant.lms.module.course.group.service.GroupMembershipService;
 import com.coursistant.lms.module.quiz.service.QuizLifecycleHooks;
 import com.coursistant.lms.module.tenant.entity.Tenant;
 import com.coursistant.lms.module.tenant.repository.TenantMapper;
@@ -27,6 +29,7 @@ import com.coursistant.lms.shared.enums.LevelEnum;
 import com.coursistant.lms.shared.enums.RoleEnum;
 import com.coursistant.lms.shared.security.ActorContext;
 import jakarta.annotation.Resource;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -65,6 +68,9 @@ public class CourseService {
     private CourseAuditService courseAuditService;
     @Resource
     private QuizLifecycleHooks quizLifecycleHooks;
+    @Lazy
+    @Resource
+    private GroupMembershipService groupMembershipService;
 
     @Transactional
     public CourseResponse create(ActorContext actor, CreateCourseRequest request, String requestId) {
@@ -270,6 +276,11 @@ public class CourseService {
         }
         Integer targetUserId = request.getPrimaryInstructorUserId();
         requireActiveTenant(visible.getTenantId());
+        // Lock order: target User → Course → Enrollment
+        User targetLocked = userMapper.selectByIdForUpdate(targetUserId);
+        if (targetLocked == null) {
+            throw new ApiException(ErrorType.USER_NOT_FOUND);
+        }
         User target = requireEligiblePrimaryInstructor(targetUserId, visible.getTenantId());
 
         Course locked = courseMapper.selectByIdForUpdate(courseId);
@@ -296,10 +307,20 @@ public class CourseService {
                     "Cannot reassign to an active Student; withdraw Student enrollment first");
         }
 
+        LocalDateTime withdrawnAt = LocalDateTime.now(ZoneOffset.UTC);
         Enrollment deactivate = new Enrollment();
         deactivate.setId(current.getId());
         deactivate.setActive(false);
+        deactivate.setWithdrawnAt(withdrawnAt);
+        deactivate.setWithdrawnByActorType(actor.getActorType());
+        deactivate.setWithdrawnByActorId(actor.getActorId());
         enrollmentMapper.updateById(deactivate);
+        String groupActor = ActorContext.ACTOR_ADMIN.equals(actor.getActorType())
+                ? GroupMembershipAudit.ACTOR_ADMIN
+                : GroupMembershipAudit.ACTOR_USER;
+        groupMembershipService.endGroupMembershipsOnEnrollmentDeactivated(
+                courseId, current.getUserId(), groupActor, actor.getActorId());
+        quizLifecycleHooks.onMembershipIneligible(courseId, current.getUserId());
 
         if (targetEnrollment == null) {
             enrollmentService.createInstructorEnrollment(courseId, targetUserId);
@@ -312,6 +333,7 @@ public class CourseService {
             promote.setCanManageGroups(true);
             promote.setCanManageCourseEvents(true);
             promote.setActive(true);
+            promote.setClearWithdrawn(true);
             enrollmentMapper.updateById(promote);
         }
 

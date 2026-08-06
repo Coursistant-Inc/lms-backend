@@ -64,4 +64,14 @@ public class TenantManagedUserController {
         managedUserService.changeRole(request, id, body.role, body.level);
         return ApiResponse.success();
     }
+
+    @Idempotent
+    @PostMapping("/{id}/disable")
+    public ApiResponse<Void> disable(HttpServletRequest request, @PathVariable Integer id) {
+        if (!authzService.isTenantAdmin(request)) {
+            throw new ApiException(ErrorType.FORBIDDEN);
+        }
+        managedUserService.disableUser(request, id);
+        return ApiResponse.success();
+    }
 }

@@ -44,6 +44,7 @@ class CourseServiceCoreTest {
     @Mock private CourseAuthorizationService courseAuthorizationService;
     @Mock private CourseAuditService courseAuditService;
     @Mock private QuizLifecycleHooks quizLifecycleHooks;
+    @Mock private com.coursistant.lms.module.course.group.service.GroupMembershipService groupMembershipService;
 
     @InjectMocks
     private CourseService courseService;
@@ -248,6 +249,7 @@ class CourseServiceCoreTest {
         student.setRole(RoleEnum.USER.name());
         student.setLevel("STUDENT");
         student.setStatus("ACTIVE");
+        when(userMapper.selectByIdForUpdate(20)).thenReturn(student);
         when(userMapper.selectById(20)).thenReturn(student);
 
         ReassignPrimaryInstructorRequest req = new ReassignPrimaryInstructorRequest();
@@ -267,6 +269,7 @@ class CourseServiceCoreTest {
         when(courseAuthorizationService.requireVisibleCourse(any(), eq(10))).thenReturn(course);
         when(tenantMapper.selectById(1)).thenReturn(activeTenant);
         User target = copyInstructor(9, 1);
+        when(userMapper.selectByIdForUpdate(9)).thenReturn(target);
         when(userMapper.selectById(9)).thenReturn(target);
         when(courseMapper.selectByIdForUpdate(10)).thenReturn(course);
         when(courseMapper.selectById(10)).thenReturn(course);

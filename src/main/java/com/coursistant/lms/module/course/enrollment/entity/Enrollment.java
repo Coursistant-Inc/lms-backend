@@ -17,6 +17,11 @@ public class Enrollment implements Serializable {
     private Boolean active;
     private Boolean assignmentSubmitFrozen;
     private LocalDateTime enrolledAt;
+    private LocalDateTime withdrawnAt;
+    private String withdrawnByActorType;
+    private Integer withdrawnByActorId;
+    /** Mapper-only: when true, UPDATE clears withdrawn_* columns. */
+    private Boolean clearWithdrawn;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -106,6 +111,38 @@ public class Enrollment implements Serializable {
 
     public void setEnrolledAt(LocalDateTime enrolledAt) {
         this.enrolledAt = enrolledAt;
+    }
+
+    public LocalDateTime getWithdrawnAt() {
+        return withdrawnAt;
+    }
+
+    public void setWithdrawnAt(LocalDateTime withdrawnAt) {
+        this.withdrawnAt = withdrawnAt;
+    }
+
+    public String getWithdrawnByActorType() {
+        return withdrawnByActorType;
+    }
+
+    public void setWithdrawnByActorType(String withdrawnByActorType) {
+        this.withdrawnByActorType = withdrawnByActorType;
+    }
+
+    public Integer getWithdrawnByActorId() {
+        return withdrawnByActorId;
+    }
+
+    public void setWithdrawnByActorId(Integer withdrawnByActorId) {
+        this.withdrawnByActorId = withdrawnByActorId;
+    }
+
+    public Boolean getClearWithdrawn() {
+        return clearWithdrawn;
+    }
+
+    public void setClearWithdrawn(Boolean clearWithdrawn) {
+        this.clearWithdrawn = clearWithdrawn;
     }
 
     public LocalDateTime getCreatedAt() {

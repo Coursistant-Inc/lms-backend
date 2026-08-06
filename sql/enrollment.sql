@@ -12,6 +12,10 @@ CREATE TABLE IF NOT EXISTS enrollment (
   active TINYINT(1) NOT NULL DEFAULT 1,
   assignment_submit_frozen TINYINT(1) NOT NULL DEFAULT 0,
   enrolled_at DATETIME NOT NULL,
+  -- Part 3: soft withdraw metadata (see sql/course_part3_expand.sql). Legacy inactive may leave these NULL.
+  withdrawn_at DATETIME NULL,
+  withdrawn_by_actor_type VARCHAR(16) NULL,
+  withdrawn_by_actor_id INT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   -- Part 1: only Active Instructor rows occupy the unique slot (see sql/course_part1_active_instructor_uk.sql).
@@ -21,6 +25,7 @@ CREATE TABLE IF NOT EXISTS enrollment (
   UNIQUE KEY uk_enrollment_one_instructor (instructor_course_id),
   KEY idx_enrollment_user (user_id),
   KEY idx_enrollment_course (course_id),
+  KEY idx_enrollment_course_active (course_id, active),
   CONSTRAINT fk_enrollment_course FOREIGN KEY (course_id) REFERENCES course (id) ON DELETE RESTRICT,
   CONSTRAINT fk_enrollment_user FOREIGN KEY (user_id) REFERENCES user (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

@@ -21,6 +21,8 @@ public interface EnrollmentMapper {
 
     Enrollment selectActiveInstructorByCourseIdForUpdate(@Param("courseId") Integer courseId);
 
+    List<Enrollment> selectActiveByUserIdForUpdate(@Param("userId") Integer userId);
+
     int deleteById(@Param("id") Integer id);
 
     List<Enrollment> selectByCourseId(@Param("courseId") Integer courseId);
@@ -43,6 +45,10 @@ public interface EnrollmentMapper {
     int countActiveInstructorsByCourseId(@Param("courseId") Integer courseId);
 
     int countActiveInstructorEnrollmentsByUserId(@Param("userId") Integer userId);
+
+    int countActiveTaEnrollmentsByUserId(@Param("userId") Integer userId);
+
+    int countActiveStudentEnrollmentsByUserId(@Param("userId") Integer userId);
 
     int countByUserId(@Param("userId") Integer userId);
 }
