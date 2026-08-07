@@ -1,7 +1,8 @@
 package com.coursistant.lms.shared.config;
 
+import com.coursistant.lms.shared.api.ErrorType;
 import com.coursistant.lms.shared.security.JwtAuthenticationFilter;
-import jakarta.servlet.http.HttpServletResponse;
+import com.coursistant.lms.shared.security.SecurityErrorResponseWriter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -20,7 +21,9 @@ public class SecurityConfig {
     private boolean docsPublic;
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtAuthenticationFilter)
+    public SecurityFilterChain securityFilterChain(HttpSecurity http,
+                                                   JwtAuthenticationFilter jwtAuthenticationFilter,
+                                                   SecurityErrorResponseWriter securityErrorResponseWriter)
             throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
@@ -42,7 +45,11 @@ public class SecurityConfig {
                 })
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint((req, rsp, e) ->
-                                rsp.sendError(HttpServletResponse.SC_UNAUTHORIZED))
+                                securityErrorResponseWriter.write(rsp, ErrorType.UNAUTHORIZED,
+                                        ErrorType.UNAUTHORIZED.getDefaultMessage()))
+                        .accessDeniedHandler((req, rsp, e) ->
+                                securityErrorResponseWriter.write(rsp, ErrorType.FORBIDDEN,
+                                        ErrorType.FORBIDDEN.getDefaultMessage()))
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 

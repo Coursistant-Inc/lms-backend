@@ -1,6 +1,8 @@
 # User Module API Reference (Frontend)
 
-For frontend integration and page implementation (login/register, profile, avatar, account admin).  
+For frontend integration (profile, avatar, account admin).  
+**Login / register / refresh / logout / verification / password / managed users** live in: [`auth_module-api.en.md`](./auth_module-api.en.md).
+
 Base URL: `https://dev.xlearnedu.com:8080/api`
 
 Local: `http://localhost:8080/api`
@@ -13,8 +15,8 @@ Local: `http://localhost:8080/api`
 2. [Typical page flows](#2-typical-page-flows)
 3. [Roles and permissions (product rules)](#3-roles-and-permissions-product-rules)
 4. [Enum cheat sheet](#4-enum-cheat-sheet)
-5. [Auth: login / register / logout / refresh](#5-auth-login--register--logout--refresh)
-6. [Email verification and password](#6-email-verification-and-password)
+5. [Auth (see Auth docs)](#5-auth-see-auth-docs)
+6. [Email verification and password (see Auth docs)](#6-email-verification-and-password-see-auth-docs)
 7. [Profile (me)](#7-profile-me)
 8. [Avatar](#8-avatar)
 9. [Users account management](#9-users-account-management)
@@ -36,32 +38,31 @@ Local: `http://localhost:8080/api`
 | `Content-Type: application/json` | JSON body |
 | `Content-Type: multipart/form-data` | Avatar upload (browser FormData sets this automatically) |
 
-**Write APIs that require `Idempotency-Key`:**
+**Write APIs that require `Idempotency-Key` (this module):**
 
-- `POST /v1/auth/email-verifications/register/validate`
-- `POST /v1/auth/email-verifications/reset/validate`
-- `PUT /v1/auth/password`
-- `POST /v1/auth/password-resets`
+- `PUT /v1/auth/password`, `POST /v1/auth/password-resets` (see Auth docs)
 - `PATCH /v2/me/profile`
 - `DELETE /v2/me/profile/avatar`
 - `POST/PUT/DELETE/PATCH /v2/users...` (except GET)
-- `POST/PUT/DELETE /v2/admins...` (except GET)
+- Managed-user writes (see Auth docs)
 
 Missing key → `IDEMPOTENCY_KEY_REQUIRED`.
 
 **Does not require** a key: `login` / `register` / `refresh-token` / `logout`, send verification code, `PUT .../avatar`, all GETs.
+
+> **`.../email-verifications/*/validate` endpoints are removed**; codes are consumed inside register / password-resets.
 
 Invalid token → `401` (`INVALID_TOKEN` / `UNAUTHORIZED`).
 
 ### 1.2 Anonymous (JWT not checked)
 
 - `GET /v1`
-- `POST /v1/auth/login`, `register`, `refresh-token`
-- `POST /v1/auth/email-verifications/**`
+- `POST /v1/auth/login`, `register`, `refresh-token`, `logout`
+- `POST /v1/auth/email-verifications/register`, `.../reset`
 - `POST /v1/auth/password-resets`
 - `GET /v2/users/{userId}/avatar`
 
-Note: `PUT /v1/auth/password` and `POST /v1/auth/logout` **require** Bearer.
+Note: `PUT /v1/auth/password` **requires** Bearer; `logout` does **not** (Cookie-based).
 
 ### 1.3 Cookie: `refreshToken`
 
@@ -115,22 +116,20 @@ At least **8** characters, and must contain both **letters** and **digits**. Oth
 
 ## 2. Typical page flows
 
-### 2.1 Login
+### 2.1 Login / register / refresh / logout / password
 
-1. `POST /v1/auth/login` (`role: "USER"`) → store `data.accessToken`
-2. Cookie automatically holds `refreshToken` (do not read it from JSON)
-3. Profile page: `GET /v2/me/profile`
-4. Before access token expires: `POST /v1/auth/refresh-token` (cookie) → `data` is the new accessToken string
-5. Logout: `POST /v1/auth/logout` (Bearer required)
+Full flow diagrams and request fields: [`auth_module-api.en.md` §2](./auth_module-api.en.md#2-typical-business-flows). Summary:
 
-### 2.2 Register
+| Flow | API order |
+|------|----------|
+| Login | `POST /v1/auth/login` → store `accessToken` → (optional) `GET /v2/me/profile` |
+| Register | send code → `POST /v1/auth/register` (includes `verificationCode`; **no** validate) |
+| Refresh | Cookie → `POST /v1/auth/refresh-token` |
+| Logout | `POST /v1/auth/logout` (anonymous OK; Cookie) |
+| Forgot password | send reset code → `POST /v1/auth/password-resets` (includes `verificationCode`) |
+| Change password | `PUT /v1/auth/password` (`currentPassword` / `newPassword`) |
 
-1. `POST /v1/auth/email-verifications/register?email=...` send code
-2. `POST /v1/auth/email-verifications/register/validate?email=...&code=...` (Idempotency-Key required)
-3. `POST /v1/auth/register` (`email` `password` `name` **`tenantId`**; optional `username`). Frontend currently hard-codes `tenantId: 1`
-4. Same as login on success: `accessToken` + refresh cookie; fixed `role=USER`, `level=STUDENT`
-
-### 2.3 Profile / avatar
+### 2.2 Profile / avatar
 
 1. `GET /v2/me/profile`
 2. Update display name / email notifications: `PATCH /v2/me/profile` (Idempotency-Key required)
@@ -138,41 +137,28 @@ At least **8** characters, and must contain both **letters** and **digits**. Oth
 4. Remove avatar: `DELETE /v2/me/profile/avatar` (Idempotency-Key required)
 5. `<img src="{avatarUrl}">`; for others use the returned URL or `GET /v2/users/{id}/avatar`
 
-### 2.4 Forgot password
-
-1. `POST /v1/auth/email-verifications/reset?email=...`
-2. `POST /v1/auth/email-verifications/reset/validate?email=...&code=...` (Idempotency-Key required)
-3. `POST /v1/auth/password-resets` with body `{ "email", "newPassword" }` (Idempotency-Key required)
-
-### 2.5 Change password while logged in
-
-1. `PUT /v1/auth/password` (Bearer + Idempotency-Key)
-2. Body: `email`, `password` (old), `newPassword`, `role` (`USER` or `ADMIN`)
-3. On success that user’s refresh tokens are cleared — login again for a new cookie
-
 ---
 
 ## 3. Roles and permissions (product rules)
 
-Two layers of platform identity:
+Full login routing and capability matrix: [`auth_module-api.en.md` §3](./auth_module-api.en.md#3-roles-and-login-routing). Summary:
 
 | Field | Values | Meaning |
 |------|--------|----------|
-| `role` | `USER` \| `ADMIN` | Platform role in login body / JWT; **must match account type** |
-| `level` | `STUDENT` \| `TA` \| `INSTRUCTOR` \| `SELF` | Meaningful for USER; register defaults to `STUDENT` |
+| Login body `role` | `USER` \| `TENANT_ADMIN` \| `SYSTEM_ADMIN` \| `ADMIN` (legacy) | Selects user vs admin table |
+| JWT `role` | `USER` \| `TENANT_ADMIN` \| `SYSTEM_ADMIN` | Authorization role |
+| `level` | `STUDENT` \| `TA` \| `INSTRUCTOR`, etc. | User table; register defaults to `STUDENT` |
 
-| Capability | Student / instructor (USER) | Platform Admin |
-|------|:------------------:|:----------:|
-| Login / refresh / logout | ✓ (`role=USER`) | ✓ (`role=ADMIN`) |
-| Self-register | ✓ | |
-| View / edit own profile & avatar | ✓ | (Admin uses `/v2/admins`; no `/me/profile`) |
-| Change own password | ✓ | ✓ |
-| `/v2/users` CRUD, list teachers | **No Admin gate in code**; **product: admin console only** | ✓ (recommended) |
-| `/v2/admins` CRUD | Same — do not expose to students | ✓ |
+| Capability | USER | TENANT_ADMIN | SYSTEM_ADMIN |
+|------------|:----:|:------------:|:------------:|
+| Self-register / profile / avatar | ✓ | profile ✓ | no `/me/profile` |
+| `/v2/users` CRUD | product: console | | recommended |
+| `/v2/admins` read | | | ✓ (writes disabled) |
+| Managed users | | tenant scope | system scope |
 
 > Course-level Instructor / TA / Student is documented in the Course API reference; that is **not** the same as platform `level` here.
 
-Common errors: `INVALID_CREDENTIALS`, `ACCOUNT_LOCKED`, `USER_NOT_FOUND`, `UNAUTHORIZED`, `INVALID_TOKEN`.
+Common errors: `INVALID_CREDENTIALS`, `USER_NOT_FOUND`, `UNAUTHORIZED`, `INVALID_TOKEN`.
 
 ---
 
@@ -180,21 +166,22 @@ Common errors: `INVALID_CREDENTIALS`, `ACCOUNT_LOCKED`, `USER_NOT_FOUND`, `UNAUT
 
 | Field | Allowed values |
 |------|--------|
-| `role` (login / AuthResult / Profile) | `USER` \| `ADMIN` |
-| `level` | `STUDENT` \| `TA` \| `INSTRUCTOR` \| `SELF` |
+| Login body `role` | `USER` \| `TENANT_ADMIN` \| `SYSTEM_ADMIN` \| `ADMIN` |
+| JWT / Profile `role` | `USER` \| `TENANT_ADMIN` \| `SYSTEM_ADMIN` |
+| `level` | `STUDENT` \| `TA` \| `INSTRUCTOR` \| `NOT_APPLICABLE`, etc. |
 | List teachers query | `role=instructor` or `role=teacher` (`GET /v2/users`) |
 
 Invalid / missing required → usually `PARAM_MISSING` or `400 BAD_REQUEST`.
 
-### 4.1 `tenantId` (required)
+### 4.1 `tenantId`
 
-`user.tenant_id` is **NOT NULL**; existing rows were backfilled to `1`. The backend does **not** silently default.
+`user.tenant_id` is **NOT NULL**; existing rows were backfilled to `1`.
 
 | Scenario | Rule |
 |------|------|
-| Public `POST /v1/auth/register`, OAuth register | Body **requires** `tenantId`; **only `1` allowed**, else `400 BAD_REQUEST`. Frontend currently hard-codes `1` |
+| Public `POST /v1/auth/register` | Server **always binds tenant 1** (ignores client `tenantId`) |
 | Admin `POST /v2/users` | Body **requires** `tenantId` for any existing tenant; missing → `PARAM_MISSING`; unknown → `TENANT_NOT_FOUND` |
-| Change user tenant | **Only** `PATCH /v2/admin/users/{id}/tenant` (Admin + Idempotency-Key). Enrollment / instructing / created courses → `409 USER_TENANT_CHANGE_BLOCKED` |
+| Change user tenant | **Only** `PATCH /v2/admin/users/{id}/tenant` (SYSTEM_ADMIN + Idempotency-Key). Enrollment / instructing / created courses → `409 USER_TENANT_CHANGE_BLOCKED` |
 | `PUT /v2/users/{id}` | Body **must not** include `tenantId` (if present → `400 BAD_REQUEST`) |
 | Profile / password / avatar | Do **not** read or write tenant |
 
@@ -202,218 +189,21 @@ See also [`tenant_module-api.md`](./tenant_module-api.md).
 
 ---
 
-## 5. Auth: login / register / logout / refresh
+## 5. Auth (see Auth docs)
 
-Prefix: `/v1/auth` (health: `GET /v1`)
+Session, login/register/refresh/logout request/response/error codes:
 
-### 5.1 Health — `GET /v1`
+→ [`auth_module-api.en.md` §4 Session API](./auth_module-api.en.md#4-session-api)
 
-No auth. Success: `data` is `"访问成功"`.
-
----
-
-### 5.2 Login — `POST /v1/auth/login`
-
-| | |
-|--|--|
-| Auth | No |
-| Idempotency-Key | No |
-
-**Body**
-
-| Field | Type | Required | Notes |
-|------|------|------|------|
-| email | string | Yes | |
-| password | string | Yes | |
-| role | string | Yes | `USER` or `ADMIN`; must match account type |
-
-```json
-{
-  "email": "regtest1@example.com",
-  "password": "Test12345",
-  "role": "USER"
-}
-```
-
-Success `data` (`AuthResult`):
-
-```json
-{
-  "userId": 385,
-  "email": "regtest1@example.com",
-  "name": "Alex Rivera",
-  "username": "regtest1",
-  "role": "USER",
-  "level": "STUDENT",
-  "avatar": "https://dev.xlearnedu.com:8080/api/v2/users/385/avatar?v=15173feacb804aa39573c818df203e3f",
-  "accessToken": "eyJ..."
-}
-```
-
-- Also `Set-Cookie: refreshToken=...`
-- `avatar` may be `null` if none
-- For ADMIN login, `avatar` may be the raw DB value, not necessarily a proxy URL
-
-Errors: `PARAM_MISSING`, `USER_NOT_FOUND`, `INVALID_CREDENTIALS`, `ACCOUNT_LOCKED` (~≥6 consecutive failures locks for a while), `TOKEN_CREATION_FAILED`.
+This document no longer duplicates Auth endpoint details.
 
 ---
 
-### 5.3 Register — `POST /v1/auth/register`
+## 6. Email verification and password (see Auth docs)
 
-| | |
-|--|--|
-| Auth | No |
-| Idempotency-Key | No |
-| Prerequisite | Complete register email verification first (~15 minutes) |
+Send code, change password, reset (includes `verificationCode`; no validate endpoints):
 
-**Body**
-
-| Field | Type | Required | Notes |
-|------|------|------|------|
-| email | string | Yes | |
-| password | string | Yes | See §1.6 |
-| name | string | Yes | Display name |
-| tenantId | int | **Yes** | Public register **only allows `1`** (seed Default). Missing → `PARAM_MISSING`; not `1` → `BAD_REQUEST`. Frontend currently hard-codes `1` |
-| username | string | No | Defaults to the part before `@` in email |
-
-```json
-{
-  "email": "newuser@example.com",
-  "password": "Test12345",
-  "name": "New User",
-  "tenantId": 1
-}
-```
-
-Success: same shape as login `AuthResult` + refresh cookie.  
-Fixed: `role=USER`, `level=STUDENT`, `emailNotifications=true`.
-
-Errors: `PARAM_MISSING`, `INVALID_VERIFICATION_CODE` (not verified), `INVALID_PASSWORD_FORMAT`, `BAD_REQUEST` (e.g. email already exists, `tenantId≠1`; message may be anti-enumeration), `TENANT_NOT_FOUND`.
-
----
-
-### 5.4 Refresh token — `POST /v1/auth/refresh-token`
-
-| | |
-|--|--|
-| Auth | No (Cookie `refreshToken`) |
-| Idempotency-Key | No |
-| Rate limit | Same IP ~>10 times / ~60s → `TOO_MANY_REQUESTS` |
-
-Success: `data` is the **new accessToken string** (not an object); refresh cookie is rotated.
-
-```json
-{
-  "status": 200,
-  "code": "SUCCESS",
-  "data": "eyJ...",
-  "message": "Success"
-}
-```
-
-Errors: `REFRESH_TOKEN_INVALID`, `TOO_MANY_REQUESTS`.
-
----
-
-### 5.5 Logout — `POST /v1/auth/logout`
-
-| | |
-|--|--|
-| Auth | **Bearer required** |
-| Idempotency-Key | No |
-
-Deletes server-side refresh and clears the cookie. Success: `data` is `null`.
-
----
-
-## 6. Email verification and password
-
-### 6.1 Send register code — `POST /v1/auth/email-verifications/register`
-
-| | |
-|--|--|
-| Auth | No |
-| Params | `email` (query / form; implementation has no `@RequestParam` — prefer query `?email=`) |
-
-Already-registered emails still return success (silent, anti-enumeration).
-
-Rate-limit errors: `VERIFICATION_RESEND_COOLDOWN` (~60s), `VERIFICATION_HOURLY_LIMIT` (~5 / hour).
-
----
-
-### 6.2 Validate register code — `POST /v1/auth/email-verifications/register/validate`
-
-| | |
-|--|--|
-| Auth | No |
-| Idempotency-Key | **Yes** |
-| Params | query: `email`, `code` |
-
-On success writes a “verified” flag (~15 minutes), then call register.
-
-Errors: `INVALID_VERIFICATION_CODE`, `VERIFICATION_CODE_EXPIRED` (code ~10 minutes), `VERIFICATION_ATTEMPTS_EXCEEDED` (~5 wrong tries), `PARAM_MISSING`, `IDEMPOTENCY_*`.
-
----
-
-### 6.3 Send reset code — `POST /v1/auth/email-verifications/reset`
-
-Same shape as §6.1; unknown users also succeed silently.
-
----
-
-### 6.4 Validate reset code — `POST /v1/auth/email-verifications/reset/validate`
-
-Same as §6.2; Idempotency-Key required. Then call §6.6.
-
----
-
-### 6.5 Change password (logged in) — `PUT /v1/auth/password`
-
-| | |
-|--|--|
-| Auth | **Bearer required** |
-| Idempotency-Key | **Yes** |
-
-**Body**
-
-| Field | Type | Required | Notes |
-|------|------|------|------|
-| email | string | Yes | |
-| password | string | Yes | Old password |
-| newPassword | string | Yes | New password; see §1.6 |
-| role | string | Recommended | `USER` or `ADMIN` |
-
-```json
-{
-  "email": "regtest1@example.com",
-  "password": "Test12345",
-  "newPassword": "Test12345a",
-  "role": "USER"
-}
-```
-
-Errors: `PARAM_MISSING`, `USER_NOT_FOUND`, `INVALID_PASSWORD`, `INVALID_PASSWORD_FORMAT`, `IDEMPOTENCY_*`.
-
----
-
-### 6.6 Forgot-password reset — `POST /v1/auth/password-resets`
-
-| | |
-|--|--|
-| Auth | No |
-| Idempotency-Key | **Yes** |
-| Prerequisite | Complete reset email verification first |
-
-**Body**
-
-```json
-{
-  "email": "regtest1@example.com",
-  "newPassword": "Test12345a"
-}
-```
-
-Errors: `PARAM_MISSING`, `INVALID_VERIFICATION_CODE`, `INVALID_PASSWORD_FORMAT`, `BAD_REQUEST`.
+→ [`auth_module-api.en.md` §5](./auth_module-api.en.md#5-email-verification-and-password)
 
 ---
 
@@ -586,7 +376,7 @@ Common `User` fields: `id` **`tenantId`** `username` `password` `name` `avatar` 
 
 | | |
 |--|--|
-| Auth | JWT `role=ADMIN`; else `403 ACCESS_DENIED` |
+| Auth | JWT `role=SYSTEM_ADMIN`; else `403 ACCESS_DENIED` |
 | Idempotency-Key | **Yes** |
 
 **Body**
@@ -608,22 +398,17 @@ Example errors: `USER_ALREADY_EXISTS`, `PARAM_MISSING`, `INVALID_PASSWORD_FORMAT
 
 ## 10. Admins management
 
-Prefix: `/v2/admins`  
-Symmetric CRUD; Bearer required; writes need Idempotency-Key.  
-**Product rule: platform Admin console only.**
+Prefix: `/v2/admins`. Authz: `SYSTEM_ADMIN`.  
+**Reads available; writes are `403 Forbidden` until Phase 2.**  
+Details and managed users: [`auth_module-api.en.md` §6–§7](./auth_module-api.en.md#6-admins-read-only).
 
 | Method | Path | Notes |
 |------|------|------|
-| POST | `/v2/admins` | Create; duplicate email → `USER_ALREADY_EXISTS`; missing password may use a server default |
-| GET | `/v2/admins/{id}` | |
-| GET | `/v2/admins` | Query filters |
-| PUT | `/v2/admins/{id}` | |
-| DELETE | `/v2/admins/{id}` | |
-| DELETE | `/v2/admins/batch` | Body: id list |
+| GET | `/v2/admins/{id}` | One admin |
+| GET | `/v2/admins` | List; query filters |
+| POST / PUT / DELETE | `/v2/admins...` | **Disabled** |
 
-Common fields: `id` `username` `password` `name` `avatar` `role` `phone` `email` `invitation`, etc.
-
-Admins have **no** `/v2/me/profile`; update via this CRUD. Login with `role: "ADMIN"`.
+Admins have **no** `/v2/me/profile`. Login with `role: "ADMIN"` or `"SYSTEM_ADMIN"`.
 
 ---
 
@@ -650,28 +435,19 @@ Applies to: `GET /v2/users/{userId}/avatar`.
 
 ## 12. Endpoint cheat sheet
 
+Full Auth cheat sheet: [`auth_module-api.en.md` §8](./auth_module-api.en.md#8-endpoint-cheat-sheet). This module:
+
 | Method | Path | Who | Idempotency-Key |
 |------|------|------|----------|
-| GET | `/v1` | Anonymous | |
-| POST | `/v1/auth/login` | Anonymous | |
-| POST | `/v1/auth/register` | Anonymous (email verify first) | |
-| POST | `/v1/auth/refresh-token` | Cookie | |
-| POST | `/v1/auth/logout` | Logged in | |
-| POST | `/v1/auth/email-verifications/register` | Anonymous | |
-| POST | `/v1/auth/email-verifications/register/validate` | Anonymous | Yes |
-| POST | `/v1/auth/email-verifications/reset` | Anonymous | |
-| POST | `/v1/auth/email-verifications/reset/validate` | Anonymous | Yes |
-| PUT | `/v1/auth/password` | Logged in | Yes |
-| POST | `/v1/auth/password-resets` | Anonymous (verify first) | Yes |
-| GET | `/v2/me/profile` | Current USER | |
-| PATCH | `/v2/me/profile` | Current USER | Yes |
-| PUT | `/v2/me/profile/avatar` | Current USER | No |
-| DELETE | `/v2/me/profile/avatar` | Current USER | Yes |
+| GET | `/v2/me/profile` | Current USER / TENANT_ADMIN | |
+| PATCH | `/v2/me/profile` | Current USER / TENANT_ADMIN | Yes |
+| PUT | `/v2/me/profile/avatar` | Current USER / TENANT_ADMIN | No |
+| DELETE | `/v2/me/profile/avatar` | Current USER / TENANT_ADMIN | Yes |
 | GET | `/v2/users/{userId}/avatar` | Public | |
-| GET | `/v2/users`, `/v2/users/{id}` | Logged in (product: Admin) | |
-| POST/PUT/DELETE/PATCH | `/v2/users...` | Logged in (product: Admin) | Yes |
-| PATCH | `/v2/admin/users/{id}/tenant` | Admin | Yes |
-| GET/POST/PUT/DELETE | `/v2/admins...` | Logged in (product: Admin) | Writes yes |
+| GET | `/v2/users`, `/v2/users/{id}` | Logged in (product: console) | |
+| POST/PUT/DELETE/PATCH | `/v2/users...` | Logged in (product: console) | Yes |
+| PATCH | `/v2/admin/users/{id}/tenant` | SYSTEM_ADMIN | Yes |
+| GET | `/v2/admins`, `/v2/admins/{id}` | SYSTEM_ADMIN | |
 
 ---
 
@@ -681,6 +457,10 @@ Applies to: `GET /v2/users/{userId}/avatar`.
 |------|-------|----------|------|
 | Student | `regtest1@example.com` … `regtest5@example.com` | `Test12345` | `role=USER`, `level=STUDENT` |
 | Instructor | `teachtest2@example.com` | `Test12345` | `role=USER`, `level=INSTRUCTOR` |
+| Platform admin | `admin@example.com` | `Test12345` | login `role=ADMIN` or `SYSTEM_ADMIN` |
+
+More Auth notes: [`auth_module-api.en.md` §9](./auth_module-api.en.md#9-local-test-accounts).
+
 
 ```http
 POST /v1/auth/login

@@ -4,12 +4,15 @@ import com.coursistant.lms.module.auth.identity.service.AccountIdentityService;
 import com.coursistant.lms.module.auth.identity.service.IdentityAuditService;
 import com.coursistant.lms.module.auth.identity.service.ManagedUserService;
 import com.coursistant.lms.module.auth.support.AuthFixture;
+import com.coursistant.lms.module.course.enrollment.service.EnrollmentIdentityGuard;
 import com.coursistant.lms.module.user.account.entity.User;
 import com.coursistant.lms.module.user.account.repository.UserMapper;
 import com.coursistant.lms.module.user.account.service.UserService;
 import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.shared.api.ErrorType;
+import com.coursistant.lms.shared.enums.LevelEnum;
 import com.coursistant.lms.shared.enums.RoleEnum;
+import com.coursistant.lms.shared.security.ActorContextResolver;
 import com.coursistant.lms.shared.security.AuthzService;
 import com.coursistant.lms.shared.security.SessionInvalidationService;
 import org.junit.jupiter.api.BeforeEach;
@@ -42,6 +45,10 @@ class ManagedUserServiceTest {
     private SessionInvalidationService sessionInvalidationService;
     @Mock
     private AuthzService authzService;
+    @Mock
+    private EnrollmentIdentityGuard enrollmentIdentityGuard;
+    @Mock
+    private ActorContextResolver actorContextResolver;
 
     @InjectMocks
     private ManagedUserService managedUserService;
@@ -176,12 +183,81 @@ class ManagedUserServiceTest {
         when(authzService.isSystemAdmin(request)).thenReturn(true);
         when(authzService.resolveActorTenantId(request)).thenReturn(null);
         when(userService.selectById(21)).thenReturn(target);
+        when(enrollmentIdentityGuard.assertCanChangeRoleOrLevel(eq(21), eq("TENANT_ADMIN"), eq("NOT_APPLICABLE")))
+                .thenAnswer(inv -> {
+                    User u = AuthFixture.student(1);
+                    u.setId(21);
+                    return u;
+                });
 
         managedUserService.changeRole(request, 21, RoleEnum.TENANT_ADMIN.name(), null);
 
-        verify(userMapper).updateById(argThat(u -> RoleEnum.TENANT_ADMIN.name().equals(u.getRole())));
+        verify(userMapper).updateById(argThat(u -> RoleEnum.TENANT_ADMIN.name().equals(u.getRole())
+                && LevelEnum.NOT_APPLICABLE.level.equals(u.getLevel())));
         verify(sessionInvalidationService, atLeastOnce()).invalidatePrincipal(eq(21), anyString());
         verify(identityAuditService).writeSuccess(eq(1), eq("SYSTEM_ADMIN"), isNull(),
                 eq("CHANGE_ROLE"), eq("USER"), eq(21), eq(1), anyString(), anyString(), isNull(), eq("127.0.0.1"));
+    }
+
+    @Test
+    void createUser_rejectsTaLevel() {
+        when(authzService.requireUserId(request)).thenReturn(11);
+        when(authzService.requireRole(request)).thenReturn("TENANT_ADMIN");
+        when(authzService.resolveActorTenantId(request)).thenReturn(1);
+        when(authzService.isTenantAdmin(request)).thenReturn(true);
+
+        var cmd = new ManagedUserService.CreateManagedUserCommand(
+                "x@ex.com", "X", RoleEnum.USER.name(), "TA", 1);
+        ApiException ex = assertThrows(ApiException.class,
+                () -> managedUserService.createUser(request, cmd, false));
+        assertEquals(ErrorType.BAD_REQUEST, ex.getErrorType());
+        verify(userMapper, never()).insert(any());
+    }
+
+    @Test
+    void createUser_defaultsStudentLevel() {
+        when(authzService.requireUserId(request)).thenReturn(11);
+        when(authzService.requireRole(request)).thenReturn("TENANT_ADMIN");
+        when(authzService.resolveActorTenantId(request)).thenReturn(1);
+        when(authzService.isTenantAdmin(request)).thenReturn(true);
+        doAnswer(inv -> {
+            User u = inv.getArgument(0);
+            u.setId(99);
+            return 1;
+        }).when(userMapper).insert(any(User.class));
+
+        var cmd = new ManagedUserService.CreateManagedUserCommand(
+                "x@ex.com", "X", RoleEnum.USER.name(), null, 1);
+        managedUserService.createUser(request, cmd, false);
+
+        ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
+        verify(userMapper).insert(captor.capture());
+        assertEquals(LevelEnum.STUDENT.level, captor.getValue().getLevel());
+        assertTrue(Boolean.TRUE.equals(captor.getValue().getMustChangePassword()));
+    }
+
+    @Test
+    void createUser_tenantAdminRejectsExplicitStudentLevel() {
+        when(authzService.requireUserId(request)).thenReturn(11);
+        when(authzService.requireRole(request)).thenReturn("TENANT_ADMIN");
+        when(authzService.resolveActorTenantId(request)).thenReturn(1);
+        when(authzService.isTenantAdmin(request)).thenReturn(true);
+
+        var cmd = new ManagedUserService.CreateManagedUserCommand(
+                "x@ex.com", "X", RoleEnum.TENANT_ADMIN.name(), "STUDENT", 1);
+        ApiException ex = assertThrows(ApiException.class,
+                () -> managedUserService.createUser(request, cmd, false));
+        assertEquals(ErrorType.BAD_REQUEST, ex.getErrorType());
+    }
+
+    @Test
+    void resolveRoleAndLevel_sharedRulesForChangeRole() {
+        var resolved = managedUserService.resolveRoleAndLevel("USER", "INSTRUCTOR");
+        assertEquals("USER", resolved.role());
+        assertEquals("INSTRUCTOR", resolved.level());
+
+        ApiException ex = assertThrows(ApiException.class,
+                () -> managedUserService.resolveRoleAndLevel("USER", "NOT_APPLICABLE"));
+        assertEquals(ErrorType.BAD_REQUEST, ex.getErrorType());
     }
 }

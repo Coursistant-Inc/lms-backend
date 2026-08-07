@@ -119,4 +119,9 @@ auth:
     issuer: ${AUTH_JWT_ISSUER:https://usc.xlearnedu.com}
     audience: ${AUTH_JWT_AUDIENCE:com.coursistant.lms}
     min-issued-at: ${AUTH_JWT_MIN_ISSUED_AT:}
+  cors:
+    # TEMP FE integration: any localhost / 127.0.0.1 port (keeps credentials/Cookie).
+    # Before production, switch to explicit origins, e.g. http://localhost:5173 only.
+    # Override: AUTH_CORS_ALLOWED_ORIGIN_PATTERNS
+    allowed-origin-patterns: ${AUTH_CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:*,http://127.0.0.1:*}
 

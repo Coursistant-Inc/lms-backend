@@ -26,6 +26,8 @@ public class ManagedUserService {
 
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
+    public record ResolvedRoleLevel(String role, String level) {}
+
     @Resource
     private UserMapper userMapper;
     @Resource
@@ -45,6 +47,32 @@ public class ManagedUserService {
 
     public record CreateManagedUserCommand(String email, String name, String role, String level, Integer tenantId) {}
 
+    /**
+     * Shared role/level rules for create and changeRole.
+     * USER: level defaults to STUDENT; only STUDENT or INSTRUCTOR allowed.
+     * TENANT_ADMIN: level forced to NOT_APPLICABLE; any other explicit level → 400.
+     * SYSTEM_ADMIN: forbidden.
+     */
+    public ResolvedRoleLevel resolveRoleAndLevel(String role, String level) {
+        if (RoleEnum.SYSTEM_ADMIN.name().equals(role)) {
+            throw new ApiException(ErrorType.FORBIDDEN, "Cannot assign SYSTEM_ADMIN via user management");
+        }
+        if (!RoleEnum.USER.name().equals(role) && !RoleEnum.TENANT_ADMIN.name().equals(role)) {
+            throw new ApiException(ErrorType.BAD_REQUEST, "Invalid role");
+        }
+        if (RoleEnum.TENANT_ADMIN.name().equals(role)) {
+            if (level != null && !level.isBlank() && !LevelEnum.NOT_APPLICABLE.level.equals(level)) {
+                throw new ApiException(ErrorType.BAD_REQUEST, "TENANT_ADMIN requires NOT_APPLICABLE level");
+            }
+            return new ResolvedRoleLevel(role, LevelEnum.NOT_APPLICABLE.level);
+        }
+        String resolved = (level == null || level.isBlank()) ? LevelEnum.STUDENT.level : level;
+        if (!LevelEnum.STUDENT.level.equals(resolved) && !LevelEnum.INSTRUCTOR.level.equals(resolved)) {
+            throw new ApiException(ErrorType.BAD_REQUEST, "USER requires INSTRUCTOR or STUDENT level");
+        }
+        return new ResolvedRoleLevel(role, resolved);
+    }
+
     @Transactional
     public Integer createUser(HttpServletRequest request, CreateManagedUserCommand cmd, boolean systemScope) {
         Integer actorId = authzService.requireUserId(request);
@@ -59,13 +87,7 @@ public class ManagedUserService {
             }
         }
 
-        String role = cmd.role();
-        if (RoleEnum.SYSTEM_ADMIN.name().equals(role)) {
-            throw new ApiException(ErrorType.FORBIDDEN, "Cannot create SYSTEM_ADMIN via user management");
-        }
-        if (!RoleEnum.USER.name().equals(role) && !RoleEnum.TENANT_ADMIN.name().equals(role)) {
-            throw new ApiException(ErrorType.BAD_REQUEST, "Invalid role");
-        }
+        ResolvedRoleLevel resolved = resolveRoleAndLevel(cmd.role(), cmd.level());
 
         Integer tenantId = systemScope ? cmd.tenantId() : actorTenantId;
         if (tenantId == null) {
@@ -75,17 +97,13 @@ public class ManagedUserService {
             throw new ApiException(ErrorType.NOT_FOUND);
         }
 
-        String level = RoleEnum.TENANT_ADMIN.name().equals(role)
-                ? LevelEnum.NOT_APPLICABLE.level
-                : (cmd.level() == null ? LevelEnum.STUDENT.level : cmd.level());
-
         String tempPassword = generateTempPassword();
         User user = new User();
         user.setEmail(AccountIdentityService.normalizeEmail(cmd.email()));
         user.setName(cmd.name());
         user.setUsername(user.getEmail().split("@")[0]);
-        user.setRole(role);
-        user.setLevel(level);
+        user.setRole(resolved.role());
+        user.setLevel(resolved.level());
         user.setTenantId(tenantId);
         user.setEncryptPassword(tempPassword);
         user.setMustChangePassword(true);
@@ -93,11 +111,10 @@ public class ManagedUserService {
 
         accountIdentityService.claimEmail(user.getEmail(), AccountIdentityService.PRINCIPAL_USER, user.getId());
         identityAuditService.writeSuccess(actorId, actorRole, actorTenantId, "CREATE_USER", "USER",
-                user.getId(), tenantId, null, "{\"role\":\"" + role + "\",\"level\":\"" + level + "\"}",
+                user.getId(), tenantId, null,
+                "{\"role\":\"" + resolved.role() + "\",\"level\":\"" + resolved.level() + "\"}",
                 null, request.getRemoteAddr());
 
-        // Temporary password is not returned; email outbox would pick it up in a follow-up job.
-        queueTempPasswordEmail(user.getEmail(), tempPassword);
         return user.getId();
     }
 
@@ -119,40 +136,29 @@ public class ManagedUserService {
         } else {
             throw new ApiException(ErrorType.FORBIDDEN);
         }
-        if (RoleEnum.SYSTEM_ADMIN.name().equals(newRole)) {
-            throw new ApiException(ErrorType.FORBIDDEN, "Cannot assign SYSTEM_ADMIN via user management");
-        }
+
+        ResolvedRoleLevel resolved = resolveRoleAndLevel(newRole, newLevelIfUser);
+
         if (RoleEnum.TENANT_ADMIN.name().equals(target.getRole())
-                && RoleEnum.USER.name().equals(newRole)) {
+                && RoleEnum.USER.name().equals(resolved.role())) {
             ensureNotLastTenantAdmin(target.getTenantId(), targetUserId);
         }
 
-        String resolvedLevel;
-        if (RoleEnum.TENANT_ADMIN.name().equals(newRole)) {
-            resolvedLevel = LevelEnum.NOT_APPLICABLE.level;
-        } else {
-            if (newLevelIfUser == null
-                    || (!LevelEnum.INSTRUCTOR.level.equals(newLevelIfUser)
-                    && !LevelEnum.STUDENT.level.equals(newLevelIfUser))) {
-                throw new ApiException(ErrorType.BAD_REQUEST, "USER requires INSTRUCTOR or STUDENT level");
-            }
-            resolvedLevel = newLevelIfUser;
-        }
-        User locked = enrollmentIdentityGuard.assertCanChangeRoleOrLevel(targetUserId, newRole, resolvedLevel);
+        User locked = enrollmentIdentityGuard.assertCanChangeRoleOrLevel(
+                targetUserId, resolved.role(), resolved.level());
 
         String before = "{\"role\":\"" + locked.getRole() + "\",\"level\":\"" + locked.getLevel() + "\"}";
-        locked.setRole(newRole);
-        locked.setLevel(resolvedLevel);
+        locked.setRole(resolved.role());
+        locked.setLevel(resolved.level());
         userMapper.updateById(locked);
         target = locked;
-        sessionInvalidationService.invalidatePrincipal(targetUserId, beforeRoleOr(target, newRole));
-        // Invalidate using previous role family (user table roles)
+        sessionInvalidationService.invalidatePrincipal(targetUserId, beforeRoleOr(target, resolved.role()));
         sessionInvalidationService.invalidatePrincipal(targetUserId, RoleEnum.USER.name());
         sessionInvalidationService.invalidatePrincipal(targetUserId, RoleEnum.TENANT_ADMIN.name());
 
         identityAuditService.writeSuccess(actorId, actorRole, authzService.resolveActorTenantId(request),
                 "CHANGE_ROLE", "USER", targetUserId, target.getTenantId(), before,
-                "{\"role\":\"" + newRole + "\",\"level\":\"" + target.getLevel() + "\"}",
+                "{\"role\":\"" + resolved.role() + "\",\"level\":\"" + target.getLevel() + "\"}",
                 null, request.getRemoteAddr());
     }
 
@@ -193,7 +199,6 @@ public class ManagedUserService {
     }
 
     private void ensureNotLastTenantAdmin(Integer tenantId, Integer excludingUserId) {
-        // Lightweight guard: count other TENANT_ADMIN in tenant via selectAll filter
         User probe = new User();
         probe.setTenantId(tenantId);
         probe.setRole(RoleEnum.TENANT_ADMIN.name());
@@ -209,9 +214,5 @@ public class ManagedUserService {
         byte[] bytes = new byte[18];
         SECURE_RANDOM.nextBytes(bytes);
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
-    }
-
-    private void queueTempPasswordEmail(String email, String tempPassword) {
-        // Intentionally do not log tempPassword. Production wires encrypted outbox.
     }
 }

@@ -49,7 +49,8 @@ public class AuthPublicPaths {
                 || path.startsWith("/v3/api-docs");
     }
 
-    private static String stripContext(String requestUri, String contextPath) {
+    /** Context-path stripping shared with PasswordChangeGuard. */
+    public static String stripContext(String requestUri, String contextPath) {
         if (requestUri == null) {
             return "";
         }

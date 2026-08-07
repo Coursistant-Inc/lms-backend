@@ -43,6 +43,8 @@ public class AccessTokenAuthService {
     private TenantMapper tenantMapper;
     @Resource
     private StringRedisTemplate stringRedisTemplate;
+    @Resource
+    private PasswordChangeGuard passwordChangeGuard;
 
     @Value("${auth.jwt.min-issued-at:}")
     private String minIssuedAtConfig;
@@ -136,6 +138,7 @@ public class AccessTokenAuthService {
             if (tokenTenantSecurityVersion == null || tokenTenantSecurityVersion != dbTenantSec) {
                 throw new ApiException(ErrorType.INVALID_TOKEN, "Invalid Access Token");
             }
+            passwordChangeGuard.assertMayProceed(user, request);
         }
 
         request.setAttribute(AuthzService.ATTR_USER_ID, userId);

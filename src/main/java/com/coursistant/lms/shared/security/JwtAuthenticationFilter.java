@@ -2,12 +2,10 @@ package com.coursistant.lms.shared.security;
 
 import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.shared.api.ErrorType;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -16,16 +14,17 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Map;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final AccessTokenAuthService accessTokenAuthService;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final SecurityErrorResponseWriter securityErrorResponseWriter;
 
-    public JwtAuthenticationFilter(AccessTokenAuthService accessTokenAuthService) {
+    public JwtAuthenticationFilter(AccessTokenAuthService accessTokenAuthService,
+                                   SecurityErrorResponseWriter securityErrorResponseWriter) {
         this.accessTokenAuthService = accessTokenAuthService;
+        this.securityErrorResponseWriter = securityErrorResponseWriter;
     }
 
     @Override
@@ -47,20 +46,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
         } catch (ApiException e) {
             SecurityContextHolder.clearContext();
-            writeError(response, e);
+            securityErrorResponseWriter.write(response, e);
         } catch (Exception e) {
             SecurityContextHolder.clearContext();
-            writeError(response, new ApiException(ErrorType.INVALID_TOKEN, "Invalid Access Token"));
+            securityErrorResponseWriter.write(response, ErrorType.INVALID_TOKEN, "Invalid Access Token");
         }
-    }
-
-    private void writeError(HttpServletResponse response, ApiException e) throws IOException {
-        response.setStatus(e.getErrorType().getStatusCode());
-        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-        objectMapper.writeValue(response.getOutputStream(), Map.of(
-                "success", false,
-                "code", e.getErrorType().name(),
-                "message", e.getMessage() == null ? e.getErrorType().getDefaultMessage() : e.getMessage()
-        ));
     }
 }

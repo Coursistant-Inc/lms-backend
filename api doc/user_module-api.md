@@ -1,6 +1,8 @@
 # User 模块 API 参考（前端）
 
-给前端联调 / 写页面用（登录注册、个人资料、头像、账号管理）。  
+给前端联调 / 写页面用（个人资料、头像、账号管理）。  
+**登录 / 注册 / 刷新 / 登出 / 验证码 / 改密 / Managed users** 见独立文档：[`auth_module-api.md`](./auth_module-api.md)。
+
 Base URL：`http://localhost:8080/api`
 
 远程环境可用：`https://dev.xlearnedu.com:8080/api`
@@ -13,8 +15,8 @@ Base URL：`http://localhost:8080/api`
 2. [典型页面流程](#2-典型页面流程)
 3. [角色与权限（产品约定）](#3-角色与权限产品约定)
 4. [枚举速查](#4-枚举速查)
-5. [Auth：登录 / 注册 / 登出 / 刷新](#5-auth登录--注册--登出--刷新)
-6. [邮箱验证与密码](#6-邮箱验证与密码)
+5. [Auth（详见 Auth 文档）](#5-auth详见-auth-文档)
+6. [邮箱验证与密码（详见 Auth 文档）](#6-邮箱验证与密码详见-auth-文档)
 7. [Profile（我的资料）](#7-profile我的资料)
 8. [Avatar（头像）](#8-avatar头像)
 9. [Users 账号管理](#9-users-账号管理)
@@ -36,32 +38,31 @@ Base URL：`http://localhost:8080/api`
 | `Content-Type: application/json` | JSON body |
 | `Content-Type: multipart/form-data` | 头像上传（浏览器 FormData 会自动带） |
 
-**需要 `Idempotency-Key` 的写接口：**
+**需要 `Idempotency-Key` 的写接口（本模块相关）：**
 
-- `POST /v1/auth/email-verifications/register/validate`
-- `POST /v1/auth/email-verifications/reset/validate`
-- `PUT /v1/auth/password`
-- `POST /v1/auth/password-resets`
+- `PUT /v1/auth/password`、`POST /v1/auth/password-resets`（详见 Auth 文档）
 - `PATCH /v2/me/profile`
 - `DELETE /v2/me/profile/avatar`
 - `POST/PUT/DELETE/PATCH /v2/users...`（除 GET）
-- `POST/PUT/DELETE /v2/admins...`（除 GET）
+- Managed users 写接口（见 Auth 文档）
 
 缺 Key → `IDEMPOTENCY_KEY_REQUIRED`。
 
 **不需要** Key：`login` / `register` / `refresh-token` / `logout`、发验证码、`PUT .../avatar`、所有 GET。
+
+> **已删除** `.../email-verifications/*/validate` 端点；验证码在 register / password-resets 内消费。
 
 Token 无效 → `401`（`INVALID_TOKEN` / `UNAUTHORIZED`）。
 
 ### 1.2 可匿名访问（JWT 不校验）
 
 - `GET /v1`
-- `POST /v1/auth/login`、`register`、`refresh-token`
-- `POST /v1/auth/email-verifications/**`
+- `POST /v1/auth/login`、`register`、`refresh-token`、`logout`
+- `POST /v1/auth/email-verifications/register`、`.../reset`
 - `POST /v1/auth/password-resets`
 - `GET /v2/users/{userId}/avatar`
 
-注意：`PUT /v1/auth/password`、`POST /v1/auth/logout` **需要** Bearer。
+注意：`PUT /v1/auth/password` **需要** Bearer；`logout` **不需要** Bearer（靠 Cookie）。
 
 ### 1.3 Cookie：`refreshToken`
 
@@ -115,22 +116,20 @@ Token 无效 → `401`（`INVALID_TOKEN` / `UNAUTHORIZED`）。
 
 ## 2. 典型页面流程
 
-### 2.1 登录进站
+### 2.1 登录进站 / 注册 / 刷新 / 登出 / 改密
 
-1. `POST /v1/auth/login`（`role: "USER"`）→ 存 `data.accessToken`
-2. Cookie 自动带 `refreshToken`（勿读 JSON）
-3. 进资料页：`GET /v2/me/profile`
-4. Token 将过期：`POST /v1/auth/refresh-token`（靠 Cookie）→ `data` 为新 accessToken 字符串
-5. 退出：`POST /v1/auth/logout`（需 Bearer）
+完整流程图与请求字段见 [`auth_module-api.md` §2](./auth_module-api.md#2-典型业务流程图)。摘要：
 
-### 2.2 注册
+| 流程 | API 顺序 |
+|------|----------|
+| 登录 | `POST /v1/auth/login` → 存 `accessToken` →（可选）`GET /v2/me/profile` |
+| 注册 | 发码 → `POST /v1/auth/register`（含 `verificationCode`；**无** validate） |
+| 刷新 | Cookie → `POST /v1/auth/refresh-token` |
+| 登出 | `POST /v1/auth/logout`（匿名可调，靠 Cookie） |
+| 忘记密码 | 发 reset 码 → `POST /v1/auth/password-resets`（含 `verificationCode`） |
+| 已登录改密 | `PUT /v1/auth/password`（`currentPassword` / `newPassword`） |
 
-1. `POST /v1/auth/email-verifications/register?email=...` 发验证码
-2. `POST /v1/auth/email-verifications/register/validate?email=...&code=...`（需幂等 Key）
-3. `POST /v1/auth/register`（`email` `password` `name` **`tenantId`**；可选 `username`）。当前前端写死传 `tenantId: 1`
-4. 成功同登录：拿 `accessToken` + refresh Cookie；固定 `role=USER`、`level=STUDENT`
-
-### 2.3 个人资料 / 头像
+### 2.2 个人资料 / 头像
 
 1. `GET /v2/me/profile`
 2. 改显示名 / 邮件通知：`PATCH /v2/me/profile`（需幂等 Key）
@@ -138,41 +137,28 @@ Token 无效 → `401`（`INVALID_TOKEN` / `UNAUTHORIZED`）。
 4. 删头像：`DELETE /v2/me/profile/avatar`（需幂等 Key）
 5. `<img src="{avatarUrl}">` 即可；他人头像用返回的 URL 或 `GET /v2/users/{id}/avatar`
 
-### 2.4 忘记密码
-
-1. `POST /v1/auth/email-verifications/reset?email=...`
-2. `POST /v1/auth/email-verifications/reset/validate?email=...&code=...`（需幂等 Key）
-3. `POST /v1/auth/password-resets`，body：`{ "email", "newPassword" }`（需幂等 Key）
-
-### 2.5 已登录改密
-
-1. `PUT /v1/auth/password`（需 Bearer + 幂等 Key）
-2. body：`email`、`password`（旧）、`newPassword`、`role`（`USER` 或 `ADMIN`）
-3. 成功后该用户 refresh token 会被清掉，需重新登录拿 Cookie
-
 ---
 
 ## 3. 角色与权限（产品约定）
 
-平台身份两层：
+完整登录路由与能力矩阵见 [`auth_module-api.md` §3](./auth_module-api.md#3-角色与登录路由)。摘要：
 
 | 字段 | 取值 | 含义 |
 |------|------|------|
-| `role` | `USER` \| `ADMIN` | 登录 body / JWT 里的平台角色；**必须与账号类型一致** |
-| `level` | `STUDENT` \| `TA` \| `INSTRUCTOR` \| `SELF` | 仅 USER 有意义；注册默认 `STUDENT` |
+| 登录 body `role` | `USER` \| `TENANT_ADMIN` \| `SYSTEM_ADMIN` \| `ADMIN`（兼容） | 决定查 user / admin 表 |
+| JWT `role` | `USER` \| `TENANT_ADMIN` \| `SYSTEM_ADMIN` | 鉴权角色 |
+| `level` | `STUDENT` \| `TA` \| `INSTRUCTOR` 等 | 仅 user 有意义；注册默认 `STUDENT` |
 
-| 能力 | 学生 / 教师（USER） | 平台 Admin |
-|------|:------------------:|:----------:|
-| 登录 / 刷新 / 登出 | ✓（`role=USER`） | ✓（`role=ADMIN`） |
-| 自助注册 | ✓ | |
-| 看 / 改自己的 profile、头像 | ✓ | （Admin 走 `/v2/admins`，无 `/me/profile`） |
-| 改自己的密码 | ✓ | ✓ |
-| `/v2/users` CRUD、列表教师 | 代码层**未做 Admin 门禁**；**产品上仅后台 Admin 使用** | ✓（推荐） |
-| `/v2/admins` CRUD | 同上，前端勿对学生开放 | ✓ |
+| 能力 | USER | TENANT_ADMIN | SYSTEM_ADMIN |
+|------|:----:|:------------:|:------------:|
+| 自助注册 / profile / 头像 | ✓ | profile ✓ | 无 `/me/profile` |
+| `/v2/users` CRUD | 产品上后台用 | | 推荐 |
+| `/v2/admins` 读 | | | ✓（写接口已禁用） |
+| Managed users | | 租户侧 | 系统侧 |
 
 > 课程里的 Instructor / TA / Student 见 Course 文档；与这里的平台 `level` 不是同一套字段。
 
-常见错误：`INVALID_CREDENTIALS`、`ACCOUNT_LOCKED`、`USER_NOT_FOUND`、`UNAUTHORIZED`、`INVALID_TOKEN`。
+常见错误：`INVALID_CREDENTIALS`、`USER_NOT_FOUND`、`UNAUTHORIZED`、`INVALID_TOKEN`。
 
 ---
 
@@ -180,21 +166,22 @@ Token 无效 → `401`（`INVALID_TOKEN` / `UNAUTHORIZED`）。
 
 | 字段 | 合法值 |
 |------|--------|
-| `role`（登录 / AuthResult / Profile） | `USER` \| `ADMIN` |
-| `level` | `STUDENT` \| `TA` \| `INSTRUCTOR` \| `SELF` |
+| 登录 body `role` | `USER` \| `TENANT_ADMIN` \| `SYSTEM_ADMIN` \| `ADMIN` |
+| JWT / Profile `role` | `USER` \| `TENANT_ADMIN` \| `SYSTEM_ADMIN` |
+| `level` | `STUDENT` \| `TA` \| `INSTRUCTOR` \| `NOT_APPLICABLE` 等 |
 | 列表教师 query | `role=instructor` 或 `role=teacher`（`GET /v2/users`） |
 
 非法 / 缺必填 → 多为 `PARAM_MISSING` 或 `400 BAD_REQUEST`。
 
-### 4.1 `tenantId`（必传）
+### 4.1 `tenantId`
 
-`user.tenant_id` **NOT NULL**；存量已回填为 `1`。后端**不**静默默认。
+`user.tenant_id` **NOT NULL**；存量已回填为 `1`。
 
 | 场景 | 规则 |
 |------|------|
-| 公开注册 `POST /v1/auth/register`、OAuth 注册 | body **必填** `tenantId`；**仅允许** `1`，否则 `400 BAD_REQUEST`。当前前端写死传 `1` |
+| 公开注册 `POST /v1/auth/register` | 服务端**始终绑定租户 1**（忽略客户端 `tenantId`） |
 | Admin `POST /v2/users` | body **必填** `tenantId`，可为任意已存在租户；缺 → `PARAM_MISSING`；不存在 → `TENANT_NOT_FOUND` |
-| 改用户租户 | **仅** `PATCH /v2/admin/users/{id}/tenant`（Admin + 幂等 Key）。有 enrollment / 授课 / 创建课程 → `409 USER_TENANT_CHANGE_BLOCKED` |
+| 改用户租户 | **仅** `PATCH /v2/admin/users/{id}/tenant`（SYSTEM_ADMIN + 幂等 Key）。有 enrollment / 授课 / 创建课程 → `409 USER_TENANT_CHANGE_BLOCKED` |
 | `PUT /v2/users/{id}` | body **禁止**带 `tenantId`（带了 → `400 BAD_REQUEST`） |
 | Profile / 密码 / 头像 | **不**读写租户 |
 
@@ -202,218 +189,21 @@ Token 无效 → `401`（`INVALID_TOKEN` / `UNAUTHORIZED`）。
 
 ---
 
-## 5. Auth：登录 / 注册 / 登出 / 刷新
+## 5. Auth（详见 Auth 文档）
 
-前缀：`/v1/auth`（健康检查：`GET /v1`）
+Session、登录/注册/刷新/登出的请求/响应/错误码见：
 
-### 5.1 健康检查 — `GET /v1`
+→ [`auth_module-api.md` §4 Session API](./auth_module-api.md#4-session-api)
 
-无需登录。成功：`data` 为 `"访问成功"`。
-
----
-
-### 5.2 登录 — `POST /v1/auth/login`
-
-| | |
-|--|--|
-| 鉴权 | 否 |
-| 需要幂等 Key | 否 |
-
-**Body**
-
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| email | string | 是 | |
-| password | string | 是 | |
-| role | string | 是 | `USER` 或 `ADMIN`，必须与账号类型一致 |
-
-```json
-{
-  "email": "regtest1@example.com",
-  "password": "Test12345",
-  "role": "USER"
-}
-```
-
-成功 `data`（`AuthResult`）：
-
-```json
-{
-  "userId": 385,
-  "email": "regtest1@example.com",
-  "name": "Alex Rivera",
-  "username": "regtest1",
-  "role": "USER",
-  "level": "STUDENT",
-  "avatar": "http://localhost:8080/api/v2/users/385/avatar?v=15173feacb804aa39573c818df203e3f",
-  "accessToken": "eyJ..."
-}
-```
-
-- 同时 `Set-Cookie: refreshToken=...`
-- 无头像时 `avatar` 可为 `null`
-- ADMIN 登录时 `avatar` 可能是库内原始值，不一定是代理 URL
-
-错误：`PARAM_MISSING`、`USER_NOT_FOUND`、`INVALID_CREDENTIALS`、`ACCOUNT_LOCKED`（连续失败约 ≥6 次会锁一段时间）、`TOKEN_CREATION_FAILED`。
+本文档不再维护重复的 Auth 端点明细。
 
 ---
 
-### 5.3 注册 — `POST /v1/auth/register`
+## 6. 邮箱验证与密码（详见 Auth 文档）
 
-| | |
-|--|--|
-| 鉴权 | 否 |
-| 需要幂等 Key | 否 |
-| 前置 | 须先完成 register 邮箱验证（约 15 分钟有效） |
+发码、改密、重置（含 `verificationCode`、无 validate 端点）见：
 
-**Body**
-
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| email | string | 是 | |
-| password | string | 是 | 见 §1.6 |
-| name | string | 是 | 显示名 |
-| tenantId | int | **是** | 公开注册**仅允许 `1`**（种子 Default）。缺 → `PARAM_MISSING`；非 1 → `BAD_REQUEST`。当前前端写死传 `1` |
-| username | string | 否 | 默认取邮箱 `@` 前缀 |
-
-```json
-{
-  "email": "newuser@example.com",
-  "password": "Test12345",
-  "name": "New User",
-  "tenantId": 1
-}
-```
-
-成功：形状同登录 `AuthResult` + refresh Cookie。  
-固定：`role=USER`、`level=STUDENT`、`emailNotifications=true`。
-
-错误：`PARAM_MISSING`、`INVALID_VERIFICATION_CODE`（未验证）、`INVALID_PASSWORD_FORMAT`、`BAD_REQUEST`（邮箱已存在、`tenantId≠1` 等，文案可能防枚举）、`TENANT_NOT_FOUND`。
-
----
-
-### 5.4 刷新 Token — `POST /v1/auth/refresh-token`
-
-| | |
-|--|--|
-| 鉴权 | 否（靠 Cookie `refreshToken`） |
-| 需要幂等 Key | 否 |
-| 限流 | 同 IP 约 60s 内 >10 次 → `TOO_MANY_REQUESTS` |
-
-成功：`data` 为**新 accessToken 字符串**（不是对象）；并轮换 refresh Cookie。
-
-```json
-{
-  "status": 200,
-  "code": "SUCCESS",
-  "data": "eyJ...",
-  "message": "Success"
-}
-```
-
-错误：`REFRESH_TOKEN_INVALID`、`TOO_MANY_REQUESTS`。
-
----
-
-### 5.5 登出 — `POST /v1/auth/logout`
-
-| | |
-|--|--|
-| 鉴权 | **需要** Bearer |
-| 需要幂等 Key | 否 |
-
-删除服务端 refresh，并清空 Cookie。成功：`data` 为 `null`。
-
----
-
-## 6. 邮箱验证与密码
-
-### 6.1 发注册验证码 — `POST /v1/auth/email-verifications/register`
-
-| | |
-|--|--|
-| 鉴权 | 否 |
-| 参数 | `email`（query / form；当前实现未标 `@RequestParam`，建议 query：`?email=`） |
-
-已注册邮箱也会返回成功（静默，防枚举）。
-
-限流相关错误：`VERIFICATION_RESEND_COOLDOWN`（约 60s）、`VERIFICATION_HOURLY_LIMIT`（约 5 次/小时）。
-
----
-
-### 6.2 校验注册验证码 — `POST /v1/auth/email-verifications/register/validate`
-
-| | |
-|--|--|
-| 鉴权 | 否 |
-| 需要幂等 Key | **是** |
-| 参数 | query：`email`、`code` |
-
-成功后写入「已验证」标记（约 15 分钟），再调注册。
-
-错误：`INVALID_VERIFICATION_CODE`、`VERIFICATION_CODE_EXPIRED`（码约 10 分钟）、`VERIFICATION_ATTEMPTS_EXCEEDED`（错约 5 次）、`PARAM_MISSING`、`IDEMPOTENCY_*`。
-
----
-
-### 6.3 发重置验证码 — `POST /v1/auth/email-verifications/reset`
-
-同 §6.1 形态；用户不存在也静默成功。
-
----
-
-### 6.4 校验重置验证码 — `POST /v1/auth/email-verifications/reset/validate`
-
-同 §6.2；需幂等 Key。通过后再调 §6.6。
-
----
-
-### 6.5 已登录改密 — `PUT /v1/auth/password`
-
-| | |
-|--|--|
-| 鉴权 | **需要** Bearer |
-| 需要幂等 Key | **是** |
-
-**Body**
-
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| email | string | 是 | |
-| password | string | 是 | 旧密码 |
-| newPassword | string | 是 | 新密码，见 §1.6 |
-| role | string | 建议带 | `USER` 或 `ADMIN` |
-
-```json
-{
-  "email": "regtest1@example.com",
-  "password": "Test12345",
-  "newPassword": "Test12345a",
-  "role": "USER"
-}
-```
-
-错误：`PARAM_MISSING`、`USER_NOT_FOUND`、`INVALID_PASSWORD`、`INVALID_PASSWORD_FORMAT`、`IDEMPOTENCY_*`。
-
----
-
-### 6.6 忘记密码重置 — `POST /v1/auth/password-resets`
-
-| | |
-|--|--|
-| 鉴权 | 否 |
-| 需要幂等 Key | **是** |
-| 前置 | 须先完成 reset 邮箱验证 |
-
-**Body**
-
-```json
-{
-  "email": "regtest1@example.com",
-  "newPassword": "Test12345a"
-}
-```
-
-错误：`PARAM_MISSING`、`INVALID_VERIFICATION_CODE`、`INVALID_PASSWORD_FORMAT`、`BAD_REQUEST`。
+→ [`auth_module-api.md` §5](./auth_module-api.md#5-邮箱验证与密码)
 
 ---
 
@@ -608,22 +398,17 @@ DB 存的是 MinIO key（如 `385/xxxx.png`），前端只用响应里的完整 
 
 ## 10. Admins 管理
 
-前缀：`/v2/admins`  
-对称 CRUD；需 Bearer；写操作需幂等 Key。  
-**产品约定：仅平台 Admin 后台**。
+前缀：`/v2/admins`。鉴权：`SYSTEM_ADMIN`。  
+**读接口可用；写接口 Phase 2 前一律 `403 Forbidden`。**  
+详情与 Managed users 见 [`auth_module-api.md` §6–§7](./auth_module-api.md#6-admins只读)。
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| POST | `/v2/admins` | 创建；邮箱重复 → `USER_ALREADY_EXISTS`；无密码时可能用服务端默认密码 |
-| GET | `/v2/admins/{id}` | |
-| GET | `/v2/admins` | query 过滤 |
-| PUT | `/v2/admins/{id}` | |
-| DELETE | `/v2/admins/{id}` | |
-| DELETE | `/v2/admins/batch` | body：id 列表 |
+| GET | `/v2/admins/{id}` | 查单个 |
+| GET | `/v2/admins` | 列表；query 过滤 |
+| POST / PUT / DELETE | `/v2/admins...` | **禁用** |
 
-常见字段：`id` `username` `password` `name` `avatar` `role` `phone` `email` `invitation` 等。
-
-Admin **没有** `/v2/me/profile`；资料改走本表 CRUD。登录用 `role: "ADMIN"`。
+Admin **没有** `/v2/me/profile`。登录用 `role: "ADMIN"` 或 `"SYSTEM_ADMIN"`。
 
 ---
 
@@ -650,28 +435,19 @@ Admin **没有** `/v2/me/profile`；资料改走本表 CRUD。登录用 `role: "
 
 ## 12. 端点速查表
 
+Auth 全量速查见 [`auth_module-api.md` §8](./auth_module-api.md#8-端点速查表)。本模块常用：
+
 | 方法 | 路径 | 谁调 | 幂等 Key |
 |------|------|------|----------|
-| GET | `/v1` | 匿名 | |
-| POST | `/v1/auth/login` | 匿名 | |
-| POST | `/v1/auth/register` | 匿名（需先邮箱验证） | |
-| POST | `/v1/auth/refresh-token` | Cookie | |
-| POST | `/v1/auth/logout` | 已登录 | |
-| POST | `/v1/auth/email-verifications/register` | 匿名 | |
-| POST | `/v1/auth/email-verifications/register/validate` | 匿名 | 是 |
-| POST | `/v1/auth/email-verifications/reset` | 匿名 | |
-| POST | `/v1/auth/email-verifications/reset/validate` | 匿名 | 是 |
-| PUT | `/v1/auth/password` | 已登录 | 是 |
-| POST | `/v1/auth/password-resets` | 匿名（需先验证） | 是 |
-| GET | `/v2/me/profile` | 当前 USER | |
-| PATCH | `/v2/me/profile` | 当前 USER | 是 |
-| PUT | `/v2/me/profile/avatar` | 当前 USER | 否 |
-| DELETE | `/v2/me/profile/avatar` | 当前 USER | 是 |
+| GET | `/v2/me/profile` | 当前 USER / TENANT_ADMIN | |
+| PATCH | `/v2/me/profile` | 当前 USER / TENANT_ADMIN | 是 |
+| PUT | `/v2/me/profile/avatar` | 当前 USER / TENANT_ADMIN | 否 |
+| DELETE | `/v2/me/profile/avatar` | 当前 USER / TENANT_ADMIN | 是 |
 | GET | `/v2/users/{userId}/avatar` | 公开 | |
-| GET | `/v2/users`、`/v2/users/{id}` | 已登录（产品：Admin） | |
-| POST/PUT/DELETE/PATCH | `/v2/users...` | 已登录（产品：Admin） | 是 |
-| PATCH | `/v2/admin/users/{id}/tenant` | Admin | 是 |
-| GET/POST/PUT/DELETE | `/v2/admins...` | 已登录（产品：Admin） | 写是 |
+| GET | `/v2/users`、`/v2/users/{id}` | 已登录（产品：后台） | |
+| POST/PUT/DELETE/PATCH | `/v2/users...` | 已登录（产品：后台） | 是 |
+| PATCH | `/v2/admin/users/{id}/tenant` | SYSTEM_ADMIN | 是 |
+| GET | `/v2/admins`、`/v2/admins/{id}` | SYSTEM_ADMIN | |
 
 ---
 
@@ -681,6 +457,9 @@ Admin **没有** `/v2/me/profile`；资料改走本表 CRUD。登录用 `role: "
 |------|-------|----------|------|
 | 学生 | `regtest1@example.com` … `regtest5@example.com` | `Test12345` | `role=USER`，`level=STUDENT` |
 | 教师 | `teachtest2@example.com` | `Test12345` | `role=USER`，`level=INSTRUCTOR` |
+| 平台 Admin | `admin@example.com` | `Test12345` | 登录 `role=ADMIN` 或 `SYSTEM_ADMIN` |
+
+更多 Auth 说明见 [`auth_module-api.md` §9](./auth_module-api.md#9-本地测试账号)。
 
 ```http
 POST /v1/auth/login

@@ -139,21 +139,21 @@ public class UserService {
             throw new ApiException(ErrorType.PARAM_MISSING, "Parameter Missing");
         }
         String email = AccountIdentityService.normalizeEmail(request.getEmail());
-        emailVerificationService.requireConsumeSuccess(
-                EmailVerificationService.TYPE_REGISTER, email, request.getVerificationCode());
 
+        // Static validations before consuming the code (anti-enumeration: existence check is after consume).
         PasswordValidator.validate(request.getPassword());
-
         if (StrUtil.isBlank(request.getName())) {
             throw new ApiException(ErrorType.PARAM_MISSING, "Display name is required");
         }
-
         // Public registration always binds to tenant 1 (ignore client tenantId for role/level).
         requirePublicRegistrationTenant(1);
         Tenant tenant = tenantMapper.selectById(1);
         if (tenant == null || (tenant.getStatus() != null && !AccountStatus.ACTIVE.name().equals(tenant.getStatus()))) {
             throw new ApiException(ErrorType.BAD_REQUEST, "Registration failed");
         }
+
+        emailVerificationService.requireConsumeSuccess(
+                EmailVerificationService.TYPE_REGISTER, email, request.getVerificationCode());
 
         User existing = userMapper.selectByEmail(email);
         if (existing != null) {
@@ -409,9 +409,9 @@ public class UserService {
             throw new ApiException(ErrorType.PARAM_MISSING, "Parameter Missing");
         }
         String email = AccountIdentityService.normalizeEmail(request.getEmail());
+        PasswordValidator.validate(request.getNewPassword());
         emailVerificationService.requireConsumeSuccess(
                 EmailVerificationService.TYPE_RESET, email, request.getVerificationCode());
-        PasswordValidator.validate(request.getNewPassword());
 
         AccountIdentity identity = accountIdentityMapper.selectByEmail(email);
         if (identity == null) {

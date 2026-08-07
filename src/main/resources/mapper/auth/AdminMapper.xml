@@ -8,25 +8,30 @@
         id,username,password,name,phone,email,avatar,role,status,auth_version AS authVersion
     </sql>
 
+    <sql id="Safe_Column_List">
+        id,username,name,phone,email,avatar,role,status
+    </sql>
+
     <select id="selectAll" resultType="com.coursistant.lms.module.auth.admin.entity.Admin">
         select
-        <include refid="Base_Column_List" />
+        <include refid="Safe_Column_List" />
         from admin
         <where>
             <if test="id != null"> and id= #{id}</if>
             <if test="username != null"> and username like concat('%', #{username}, '%')</if>
-            <if test="password != null"> and password= #{password}</if>
             <if test="name != null"> and name= #{name}</if>
             <if test="phone != null"> and phone= #{phone}</if>
             <if test="email != null"> and email= #{email}</if>
             <if test="avatar != null"> and avatar= #{avatar}</if>
             <if test="role != null"> and role= #{role}</if>
+            <if test="status != null"> and status= #{status}</if>
         </where>
     </select>
 
     <select id="selectById" resultType="com.coursistant.lms.module.auth.admin.entity.Admin">
         select
-        <include refid="Base_Column_List" />
+        <include refid="Safe_Column_List" />,
+        auth_version AS authVersion
         from admin
         where id = #{id}
     </select>

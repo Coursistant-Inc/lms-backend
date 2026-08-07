@@ -48,6 +48,8 @@ auth:
     issuer: https://usc.xlearnedu.com
     audience: com.coursistant.lms
     min-issued-at:
+  cors:
+    allowed-origin-patterns: http://localhost:*,http://127.0.0.1:*
 
 minio:
   url: http://127.0.0.1:9

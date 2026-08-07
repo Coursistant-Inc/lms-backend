@@ -1,5 +1,6 @@
 package com.coursistant.lms.module.auth.admin.controller;
 
+import com.coursistant.lms.module.auth.admin.dto.AdminQuery;
 import com.coursistant.lms.module.auth.admin.entity.Admin;
 import com.coursistant.lms.module.auth.admin.service.AdminService;
 import com.coursistant.lms.shared.api.ErrorType;
@@ -39,7 +40,7 @@ class AdminControllerAuthzTest {
     @Test
     void selectAll_requiresSystemAdmin() {
         doThrow(new ApiException(ErrorType.FORBIDDEN)).when(authzService).requireSystemAdmin(request);
-        ApiException ex = assertThrows(ApiException.class, () -> adminController.selectAll(request, new Admin()));
+        ApiException ex = assertThrows(ApiException.class, () -> adminController.selectAll(request, new AdminQuery()));
         assertEquals(ErrorType.FORBIDDEN, ex.getErrorType());
         verifyNoInteractions(adminService);
     }
@@ -48,7 +49,7 @@ class AdminControllerAuthzTest {
     void selectAll_systemAdmin_ok() {
         doNothing().when(authzService).requireSystemAdmin(request);
         when(adminService.selectAll(any())).thenReturn(List.of(new Admin()));
-        assertEquals(1, adminController.selectAll(request, new Admin()).getData().size());
+        assertEquals(1, adminController.selectAll(request, new AdminQuery()).getData().size());
     }
 
     @Test

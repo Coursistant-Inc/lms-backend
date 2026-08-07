@@ -12,6 +12,7 @@ import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.shared.api.ErrorType;
 import com.coursistant.lms.shared.security.AccessTokenAuthService;
 import com.coursistant.lms.shared.security.JwtParserUtil;
+import com.coursistant.lms.shared.security.PasswordChangeGuard;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -62,6 +63,8 @@ class AccessTokenAuthServiceTest {
     private Claim authVersionClaim;
     @Mock
     private Claim tenantSecClaim;
+    @Mock
+    private PasswordChangeGuard passwordChangeGuard;
 
     @InjectMocks
     private AccessTokenAuthService accessTokenAuthService;
@@ -73,6 +76,7 @@ class AccessTokenAuthServiceTest {
         request = new MockHttpServletRequest();
         ReflectionTestUtils.setField(accessTokenAuthService, "minIssuedAtConfig", "");
         lenient().when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+        lenient().doNothing().when(passwordChangeGuard).assertMayProceed(any(), any());
     }
 
     private void stubJwt(String role, int userId, String type, Integer authVersion, Integer tenantSec) {
@@ -294,6 +298,22 @@ class AccessTokenAuthServiceTest {
         ApiException ex = assertThrows(ApiException.class,
                 () -> accessTokenAuthService.authenticateBearer("Token tok", request));
         assertEquals(ErrorType.INVALID_TOKEN, ex.getErrorType());
+    }
+
+    @Test
+    void user_mustChangePassword_invokesGuard() {
+        stubJwt("USER", 21, "access", 1, 1);
+        User user = AuthFixture.student(1);
+        user.setMustChangePassword(true);
+        when(stringRedisTemplate.hasKey(anyString())).thenReturn(false);
+        when(userService.selectById(21)).thenReturn(user);
+        when(tenantMapper.selectById(1)).thenReturn(AuthFixture.activeTenant(1));
+        doThrow(new ApiException(ErrorType.PASSWORD_CHANGE_REQUIRED))
+                .when(passwordChangeGuard).assertMayProceed(eq(user), eq(request));
+
+        ApiException ex = assertThrows(ApiException.class,
+                () -> accessTokenAuthService.authenticateBearer("Bearer tok", request));
+        assertEquals(ErrorType.PASSWORD_CHANGE_REQUIRED, ex.getErrorType());
     }
 
     @Test

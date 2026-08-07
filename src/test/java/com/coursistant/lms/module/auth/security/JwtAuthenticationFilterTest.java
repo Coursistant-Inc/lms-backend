@@ -4,6 +4,8 @@ import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.shared.api.ErrorType;
 import com.coursistant.lms.shared.security.AccessTokenAuthService;
 import com.coursistant.lms.shared.security.JwtAuthenticationFilter;
+import com.coursistant.lms.shared.security.SecurityErrorResponseWriter;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -26,6 +28,8 @@ class JwtAuthenticationFilterTest {
     @Mock
     private FilterChain filterChain;
 
+    private final SecurityErrorResponseWriter writer = new SecurityErrorResponseWriter(new ObjectMapper());
+
     @AfterEach
     void clear() {
         SecurityContextHolder.clearContext();
@@ -33,7 +37,7 @@ class JwtAuthenticationFilterTest {
 
     @Test
     void publicPath_skipsAuth() throws Exception {
-        JwtAuthenticationFilter filter = new JwtAuthenticationFilter(accessTokenAuthService);
+        JwtAuthenticationFilter filter = new JwtAuthenticationFilter(accessTokenAuthService, writer);
         MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/auth/login");
         request.setContextPath("/api");
         MockHttpServletResponse response = new MockHttpServletResponse();
@@ -46,7 +50,7 @@ class JwtAuthenticationFilterTest {
 
     @Test
     void protectedPath_setsSecurityContext() throws Exception {
-        JwtAuthenticationFilter filter = new JwtAuthenticationFilter(accessTokenAuthService);
+        JwtAuthenticationFilter filter = new JwtAuthenticationFilter(accessTokenAuthService, writer);
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v2/users/me");
         request.setContextPath("/api");
         request.addHeader("Authorization", "Bearer abc");
@@ -62,8 +66,8 @@ class JwtAuthenticationFilterTest {
     }
 
     @Test
-    void invalidToken_writesUnauthorizedJson_andDoesNotContinue() throws Exception {
-        JwtAuthenticationFilter filter = new JwtAuthenticationFilter(accessTokenAuthService);
+    void invalidToken_writesApiResponseJson_andDoesNotContinue() throws Exception {
+        JwtAuthenticationFilter filter = new JwtAuthenticationFilter(accessTokenAuthService, writer);
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v2/courses");
         request.setContextPath("/api");
         MockHttpServletResponse response = new MockHttpServletResponse();
@@ -73,8 +77,27 @@ class JwtAuthenticationFilterTest {
         filter.doFilter(request, response, filterChain);
 
         assertEquals(401, response.getStatus());
-        assertTrue(response.getContentAsString().contains("INVALID_TOKEN"));
+        String body = response.getContentAsString();
+        assertTrue(body.contains("\"code\":\"INVALID_TOKEN\""));
+        assertTrue(body.contains("\"status\":401"));
+        assertFalse(body.contains("\"success\""));
         verify(filterChain, never()).doFilter(any(), any());
         assertNull(SecurityContextHolder.getContext().getAuthentication());
+    }
+
+    @Test
+    void passwordChangeRequired_writesForbiddenApiResponse() throws Exception {
+        JwtAuthenticationFilter filter = new JwtAuthenticationFilter(accessTokenAuthService, writer);
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v2/courses");
+        request.setContextPath("/api");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        when(accessTokenAuthService.authenticateBearer(isNull(), eq(request)))
+                .thenThrow(new ApiException(ErrorType.PASSWORD_CHANGE_REQUIRED));
+
+        filter.doFilter(request, response, filterChain);
+
+        assertEquals(403, response.getStatus());
+        assertTrue(response.getContentAsString().contains("PASSWORD_CHANGE_REQUIRED"));
+        verify(filterChain, never()).doFilter(any(), any());
     }
 }

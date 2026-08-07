@@ -115,4 +115,16 @@ class UserPasswordServiceTest {
         assertEquals(ErrorType.BAD_REQUEST, ex.getErrorType());
         verify(emailVerificationService).requireConsumeSuccess(eq("reset"), eq("missing@example.com"), eq("123456"));
     }
+
+    @Test
+    void resetPassword_weakPassword_doesNotConsumeCode() {
+        PasswordResetRequest req = new PasswordResetRequest();
+        req.setEmail("student-1@example.com");
+        req.setVerificationCode("123456");
+        req.setNewPassword("short");
+
+        ApiException ex = assertThrows(ApiException.class, () -> userService.resetPassword(req));
+        assertEquals(ErrorType.INVALID_PASSWORD_FORMAT, ex.getErrorType());
+        verify(emailVerificationService, never()).requireConsumeSuccess(anyString(), anyString(), anyString());
+    }
 }
