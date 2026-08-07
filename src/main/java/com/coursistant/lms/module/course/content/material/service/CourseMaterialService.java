@@ -9,9 +9,15 @@ import com.coursistant.lms.module.course.content.material.dto.ReorderMaterialsRe
 import com.coursistant.lms.module.course.content.material.entity.CourseMaterial;
 import com.coursistant.lms.module.course.content.material.repository.CourseMaterialMapper;
 import com.coursistant.lms.module.course.content.week.entity.CourseWeek;
+import com.coursistant.lms.module.course.course.service.CourseAuditActions;
+import com.coursistant.lms.module.course.course.service.CourseAuditService;
+import com.coursistant.lms.module.course.storage.entity.UploadOperation;
+import com.coursistant.lms.module.course.storage.service.MinioOutboxService;
+import com.coursistant.lms.module.course.storage.service.UploadOperationService;
 import com.coursistant.lms.module.file.service.MinIOService;
 import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.shared.api.ErrorType;
+import com.coursistant.lms.shared.security.ActorContext;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
@@ -31,6 +37,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -58,10 +65,20 @@ public class CourseMaterialService {
     @Resource
     private MaterialResponseAssembler materialResponseAssembler;
 
+    @Resource
+    private MinioOutboxService minioOutboxService;
+
+    @Resource
+    private UploadOperationService uploadOperationService;
+
+    @Resource
+    private CourseAuditService courseAuditService;
+
     @Transactional
-    public List<MaterialResponse> create(Integer courseId, Integer weekId, Integer userId,
-                                          MultipartFile[] files, String linkUrl, String linkDisplayName) {
-        courseContentAccessService.requireMaterialUpload(courseId, weekId, userId);
+    public List<MaterialResponse> create(ActorContext actor, Integer courseId, Integer weekId,
+                                          MultipartFile[] files, String linkUrl, String linkDisplayName,
+                                          HttpServletRequest request) {
+        courseContentAccessService.requireMaterialUpload(actor, courseId, weekId);
 
         boolean hasFiles = files != null && files.length > 0
                 && java.util.Arrays.stream(files).anyMatch(f -> f != null && !f.isEmpty());
@@ -70,68 +87,110 @@ public class CourseMaterialService {
             throw new ApiException(ErrorType.PARAM_MISSING, "At least one file or a linkUrl is required");
         }
 
+        String idemKey = request != null ? request.getHeader("Idempotency-Key") : null;
+        String fingerprint = request != null ? (String) request.getAttribute("idem.fingerprint") : null;
+        UploadOperation uploadOp = null;
+        if (idemKey != null && !idemKey.isBlank() && fingerprint != null) {
+            String routeId = "POST /v2/courses/{courseId}/weeks/{weekId}/materials";
+            uploadOp = uploadOperationService.createOrResume(actor, idemKey, routeId, fingerprint, courseId);
+            // READY operations are normally replayed by Redis before the controller runs.
+        }
+
         int nextOrder = nextOrderPosition(weekId);
         List<CourseMaterial> created = new ArrayList<>();
+        String stagingPrefix = uploadOp == null ? null : ("staging/" + uploadOp.getId() + "/");
 
-        if (hasFiles) {
-            for (MultipartFile file : files) {
-                if (file == null || file.isEmpty()) {
-                    continue;
-                }
-                courseContentFilePolicy.validateFile(file);
-                String originalFilename = file.getOriginalFilename();
-                String extension = courseContentFilePolicy.extensionOf(originalFilename);
-                String objectKey = courseContentFilePolicy.buildObjectKey(
-                        "course-content/" + courseId + "/weeks/" + weekId + "/materials", originalFilename);
+        try {
+            if (hasFiles) {
+                for (MultipartFile file : files) {
+                    if (file == null || file.isEmpty()) {
+                        continue;
+                    }
+                    courseContentFilePolicy.validateFile(file);
+                    String originalFilename = file.getOriginalFilename();
+                    String extension = courseContentFilePolicy.extensionOf(originalFilename);
+                    String objectKey = courseContentFilePolicy.buildObjectKey(
+                            stagingPrefix != null
+                                    ? stagingPrefix + "materials"
+                                    : "course-content/" + courseId + "/weeks/" + weekId + "/materials",
+                            originalFilename);
 
-                try {
-                    minIOService.uploadFile(objectKey, file, courseContentFilePolicy.bucket());
-                } catch (Exception e) {
-                    log.warn("Failed to upload course material to MinIO: key={}", objectKey, e);
-                    throw new ApiException(ErrorType.INTERNAL_SERVER_ERROR, "Failed to upload file");
+                    try {
+                        minIOService.uploadFile(objectKey, file, courseContentFilePolicy.bucket());
+                    } catch (Exception e) {
+                        log.warn("Failed to upload course material to MinIO: key={}", objectKey, e);
+                        throw new ApiException(ErrorType.INTERNAL_SERVER_ERROR, "Failed to upload file");
+                    }
+
+                    String finalKey = objectKey;
+                    if (stagingPrefix != null) {
+                        finalKey = courseContentFilePolicy.buildObjectKey(
+                                "course-content/" + courseId + "/weeks/" + weekId + "/materials", originalFilename);
+                        try {
+                            minIOService.copyObject(courseContentFilePolicy.bucket(), objectKey, finalKey);
+                            minioOutboxService.enqueueDelete(
+                                    courseContentFilePolicy.bucket(), objectKey, courseId, uploadOp.getId());
+                        } catch (Exception e) {
+                            minioOutboxService.enqueueAbortStagingIndependent(
+                                    courseContentFilePolicy.bucket(), objectKey, courseId, uploadOp.getId());
+                            throw new ApiException(ErrorType.INTERNAL_SERVER_ERROR, "Failed to commit uploaded file");
+                        }
+                    }
+
+                    CourseMaterial material = new CourseMaterial();
+                    material.setWeekId(weekId);
+                    material.setCourseId(courseId);
+                    material.setMaterialType(TYPE_FILE);
+                    material.setDisplayName(trimToLength(baseName(originalFilename)));
+                    material.setOrderPosition(nextOrder++);
+                    material.setOriginalFilename(originalFilename);
+                    material.setContentType(file.getContentType());
+                    material.setExtension(extension);
+                    material.setSizeBytes(file.getSize());
+                    material.setObjectKey(finalKey);
+                    material.setUploadedBy(actor.getActorId());
+                    courseMaterialMapper.insert(material);
+                    created.add(courseMaterialMapper.selectById(material.getId()));
                 }
+            }
+
+            if (hasLink) {
+                String normalizedUrl = validateAndNormalizeUrl(linkUrl);
+                String displayName = linkDisplayName != null && !linkDisplayName.isBlank()
+                        ? linkDisplayName.trim()
+                        : normalizedUrl;
 
                 CourseMaterial material = new CourseMaterial();
                 material.setWeekId(weekId);
                 material.setCourseId(courseId);
-                material.setMaterialType(TYPE_FILE);
-                material.setDisplayName(trimToLength(baseName(originalFilename)));
-                material.setOrderPosition(nextOrder++);
-                material.setOriginalFilename(originalFilename);
-                material.setContentType(file.getContentType());
-                material.setExtension(extension);
-                material.setSizeBytes(file.getSize());
-                material.setObjectKey(objectKey);
-                material.setUploadedBy(userId);
+                material.setMaterialType(TYPE_LINK);
+                material.setDisplayName(trimToLength(displayName));
+                material.setOrderPosition(nextOrder);
+                material.setLinkUrl(normalizedUrl);
+                material.setUploadedBy(actor.getActorId());
                 courseMaterialMapper.insert(material);
                 created.add(courseMaterialMapper.selectById(material.getId()));
             }
+
+            if (uploadOp != null) {
+                uploadOperationService.markReady(uploadOp.getId());
+            }
+            courseAuditService.write(actor, courseId, null, CourseAuditActions.MATERIAL_CREATED,
+                    CourseAuditActions.TARGET_MATERIAL,
+                    created.isEmpty() ? null : created.get(0).getId(),
+                    null, Map.of("count", created.size()), idemKey);
+            return materialResponseAssembler.toResponses(created);
+        } catch (RuntimeException e) {
+            if (uploadOp != null) {
+                uploadOperationService.markFailed(uploadOp.getId());
+            }
+            throw e;
         }
-
-        if (hasLink) {
-            String normalizedUrl = validateAndNormalizeUrl(linkUrl);
-            String displayName = linkDisplayName != null && !linkDisplayName.isBlank()
-                    ? linkDisplayName.trim()
-                    : normalizedUrl;
-
-            CourseMaterial material = new CourseMaterial();
-            material.setWeekId(weekId);
-            material.setCourseId(courseId);
-            material.setMaterialType(TYPE_LINK);
-            material.setDisplayName(trimToLength(displayName));
-            material.setOrderPosition(nextOrder);
-            material.setLinkUrl(normalizedUrl);
-            material.setUploadedBy(userId);
-            courseMaterialMapper.insert(material);
-            created.add(courseMaterialMapper.selectById(material.getId()));
-        }
-
-        return materialResponseAssembler.toResponses(created);
     }
 
-    public MaterialResponse rename(Integer courseId, Integer weekId, Integer materialId, Integer userId,
+    public MaterialResponse rename(ActorContext actor, Integer courseId, Integer weekId, Integer materialId,
                                     RenameMaterialRequest request) {
-        courseContentAccessService.requireWeekWritable(courseId, weekId, userId);
+        courseContentAccessService.requireMaterialManage(actor, courseId, weekId);
         CourseMaterial material = requireMaterialInWeek(weekId, materialId);
 
         if (request == null || request.getDisplayName() == null || request.getDisplayName().isBlank()) {
@@ -148,9 +207,9 @@ public class CourseMaterialService {
     }
 
     @Transactional
-    public List<MaterialResponse> reorder(Integer courseId, Integer weekId, Integer userId,
+    public List<MaterialResponse> reorder(ActorContext actor, Integer courseId, Integer weekId,
                                            ReorderMaterialsRequest request) {
-        courseContentAccessService.requireWeekWritable(courseId, weekId, userId);
+        courseContentAccessService.requireMaterialManage(actor, courseId, weekId);
         if (request == null || request.getMaterialIds() == null) {
             throw new ApiException(ErrorType.PARAM_MISSING, "materialIds is required");
         }
@@ -172,9 +231,9 @@ public class CourseMaterialService {
     }
 
     @Transactional
-    public MaterialResponse move(Integer courseId, Integer weekId, Integer materialId, Integer userId,
+    public MaterialResponse move(ActorContext actor, Integer courseId, Integer weekId, Integer materialId,
                                   MoveMaterialRequest request) {
-        courseContentAccessService.requireWeekWritable(courseId, weekId, userId);
+        courseContentAccessService.requireMaterialManage(actor, courseId, weekId);
         CourseMaterial material = requireMaterialInWeek(weekId, materialId);
 
         if (request == null || request.getTargetWeekId() == null) {
@@ -186,7 +245,7 @@ public class CourseMaterialService {
             return materialResponseAssembler.toResponse(material);
         }
 
-        courseContentAccessService.requireWeekWritable(courseId, targetWeekId, userId);
+        courseContentAccessService.requireMaterialManage(actor, courseId, targetWeekId);
         int newOrder = nextOrderPosition(targetWeekId);
         courseMaterialMapper.updateWeekId(materialId, targetWeekId, newOrder);
 
@@ -194,24 +253,22 @@ public class CourseMaterialService {
     }
 
     @Transactional
-    public void delete(Integer courseId, Integer weekId, Integer materialId, Integer userId) {
+    public void delete(ActorContext actor, Integer courseId, Integer weekId, Integer materialId) {
         CourseMaterial material = requireMaterialInWeek(weekId, materialId);
-        courseContentAccessService.requireMaterialDelete(courseId, weekId, userId, material);
+        courseContentAccessService.requireMaterialDelete(actor, courseId, weekId, material);
 
         courseMaterialMapper.deleteById(materialId);
 
         if (TYPE_FILE.equals(material.getMaterialType()) && material.getObjectKey() != null) {
-            try {
-                minIOService.deleteFile(material.getObjectKey(), courseContentFilePolicy.bucket());
-            } catch (Exception e) {
-                log.warn("Failed to delete course material object from MinIO: key={}", material.getObjectKey(), e);
-            }
+            // Same TX: business delete + outbox DELETE; worker removes object after commit.
+            minioOutboxService.enqueueDelete(
+                    courseContentFilePolicy.bucket(), material.getObjectKey(), courseId, null);
         }
     }
 
-    public ResponseEntity<InputStreamResource> preview(HttpServletRequest request, Integer courseId, Integer weekId,
-                                                         Integer materialId, Integer userId) {
-        CourseWeek week = courseContentAccessService.requireWeekReadable(request, courseId, weekId, userId);
+    public ResponseEntity<InputStreamResource> preview(ActorContext actor, Integer courseId, Integer weekId,
+                                                         Integer materialId) {
+        CourseWeek week = courseContentAccessService.requireWeekReadable(actor, courseId, weekId);
         CourseMaterial material = requireMaterialInWeek(week.getId(), materialId);
 
         if (!TYPE_FILE.equals(material.getMaterialType())) {
@@ -234,9 +291,9 @@ public class CourseMaterialService {
         }
     }
 
-    public ResponseEntity<?> download(HttpServletRequest request, Integer courseId, Integer weekId,
-                                       Integer materialId, Integer userId) {
-        CourseWeek week = courseContentAccessService.requireWeekReadable(request, courseId, weekId, userId);
+    public ResponseEntity<?> download(ActorContext actor, Integer courseId, Integer weekId,
+                                       Integer materialId) {
+        CourseWeek week = courseContentAccessService.requireWeekReadable(actor, courseId, weekId);
         CourseMaterial material = requireMaterialInWeek(week.getId(), materialId);
 
         if (TYPE_LINK.equals(material.getMaterialType())) {

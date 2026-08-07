@@ -5,10 +5,10 @@ import com.coursistant.lms.module.course.content.material.dto.MoveMaterialReques
 import com.coursistant.lms.module.course.content.material.dto.RenameMaterialRequest;
 import com.coursistant.lms.module.course.content.material.dto.ReorderMaterialsRequest;
 import com.coursistant.lms.module.course.content.material.service.CourseMaterialService;
-import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.shared.api.ApiResponse;
-import com.coursistant.lms.shared.api.ErrorType;
 import com.coursistant.lms.shared.idempotency.Idempotent;
+import com.coursistant.lms.shared.security.ActorContext;
+import com.coursistant.lms.shared.security.ActorContextResolver;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.core.io.InputStreamResource;
@@ -35,6 +35,10 @@ public class CourseMaterialController {
     @Resource
     private CourseMaterialService courseMaterialService;
 
+    @Resource
+    private ActorContextResolver actorContextResolver;
+
+    @Idempotent
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ApiResponse<List<MaterialResponse>> create(HttpServletRequest request,
                                                        @PathVariable Integer courseId,
@@ -42,8 +46,9 @@ public class CourseMaterialController {
                                                        @RequestParam(value = "files", required = false) MultipartFile[] files,
                                                        @RequestParam(value = "linkUrl", required = false) String linkUrl,
                                                        @RequestParam(value = "linkDisplayName", required = false) String linkDisplayName) {
+        ActorContext actor = actorContextResolver.resolve(request);
         return ApiResponse.success(courseMaterialService.create(
-                courseId, weekId, currentUserId(request), files, linkUrl, linkDisplayName));
+                actor, courseId, weekId, files, linkUrl, linkDisplayName, request));
     }
 
     @Idempotent
@@ -53,8 +58,9 @@ public class CourseMaterialController {
                                                 @PathVariable Integer weekId,
                                                 @PathVariable Integer materialId,
                                                 @RequestBody RenameMaterialRequest body) {
+        ActorContext actor = actorContextResolver.resolve(request);
         return ApiResponse.success(courseMaterialService.rename(
-                courseId, weekId, materialId, currentUserId(request), body));
+                actor, courseId, weekId, materialId, body));
     }
 
     @Idempotent
@@ -63,8 +69,8 @@ public class CourseMaterialController {
                                                         @PathVariable Integer courseId,
                                                         @PathVariable Integer weekId,
                                                         @RequestBody ReorderMaterialsRequest body) {
-        return ApiResponse.success(courseMaterialService.reorder(
-                courseId, weekId, currentUserId(request), body));
+        ActorContext actor = actorContextResolver.resolve(request);
+        return ApiResponse.success(courseMaterialService.reorder(actor, courseId, weekId, body));
     }
 
     @Idempotent
@@ -74,8 +80,9 @@ public class CourseMaterialController {
                                               @PathVariable Integer weekId,
                                               @PathVariable Integer materialId,
                                               @RequestBody MoveMaterialRequest body) {
+        ActorContext actor = actorContextResolver.resolve(request);
         return ApiResponse.success(courseMaterialService.move(
-                courseId, weekId, materialId, currentUserId(request), body));
+                actor, courseId, weekId, materialId, body));
     }
 
     @DeleteMapping("/{materialId}")
@@ -83,7 +90,8 @@ public class CourseMaterialController {
                                     @PathVariable Integer courseId,
                                     @PathVariable Integer weekId,
                                     @PathVariable Integer materialId) {
-        courseMaterialService.delete(courseId, weekId, materialId, currentUserId(request));
+        ActorContext actor = actorContextResolver.resolve(request);
+        courseMaterialService.delete(actor, courseId, weekId, materialId);
         return ApiResponse.success();
     }
 
@@ -92,7 +100,8 @@ public class CourseMaterialController {
                                                         @PathVariable Integer courseId,
                                                         @PathVariable Integer weekId,
                                                         @PathVariable Integer materialId) {
-        return courseMaterialService.preview(request, courseId, weekId, materialId, currentUserId(request));
+        ActorContext actor = actorContextResolver.resolve(request);
+        return courseMaterialService.preview(actor, courseId, weekId, materialId);
     }
 
     @GetMapping("/{materialId}/download")
@@ -100,14 +109,7 @@ public class CourseMaterialController {
                                       @PathVariable Integer courseId,
                                       @PathVariable Integer weekId,
                                       @PathVariable Integer materialId) {
-        return courseMaterialService.download(request, courseId, weekId, materialId, currentUserId(request));
-    }
-
-    private Integer currentUserId(HttpServletRequest request) {
-        Object attr = request.getAttribute("userId");
-        if (!(attr instanceof Integer userId)) {
-            throw new ApiException(ErrorType.UNAUTHORIZED);
-        }
-        return userId;
+        ActorContext actor = actorContextResolver.resolve(request);
+        return courseMaterialService.download(actor, courseId, weekId, materialId);
     }
 }

@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.coursistant.lms.module.course.storage.repository.MinioObjectOutboxMapper">
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO minio_object_outbox
+        (upload_operation_id, bucket, object_key, action, status, retry_count, next_retry_at,
+         lease_until, last_error, course_id)
+        VALUES
+        (#{uploadOperationId}, #{bucket}, #{objectKey}, #{action}, #{status},
+         #{retryCount}, #{nextRetryAt}, #{leaseUntil}, #{lastError}, #{courseId})
+    </insert>
+
+    <select id="selectClaimBatch" resultType="com.coursistant.lms.module.course.storage.entity.MinioObjectOutbox">
+        SELECT id, upload_operation_id AS uploadOperationId, bucket, object_key AS objectKey,
+               action, status, retry_count AS retryCount, next_retry_at AS nextRetryAt,
+               lease_until AS leaseUntil, last_error AS lastError, course_id AS courseId,
+               created_at AS createdAt, updated_at AS updatedAt
+        FROM minio_object_outbox
+        WHERE status = 'PENDING'
+          AND next_retry_at &lt;= #{now}
+          AND (lease_until IS NULL OR lease_until &lt; #{now})
+        ORDER BY next_retry_at ASC
+        LIMIT #{limit}
+        FOR UPDATE SKIP LOCKED
+    </select>
+
+    <update id="claim">
+        UPDATE minio_object_outbox
+        SET status = 'IN_PROGRESS', lease_until = #{leaseUntil}, updated_at = #{now}
+        WHERE id = #{id}
+          AND status = 'PENDING'
+    </update>
+
+    <update id="markDone">
+        UPDATE minio_object_outbox
+        SET status = 'DONE', lease_until = NULL, updated_at = CURRENT_TIMESTAMP
+        WHERE id = #{id}
+    </update>
+
+    <update id="markRetry">
+        UPDATE minio_object_outbox
+        SET status = 'PENDING',
+            retry_count = #{retryCount},
+            next_retry_at = #{nextRetryAt},
+            last_error = #{lastError},
+            lease_until = NULL,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = #{id}
+    </update>
+
+    <update id="markDead">
+        UPDATE minio_object_outbox
+        SET status = 'DEAD', last_error = #{lastError}, lease_until = NULL, updated_at = CURRENT_TIMESTAMP
+        WHERE id = #{id}
+    </update>
+</mapper>

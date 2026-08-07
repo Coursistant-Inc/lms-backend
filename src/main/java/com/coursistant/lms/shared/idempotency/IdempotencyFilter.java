@@ -14,8 +14,9 @@ import java.util.Set;
 /**
  * Wraps request/response for idempotency processing when the
  * Idempotency-Key header is present on a mutating request.
- * Skips multipart requests to avoid buffering large file uploads.
- * Registered manually via FilterRegistrationBean in WebConfig.
+ * <p>
+ * JSON: cache request body + response.
+ * Multipart: wrap response only (never buffer the file body; fingerprint is computed in Interceptor).
  */
 @Component
 public class IdempotencyFilter extends OncePerRequestFilter {
@@ -27,12 +28,23 @@ public class IdempotencyFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         String idempotencyKey = request.getHeader("Idempotency-Key");
-        boolean shouldWrap = idempotencyKey != null
-                && MUTATING_METHODS.contains(request.getMethod().toUpperCase())
-                && !isMultipart(request);
+        boolean mutating = MUTATING_METHODS.contains(request.getMethod().toUpperCase());
+        boolean hasKey = idempotencyKey != null && !idempotencyKey.isBlank();
+        boolean multipart = MultipartFingerprint.isMultipart(request);
 
-        if (!shouldWrap) {
+        if (!hasKey || !mutating) {
             chain.doFilter(request, response);
+            return;
+        }
+
+        if (multipart) {
+            ContentCachingResponseWrapper wrappedResponse = new ContentCachingResponseWrapper(response);
+            request.setAttribute("idem.cachedResponse", wrappedResponse);
+            try {
+                chain.doFilter(request, wrappedResponse);
+            } finally {
+                wrappedResponse.copyBodyToResponse();
+            }
             return;
         }
 
@@ -47,10 +59,5 @@ public class IdempotencyFilter extends OncePerRequestFilter {
         } finally {
             wrappedResponse.copyBodyToResponse();
         }
-    }
-
-    private boolean isMultipart(HttpServletRequest request) {
-        String contentType = request.getContentType();
-        return contentType != null && contentType.toLowerCase().startsWith("multipart/");
     }
 }

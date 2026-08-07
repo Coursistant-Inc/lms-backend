@@ -11,6 +11,7 @@ public class SessionResponse {
     private LocalTime startTime;
     private LocalTime endTime;
     private String location;
+    private String timezone;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -68,6 +69,14 @@ public class SessionResponse {
 
     public void setLocation(String location) {
         this.location = location;
+    }
+
+    public String getTimezone() {
+        return timezone;
+    }
+
+    public void setTimezone(String timezone) {
+        this.timezone = timezone;
     }
 
     public LocalDateTime getCreatedAt() {

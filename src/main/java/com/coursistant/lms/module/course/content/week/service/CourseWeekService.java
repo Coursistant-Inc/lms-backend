@@ -11,11 +11,13 @@ import com.coursistant.lms.module.course.content.week.dto.ReorderWeeksRequest;
 import com.coursistant.lms.module.course.content.week.dto.WeekResponse;
 import com.coursistant.lms.module.course.content.week.entity.CourseWeek;
 import com.coursistant.lms.module.course.content.week.repository.CourseWeekMapper;
+import com.coursistant.lms.module.course.course.service.CourseAuditActions;
+import com.coursistant.lms.module.course.course.service.CourseAuditService;
 import com.coursistant.lms.module.file.service.MinIOService;
 import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.shared.api.ErrorType;
+import com.coursistant.lms.shared.security.ActorContext;
 import jakarta.annotation.Resource;
-import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
@@ -64,19 +66,21 @@ public class CourseWeekService {
     @Resource
     private MaterialResponseAssembler materialResponseAssembler;
 
-    public List<WeekResponse> list(HttpServletRequest request, Integer courseId, Integer userId) {
-        courseContentAccessService.requireCourse(courseId);
-        boolean instructorView = courseContentAccessService.resolveInstructorView(request, courseId, userId);
+    @Resource
+    private CourseAuditService courseAuditService;
+
+    public List<WeekResponse> list(ActorContext actor, Integer courseId) {
+        boolean draftView = courseContentAccessService.canViewDraftContent(actor, courseId);
 
         List<CourseWeek> weeks = courseWeekMapper.selectByCourseId(courseId).stream()
-                .filter(w -> instructorView || STATE_PUBLISHED.equals(w.getState()))
+                .filter(w -> draftView || STATE_PUBLISHED.equals(w.getState()))
                 .collect(Collectors.toList());
         return toResponses(weeks);
     }
 
     @Transactional
-    public WeekResponse create(Integer courseId, Integer userId, CreateWeekRequest request) {
-        courseContentAccessService.requireCourseWritable(courseId, userId);
+    public WeekResponse create(ActorContext actor, Integer courseId, CreateWeekRequest request) {
+        var course = courseContentAccessService.requireCourseManagerWritable(actor, courseId);
         String title = requireTitle(request == null ? null : request.getTitle());
 
         Integer maxOrder = courseWeekMapper.selectMaxOrderPosition(courseId);
@@ -87,11 +91,15 @@ public class CourseWeekService {
         week.setState(STATE_DRAFT);
         courseWeekMapper.insert(week);
 
-        return toResponse(courseWeekMapper.selectById(week.getId()));
+        CourseWeek created = courseWeekMapper.selectById(week.getId());
+        courseAuditService.write(actor, courseId, course.getTenantId(), CourseAuditActions.WEEK_CREATED,
+                CourseAuditActions.TARGET_WEEK, created.getId(), null, Map.of("title", title, "state", STATE_DRAFT), null);
+        return toResponse(created);
     }
 
-    public WeekResponse rename(Integer courseId, Integer weekId, Integer userId, RenameWeekRequest request) {
-        courseContentAccessService.requireWeekWritable(courseId, weekId, userId);
+    @Transactional
+    public WeekResponse rename(ActorContext actor, Integer courseId, Integer weekId, RenameWeekRequest request) {
+        courseContentAccessService.requireWeekWritable(actor, courseId, weekId);
         String title = requireTitle(request == null ? null : request.getTitle());
 
         CourseWeek patch = new CourseWeek();
@@ -103,8 +111,8 @@ public class CourseWeekService {
     }
 
     @Transactional
-    public List<WeekResponse> reorder(Integer courseId, Integer userId, ReorderWeeksRequest request) {
-        courseContentAccessService.requireCourseWritable(courseId, userId);
+    public List<WeekResponse> reorder(ActorContext actor, Integer courseId, ReorderWeeksRequest request) {
+        courseContentAccessService.requireCourseManagerWritable(actor, courseId);
         if (request == null || request.getWeekIds() == null) {
             throw new ApiException(ErrorType.PARAM_MISSING, "weekIds is required");
         }
@@ -125,24 +133,27 @@ public class CourseWeekService {
         return toResponses(courseWeekMapper.selectByCourseId(courseId));
     }
 
-    public WeekResponse publish(Integer courseId, Integer weekId, Integer userId) {
-        CourseWeek week = courseContentAccessService.requireWeekWritable(courseId, weekId, userId);
+    @Transactional
+    public WeekResponse publish(ActorContext actor, Integer courseId, Integer weekId) {
+        CourseWeek week = courseContentAccessService.requireWeekWritable(actor, courseId, weekId);
         if (!STATE_PUBLISHED.equals(week.getState())) {
             courseWeekMapper.updateState(weekId, STATE_PUBLISHED);
         }
         return toResponse(courseWeekMapper.selectById(weekId));
     }
 
-    public WeekResponse unpublish(Integer courseId, Integer weekId, Integer userId) {
-        CourseWeek week = courseContentAccessService.requireWeekWritable(courseId, weekId, userId);
+    @Transactional
+    public WeekResponse unpublish(ActorContext actor, Integer courseId, Integer weekId) {
+        CourseWeek week = courseContentAccessService.requireWeekWritable(actor, courseId, weekId);
         if (!STATE_DRAFT.equals(week.getState())) {
             courseWeekMapper.updateState(weekId, STATE_DRAFT);
         }
         return toResponse(courseWeekMapper.selectById(weekId));
     }
 
-    public void delete(Integer courseId, Integer weekId, Integer userId) {
-        courseContentAccessService.requireWeekWritable(courseId, weekId, userId);
+    @Transactional
+    public void delete(ActorContext actor, Integer courseId, Integer weekId) {
+        courseContentAccessService.requireWeekWritable(actor, courseId, weekId);
         int materialCount = courseMaterialMapper.countByWeekId(weekId);
         if (materialCount > 0) {
             throw new ApiException(ErrorType.WEEK_NOT_EMPTY);
@@ -150,9 +161,8 @@ public class CourseWeekService {
         courseWeekMapper.deleteById(weekId);
     }
 
-    public ResponseEntity<StreamingResponseBody> downloadZip(HttpServletRequest request, Integer courseId,
-                                                              Integer weekId, Integer userId) {
-        CourseWeek week = courseContentAccessService.requireWeekReadable(request, courseId, weekId, userId);
+    public ResponseEntity<StreamingResponseBody> downloadZip(ActorContext actor, Integer courseId, Integer weekId) {
+        CourseWeek week = courseContentAccessService.requireWeekReadable(actor, courseId, weekId);
         List<CourseMaterial> fileMaterials = courseMaterialMapper.selectByWeekIdAndType(weekId, TYPE_FILE);
         if (fileMaterials.isEmpty()) {
             throw new ApiException(ErrorType.BAD_REQUEST, "Week has no downloadable files");

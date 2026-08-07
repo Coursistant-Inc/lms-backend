@@ -13,6 +13,7 @@ public class CourseEventResponse {
     private LocalTime endTime;
     private String location;
     private String description;
+    private String timezone;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -32,6 +33,8 @@ public class CourseEventResponse {
     public void setLocation(String location) { this.location = location; }
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
+    public String getTimezone() { return timezone; }
+    public void setTimezone(String timezone) { this.timezone = timezone; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }

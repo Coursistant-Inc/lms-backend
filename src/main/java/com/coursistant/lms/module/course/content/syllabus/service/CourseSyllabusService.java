@@ -1,17 +1,17 @@
 package com.coursistant.lms.module.course.content.syllabus.service;
 
+import com.coursistant.lms.module.course.content.CourseContentAccessService;
 import com.coursistant.lms.module.course.content.CourseContentFilePolicy;
 import com.coursistant.lms.module.course.content.syllabus.dto.SyllabusResponse;
 import com.coursistant.lms.module.course.content.syllabus.entity.CourseSyllabus;
 import com.coursistant.lms.module.course.content.syllabus.entity.CourseSyllabusVersion;
 import com.coursistant.lms.module.course.content.syllabus.repository.CourseSyllabusMapper;
 import com.coursistant.lms.module.course.content.syllabus.repository.CourseSyllabusVersionMapper;
-import com.coursistant.lms.module.course.course.entity.Course;
-import com.coursistant.lms.module.course.course.repository.CourseMapper;
-import com.coursistant.lms.module.course.enrollment.service.CoursePermissionService;
+import com.coursistant.lms.module.course.course.service.CourseAuthorizationService;
 import com.coursistant.lms.module.file.service.MinIOService;
 import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.shared.api.ErrorType;
+import com.coursistant.lms.shared.security.ActorContext;
 import jakarta.annotation.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,7 +32,6 @@ public class CourseSyllabusService {
     private static final Logger log = LoggerFactory.getLogger(CourseSyllabusService.class);
 
     private static final String OBJECT_PREFIX = "syllabus/";
-    private static final String STATE_ARCHIVED = "Archived";
 
     @Resource
     private CourseSyllabusMapper courseSyllabusMapper;
@@ -41,10 +40,10 @@ public class CourseSyllabusService {
     private CourseSyllabusVersionMapper courseSyllabusVersionMapper;
 
     @Resource
-    private CourseMapper courseMapper;
+    private CourseAuthorizationService courseAuthorizationService;
 
     @Resource
-    private CoursePermissionService coursePermissionService;
+    private CourseContentAccessService courseContentAccessService;
 
     @Resource
     private CourseContentFilePolicy courseContentFilePolicy;
@@ -52,28 +51,23 @@ public class CourseSyllabusService {
     @Resource
     private MinIOService minIOService;
 
-    public SyllabusResponse getSyllabus(Integer courseId, Integer userId, boolean admin) {
-        requireCourse(courseId);
-        if (!admin) {
-            coursePermissionService.requireActiveEnrollment(courseId, userId);
-        }
-        boolean instructorView = admin || coursePermissionService.isInstructor(courseId, userId);
-        return toResponse(courseSyllabusMapper.selectByCourseId(courseId), instructorView);
+    public SyllabusResponse getSyllabus(ActorContext actor, Integer courseId) {
+        courseAuthorizationService.requireVisibleCourse(actor, courseId);
+        boolean managerView = courseAuthorizationService.isCourseManager(actor, courseId);
+        return toResponse(courseSyllabusMapper.selectByCourseId(courseId), managerView);
     }
 
-    public ResponseEntity<InputStreamResource> preview(Integer courseId, Integer userId, boolean admin) {
-        return stream(courseId, userId, admin, false);
+    public ResponseEntity<InputStreamResource> preview(ActorContext actor, Integer courseId) {
+        return stream(actor, courseId, false);
     }
 
-    public ResponseEntity<InputStreamResource> download(Integer courseId, Integer userId, boolean admin) {
-        return stream(courseId, userId, admin, true);
+    public ResponseEntity<InputStreamResource> download(ActorContext actor, Integer courseId) {
+        return stream(actor, courseId, true);
     }
 
     @Transactional
-    public SyllabusResponse upload(Integer courseId, Integer userId, MultipartFile file) {
-        Course course = requireCourse(courseId);
-        coursePermissionService.requireInstructor(courseId, userId);
-        requireNotArchived(course);
+    public SyllabusResponse upload(ActorContext actor, Integer courseId, MultipartFile file) {
+        courseContentAccessService.requireCourseManagerWritable(actor, courseId);
         courseContentFilePolicy.validateSyllabusPdf(file);
 
         String objectKey = OBJECT_PREFIX + courseId + "/" + UUID.randomUUID().toString().replace("-", "") + ".pdf";
@@ -90,7 +84,7 @@ public class CourseSyllabusService {
         version.setOriginalFilename(resolveFilename(file));
         version.setContentType(resolveContentType(file));
         version.setSizeBytes(file.getSize());
-        version.setUploadedBy(userId);
+        version.setUploadedBy(actor.getActorId());
         courseSyllabusVersionMapper.insert(version);
 
         CourseSyllabus existing = courseSyllabusMapper.selectByCourseId(courseId);
@@ -112,10 +106,8 @@ public class CourseSyllabusService {
     }
 
     @Transactional
-    public SyllabusResponse clear(Integer courseId, Integer userId) {
-        Course course = requireCourse(courseId);
-        coursePermissionService.requireInstructor(courseId, userId);
-        requireNotArchived(course);
+    public SyllabusResponse clear(ActorContext actor, Integer courseId) {
+        courseContentAccessService.requireCourseManagerWritable(actor, courseId);
 
         CourseSyllabus existing = courseSyllabusMapper.selectByCourseId(courseId);
         if (existing == null || (existing.getCurrentVersionId() == null && existing.getPreviousVersionId() == null)) {
@@ -130,10 +122,8 @@ public class CourseSyllabusService {
     }
 
     @Transactional
-    public SyllabusResponse restorePrevious(Integer courseId, Integer userId) {
-        Course course = requireCourse(courseId);
-        coursePermissionService.requireInstructor(courseId, userId);
-        requireNotArchived(course);
+    public SyllabusResponse restorePrevious(ActorContext actor, Integer courseId) {
+        courseContentAccessService.requireCourseManagerWritable(actor, courseId);
 
         CourseSyllabus syllabus = courseSyllabusMapper.selectByCourseId(courseId);
         if (syllabus == null || syllabus.getCurrentVersionId() == null) {
@@ -152,11 +142,8 @@ public class CourseSyllabusService {
         return toResponse(courseSyllabusMapper.selectByCourseId(courseId), true);
     }
 
-    private ResponseEntity<InputStreamResource> stream(Integer courseId, Integer userId, boolean admin, boolean attachment) {
-        requireCourse(courseId);
-        if (!admin) {
-            coursePermissionService.requireActiveEnrollment(courseId, userId);
-        }
+    private ResponseEntity<InputStreamResource> stream(ActorContext actor, Integer courseId, boolean attachment) {
+        courseAuthorizationService.requireVisibleCourse(actor, courseId);
 
         CourseSyllabus syllabus = courseSyllabusMapper.selectByCourseId(courseId);
         if (syllabus == null || syllabus.getCurrentVersionId() == null) {
@@ -181,7 +168,7 @@ public class CourseSyllabusService {
         }
     }
 
-    private SyllabusResponse toResponse(CourseSyllabus syllabus, boolean instructorView) {
+    private SyllabusResponse toResponse(CourseSyllabus syllabus, boolean managerView) {
         SyllabusResponse response = new SyllabusResponse();
         if (syllabus == null || syllabus.getCurrentVersionId() == null) {
             response.setPosted(false);
@@ -196,27 +183,10 @@ public class CourseSyllabusService {
         response.setSizeBytes(version.getSizeBytes());
         response.setUploadedBy(version.getUploadedBy());
         response.setUploadedAt(version.getCreatedAt());
-        if (instructorView) {
+        if (managerView) {
             response.setCanRestorePrevious(syllabus.getPreviousVersionId() != null);
         }
         return response;
-    }
-
-    private Course requireCourse(Integer courseId) {
-        if (courseId == null) {
-            throw new ApiException(ErrorType.BAD_REQUEST, "Course id is required");
-        }
-        Course course = courseMapper.selectById(courseId);
-        if (course == null) {
-            throw new ApiException(ErrorType.COURSE_NOT_FOUND);
-        }
-        return course;
-    }
-
-    private void requireNotArchived(Course course) {
-        if (STATE_ARCHIVED.equals(course.getState())) {
-            throw new ApiException(ErrorType.COURSE_ARCHIVED);
-        }
     }
 
     private CourseSyllabusVersion requireVersion(Integer versionId) {

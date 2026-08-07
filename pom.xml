@@ -335,6 +335,32 @@
                             </rules>
                         </configuration>
                     </execution>
+                    <execution>
+                        <id>course-content-coverage-check</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                        <configuration>
+                            <!-- Part 4 gate: content authorization entry points. -->
+                            <includes>
+                                <include>com/coursistant/lms/module/course/content/CourseContentAccessService.class</include>
+                                <include>com/coursistant/lms/module/course/course/service/CourseAuthorizationService.class</include>
+                            </includes>
+                            <rules>
+                                <rule>
+                                    <element>BUNDLE</element>
+                                    <limits>
+                                        <limit>
+                                            <counter>LINE</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.70</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                            </rules>
+                        </configuration>
+                    </execution>
                 </executions>
             </plugin>
         </plugins>

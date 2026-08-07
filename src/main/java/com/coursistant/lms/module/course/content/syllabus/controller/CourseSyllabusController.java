@@ -2,11 +2,10 @@ package com.coursistant.lms.module.course.content.syllabus.controller;
 
 import com.coursistant.lms.module.course.content.syllabus.dto.SyllabusResponse;
 import com.coursistant.lms.module.course.content.syllabus.service.CourseSyllabusService;
-import com.coursistant.lms.module.course.enrollment.service.CoursePermissionService;
-import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.shared.api.ApiResponse;
-import com.coursistant.lms.shared.api.ErrorType;
 import com.coursistant.lms.shared.idempotency.Idempotent;
+import com.coursistant.lms.shared.security.ActorContext;
+import com.coursistant.lms.shared.security.ActorContextResolver;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.core.io.InputStreamResource;
@@ -29,24 +28,24 @@ public class CourseSyllabusController {
     private CourseSyllabusService courseSyllabusService;
 
     @Resource
-    private CoursePermissionService coursePermissionService;
+    private ActorContextResolver actorContextResolver;
 
     @GetMapping
     public ApiResponse<SyllabusResponse> get(HttpServletRequest request, @PathVariable Integer courseId) {
-        boolean admin = coursePermissionService.isSystemAdmin(request);
-        return ApiResponse.success(courseSyllabusService.getSyllabus(courseId, currentUserId(request), admin));
+        ActorContext actor = actorContextResolver.resolve(request);
+        return ApiResponse.success(courseSyllabusService.getSyllabus(actor, courseId));
     }
 
     @GetMapping("/preview")
     public ResponseEntity<InputStreamResource> preview(HttpServletRequest request, @PathVariable Integer courseId) {
-        boolean admin = coursePermissionService.isSystemAdmin(request);
-        return courseSyllabusService.preview(courseId, currentUserId(request), admin);
+        ActorContext actor = actorContextResolver.resolve(request);
+        return courseSyllabusService.preview(actor, courseId);
     }
 
     @GetMapping("/download")
     public ResponseEntity<InputStreamResource> download(HttpServletRequest request, @PathVariable Integer courseId) {
-        boolean admin = coursePermissionService.isSystemAdmin(request);
-        return courseSyllabusService.download(courseId, currentUserId(request), admin);
+        ActorContext actor = actorContextResolver.resolve(request);
+        return courseSyllabusService.download(actor, courseId);
     }
 
     @Idempotent
@@ -54,26 +53,20 @@ public class CourseSyllabusController {
     public ApiResponse<SyllabusResponse> upload(HttpServletRequest request,
                                                 @PathVariable Integer courseId,
                                                 @RequestPart("file") MultipartFile file) {
-        return ApiResponse.success(courseSyllabusService.upload(courseId, currentUserId(request), file));
+        ActorContext actor = actorContextResolver.resolve(request);
+        return ApiResponse.success(courseSyllabusService.upload(actor, courseId, file));
     }
 
     @Idempotent
     @PostMapping("/restore")
     public ApiResponse<SyllabusResponse> restore(HttpServletRequest request, @PathVariable Integer courseId) {
-        return ApiResponse.success(courseSyllabusService.restorePrevious(courseId, currentUserId(request)));
+        ActorContext actor = actorContextResolver.resolve(request);
+        return ApiResponse.success(courseSyllabusService.restorePrevious(actor, courseId));
     }
 
-    @Idempotent
     @DeleteMapping
     public ApiResponse<SyllabusResponse> clear(HttpServletRequest request, @PathVariable Integer courseId) {
-        return ApiResponse.success(courseSyllabusService.clear(courseId, currentUserId(request)));
-    }
-
-    private Integer currentUserId(HttpServletRequest request) {
-        Object attr = request.getAttribute("userId");
-        if (!(attr instanceof Integer userId)) {
-            throw new ApiException(ErrorType.UNAUTHORIZED);
-        }
-        return userId;
+        ActorContext actor = actorContextResolver.resolve(request);
+        return ApiResponse.success(courseSyllabusService.clear(actor, courseId));
     }
 }

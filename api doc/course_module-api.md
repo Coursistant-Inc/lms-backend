@@ -37,16 +37,19 @@ Base URL：`http://localhost:8080/api`
 | `Content-Type: application/json` | JSON body |
 | `Content-Type: multipart/form-data` | 上传文件（浏览器 FormData 会自动带） |
 
-**需要 `Idempotency-Key` 的写接口：**
+**幂等策略（Part 4）：**
 
-- `POST/PUT /v2/courses`、`POST /v2/courses/{id}/archive`、`POST .../unarchive`、`POST .../transfer-instructor`
-- `POST/PUT .../sessions`
-- `POST/PUT .../events`
-- `POST/PATCH .../members/.../ta...`、`DELETE .../members/{userId}`
-- `POST /v2/admin/courses/{id}/enrollments`、`POST .../enrollments/batch`、`DELETE .../enrollments/{userId}`
-- `POST .../syllabus`、`POST .../syllabus/restore`、`DELETE .../syllabus`
-- `POST/PATCH/PUT .../weeks...`（含 publish/unpublish/reorder；不含 DELETE）
-- `PATCH/PUT/POST .../materials` 的 rename / reorder / move（**创建 materials 不需要**）
+| 策略 | 接口 |
+|------|------|
+| **Required JSON** | Course Create/Patch/Archive/Unarchive/Reassignment；Add Student/Batch；Add TA / Patch TA Permissions；Week Create/Patch/Reorder/Publish/Unpublish；Material Rename/Reorder/Move；Syllabus Restore；Session Create/Patch；Course Event Create/Patch |
+| **Required Multipart** | `POST .../weeks/{weekId}/materials`（files[] 与/或 link，须 `Idempotency-Key`；Filter 只缓存 response，Interceptor 用文本字段+文件 index/元数据/SHA-256 fingerprint）；`POST .../syllabus` 上传 |
+| **Natural DELETE**（无 Redis） | Withdraw Student；Remove TA；Delete Course/Week/Material；Syllabus Clear；Delete Session/Event |
+
+说明：
+
+- Multipart 缺 Key → `IDEMPOTENCY_KEY_REQUIRED`；Redis 不可用 → `503` 且不写 DB/MinIO。
+- Syllabus **Clear** 为逻辑删除（清空当前引用，历史版本与 MinIO 保留），自然幂等，**不**要求 Idempotency-Key。
+- Material 删除走 `minio_object_outbox`，不因 MinIO 短暂失败留下无追踪孤儿。
 
 缺 Key → `IDEMPOTENCY_KEY_REQUIRED`。
 

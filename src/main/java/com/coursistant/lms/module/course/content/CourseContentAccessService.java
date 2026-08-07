@@ -5,18 +5,19 @@ import com.coursistant.lms.module.course.content.week.entity.CourseWeek;
 import com.coursistant.lms.module.course.content.week.repository.CourseWeekMapper;
 import com.coursistant.lms.module.course.course.entity.Course;
 import com.coursistant.lms.module.course.course.repository.CourseMapper;
+import com.coursistant.lms.module.course.course.service.CourseAuthorizationService;
+import com.coursistant.lms.module.course.enrollment.entity.Enrollment;
+import com.coursistant.lms.module.course.enrollment.repository.EnrollmentMapper;
 import com.coursistant.lms.module.course.enrollment.service.CoursePermissionService;
 import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.shared.api.ErrorType;
+import com.coursistant.lms.shared.security.ActorContext;
 import jakarta.annotation.Resource;
-import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.stereotype.Service;
 
 /**
- * Shared course/week visibility + write-permission checks for the week/material
- * content sub-modules. Depends only on mappers (not the week/material services)
- * so both {@code CourseWeekService} and {@code CourseMaterialService} can depend
- * on this without a circular service graph.
+ * Shared course/week visibility + write-permission checks for content sub-modules.
+ * Write paths use {@link CourseAuthorizationService} and lock the Course row for Archive races.
  */
 @Service
 public class CourseContentAccessService {
@@ -32,7 +33,10 @@ public class CourseContentAccessService {
     private CourseWeekMapper courseWeekMapper;
 
     @Resource
-    private CoursePermissionService coursePermissionService;
+    private EnrollmentMapper enrollmentMapper;
+
+    @Resource
+    private CourseAuthorizationService courseAuthorizationService;
 
     public Course requireCourse(Integer courseId) {
         if (courseId == null) {
@@ -52,73 +56,73 @@ public class CourseContentAccessService {
     }
 
     /**
-     * Requires the caller to be the active Instructor of the (existing, any-state) course
-     * and the course to not be archived. Returns the course.
+     * Locks the course row, ensures visibility + Course Manager, rejects Archived.
      */
-    public Course requireCourseWritable(Integer courseId, Integer userId) {
-        Course course = requireCourse(courseId);
-        coursePermissionService.requireInstructor(courseId, userId);
-        requireNotArchived(course);
-        return course;
+    public Course requireCourseManagerWritable(ActorContext actor, Integer courseId) {
+        Course locked = lockCourse(courseId);
+        courseAuthorizationService.requireCourseManager(actor, courseId);
+        requireNotArchived(locked);
+        return locked;
     }
 
     /**
-     * Resolves whether the caller may view Draft content for this course: true for
-     * platform Admin or the active course Instructor. Other enrolled roles
-     * (TA / Student) see Published only. Non-admin callers must be actively enrolled.
+     * Locks course for any content write that must fail closed under Archive races.
+     * Caller must still enforce role (manager / TA / event permission).
      */
-    public boolean resolveInstructorView(HttpServletRequest request, Integer courseId, Integer userId) {
-        if (coursePermissionService.isSystemAdmin(request)) {
+    public Course requireVisibleCourseWritableLocked(ActorContext actor, Integer courseId) {
+        Course locked = lockCourse(courseId);
+        courseAuthorizationService.requireVisibleCourse(actor, courseId);
+        requireNotArchived(locked);
+        return locked;
+    }
+
+    private Course lockCourse(Integer courseId) {
+        if (courseId == null) {
+            throw new ApiException(ErrorType.COURSE_NOT_FOUND);
+        }
+        Course locked = courseMapper.selectByIdForUpdate(courseId);
+        if (locked == null) {
+            throw new ApiException(ErrorType.COURSE_NOT_FOUND);
+        }
+        return locked;
+    }
+
+    /**
+     * Draft content visibility: SYSTEM_ADMIN, same-tenant TENANT_ADMIN,
+     * Active Primary Instructor, Active TA. Students see Published only.
+     */
+    public boolean canViewDraftContent(ActorContext actor, Integer courseId) {
+        courseAuthorizationService.requireVisibleCourse(actor, courseId);
+        if (actor.isSystemAdmin() || actor.isTenantAdmin()) {
             return true;
         }
-        coursePermissionService.requireActiveEnrollment(courseId, userId);
-        return coursePermissionService.isInstructor(courseId, userId);
+        if (!actor.isUser()) {
+            return false;
+        }
+        Enrollment enrollment = enrollmentMapper.selectByCourseIdAndUserId(courseId, actor.getActorId());
+        if (enrollment == null || !Boolean.TRUE.equals(enrollment.getActive())) {
+            return false;
+        }
+        String role = enrollment.getCourseRole();
+        return CoursePermissionService.ROLE_INSTRUCTOR.equals(role)
+                || CoursePermissionService.ROLE_TA.equals(role);
     }
 
-    /**
-     * Loads a week and enforces read visibility: Admin and Instructors see any state;
-     * everyone else sees Published only. Draft weeks are reported as WEEK_NOT_FOUND
-     * to callers without that visibility, so their existence is never leaked.
-     */
-    public CourseWeek requireWeekReadable(HttpServletRequest request, Integer courseId, Integer weekId, Integer userId) {
-        requireCourse(courseId);
-        boolean instructorView = resolveInstructorView(request, courseId, userId);
+    public CourseWeek requireWeekReadable(ActorContext actor, Integer courseId, Integer weekId) {
+        courseAuthorizationService.requireVisibleCourse(actor, courseId);
+        boolean draftView = canViewDraftContent(actor, courseId);
         CourseWeek week = findWeekInCourse(courseId, weekId);
         if (week == null) {
             throw new ApiException(ErrorType.WEEK_NOT_FOUND);
         }
-        if (!instructorView && !WEEK_STATE_PUBLISHED.equals(week.getState())) {
+        if (!draftView && !WEEK_STATE_PUBLISHED.equals(week.getState())) {
             throw new ApiException(ErrorType.WEEK_NOT_FOUND);
         }
         return week;
     }
 
-    /**
-     * Requires the caller to be the course Instructor, the course to not be archived,
-     * and the week to exist within the course (any state). Used by week CRUD and
-     * Instructor-only material ops (rename / reorder / move).
-     */
-    public CourseWeek requireWeekWritable(Integer courseId, Integer weekId, Integer userId) {
-        requireCourseWritable(courseId, userId);
-        CourseWeek week = findWeekInCourse(courseId, weekId);
-        if (week == null) {
-            throw new ApiException(ErrorType.WEEK_NOT_FOUND);
-        }
-        return week;
-    }
-
-    /**
-     * Instructor or active TA may upload materials to an existing week when the course
-     * is not archived.
-     */
-    public CourseWeek requireMaterialUpload(Integer courseId, Integer weekId, Integer userId) {
-        Course course = requireCourse(courseId);
-        coursePermissionService.requireActiveEnrollment(courseId, userId);
-        if (!coursePermissionService.isInstructor(courseId, userId)
-                && !coursePermissionService.isTa(courseId, userId)) {
-            throw new ApiException(ErrorType.ACCESS_DENIED, "Only course Instructor or TA can upload materials");
-        }
-        requireNotArchived(course);
+    public CourseWeek requireWeekWritable(ActorContext actor, Integer courseId, Integer weekId) {
+        requireCourseManagerWritable(actor, courseId);
         CourseWeek week = findWeekInCourse(courseId, weekId);
         if (week == null) {
             throw new ApiException(ErrorType.WEEK_NOT_FOUND);
@@ -127,19 +131,89 @@ public class CourseContentAccessService {
     }
 
     /**
-     * Instructor may delete any material; TA may delete only materials they uploaded.
+     * Course Manager or any Active TA may upload to an existing week.
      */
-    public CourseWeek requireMaterialDelete(Integer courseId, Integer weekId, Integer userId,
+    public CourseWeek requireMaterialUpload(ActorContext actor, Integer courseId, Integer weekId) {
+        requireVisibleCourseWritableLocked(actor, courseId);
+        if (!courseAuthorizationService.isCourseManager(actor, courseId) && !isActiveTa(actor, courseId)) {
+            throw new ApiException(ErrorType.FORBIDDEN, "Only Course Manager or Active TA can upload materials");
+        }
+        CourseWeek week = findWeekInCourse(courseId, weekId);
+        if (week == null) {
+            throw new ApiException(ErrorType.WEEK_NOT_FOUND);
+        }
+        return week;
+    }
+
+    /**
+     * Rename / reorder / move: Course Manager only.
+     */
+    public CourseWeek requireMaterialManage(ActorContext actor, Integer courseId, Integer weekId) {
+        return requireWeekWritable(actor, courseId, weekId);
+    }
+
+    /**
+     * Course Manager may delete any material; Active TA only own uploads.
+     */
+    public CourseWeek requireMaterialDelete(ActorContext actor, Integer courseId, Integer weekId,
                                             CourseMaterial material) {
-        CourseWeek week = requireMaterialUpload(courseId, weekId, userId);
-        if (coursePermissionService.isInstructor(courseId, userId)) {
+        requireVisibleCourseWritableLocked(actor, courseId);
+        if (courseAuthorizationService.isCourseManager(actor, courseId)) {
+            CourseWeek week = findWeekInCourse(courseId, weekId);
+            if (week == null) {
+                throw new ApiException(ErrorType.WEEK_NOT_FOUND);
+            }
             return week;
         }
+        if (!isActiveTa(actor, courseId)) {
+            throw new ApiException(ErrorType.FORBIDDEN);
+        }
+        CourseWeek week = findWeekInCourse(courseId, weekId);
+        if (week == null) {
+            throw new ApiException(ErrorType.WEEK_NOT_FOUND);
+        }
         if (material == null || material.getUploadedBy() == null
-                || !material.getUploadedBy().equals(userId)) {
-            throw new ApiException(ErrorType.ACCESS_DENIED, "TA can only delete materials they uploaded");
+                || !material.getUploadedBy().equals(actor.getActorId())) {
+            throw new ApiException(ErrorType.FORBIDDEN, "TA can only delete materials they uploaded");
         }
         return week;
+    }
+
+    /**
+     * Course Event write: Course Manager OR Active TA with canManageCourseEvents.
+     */
+    public Course requireCourseEventWritable(ActorContext actor, Integer courseId) {
+        requireVisibleCourseWritableLocked(actor, courseId);
+        if (courseAuthorizationService.isCourseManager(actor, courseId)) {
+            return courseMapper.selectById(courseId);
+        }
+        Enrollment enrollment = requireActiveEnrollment(actor, courseId);
+        if (CoursePermissionService.ROLE_TA.equals(enrollment.getCourseRole())
+                && Boolean.TRUE.equals(enrollment.getCanManageCourseEvents())) {
+            return courseMapper.selectById(courseId);
+        }
+        throw new ApiException(ErrorType.FORBIDDEN);
+    }
+
+    private boolean isActiveTa(ActorContext actor, Integer courseId) {
+        if (!actor.isUser()) {
+            return false;
+        }
+        Enrollment enrollment = enrollmentMapper.selectByCourseIdAndUserId(courseId, actor.getActorId());
+        return enrollment != null
+                && Boolean.TRUE.equals(enrollment.getActive())
+                && CoursePermissionService.ROLE_TA.equals(enrollment.getCourseRole());
+    }
+
+    private Enrollment requireActiveEnrollment(ActorContext actor, Integer courseId) {
+        if (!actor.isUser()) {
+            throw new ApiException(ErrorType.FORBIDDEN);
+        }
+        Enrollment enrollment = enrollmentMapper.selectByCourseIdAndUserId(courseId, actor.getActorId());
+        if (enrollment == null || !Boolean.TRUE.equals(enrollment.getActive())) {
+            throw new ApiException(ErrorType.FORBIDDEN);
+        }
+        return enrollment;
     }
 
     private CourseWeek findWeekInCourse(Integer courseId, Integer weekId) {

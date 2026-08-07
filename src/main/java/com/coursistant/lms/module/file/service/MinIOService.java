@@ -7,12 +7,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import io.minio.BucketExistsArgs;
+import io.minio.CopyObjectArgs;
+import io.minio.CopySource;
 import io.minio.GetObjectArgs;
 import io.minio.MakeBucketArgs;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
 import io.minio.RemoveObjectArgs;
-import io.minio.errors.MinioException;
 
 @Service
 public class MinIOService {
@@ -62,6 +63,16 @@ public class MinIOService {
                 RemoveObjectArgs.builder()
                         .bucket(bucket)
                         .object(fileDest)
+                        .build()
+        );
+    }
+
+    public void copyObject(String bucket, String sourceKey, String destKey) throws Exception {
+        minioClient.copyObject(
+                CopyObjectArgs.builder()
+                        .bucket(bucket)
+                        .object(destKey)
+                        .source(CopySource.builder().bucket(bucket).object(sourceKey).build())
                         .build()
         );
     }

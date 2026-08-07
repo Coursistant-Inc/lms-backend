@@ -5,12 +5,13 @@ import com.coursistant.lms.module.course.content.week.dto.RenameWeekRequest;
 import com.coursistant.lms.module.course.content.week.dto.ReorderWeeksRequest;
 import com.coursistant.lms.module.course.content.week.dto.WeekResponse;
 import com.coursistant.lms.module.course.content.week.service.CourseWeekService;
-import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.shared.api.ApiResponse;
-import com.coursistant.lms.shared.api.ErrorType;
 import com.coursistant.lms.shared.idempotency.Idempotent;
+import com.coursistant.lms.shared.security.ActorContext;
+import com.coursistant.lms.shared.security.ActorContextResolver;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -20,7 +21,6 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
 import java.util.List;
@@ -32,9 +32,13 @@ public class CourseWeekController {
     @Resource
     private CourseWeekService courseWeekService;
 
+    @Resource
+    private ActorContextResolver actorContextResolver;
+
     @GetMapping
     public ApiResponse<List<WeekResponse>> list(HttpServletRequest request, @PathVariable Integer courseId) {
-        return ApiResponse.success(courseWeekService.list(request, courseId, currentUserId(request)));
+        ActorContext actor = actorContextResolver.resolve(request);
+        return ApiResponse.success(courseWeekService.list(actor, courseId));
     }
 
     @Idempotent
@@ -42,7 +46,8 @@ public class CourseWeekController {
     public ApiResponse<WeekResponse> create(HttpServletRequest request,
                                             @PathVariable Integer courseId,
                                             @RequestBody CreateWeekRequest body) {
-        return ApiResponse.success(courseWeekService.create(courseId, currentUserId(request), body));
+        ActorContext actor = actorContextResolver.resolve(request);
+        return ApiResponse.success(courseWeekService.create(actor, courseId, body));
     }
 
     @Idempotent
@@ -51,7 +56,8 @@ public class CourseWeekController {
                                             @PathVariable Integer courseId,
                                             @PathVariable Integer weekId,
                                             @RequestBody RenameWeekRequest body) {
-        return ApiResponse.success(courseWeekService.rename(courseId, weekId, currentUserId(request), body));
+        ActorContext actor = actorContextResolver.resolve(request);
+        return ApiResponse.success(courseWeekService.rename(actor, courseId, weekId, body));
     }
 
     @Idempotent
@@ -59,7 +65,8 @@ public class CourseWeekController {
     public ApiResponse<List<WeekResponse>> reorder(HttpServletRequest request,
                                                    @PathVariable Integer courseId,
                                                    @RequestBody ReorderWeeksRequest body) {
-        return ApiResponse.success(courseWeekService.reorder(courseId, currentUserId(request), body));
+        ActorContext actor = actorContextResolver.resolve(request);
+        return ApiResponse.success(courseWeekService.reorder(actor, courseId, body));
     }
 
     @Idempotent
@@ -67,7 +74,8 @@ public class CourseWeekController {
     public ApiResponse<WeekResponse> publish(HttpServletRequest request,
                                              @PathVariable Integer courseId,
                                              @PathVariable Integer weekId) {
-        return ApiResponse.success(courseWeekService.publish(courseId, weekId, currentUserId(request)));
+        ActorContext actor = actorContextResolver.resolve(request);
+        return ApiResponse.success(courseWeekService.publish(actor, courseId, weekId));
     }
 
     @Idempotent
@@ -75,14 +83,16 @@ public class CourseWeekController {
     public ApiResponse<WeekResponse> unpublish(HttpServletRequest request,
                                                @PathVariable Integer courseId,
                                                @PathVariable Integer weekId) {
-        return ApiResponse.success(courseWeekService.unpublish(courseId, weekId, currentUserId(request)));
+        ActorContext actor = actorContextResolver.resolve(request);
+        return ApiResponse.success(courseWeekService.unpublish(actor, courseId, weekId));
     }
 
     @DeleteMapping("/{weekId}")
     public ApiResponse<Void> delete(HttpServletRequest request,
                                     @PathVariable Integer courseId,
                                     @PathVariable Integer weekId) {
-        courseWeekService.delete(courseId, weekId, currentUserId(request));
+        ActorContext actor = actorContextResolver.resolve(request);
+        courseWeekService.delete(actor, courseId, weekId);
         return ApiResponse.success();
     }
 
@@ -90,14 +100,7 @@ public class CourseWeekController {
     public ResponseEntity<StreamingResponseBody> downloadZip(HttpServletRequest request,
                                                              @PathVariable Integer courseId,
                                                              @PathVariable Integer weekId) {
-        return courseWeekService.downloadZip(request, courseId, weekId, currentUserId(request));
-    }
-
-    private Integer currentUserId(HttpServletRequest request) {
-        Object attr = request.getAttribute("userId");
-        if (!(attr instanceof Integer userId)) {
-            throw new ApiException(ErrorType.UNAUTHORIZED);
-        }
-        return userId;
+        ActorContext actor = actorContextResolver.resolve(request);
+        return courseWeekService.downloadZip(actor, courseId, weekId);
     }
 }

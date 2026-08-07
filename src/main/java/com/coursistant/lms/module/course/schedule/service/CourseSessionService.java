@@ -8,7 +8,11 @@ import com.coursistant.lms.module.course.schedule.dto.UpdateSessionRequest;
 import com.coursistant.lms.module.course.schedule.entity.CourseSession;
 import com.coursistant.lms.module.course.schedule.repository.CourseSessionMapper;
 import com.coursistant.lms.shared.api.ApiException;
+import com.coursistant.lms.module.tenant.service.TenantTimezoneService;
 import com.coursistant.lms.shared.api.ErrorType;
+import com.coursistant.lms.shared.security.ActorContext;
+import com.coursistant.lms.module.course.content.CourseContentAccessService;
+import org.springframework.transaction.annotation.Transactional;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 
@@ -29,6 +33,12 @@ public class CourseSessionService {
     @Resource
     private CourseMapper courseMapper;
 
+    @Resource
+    private TenantTimezoneService tenantTimezoneService;
+
+    @Resource
+    private CourseContentAccessService courseContentAccessService;
+
     public List<SessionResponse> listByCourseId(Integer courseId) {
         requireCourse(courseId);
         return courseSessionMapper.selectByCourseId(courseId).stream()
@@ -40,8 +50,9 @@ public class CourseSessionService {
         return toResponse(requireSessionInCourse(courseId, sessionId));
     }
 
-    public SessionResponse create(Integer courseId, CreateSessionRequest request) {
-        requireCourseWritable(courseId);
+    @Transactional
+    public SessionResponse create(ActorContext actor, Integer courseId, CreateSessionRequest request) {
+        courseContentAccessService.requireCourseManagerWritable(actor, courseId);
         if (request == null) {
             throw new ApiException(ErrorType.BAD_REQUEST, "Request body is required");
         }
@@ -59,8 +70,9 @@ public class CourseSessionService {
         return toResponse(requireSessionInCourse(courseId, session.getId()));
     }
 
-    public SessionResponse update(Integer courseId, Integer sessionId, UpdateSessionRequest request) {
-        requireCourseWritable(courseId);
+    @Transactional
+    public SessionResponse update(ActorContext actor, Integer courseId, Integer sessionId, UpdateSessionRequest request) {
+        courseContentAccessService.requireCourseManagerWritable(actor, courseId);
         CourseSession existing = requireSessionInCourse(courseId, sessionId);
         if (request == null) {
             throw new ApiException(ErrorType.BAD_REQUEST, "Request body is required");
@@ -107,8 +119,9 @@ public class CourseSessionService {
         return toResponse(requireSessionInCourse(courseId, sessionId));
     }
 
-    public void delete(Integer courseId, Integer sessionId) {
-        requireCourseWritable(courseId);
+    @Transactional
+    public void delete(ActorContext actor, Integer courseId, Integer sessionId) {
+        courseContentAccessService.requireCourseManagerWritable(actor, courseId);
         requireSessionInCourse(courseId, sessionId);
         courseSessionMapper.deleteById(sessionId);
     }
@@ -178,6 +191,7 @@ public class CourseSessionService {
         SessionResponse response = new SessionResponse();
         response.setId(session.getId());
         response.setCourseId(session.getCourseId());
+        response.setTimezone(tenantTimezoneService.requireTimezoneIdForCourse(session.getCourseId()));
         response.setType(session.getType());
         response.setDayOfWeek(session.getDayOfWeek());
         response.setStartTime(session.getStartTime());

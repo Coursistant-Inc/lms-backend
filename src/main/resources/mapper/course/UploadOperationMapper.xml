@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.coursistant.lms.module.course.storage.repository.UploadOperationMapper">
+
+    <insert id="insert">
+        INSERT INTO upload_operation
+        (id, actor_type, actor_id, idempotency_key, route_id, fingerprint, status, visibility_status, course_id)
+        VALUES
+        (#{id}, #{actorType}, #{actorId}, #{idempotencyKey}, #{routeId}, #{fingerprint},
+         #{status}, #{visibilityStatus}, #{courseId})
+    </insert>
+
+    <select id="selectByActorKeyRoute" resultType="com.coursistant.lms.module.course.storage.entity.UploadOperation">
+        SELECT id, actor_type AS actorType, actor_id AS actorId, idempotency_key AS idempotencyKey,
+               route_id AS routeId, fingerprint, status, visibility_status AS visibilityStatus,
+               course_id AS courseId, created_at AS createdAt, updated_at AS updatedAt
+        FROM upload_operation
+        WHERE actor_type = #{actorType}
+          AND actor_id = #{actorId}
+          AND idempotency_key = #{idempotencyKey}
+          AND route_id = #{routeId}
+    </select>
+
+    <select id="selectById" resultType="com.coursistant.lms.module.course.storage.entity.UploadOperation">
+        SELECT id, actor_type AS actorType, actor_id AS actorId, idempotency_key AS idempotencyKey,
+               route_id AS routeId, fingerprint, status, visibility_status AS visibilityStatus,
+               course_id AS courseId, created_at AS createdAt, updated_at AS updatedAt
+        FROM upload_operation
+        WHERE id = #{id}
+    </select>
+
+    <update id="updateStatus">
+        UPDATE upload_operation
+        SET status = #{status},
+            visibility_status = #{visibilityStatus},
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = #{id}
+    </update>
+</mapper>

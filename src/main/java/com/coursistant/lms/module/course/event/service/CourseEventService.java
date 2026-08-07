@@ -12,7 +12,10 @@ import com.coursistant.lms.module.course.schedule.dto.SessionWithCourseCode;
 import com.coursistant.lms.module.course.schedule.repository.CourseSessionMapper;
 import com.coursistant.lms.module.tenant.service.TenantTimezoneService;
 import com.coursistant.lms.shared.api.ApiException;
+import com.coursistant.lms.module.course.content.CourseContentAccessService;
 import com.coursistant.lms.shared.api.ErrorType;
+import com.coursistant.lms.shared.security.ActorContext;
+import org.springframework.transaction.annotation.Transactional;
 import jakarta.annotation.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,6 +61,9 @@ public class CourseEventService {
     @Resource
     private TenantTimezoneService tenantTimezoneService;
 
+    @Resource
+    private CourseContentAccessService courseContentAccessService;
+
     public List<CourseEventResponse> listByCourseId(Integer courseId) {
         requireCourse(courseId);
         return courseEventMapper.selectByCourseId(courseId).stream()
@@ -90,7 +96,7 @@ public class CourseEventService {
                 if (dropIfCrossTenant(userId, userTenantId, event.getCourseId(), "event")) {
                     continue;
                 }
-                event.setTimezone(timezoneId);
+                event.setTimezone(tenantTimezoneService.requireTimezoneIdForCourse(event.getCourseId()));
                 result.add(event);
             }
         }
@@ -117,7 +123,7 @@ public class CourseEventService {
                     item.setLocation(session.getLocation());
                     item.setSource(UpcomingCourseActivityResponse.SOURCE_SESSION);
                     item.setSourceId(session.getId());
-                    item.setTimezone(timezoneId);
+                    item.setTimezone(tenantTimezoneService.requireTimezoneIdForCourse(session.getCourseId()));
                     result.add(item);
                 }
             }
@@ -160,8 +166,9 @@ public class CourseEventService {
         return toResponse(requireEventInCourse(courseId, eventId));
     }
 
-    public CourseEventResponse create(Integer courseId, CreateCourseEventRequest request) {
-        requireCourseWritable(courseId);
+    @Transactional
+    public CourseEventResponse create(ActorContext actor, Integer courseId, CreateCourseEventRequest request) {
+        courseContentAccessService.requireCourseEventWritable(actor, courseId);
         if (request == null) {
             throw new ApiException(ErrorType.BAD_REQUEST, "Request body is required");
         }
@@ -179,8 +186,9 @@ public class CourseEventService {
         return toResponse(requireEventInCourse(courseId, event.getId()));
     }
 
-    public CourseEventResponse update(Integer courseId, Integer eventId, UpdateCourseEventRequest request) {
-        requireCourseWritable(courseId);
+    @Transactional
+    public CourseEventResponse update(ActorContext actor, Integer courseId, Integer eventId, UpdateCourseEventRequest request) {
+        courseContentAccessService.requireCourseEventWritable(actor, courseId);
         CourseEvent existing = requireEventInCourse(courseId, eventId);
         if (request == null) {
             throw new ApiException(ErrorType.BAD_REQUEST, "Request body is required");
@@ -226,8 +234,9 @@ public class CourseEventService {
         return toResponse(requireEventInCourse(courseId, eventId));
     }
 
-    public void delete(Integer courseId, Integer eventId) {
-        requireCourseWritable(courseId);
+    @Transactional
+    public void delete(ActorContext actor, Integer courseId, Integer eventId) {
+        courseContentAccessService.requireCourseEventWritable(actor, courseId);
         requireEventInCourse(courseId, eventId);
         courseEventMapper.deleteById(eventId);
     }
@@ -295,6 +304,7 @@ public class CourseEventService {
         CourseEventResponse response = new CourseEventResponse();
         response.setId(event.getId());
         response.setCourseId(event.getCourseId());
+        response.setTimezone(tenantTimezoneService.requireTimezoneIdForCourse(event.getCourseId()));
         response.setName(event.getName());
         response.setDate(event.getEventDate());
         response.setStartTime(event.getStartTime());

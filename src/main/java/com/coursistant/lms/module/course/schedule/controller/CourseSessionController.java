@@ -1,14 +1,14 @@
 package com.coursistant.lms.module.course.schedule.controller;
 
-import com.coursistant.lms.module.course.enrollment.service.CoursePermissionService;
+import com.coursistant.lms.module.course.course.service.CourseAuthorizationService;
 import com.coursistant.lms.module.course.schedule.dto.CreateSessionRequest;
 import com.coursistant.lms.module.course.schedule.dto.SessionResponse;
 import com.coursistant.lms.module.course.schedule.dto.UpdateSessionRequest;
 import com.coursistant.lms.module.course.schedule.service.CourseSessionService;
-import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.shared.api.ApiResponse;
-import com.coursistant.lms.shared.api.ErrorType;
 import com.coursistant.lms.shared.idempotency.Idempotent;
+import com.coursistant.lms.shared.security.ActorContext;
+import com.coursistant.lms.shared.security.ActorContextResolver;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -30,13 +30,15 @@ public class CourseSessionController {
     private CourseSessionService courseSessionService;
 
     @Resource
-    private CoursePermissionService coursePermissionService;
+    private ActorContextResolver actorContextResolver;
+
+    @Resource
+    private CourseAuthorizationService courseAuthorizationService;
 
     @GetMapping
     public ApiResponse<List<SessionResponse>> list(HttpServletRequest request, @PathVariable Integer courseId) {
-        if (!coursePermissionService.isSystemAdmin(request)) {
-            coursePermissionService.requireActiveEnrollment(courseId, currentUserId(request));
-        }
+        ActorContext actor = actorContextResolver.resolve(request);
+        courseAuthorizationService.requireVisibleCourse(actor, courseId);
         return ApiResponse.success(courseSessionService.listByCourseId(courseId));
     }
 
@@ -44,9 +46,8 @@ public class CourseSessionController {
     public ApiResponse<SessionResponse> get(HttpServletRequest request,
                                             @PathVariable Integer courseId,
                                             @PathVariable Integer sessionId) {
-        if (!coursePermissionService.isSystemAdmin(request)) {
-            coursePermissionService.requireActiveEnrollment(courseId, currentUserId(request));
-        }
+        ActorContext actor = actorContextResolver.resolve(request);
+        courseAuthorizationService.requireVisibleCourse(actor, courseId);
         return ApiResponse.success(courseSessionService.getById(courseId, sessionId));
     }
 
@@ -55,8 +56,8 @@ public class CourseSessionController {
     public ApiResponse<SessionResponse> create(HttpServletRequest request,
                                                @PathVariable Integer courseId,
                                                @RequestBody CreateSessionRequest body) {
-        coursePermissionService.requireInstructor(courseId, currentUserId(request));
-        return ApiResponse.success(courseSessionService.create(courseId, body));
+        ActorContext actor = actorContextResolver.resolve(request);
+        return ApiResponse.success(courseSessionService.create(actor, courseId, body));
     }
 
     @Idempotent
@@ -65,24 +66,16 @@ public class CourseSessionController {
                                                @PathVariable Integer courseId,
                                                @PathVariable Integer sessionId,
                                                @RequestBody UpdateSessionRequest body) {
-        coursePermissionService.requireInstructor(courseId, currentUserId(request));
-        return ApiResponse.success(courseSessionService.update(courseId, sessionId, body));
+        ActorContext actor = actorContextResolver.resolve(request);
+        return ApiResponse.success(courseSessionService.update(actor, courseId, sessionId, body));
     }
 
     @DeleteMapping("/{sessionId}")
     public ApiResponse<Void> delete(HttpServletRequest request,
                                     @PathVariable Integer courseId,
                                     @PathVariable Integer sessionId) {
-        coursePermissionService.requireInstructor(courseId, currentUserId(request));
-        courseSessionService.delete(courseId, sessionId);
+        ActorContext actor = actorContextResolver.resolve(request);
+        courseSessionService.delete(actor, courseId, sessionId);
         return ApiResponse.success();
-    }
-
-    private Integer currentUserId(HttpServletRequest request) {
-        Object attr = request.getAttribute("userId");
-        if (!(attr instanceof Integer userId)) {
-            throw new ApiException(ErrorType.UNAUTHORIZED);
-        }
-        return userId;
     }
 }

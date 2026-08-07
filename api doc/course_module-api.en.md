@@ -37,16 +37,19 @@ Base URL: `https://dev.xlearnedu.com:8080/api`
 | `Content-Type: application/json` | JSON body |
 | `Content-Type: multipart/form-data` | File uploads (browser FormData sets this automatically) |
 
-**Write APIs that require `Idempotency-Key`:**
+**Idempotency policy (Part 4):**
 
-- `POST/PUT /v2/courses`, `POST /v2/courses/{id}/archive`, `POST .../unarchive`, `POST .../transfer-instructor`
-- `POST/PUT .../sessions`
-- `POST/PUT .../events`
-- `POST/PATCH .../members/.../ta...`, `DELETE .../members/{userId}`
-- `POST /v2/admin/courses/{id}/enrollments`, `POST .../enrollments/batch`, `DELETE .../enrollments/{userId}`
-- `POST .../syllabus`, `POST .../syllabus/restore`, `DELETE .../syllabus`
-- `POST/PATCH/PUT .../weeks...` (including publish/unpublish/reorder; not DELETE)
-- `PATCH/PUT/POST .../materials` for rename / reorder / move (**creating materials does not require a key**)
+| Policy | APIs |
+|--------|------|
+| **Required JSON** | Course Create/Patch/Archive/Unarchive/Reassignment; Add Student/Batch; Add TA / Patch TA Permissions; Week Create/Patch/Reorder/Publish/Unpublish; Material Rename/Reorder/Move; Syllabus Restore; Session Create/Patch; Course Event Create/Patch |
+| **Required Multipart** | `POST .../weeks/{weekId}/materials` (files[] and/or link; requires `Idempotency-Key`; Filter caches response only; Interceptor fingerprint = text fields + file index/metadata/SHA-256); `POST .../syllabus` upload |
+| **Natural DELETE** (no Redis) | Withdraw Student; Remove TA; Delete Course/Week/Material; Syllabus Clear; Delete Session/Event |
+
+Notes:
+
+- Multipart missing key → `IDEMPOTENCY_KEY_REQUIRED`; Redis down → `503` with no DB/MinIO writes.
+- Syllabus **Clear** is logical (clears current pointer; keeps history versions + MinIO objects); natural idempotent; **no** Idempotency-Key.
+- Material delete enqueues `minio_object_outbox` (no silent orphan objects).
 
 Missing key → `IDEMPOTENCY_KEY_REQUIRED`.
 
