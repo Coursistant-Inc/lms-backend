@@ -2,9 +2,16 @@ package com.coursistant.lms.module.auth.token.service;
 
 import com.coursistant.lms.shared.api.ErrorType;
 import com.coursistant.lms.shared.api.ApiException;
+import com.coursistant.lms.module.auth.admin.entity.Admin;
+import com.coursistant.lms.module.auth.admin.repository.AdminMapper;
 import com.coursistant.lms.module.auth.token.dto.RefreshResult;
 import com.coursistant.lms.module.auth.token.entity.RefreshToken;
 import com.coursistant.lms.module.auth.token.repository.RefreshTokenMapper;
+import com.coursistant.lms.module.tenant.entity.Tenant;
+import com.coursistant.lms.module.tenant.repository.TenantMapper;
+import com.coursistant.lms.module.user.account.entity.User;
+import com.coursistant.lms.module.user.account.repository.UserMapper;
+import com.coursistant.lms.shared.enums.RoleEnum;
 import com.coursistant.lms.shared.security.TokenUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,6 +48,15 @@ public class RefreshTokenService {
 
     @Resource(name = "refreshTokenRedisTemplate")
     private RedisTemplate<String, Object> refreshTokenRedisTemplate;
+
+    @Resource
+    private UserMapper userMapper;
+
+    @Resource
+    private AdminMapper adminMapper;
+
+    @Resource
+    private TenantMapper tenantMapper;
 
     @Resource
     private Clock clock;
@@ -158,13 +174,13 @@ public class RefreshTokenService {
             writeRedisSession(locked.getSessionId(), newRefreshToken, locked.getUserId(), locked.getRole());
             bestEffortDeleteKey(REDIS_PREFIX + token);
 
-            String accessToken = TokenUtils.createAccessToken(locked.getUserId(), locked.getRole());
+            String accessToken = issueAccessToken(locked.getUserId(), locked.getRole());
             return new RefreshResult(accessToken, newRefreshToken);
         }
 
         if (token.equals(locked.getPreviousToken())) {
             if (locked.getPreviousValidUntil() != null && !now.after(locked.getPreviousValidUntil())) {
-                String accessToken = TokenUtils.createAccessToken(locked.getUserId(), locked.getRole());
+                String accessToken = issueAccessToken(locked.getUserId(), locked.getRole());
                 return new RefreshResult(accessToken, locked.getToken());
             }
             log.warn("Refresh token replay outside grace for session {}", sessionId);
@@ -221,6 +237,24 @@ public class RefreshTokenService {
                 REDIS_PREFIX + token, payload, Duration.ofDays(refreshExpireDays));
         refreshTokenRedisTemplate.opsForValue().set(
                 REDIS_SESSION_PREFIX + sessionId, token, Duration.ofDays(refreshExpireDays));
+    }
+
+    private String issueAccessToken(Integer userId, String role) {
+        if (RoleEnum.SYSTEM_ADMIN.name().equals(role)) {
+            Admin admin = adminMapper.selectById(userId);
+            int authVersion = admin == null || admin.getAuthVersion() == null ? 1 : admin.getAuthVersion();
+            return TokenUtils.createAccessToken(userId, role, authVersion, null);
+        }
+        User user = userMapper.selectById(userId);
+        int authVersion = user == null || user.getAuthVersion() == null ? 1 : user.getAuthVersion();
+        Integer tenantSecurityVersion = 1;
+        if (user != null && user.getTenantId() != null) {
+            Tenant tenant = tenantMapper.selectById(user.getTenantId());
+            if (tenant != null && tenant.getSecurityVersion() != null) {
+                tenantSecurityVersion = tenant.getSecurityVersion();
+            }
+        }
+        return TokenUtils.createAccessToken(userId, role, authVersion, tenantSecurityVersion);
     }
 
     private void requireRedis() {

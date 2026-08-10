@@ -244,6 +244,16 @@ public class UserService {
         generalRedisTemplate.delete("user:" + id);
     }
 
+    /** Drop Redis principal cache after direct mapper updates (e.g. disable). */
+    public void evictUserCache(Integer id, String email) {
+        if (id != null) {
+            generalRedisTemplate.delete("user:" + id);
+        }
+        if (email != null && !email.isBlank()) {
+            generalRedisTemplate.delete("user:email:" + email);
+        }
+    }
+
     /**
      * Batch delete users
      */

@@ -187,6 +187,8 @@ public class ManagedUserService {
         User locked = userMapper.selectById(targetUserId);
         locked.setStatus(AccountStatus.DISABLED.name());
         userMapper.updateById(locked);
+        // Bypass UserService.update would leave stale Redis user:{id} with ACTIVE and keep access tokens alive.
+        userService.evictUserCache(locked.getId(), locked.getEmail());
         sessionInvalidationService.invalidatePrincipal(targetUserId, RoleEnum.USER.name());
         sessionInvalidationService.invalidatePrincipal(targetUserId, RoleEnum.TENANT_ADMIN.name());
         identityAuditService.writeSuccess(actorId, actorRole, authzService.resolveActorTenantId(request),
