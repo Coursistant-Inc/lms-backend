@@ -26,21 +26,31 @@ INNER JOIN course c ON c.id = e.course_id
 INNER JOIN `user` u ON u.id = e.user_id
 WHERE u.tenant_id IS NULL OR c.tenant_id IS NULL OR u.tenant_id <> c.tenant_id;
 
--- 4) Instructor/TA must be USER + INSTRUCTOR
-SELECT 'enrollment_instructor_ta_role_level_bad' AS check_name, e.id AS enrollment_id, e.course_id, e.user_id,
+-- 4) Active Instructor must be USER + INSTRUCTOR (blocking)
+SELECT 'active_instructor_role_level_bad' AS check_name, e.id AS enrollment_id, e.course_id, e.user_id,
        u.role, u.level, e.course_role
 FROM enrollment e
 INNER JOIN `user` u ON u.id = e.user_id
-WHERE e.course_role IN ('Instructor', 'TA')
+WHERE e.active = 1
+  AND e.course_role = 'Instructor'
   AND (u.role <> 'USER' OR u.level <> 'INSTRUCTOR');
 
--- 5) Student must be USER + STUDENT
-SELECT 'enrollment_student_role_level_bad' AS check_name, e.id AS enrollment_id, e.course_id, e.user_id,
-       u.role, u.level
+-- 5) Active Student/TA must be USER + STUDENT (blocking)
+SELECT 'active_student_ta_role_level_bad' AS check_name, e.id AS enrollment_id, e.course_id, e.user_id,
+       u.role, u.level, e.course_role
 FROM enrollment e
 INNER JOIN `user` u ON u.id = e.user_id
-WHERE e.course_role = 'Student'
+WHERE e.active = 1
+  AND e.course_role IN ('Student', 'TA')
   AND (u.role <> 'USER' OR u.level <> 'STUDENT');
+
+-- 5b) Active enrollment on non-USER / NOT_APPLICABLE (blocking)
+SELECT 'active_enrollment_non_user_account' AS check_name, e.id AS enrollment_id, e.course_id, e.user_id,
+       u.role, u.level, e.course_role
+FROM enrollment e
+INNER JOIN `user` u ON u.id = e.user_id
+WHERE e.active = 1
+  AND (u.role IS NULL OR u.role <> 'USER' OR u.level = 'NOT_APPLICABLE');
 
 -- 6) Enrollment references missing / disabled user
 SELECT 'enrollment_user_missing_or_disabled' AS check_name, e.id AS enrollment_id, e.user_id, u.status

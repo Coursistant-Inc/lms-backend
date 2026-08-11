@@ -40,7 +40,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -109,18 +108,31 @@ public class EnrollmentMembershipService {
             }
             return toMemberResponse(existing);
         }
-        if (!CoursePermissionService.ROLE_STUDENT.equals(existing.getCourseRole())) {
+        if (CoursePermissionService.ROLE_INSTRUCTOR.equals(existing.getCourseRole())) {
             throw new ApiException(ErrorType.CONFLICT,
-                    "Cannot convert inactive TA/Instructor to Student via Student API");
+                    "Cannot convert inactive Instructor to Student via Student API");
         }
         Map<String, Object> before = snapshot(existing);
         Enrollment patch = new Enrollment();
         patch.setId(existing.getId());
+        patch.setCourseRole(CoursePermissionService.ROLE_STUDENT);
+        patch.setCanGrade(false);
+        patch.setCanPostAnnouncements(false);
+        patch.setCanManageGroups(false);
+        patch.setCanManageCourseEvents(false);
         patch.setActive(true);
         patch.setClearWithdrawn(true);
+        // Former TA (or already-frozen Student) must remain frozen; never clear via Student API.
+        if (CoursePermissionService.ROLE_TA.equals(existing.getCourseRole())
+                || Boolean.TRUE.equals(existing.getAssignmentSubmitFrozen())) {
+            patch.setAssignmentSubmitFrozen(true);
+        }
         enrollmentMapper.updateById(patch);
         Enrollment after = requireEnrollment(existing.getId());
-        audit(actor, course, userId, CourseAuditActions.STUDENT_REACTIVATED, before, snapshot(after), requestId);
+        String action = CoursePermissionService.ROLE_TA.equals(existing.getCourseRole())
+                ? CourseAuditActions.ENROLLMENT_ROLE_CHANGED
+                : CourseAuditActions.STUDENT_REACTIVATED;
+        audit(actor, course, userId, action, before, snapshot(after), requestId);
         return toMemberResponse(after);
     }
 
@@ -232,33 +244,20 @@ public class EnrollmentMembershipService {
 
         Enrollment existing = enrollmentMapper.selectByCourseIdAndUserIdForUpdate(courseId, userId);
         if (existing == null) {
-            Enrollment created = newTaEnrollment(courseId, userId);
-            enrollmentMapper.insert(created);
-            Enrollment after = requireEnrollment(created.getId());
-            audit(actor, course, userId, CourseAuditActions.TA_ADDED, null, snapshot(after), requestId);
-            return toMemberResponse(after);
+            throw new ApiException(ErrorType.ENROLLMENT_NOT_FOUND);
         }
-        if (Boolean.TRUE.equals(existing.getActive())) {
-            if (CoursePermissionService.ROLE_INSTRUCTOR.equals(existing.getCourseRole())) {
-                throw new ApiException(ErrorType.CONFLICT, "Primary Instructor cannot be added as TA");
-            }
-            if (CoursePermissionService.ROLE_STUDENT.equals(existing.getCourseRole())) {
-                throw new ApiException(ErrorType.CONFLICT, "Withdraw Student enrollment before adding as TA");
-            }
-            if (CoursePermissionService.ROLE_TA.equals(existing.getCourseRole())) {
-                return toMemberResponse(existing);
-            }
+        if (!Boolean.TRUE.equals(existing.getActive())) {
+            throw new ApiException(ErrorType.ENROLLMENT_NOT_ACTIVE);
         }
-        if (CoursePermissionService.ROLE_INSTRUCTOR.equals(existing.getCourseRole())) {
-            throw new ApiException(ErrorType.CONFLICT, "Cannot convert inactive Instructor via TA API");
+        if (CoursePermissionService.ROLE_TA.equals(existing.getCourseRole())) {
+            return toMemberResponse(existing);
         }
-        if (CoursePermissionService.ROLE_STUDENT.equals(existing.getCourseRole())
-                && Boolean.TRUE.equals(existing.getActive())) {
-            throw new ApiException(ErrorType.CONFLICT, "Withdraw Student enrollment before adding as TA");
+        if (!CoursePermissionService.ROLE_STUDENT.equals(existing.getCourseRole())) {
+            throw new ApiException(ErrorType.CONFLICT,
+                    "Only an Active Student enrollment can be promoted to TA");
         }
 
         Map<String, Object> before = snapshot(existing);
-        boolean roleChange = !CoursePermissionService.ROLE_TA.equals(existing.getCourseRole());
         Enrollment patch = new Enrollment();
         patch.setId(existing.getId());
         patch.setCourseRole(CoursePermissionService.ROLE_TA);
@@ -267,14 +266,18 @@ public class EnrollmentMembershipService {
         patch.setCanManageGroups(false);
         patch.setCanManageCourseEvents(false);
         patch.setAssignmentSubmitFrozen(true);
-        patch.setActive(true);
-        patch.setClearWithdrawn(true);
         enrollmentMapper.updateById(patch);
+
+        String groupActor = ActorContext.ACTOR_ADMIN.equals(actor.getActorType())
+                ? GroupMembershipAudit.ACTOR_ADMIN
+                : GroupMembershipAudit.ACTOR_USER;
+        groupMembershipService.endGroupMemberships(
+                courseId, userId, groupActor, actor.getActorId(),
+                GroupMembershipAudit.END_ON_TA_PROMOTION);
+        quizLifecycleHooks.onMembershipIneligible(courseId, userId);
+
         Enrollment after = requireEnrollment(existing.getId());
-        String action = roleChange
-                ? CourseAuditActions.ENROLLMENT_ROLE_CHANGED
-                : CourseAuditActions.TA_REACTIVATED;
-        audit(actor, course, userId, action, before, snapshot(after), requestId);
+        audit(actor, course, userId, CourseAuditActions.TA_ADDED, before, snapshot(after), requestId);
         return toMemberResponse(after);
     }
 
@@ -289,14 +292,37 @@ public class EnrollmentMembershipService {
         if (course == null) {
             throw new ApiException(ErrorType.COURSE_NOT_FOUND);
         }
+        requireCourseWritable(course);
         Enrollment existing = enrollmentMapper.selectByCourseIdAndUserIdForUpdate(courseId, userId);
-        if (existing == null || !Boolean.TRUE.equals(existing.getActive())) {
-            return existing == null ? null : toMemberResponse(existing);
+        if (existing == null) {
+            return null;
+        }
+        if (!Boolean.TRUE.equals(existing.getActive())) {
+            return toMemberResponse(existing);
+        }
+        if (CoursePermissionService.ROLE_STUDENT.equals(existing.getCourseRole())) {
+            return toMemberResponse(existing);
+        }
+        if (CoursePermissionService.ROLE_INSTRUCTOR.equals(existing.getCourseRole())) {
+            throw new ApiException(ErrorType.CONFLICT, "Primary Instructor cannot be removed via TA API");
         }
         if (!CoursePermissionService.ROLE_TA.equals(existing.getCourseRole())) {
             throw new ApiException(ErrorType.CONFLICT, "Target is not an active TA");
         }
-        return softWithdraw(actor, course, existing, CourseAuditActions.TA_REMOVED, requestId, false);
+
+        Map<String, Object> before = snapshot(existing);
+        Enrollment patch = new Enrollment();
+        patch.setId(existing.getId());
+        patch.setCourseRole(CoursePermissionService.ROLE_STUDENT);
+        patch.setCanGrade(false);
+        patch.setCanPostAnnouncements(false);
+        patch.setCanManageGroups(false);
+        patch.setCanManageCourseEvents(false);
+        patch.setAssignmentSubmitFrozen(true);
+        enrollmentMapper.updateById(patch);
+        Enrollment after = requireEnrollment(existing.getId());
+        audit(actor, course, userId, CourseAuditActions.TA_REMOVED, before, snapshot(after), requestId);
+        return toMemberResponse(after);
     }
 
     @Transactional
@@ -310,8 +336,12 @@ public class EnrollmentMembershipService {
         if (CourseLifecycleSupport.isArchived(course)) {
             throw new ApiException(ErrorType.COURSE_ARCHIVED);
         }
-        userMapper.selectByIdForUpdate(userId);
+        User user = userMapper.selectByIdForUpdate(userId);
+        if (user == null) {
+            throw new ApiException(ErrorType.USER_NOT_FOUND);
+        }
         courseMapper.selectByIdForUpdate(courseId);
+        recheckUserForTa(user, course);
         Enrollment existing = enrollmentMapper.selectByCourseIdAndUserIdForUpdate(courseId, userId);
         if (existing == null || !Boolean.TRUE.equals(existing.getActive())
                 || !CoursePermissionService.ROLE_TA.equals(existing.getCourseRole())) {
@@ -464,22 +494,8 @@ public class EnrollmentMembershipService {
     }
 
     private void recheckUserForTa(User user, Course course) {
-        if (user.getStatus() != null && !AccountStatus.ACTIVE.name().equals(user.getStatus())) {
-            throw new ApiException(ErrorType.ACCOUNT_DISABLED);
-        }
-        if (!RoleEnum.USER.name().equals(user.getRole())) {
-            throw new ApiException(ErrorType.ENROLLMENT_ROLE_FORBIDDEN);
-        }
-        if (!LevelEnum.INSTRUCTOR.level.equalsIgnoreCase(user.getLevel())) {
-            throw new ApiException(ErrorType.LEVEL_ENROLLMENT_MISMATCH);
-        }
-        if (user.getTenantId() == null || !user.getTenantId().equals(course.getTenantId())) {
-            throw new ApiException(ErrorType.TENANT_MISMATCH);
-        }
-        requireActiveTenant(course.getTenantId());
-        if (Objects.equals(course.getInstructorId(), user.getId())) {
-            throw new ApiException(ErrorType.CONFLICT, "Primary Instructor cannot be added as TA");
-        }
+        // Same account constraints as Student enrollment: TA is a course role on a STUDENT account.
+        recheckUserForStudent(user, course);
     }
 
     private void requireActiveTenant(Integer tenantId) {
@@ -517,21 +533,6 @@ public class EnrollmentMembershipService {
         e.setCanManageCourseEvents(false);
         e.setActive(true);
         e.setAssignmentSubmitFrozen(false);
-        e.setEnrolledAt(LocalDateTime.now(ZoneOffset.UTC));
-        return e;
-    }
-
-    private Enrollment newTaEnrollment(Integer courseId, Integer userId) {
-        Enrollment e = new Enrollment();
-        e.setCourseId(courseId);
-        e.setUserId(userId);
-        e.setCourseRole(CoursePermissionService.ROLE_TA);
-        e.setCanGrade(false);
-        e.setCanPostAnnouncements(false);
-        e.setCanManageGroups(false);
-        e.setCanManageCourseEvents(false);
-        e.setActive(true);
-        e.setAssignmentSubmitFrozen(true);
         e.setEnrolledAt(LocalDateTime.now(ZoneOffset.UTC));
         return e;
     }
@@ -586,6 +587,7 @@ public class EnrollmentMembershipService {
         response.setCanManageGroups(enrollment.getCanManageGroups());
         response.setCanManageCourseEvents(enrollment.getCanManageCourseEvents());
         response.setActive(enrollment.getActive());
+        response.setAssignmentSubmitFrozen(enrollment.getAssignmentSubmitFrozen());
         response.setEnrolledAt(enrollment.getEnrolledAt());
         response.setJoinedAt(enrollment.getEnrolledAt());
         response.setWithdrawnAt(enrollment.getWithdrawnAt());

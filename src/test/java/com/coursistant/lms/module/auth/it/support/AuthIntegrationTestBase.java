@@ -157,6 +157,7 @@ public abstract class AuthIntegrationTestBase {
         }
     }
 
+    /** Subclasses that add FK-dependent tables should wipe those first, then call super. */
     protected void wipeAuthTables() {
         jdbcTemplate.execute("SET FOREIGN_KEY_CHECKS=0");
         jdbcTemplate.update("DELETE FROM refresh_tokens");

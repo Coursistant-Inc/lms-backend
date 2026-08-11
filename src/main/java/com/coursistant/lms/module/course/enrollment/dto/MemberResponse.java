@@ -15,6 +15,7 @@ public class MemberResponse {
     private Boolean canManageGroups;
     private Boolean canManageCourseEvents;
     private Boolean active;
+    private Boolean assignmentSubmitFrozen;
     private String level;
     private LocalDateTime enrolledAt;
     private LocalDateTime joinedAt;
@@ -108,6 +109,14 @@ public class MemberResponse {
 
     public void setActive(Boolean active) {
         this.active = active;
+    }
+
+    public Boolean getAssignmentSubmitFrozen() {
+        return assignmentSubmitFrozen;
+    }
+
+    public void setAssignmentSubmitFrozen(Boolean assignmentSubmitFrozen) {
+        this.assignmentSubmitFrozen = assignmentSubmitFrozen;
     }
 
     public String getLevel() {

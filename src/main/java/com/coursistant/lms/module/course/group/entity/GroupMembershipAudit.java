@@ -18,6 +18,7 @@ public class GroupMembershipAudit implements Serializable {
     public static final String REMOVE_STAFF = "REMOVE_STAFF";
     public static final String DISTRIBUTE_RANDOM = "DISTRIBUTE_RANDOM";
     public static final String END_ON_DROP = "END_ON_DROP";
+    public static final String END_ON_TA_PROMOTION = "END_ON_TA_PROMOTION";
 
     private Integer id;
     private Integer tenantId;

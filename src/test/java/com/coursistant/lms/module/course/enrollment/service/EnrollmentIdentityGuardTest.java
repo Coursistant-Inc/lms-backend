@@ -31,6 +31,8 @@ class EnrollmentIdentityGuardTest {
         User u = user(1);
         when(userMapper.selectByIdForUpdate(1)).thenReturn(u);
         when(enrollmentMapper.countActiveInstructorEnrollmentsByUserId(1)).thenReturn(1);
+        when(enrollmentMapper.countActiveTaEnrollmentsByUserId(1)).thenReturn(0);
+        when(enrollmentMapper.countActiveStudentEnrollmentsByUserId(1)).thenReturn(0);
 
         ApiException toStudent = assertThrows(ApiException.class,
                 () -> guard.assertCanChangeRoleOrLevel(1, RoleEnum.USER.name(), "STUDENT"));
@@ -42,14 +44,44 @@ class EnrollmentIdentityGuardTest {
     }
 
     @Test
-    void activeTa_blocksChangeToStudent() {
+    void activeTa_allowsKeepStudent_blocksInstructorAndSystemAdmin() {
         User u = user(2);
+        u.setLevel("STUDENT");
         when(userMapper.selectByIdForUpdate(2)).thenReturn(u);
         when(enrollmentMapper.countActiveInstructorEnrollmentsByUserId(2)).thenReturn(0);
         when(enrollmentMapper.countActiveTaEnrollmentsByUserId(2)).thenReturn(1);
+        when(enrollmentMapper.countActiveStudentEnrollmentsByUserId(2)).thenReturn(0);
+
+        assertDoesNotThrow(() -> guard.assertCanChangeRoleOrLevel(2, RoleEnum.USER.name(), "STUDENT"));
+
+        ApiException toInstructor = assertThrows(ApiException.class,
+                () -> guard.assertCanChangeRoleOrLevel(2, RoleEnum.USER.name(), "INSTRUCTOR"));
+        assertEquals(ErrorType.CONFLICT, toInstructor.getErrorType());
+
+        ApiException toSys = assertThrows(ApiException.class,
+                () -> guard.assertCanChangeRoleOrLevel(2, RoleEnum.SYSTEM_ADMIN.name(), "NOT_APPLICABLE"));
+        assertEquals(ErrorType.CONFLICT, toSys.getErrorType());
+
+        ApiException toTenantAdmin = assertThrows(ApiException.class,
+                () -> guard.assertCanChangeRoleOrLevel(2, RoleEnum.TENANT_ADMIN.name(), "NOT_APPLICABLE"));
+        assertEquals(ErrorType.CONFLICT, toTenantAdmin.getErrorType());
+
+        ApiException toNa = assertThrows(ApiException.class,
+                () -> guard.assertCanChangeRoleOrLevel(2, "NOT_APPLICABLE", "NOT_APPLICABLE"));
+        assertEquals(ErrorType.CONFLICT, toNa.getErrorType());
+    }
+
+    @Test
+    void activeStudent_blocksTenantAdmin() {
+        User u = user(4);
+        u.setLevel("STUDENT");
+        when(userMapper.selectByIdForUpdate(4)).thenReturn(u);
+        when(enrollmentMapper.countActiveInstructorEnrollmentsByUserId(4)).thenReturn(0);
+        when(enrollmentMapper.countActiveTaEnrollmentsByUserId(4)).thenReturn(0);
+        when(enrollmentMapper.countActiveStudentEnrollmentsByUserId(4)).thenReturn(1);
 
         ApiException ex = assertThrows(ApiException.class,
-                () -> guard.assertCanChangeRoleOrLevel(2, RoleEnum.USER.name(), "STUDENT"));
+                () -> guard.assertCanChangeRoleOrLevel(4, RoleEnum.TENANT_ADMIN.name(), "NOT_APPLICABLE"));
         assertEquals(ErrorType.CONFLICT, ex.getErrorType());
     }
 

@@ -1,26 +1,36 @@
 # Course 模块 API 参考（前端）
 
-给前端联调 / 写页面用。  
+课程、选课、课时表、事件、教学大纲、周次与资料。  
 Base URL：`http://localhost:8080/api`
+
+远程环境可用：`https://dev.xlearnedu.com:8080/api`
+
+相关模块（仅交叉引用，不在此重复其 API）：
+
+- 公告：[`announcement_module-api.md`](./announcement_module-api.md)
+- 分组：[`group_module-api.md`](./group_module-api.md)
+- 教学仪表盘与个人动态：[`dashboard_module-api.md`](./dashboard_module-api.md)
+
+登录 / Token：[`auth_module-api.md`](./auth_module-api.md)。
 
 ---
 
 ## 目录
 
 1. [怎么调用](#1-怎么调用)
-2. [典型页面流程](#2-典型页面流程)
-3. [角色与权限（产品约定）](#3-角色与权限产品约定)
-4. [枚举速查](#4-枚举速查)
+2. [典型业务流程](#2-典型业务流程)
+3. [角色与权限](#3-角色与权限)
+4. [枚举](#4-枚举)
 5. [Course CRUD](#5-course-crud)
-6. [Sessions](#6-sessions课时表)
-7. [Events](#7-events课程事件)
-8. [Members / TA](#8-members--ta)
-9. [My courses](#9-my-courses)
-10. [Admin enroll](#10-admin-enroll)
-11. [Syllabus](#11-syllabus)
-12. [Weeks](#12-weeks)
-13. [Materials](#13-materials)
-14. [文件流怎么接](#14-文件流怎么接)
+6. [Sessions](#6-sessions)
+7. [Events](#7-events)
+8. [Members](#8-members)
+9. [Students](#9-students)
+10. [TAs](#10-tas)
+11. [My courses](#11-my-courses)
+12. [Admin enroll](#12-admin-enroll)
+13. [Syllabus](#13-syllabus)
+14. [Weeks、Materials 与文件流](#14-weeks-materials-与文件流)
 15. [端点速查表](#15-端点速查表)
 16. [本地测试账号](#16-本地测试账号)
 
@@ -33,31 +43,36 @@ Base URL：`http://localhost:8080/api`
 | Header | 何时需要 |
 |--------|----------|
 | `Authorization: Bearer {accessToken}` | 几乎所有接口（先 `POST /v1/auth/login`） |
-| `Idempotency-Key: {uuid}` | **仅下列写接口**（每次请求用新 UUID） |
+| `Idempotency-Key: {uuid}` | **仅下列写接口**（每次新操作生成新 UUID） |
 | `Content-Type: application/json` | JSON body |
-| `Content-Type: multipart/form-data` | 上传文件（浏览器 FormData 会自动带） |
+| `Content-Type: multipart/form-data` | 文件上传（浏览器 `FormData` 会自动设置） |
 
-**幂等策略（Part 4）：**
+**Course 模块需要 `Idempotency-Key` 的写接口：**
 
-| 策略 | 接口 |
-|------|------|
-| **Required JSON** | Course Create/Patch/Archive/Unarchive/Reassignment；Add Student/Batch；Add TA / Patch TA Permissions；Week Create/Patch/Reorder/Publish/Unpublish；Material Rename/Reorder/Move；Syllabus Restore；Session Create/Patch；Course Event Create/Patch |
-| **Required Multipart** | `POST .../weeks/{weekId}/materials`（files[] 与/或 link，须 `Idempotency-Key`；Filter 只缓存 response，Interceptor 用文本字段+文件 index/元数据/SHA-256 fingerprint）；`POST .../syllabus` 上传 |
-| **Natural DELETE**（无 Redis） | Withdraw Student；Remove TA；Delete Course/Week/Material；Syllabus Clear；Delete Session/Event |
+- `POST /v2/courses`；`PATCH /v2/courses/{id}`；`POST .../archive`；`POST .../unarchive`；`POST .../primary-instructor`
+- `POST /v2/courses/{courseId}/students`；`POST .../students/batch`
+- `POST /v2/courses/{courseId}/tas`；`PATCH .../tas/{userId}/permissions`
+- `POST /v2/admin/courses/{courseId}/enrollments`；`POST .../enrollments/batch`
+- `POST/PATCH/PUT .../sessions`；`POST/PUT .../events`
+- `POST .../syllabus`（multipart 上传）；`POST .../syllabus/restore`
+- Week 写操作：`POST/PATCH/PUT .../weeks`，`POST .../publish`，`POST .../unpublish`
+- Material 写操作（删除除外）：`POST .../materials`（**multipart — 必须带 Key**），`PATCH`，`PUT .../reorder`，`POST .../move`
 
-说明：
+规则：
 
-- Multipart 缺 Key → `IDEMPOTENCY_KEY_REQUIRED`；Redis 不可用 → `503` 且不写 DB/MinIO。
-- Syllabus **Clear** 为逻辑删除（清空当前引用，历史版本与 MinIO 保留），自然幂等，**不**要求 Idempotency-Key。
-- Material 删除走 `minio_object_outbox`，不因 MinIO 短暂失败留下无追踪孤儿。
+- **每个新的业务操作**生成新的 `Idempotency-Key`。
+- **同一次操作因超时/断网重试**时复用原 Key，且 Method、Path、Query、Body 必须相同。
+- 相同 Key + 不同请求体 → `409 IDEMPOTENCY_KEY_MISMATCH`。
+- 需要 Key 的写接口缺 Key → `IDEMPOTENCY_KEY_REQUIRED`。
+- Multipart 资料上传缺 Key → `IDEMPOTENCY_KEY_REQUIRED`（在写入 MinIO 之前强制校验）。
 
-缺 Key → `IDEMPOTENCY_KEY_REQUIRED`。
+**天然幂等 DELETE**（无需 Redis Key）：退课学生（`DELETE .../students/{userId}`）；移除 TA（`DELETE .../tas/{userId}`）；删除 course / week / material / session / event；清空 syllabus。
 
-Token 无效 → `401`（`INVALID_TOKEN` / `UNAUTHORIZED`）。
+Token 无效 / 未认证 → 统一 `ApiResponse`：`401` + `INVALID_TOKEN` / `UNAUTHORIZED`。
 
 ### 1.2 统一 JSON 响应
 
-成功看 `data`；失败看 `code`（不要只看 HTTP status）。
+成功读 `data`；失败读 `code`。全局 `NON_NULL`：`data` 为 null 时该字段可能省略。
 
 ```json
 {
@@ -65,113 +80,285 @@ Token 无效 → `401`（`INVALID_TOKEN` / `UNAUTHORIZED`）。
   "code": "SUCCESS",
   "data": {},
   "message": "Success",
-  "timestamp": "2026-07-24T22:00:00Z"
+  "timestamp": "2026-07-28T01:00:00Z"
 }
 ```
 
-```json
-{
-  "status": 403,
-  "code": "NOT_COURSE_MEMBER",
-  "message": "Not a member of this course",
-  "timestamp": "2026-07-24T22:00:00Z"
-}
-```
+预览 / 下载 / ZIP 响应**不是**此 JSON 包装；见 [§14.4](#144-处理文件流)。
 
-预览 / 下载 / ZIP **不是**这层 JSON，见 [§14](#14-文件流怎么接)。
+### 1.3 日期与时间
 
-### 1.3 日期时间
-
-| 含义 | 格式示例 |
+| 含义 | 示例格式 |
 |------|----------|
 | 日期 | `"2026-01-01"` |
 | 时间 | `"09:00:00"` |
 | 日期时间 | `"2026-07-24T15:14:37"` |
 
-### 1.4 字段名注意
+Session / Event 时间使用课程租户时区（在 session / event 对象上以 `timezone` 返回）。
 
-| 接口 | 角色字段名 |
+### 1.4 字段名说明
+
+| API | 角色字段名 |
 |------|------------|
-| `GET /v2/me/courses` | `role` |
+| `GET /v2/me/courses` | `courseRole` 及兼容别名 `role` |
 | `GET .../members` | `courseRole` |
 
-前端按接口返回字段用，不要混用。
-
-`orderPosition`（周、资料）：从 **0** 开始递增。
+`orderPosition`（weeks、materials）：从 0 起递增。
 
 ---
 
-## 2. 典型页面流程
+## 2. 典型业务流程
 
-### 2.1 学生进课
+### 2.1 学生进入课程
 
-1. `POST /v1/auth/login` → 存 `accessToken`
-2. `GET /v2/me/courses` → 课列表 + 每门课的 `role`
-3. 进某课：`GET /v2/courses/{id}`
-4. 并行：`GET .../sessions`、`GET .../events`、`GET .../syllabus`、`GET .../weeks`（学生只看到已发布周）
+1. `POST /v1/auth/login` → 保存 `accessToken`
+2. `GET /v2/me/courses?state=Active&page=0&size=20` → 分页返回已选课程
+3. 打开课程：`GET /v2/courses/{id}`
+4. 并行请求：`GET .../sessions`、`GET .../events`、`GET .../syllabus`、`GET .../weeks`（学生仅可见 **Published** 周次）
 
-> 学生端**没有**自助加入课程的 API；入课由 Admin 调 §10，或后台处理。
+未选课或跨租户 → `404 COURSE_NOT_FOUND`（`requireVisibleCourse` 防枚举；**不是** `NOT_COURSE_MEMBER`）。
 
-### 2.2 教师备课
+**没有**学生自助选课 API。选课由 Course Manager（§9）或平台 Admin（§12）完成。
 
-1. `POST /v2/courses`（需 `level=INSTRUCTOR`；建完自己成为该课 Instructor）
-2. `POST .../sessions`（排课）
-3. `POST .../syllabus`（上传 PDF）
-4. `POST .../weeks` → 上传 materials → `POST .../weeks/{id}/publish`
-5. 需要时：`POST .../events`；管人：`GET .../members`、提升 TA
+```mermaid
+sequenceDiagram
+  participant FE as Frontend
+  participant API as CourseAPI
+  FE->>API: POST /v1/auth/login
+  API-->>FE: accessToken
+  FE->>API: GET /v2/me/courses
+  API-->>FE: MyCoursePageResponse
+  FE->>API: GET /v2/courses/{id}
+  alt Visible member
+    API-->>FE: CourseResponse
+    par Content
+      FE->>API: GET .../sessions
+      FE->>API: GET .../events
+      FE->>API: GET .../syllabus
+      FE->>API: GET .../weeks
+    end
+  else Not member / cross-tenant
+    API-->>FE: 404 COURSE_NOT_FOUND
+  end
+```
 
-### 2.3 管理员给学生入课
+### 2.2 教师创建并准备课程
 
-1. Admin 登录（`role: "ADMIN"`）
-2. `POST /v2/admin/courses/{courseId}/enrollments`，body：`{ "userId": 385 }`
-3. 学生再 `GET /v2/me/courses` 即可看到该课
+1. `POST /v2/courses`，带 `primaryInstructorUserId`（Admin 调用时还需 `tenantId`）及 `Idempotency-Key`
+2. `POST .../sessions`（重复课时表）
+3. `POST .../syllabus`（multipart PDF 上传 + Key）
+4. `POST .../weeks` → `POST .../weeks/{weekId}/materials`（multipart + **必须 Key**）→ `POST .../weeks/{weekId}/publish`
+5. 可选：`POST .../events`
+
+平台 `level=INSTRUCTOR` 可省略 `primaryInstructorUserId`（默认为本人）。创建时租户不匹配 → `TENANT_MISMATCH`。幂等写操作缺 Key → `IDEMPOTENCY_KEY_REQUIRED`。
+
+```mermaid
+sequenceDiagram
+  participant FE as Frontend
+  participant API as CourseAPI
+  FE->>API: POST /v2/courses Idempotency-Key + primaryInstructorUserId tenantId
+  API-->>FE: CourseResponse state=Active
+  FE->>API: POST .../sessions
+  FE->>API: POST .../syllabus multipart+Key
+  FE->>API: POST .../weeks
+  FE->>API: POST .../weeks/{id}/materials multipart+Key
+  alt Missing Key on materials
+    API-->>FE: IDEMPOTENCY_KEY_REQUIRED
+  else OK
+    API-->>FE: MaterialResponse[]
+    FE->>API: POST .../weeks/{id}/publish
+    API-->>FE: WeekResponse state=Published
+  end
+```
+
+### 2.3 Course Manager 添加学生
+
+**Course Manager** = `SYSTEM_ADMIN` | 同租户 `TENANT_ADMIN` | Active Primary Instructor。**TA 永远不是 Manager。**
+
+1. Manager 登录
+2. `POST /v2/courses/{courseId}/students` `{ "userId": N }`（+ Key），或 `POST .../students/batch`（+ Key）
+3. 学生刷新 `GET /v2/me/courses`
+
+非 Manager 写操作 → `403 FORBIDDEN`。
+
+```mermaid
+sequenceDiagram
+  participant M as CourseManager
+  participant API as CourseAPI
+  participant S as Student
+  M->>API: POST .../students userId+Key
+  alt Not Manager
+    API-->>M: 403 FORBIDDEN
+  else OK
+    API-->>M: MemberResponse courseRole=Student
+    S->>API: GET /v2/me/courses
+    API-->>S: course appears in items
+  end
+```
+
+### 2.4 平台 Admin 为学生选课
+
+1. Admin 登录（`role: "ADMIN"` 或 `"SYSTEM_ADMIN"` → JWT `SYSTEM_ADMIN`）
+2. `POST /v2/admin/courses/{courseId}/enrollments` `{ "userId": N }`（+ Key）
+3. 学生通过 `GET /v2/me/courses` 看到课程
+
+调用方已是 Course Manager 时优先用课程域 `POST .../students`；Admin 路径供平台运维使用。
+
+```mermaid
+sequenceDiagram
+  participant A as SystemAdmin
+  participant API as CourseAPI
+  A->>API: POST /v1/auth/login role=ADMIN
+  API-->>A: accessToken SYSTEM_ADMIN
+  A->>API: POST /v2/admin/courses/{id}/enrollments userId+Key
+  API-->>A: MemberResponse
+```
+
+### 2.5 提升 TA 并查看成员
+
+目标用户必须是平台 `level=STUDENT`，且该课已有 **Active Student** enrollment（同一条 Enrollment 原地改为 TA）。
+
+1. Course Manager：`POST /v2/courses/{courseId}/tas` `{ "userId": N }`（+ Key）→ 审计 `TA_ADDED`
+2. 可选：`PATCH .../tas/{userId}/permissions`（+ Key；`requireCourseManager` **只验调用者**，目标用户另验 ACTIVE/USER/STUDENT/同租户）
+3. `GET .../members?courseRole=TA&page=0&size=20`
+4. 撤销：`DELETE .../tas/{userId}` → 恢复 **Active Student**（非停用），审计 `TA_REMOVED`；`assignmentSubmitFrozen` 保持 true
+
+提升时：四权限默认 false；结束 Group Membership（`END_ON_TA_PROMOTION`）；Quiz `onMembershipIneligible`。`level=INSTRUCTOR` → `409 LEVEL_ENROLLMENT_MISMATCH`。
+
+```mermaid
+sequenceDiagram
+  participant M as CourseManager
+  participant API as CourseAPI
+  M->>API: POST .../tas userId+Key
+  API-->>M: MemberResponse courseRole=TA level仍STUDENT
+  opt Grant permissions
+    M->>API: PATCH .../tas/{userId}/permissions canManageCourseEvents+Key
+    API-->>M: MemberResponse updated flags
+  end
+  M->>API: GET .../members courseRole=TA
+  API-->>M: MemberPageResponse
+  M->>API: DELETE .../tas/{userId}
+  API-->>M: MemberResponse courseRole=Student active=true
+```
+
+### 2.6 周次发布流程
+
+1. Manager：`POST .../weeks` `{ "title": "Week 1" }`
+2. Manager 或 Active TA：上传资料（multipart + Key）
+3. Manager：`POST .../weeks/{weekId}/publish`
+4. 可选：`POST .../unpublish`，`PUT .../weeks/reorder`
+
+已归档课程写操作 → `COURSE_ARCHIVED`。
+
+```mermaid
+sequenceDiagram
+  participant M as CourseManager
+  participant API as CourseAPI
+  M->>API: POST .../weeks title+Key
+  API-->>M: WeekResponse state=Draft
+  M->>API: POST .../materials multipart+Key
+  API-->>M: MaterialResponse[]
+  M->>API: POST .../weeks/{id}/publish+Key
+  API-->>M: WeekResponse state=Published
+  opt Reorder
+    M->>API: PUT .../weeks/reorder weekIds+Key
+    API-->>M: WeekResponse[]
+  end
+```
+
+### 2.7 归档课程与更换主讲教师
+
+1. Course Manager：`POST /v2/courses/{id}/archive` 或 `.../unarchive`（+ Key）
+2. **仅** `SYSTEM_ADMIN` 或同租户 `TENANT_ADMIN`：`POST /v2/courses/{id}/primary-instructor` `{ "primaryInstructorUserId": N }`（+ Key）
+
+Primary Instructor **不能**自行更换；非 Admin 调用 → `403 FORBIDDEN`。
+
+```mermaid
+sequenceDiagram
+  participant M as CourseManager
+  participant A as TenantOrSystemAdmin
+  participant API as CourseAPI
+  M->>API: POST /v2/courses/{id}/archive+Key
+  API-->>M: CourseResponse state=Archived
+  M->>API: POST /v2/courses/{id}/unarchive+Key
+  API-->>M: CourseResponse state=Active
+  A->>API: POST /v2/courses/{id}/primary-instructor primaryInstructorUserId+Key
+  alt Not admin
+    API-->>A: 403 FORBIDDEN
+  else OK
+    API-->>A: CourseResponse primaryInstructor updated
+  end
+```
 
 ---
 
-## 3. 角色与权限（产品约定）
+## 3. 角色与权限
 
-课程角色（在某门课里）：`Instructor` / `TA` / `Student`。  
-用 `GET /v2/me/courses` 的 `role` 控制按钮显隐。
+### 3.1 平台角色 vs 课程角色
 
-| 能力 | Instructor | TA | Student |
-|------|:----------:|:--:|:-------:|
-| 看课详情 / sessions / events / syllabus | ✓ | ✓ | ✓ |
-| 看 weeks（仅 Published） | ✓ | ✓ | ✓ |
-| 看 weeks（含 Draft） | ✓（平台 Admin 也可） | | |
-| 创建 week | ✓（课未归档） | | |
-| 修改 week（重命名 / 重排 / 发布 / 取消发布） | ✓（课未归档） | | |
-| 删除 week | ✓（课未归档；周内无 materials） | | |
-| 上传 / 创建 material（文件或链接） | ✓（课未归档） | ✓（课未归档） | |
-| 修改 material（重命名 / 重排 / 移动到其他周） | ✓（课未归档） | | |
-| 删除自己上传的 material | ✓ | ✓（课未归档） | |
-| 删除他人上传的 material | ✓（课未归档） | | |
-| 预览 / 下载 material | ✓（已入课；学生看不到未发布周里的） | ✓ | ✓ |
-| 改 sessions / members / syllabus | ✓ | | |
-| 改 events | ✓ | 需 `canManageCourseEvents` | |
-| 建课 | 仅平台 `level=INSTRUCTOR`（建完自己是该课 Instructor） | | |
-| 归档 / 取消归档 / 更新 / 删除课 / 转让 Instructor | ✓（后端强制 Instructor） | | |
-| 停用成员（Student/TA） | ✓ | | |
-| Admin 入课 / 批量入课 / 停用 enrollment | 平台 Admin，见 §10 | | |
-| 课程列表检索 `GET /v2/courses` | 平台 Admin 或 Instructor（见 §5.0） | | |
+| 层级 | 取值 | 来源 |
+|------|------|------|
+| 平台 JWT | `SYSTEM_ADMIN`、`TENANT_ADMIN`、`USER` | 登录 `role`（Admin `"ADMIN"` / `"SYSTEM_ADMIN"` → `SYSTEM_ADMIN`） |
+| 用户 level（USER 账号） | `STUDENT`、`INSTRUCTOR`、… | 用户资料 |
+| 课程选课 | `Instructor`、`TA`、`Student` | 选课记录上的 `courseRole` |
 
-课 `state=Archived` 时：大纲 / 周次 / 资料 / sessions / events / TA / 入课等写操作会 `COURSE_ARCHIVED`。读一般仍可。
+课程内 **Primary Instructor** = 唯一一条 `courseRole=Instructor` 且 active 的选课记录。
 
-常见错误：`NOT_COURSE_MEMBER`、`NOT_COURSE_INSTRUCTOR`、`ACCESS_DENIED`、`COURSE_ARCHIVED`。
+### 3.2 Course Manager（写权限权威定义）
+
+**Course Manager** = 以下任一：
+
+- 平台 `SYSTEM_ADMIN`
+- 同租户 `TENANT_ADMIN`
+- Active Primary Instructor（`courseRole=Instructor`，`active=true`）
+
+**TA 永远不是 Course Manager** — 即使四个权限标志全部为 true。
+
+兼容矩阵：平台 `level=STUDENT` 可任课内 `Student`/`TA`；`level=INSTRUCTOR` 仅可任 `Instructor`。课内 TA 的全局 level **保持 STUDENT**。
+
+`requireCourseManager` 失败返回 `403 FORBIDDEN`（不是 `NOT_COURSE_INSTRUCTOR`）。`requireCourseManager` **只校验调用者**，不校验目标成员租户。
+
+### 3.3 能力矩阵（摘要）
+
+| 能力 | Course Manager | TA | Student |
+|------|:--------------:|:--:|:-------:|
+| 查看课程 / sessions / events / syllabus | ✓ | ✓ | ✓ |
+| 查看 Published 周次与资料 | ✓ | ✓ | ✓ |
+| 查看 Draft 周次 | ✓ | ✓ | |
+| 创建 / 重命名 / 排序 / 发布周次 | ✓ | | |
+| 上传资料（文件 / 链接） | ✓ | ✓ | |
+| 重命名 / 排序 / 移动资料 | ✓ | | |
+| 删除资料 | ✓ 任意 | ✓ 仅自己上传 | |
+| 编辑 sessions | ✓ | | |
+| 编辑课程 events | ✓ | 需 `canManageCourseEvents` | |
+| PATCH 课程 / archive / unarchive / delete | ✓ | | |
+| 添加 / 退课学生 | ✓（`/students`） | | |
+| 添加 / 移除 TA / 修改 TA 权限 | ✓（`/tas`） | | |
+| 列出成员（`GET .../members`） | ✓ | | |
+| 更换 primary instructor | 仅 Admin / TenantAdmin | | |
+| 浏览 `GET /v2/courses` | Admin；平台 / 课程 Instructor | | |
+
+`course.state=Archived` 时：内容 / 选课写操作返回 `COURSE_ARCHIVED`；读操作通常仍可用。
+
+不可见 / 非成员访问课程 → `404 COURSE_NOT_FOUND`（防枚举）。
+
+学生选课变更：**`/v2/courses/{courseId}/students`**。TA 变更：**`/v2/courses/{courseId}/tas`**。成员列表 **仅 GET**，路径 `/members`。
 
 ---
 
-## 4. 枚举速查
+## 4. 枚举
 
-| 字段 | 合法值 |
+| 字段 | 允许值 |
 |------|--------|
 | `course.state` | `Active` \| `Archived` |
-| `role` / `courseRole` | `Instructor` \| `TA` \| `Student` |
+| `courseRole` / `role` | `Instructor` \| `TA` \| `Student` |
 | session `type` | `Lecture` \| `Lab` \| `Tutorial` |
 | session `dayOfWeek` | `MON` `TUE` `WED` `THU` `FRI` `SAT` `SUN` |
 | week `state` | `Draft` \| `Published` |
 | material `materialType` | `FILE` \| `LINK` |
+| batch item `status` | `SUCCESS` \| `ERROR` |
 
-非法枚举 → 多为 `400 BAD_REQUEST`。
+非法枚举 → 通常 `400 BAD_REQUEST`。
 
 ---
 
@@ -179,210 +366,125 @@ Token 无效 → `401`（`INVALID_TOKEN` / `UNAUTHORIZED`）。
 
 前缀：`/v2/courses`
 
-### 5.0 课程列表检索 — `GET /v2/courses`
+### 5.1 浏览 — `GET /v2/courses`
 
 | | |
 |--|--|
-| 谁可以调 | 平台 **Admin**（全站）；平台 `level=INSTRUCTOR` 或课内 Instructor（仅自己的课） |
-| 纯 Student | `403 ACCESS_DENIED` |
-| Query | 均可选：`q`（匹配 courseCode/title）、`state`（`Active`/`Archived`）、`page`（默认 0）、`size`（默认 20，最大 100） |
+| 谁 | `SYSTEM_ADMIN`（全租户）；`TENANT_ADMIN`（本租户）；平台 `level=INSTRUCTOR` 或 active 课程 Instructor（自己的课程） |
+| 普通 Student / TA | `403 ACCESS_DENIED` |
+| Query | `q`、`state`（`Active`/`Archived`）、`tenantId`（仅 SYSTEM_ADMIN 筛选）、`page`（默认 0）、`size`（默认 20，最大 100） |
 
-成功 `data`：
+成功 `data`（`CoursePageResponse`）：
 
 ```json
 {
-  "items": [ { "id": 9, "courseCode": "DEMO", "title": "...", "state": "Active" } ],
+  "items": [
+    {
+      "id": 9,
+      "courseId": 9,
+      "tenantId": 1,
+      "courseCode": "DEMO",
+      "title": "Demo Course",
+      "state": "Active",
+      "instructorId": 402,
+      "primaryInstructor": { "userId": 402, "name": "Teach Test", "email": "teachtest2@example.com" }
+    }
+  ],
   "page": 0,
   "size": 20,
   "total": 1
 }
 ```
 
-### 5.1 创建课程 — `POST /v2/courses`
+### 5.2 创建 — `POST /v2/courses`
 
 | | |
 |--|--|
-| 谁可以调 | 平台 `level=INSTRUCTOR`；`instructorId` 也必须是 INSTRUCTOR。建完该 `instructorId` 成为课程 Instructor |
-| 需要幂等 Key | 是 |
-| 学生建课 | `403 ACCESS_DENIED` |
+| 谁 | 平台 `level=INSTRUCTOR`（自己为主讲）；`TENANT_ADMIN` / `SYSTEM_ADMIN` |
+| Key | 需要 |
 
 **Body**
 
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| courseCode | string | 是 | |
-| title | string | 是 | |
-| termStartDate | date | 是 | |
-| termEndDate | date | 是 | ≥ start |
-| instructorId | int | 是 | 通常填自己的 userId |
-| tenantId | int | **是** | 必须传；缺省 → `400 PARAM_MISSING`。创建者与 `instructorId` 的 `user.tenantId` 必须等于该值，否则 `400 TENANT_MISMATCH`；租户不存在 → `404 TENANT_NOT_FOUND`。当前前端写死传 `1`（种子 Default 租户），后端仍按真实 `tenantId` 校验 |
-| description | string | 否 | |
-| location | string | 否 | |
+| 字段 | 必填 | 说明 |
+|------|------|------|
+| `courseCode` | 是 | 最长 32 字符 |
+| `title` | 是 | |
+| `termStartDate` / `termEndDate` | 是 | end ≥ start |
+| `primaryInstructorUserId` | Admin：是；Instructor：可选（默认本人） | 兼容别名 `instructorId` 仍接受 |
+| `tenantId` | SYSTEM_ADMIN：是；其他：可选（默认调用方租户） | 不匹配 → `TENANT_MISMATCH` |
+| `description`、`location` | 否 | |
 
 ```json
 {
   "tenantId": 1,
-  "courseCode": "DEMO-ENROLL",
+  "courseCode": "DEMO-2026",
   "title": "Demo Course With Students",
   "termStartDate": "2026-01-01",
   "termEndDate": "2026-06-30",
-  "instructorId": 402,
+  "primaryInstructorUserId": 402,
   "description": "optional"
 }
 ```
 
-成功 `data`：
+成功 `data`（`CourseResponse`）：`state=Active`，`primaryInstructor` 已填充，`instructorId` 与 primary user id 一致。
 
-```json
-{
-  "id": 9,
-  "tenantId": 1,
-  "courseCode": "DEMO-ENROLL",
-  "title": "Demo Course With Students",
-  "termStartDate": "2026-01-01",
-  "termEndDate": "2026-06-30",
-  "description": "optional",
-  "location": null,
-  "instructorId": 402,
-  "state": "Active",
-  "archivedAt": null,
-  "creatorId": 402,
-  "createdAt": "2026-07-24T14:58:32",
-  "updatedAt": "2026-07-24T14:58:32"
-}
-```
+### 5.3 详情 — `GET /v2/courses/{id}`
 
-错误：`PARAM_MISSING`（含缺 `tenantId`）、`BAD_REQUEST`、`USER_NOT_FOUND`、`TENANT_NOT_FOUND`、`TENANT_MISMATCH`。
+对已选课成员（同租户）及 Admin 可见。不可见 → `404 COURSE_NOT_FOUND`。
 
----
-
-### 5.2 获取课程 — `GET /v2/courses/{id}`
+### 5.4 更新 — `PATCH /v2/courses/{id}`
 
 | | |
 |--|--|
-| 谁可以调 | 已入课成员；未入课 → `403 NOT_COURSE_MEMBER`。跨租户（`user.tenantId ≠ course.tenantId`，非 Admin）→ `404 COURSE_NOT_FOUND` |
+| 谁 | Course Manager |
+| Key | 需要 |
+| Body | 部分更新：`courseCode`、`title`、`termStartDate`、`termEndDate`、`description`、`location`、`clearDescription`、`clearLocation` |
+| Body 禁止 | `tenantId`、`primaryInstructorUserId`、`instructorId`（用 §5.7） |
+| 已归档 | `COURSE_ARCHIVED` |
 
-成功 `data` 形状同创建。
+使用 **PATCH**，不是 PUT。
 
-```json
-{
-  "status": 403,
-  "code": "NOT_COURSE_MEMBER",
-  "message": "Not a member of this course"
-}
-```
+### 5.5 删除 — `DELETE /v2/courses/{id}`
 
----
+仅 Course Manager。空课程才可删（无依赖、仅一条 instructor 选课）。否则 `409 CONFLICT` — 请改用 archive。
 
-### 5.3 更新课程 — `PUT /v2/courses/{id}`
+### 5.6 Archive / unarchive
 
-| | |
-|--|--|
-| 谁可以调 | 该课 Instructor（后端强制；非 Instructor → `NOT_COURSE_INSTRUCTOR`） |
-| 需要幂等 Key | 是 |
-| Body | 字段均可选：`courseCode` `title` `termStartDate` `termEndDate` `description` `location` |
-| 禁止 | **不要传 `instructorId`**；传入 → `400 BAD_REQUEST`（转让 Instructor 另开接口） |
+- `POST /v2/courses/{id}/archive`（+ Key）→ `state=Archived`，设置 `archivedAt`
+- `POST /v2/courses/{id}/unarchive`（+ Key）→ `state=Active`
 
-成功：`200`，`data` 为更新后课程。
+Course Manager。已处于目标状态时幂等。
 
----
-
-### 5.4 删除课程 — `DELETE /v2/courses/{id}`
+### 5.7 更换主讲教师 — `POST /v2/courses/{id}/primary-instructor`
 
 | | |
 |--|--|
-| 谁可以调 | 该课 Instructor（后端强制） |
+| 谁 | **仅** `SYSTEM_ADMIN` 或同租户 `TENANT_ADMIN` — **不是** Primary Instructor 自助 |
+| Key | 需要 |
+| Body | `{ "primaryInstructorUserId": 403 }` |
+| 目标用户 | 须为同租户 active `USER` 且 `level=INSTRUCTOR` |
+| 已归档 | `COURSE_ARCHIVED` |
+| 非 Admin | `403 FORBIDDEN` |
 
-成功：`data` 为 `null`。  
-课上还有成员 → `409 CONFLICT`：
-
-```json
-{
-  "status": 409,
-  "code": "CONFLICT",
-  "message": "Course cannot be deleted while it still has enrollments"
-}
-```
+效果：更新 `course.instructorId`；停用原 primary；将目标提升为唯一 active Instructor 选课。
 
 ---
 
-### 5.5 归档 — `POST /v2/courses/{id}/archive`
-
-| | |
-|--|--|
-| 谁可以调 | 该课 Instructor（后端强制） |
-| 需要幂等 Key | 是 |
-
-成功：`data.state = "Archived"`，带 `archivedAt`。已归档再调仍 `200`。
-
----
-
-### 5.6 取消归档 — `POST /v2/courses/{id}/unarchive`
-
-| | |
-|--|--|
-| 谁可以调 | 该课 Instructor（后端强制） |
-| 需要幂等 Key | 是 |
-
-成功：`data.state = "Active"`，`archivedAt = null`。已是 Active 再调仍 `200`。
-
----
-
-### 5.7 转让 Instructor — `POST /v2/courses/{id}/transfer-instructor`
-
-| | |
-|--|--|
-| 谁可以调 | 当前课 Instructor |
-| 需要幂等 Key | 是 |
-| Body | `{ "newInstructorId": 403 }`（须存在且平台 `level=INSTRUCTOR`） |
-| 课已归档 | `COURSE_ARCHIVED` |
-
-事务效果：`course.instructorId` 更新；旧 Instructor → Student；新用户成为唯一 Instructor（可新建或升级已有 Student/TA enrollment）。
-
----
-
-## 6. Sessions（课时表）
+## 6. Sessions
 
 前缀：`/v2/courses/{courseId}/sessions`
 
-### 6.1 列表 — `GET .../sessions`
+重复周课时表（与 §7 中按日期的 **Events** 不同）。
 
-已入课成员。成功示例：
+| Method | Path | 写权限 | Key |
+|--------|------|--------|-----|
+| GET | `/` | 可见成员 | |
+| GET | `/{sessionId}` | 可见成员 | |
+| POST | `/` | Course Manager | 是 |
+| PUT | `/{sessionId}` | Course Manager | 是 |
+| DELETE | `/{sessionId}` | Course Manager | |
 
-```json
-{
-  "status": 200,
-  "code": "SUCCESS",
-  "data": [
-    {
-      "id": 4,
-      "courseId": 9,
-      "type": "Lecture",
-      "dayOfWeek": "MON",
-      "startTime": "09:00:00",
-      "endTime": "10:30:00",
-      "location": "A101",
-      "createdAt": "2026-07-24T15:14:37",
-      "updatedAt": "2026-07-24T15:14:37"
-    }
-  ]
-}
-```
-
-### 6.2 单个 — `GET .../sessions/{sessionId}`
-
-按 id 查单条。已入课。不存在 → `404 SESSION_NOT_FOUND`。
-
-### 6.3 创建 — `POST .../sessions`
-
-Instructor；需要幂等 Key；课已归档 → `400 COURSE_ARCHIVED`。Body 均必填：
-
-| 字段 | 约束 |
-|------|------|
-| type | Lecture / Lab / Tutorial |
-| dayOfWeek | MON…SUN |
-| startTime / endTime | end **>** start |
-| location | string |
+**创建 body**（全部必填）：
 
 ```json
 {
@@ -394,160 +496,147 @@ Instructor；需要幂等 Key；课已归档 → `400 COURSE_ARCHIVED`。Body �
 }
 ```
 
-学生调 → `403 NOT_COURSE_INSTRUCTOR`。
-
-### 6.4 更新 — `PUT .../sessions/{sessionId}`
-
-Instructor；需要幂等 Key；字段均可选；课已归档 → `COURSE_ARCHIVED`。
-
-### 6.5 删除 — `DELETE .../sessions/{sessionId}`
-
-Instructor；课已归档 → `COURSE_ARCHIVED`。成功 `data: null`；再 GET → `SESSION_NOT_FOUND`。
+成功项含 `timezone`（租户 IANA id）。已归档课程写操作 → `COURSE_ARCHIVED`。非 Manager → `FORBIDDEN`。
 
 ---
 
-## 7. Events（课程事件）
+## 7. Events
 
-前缀：`/v2/courses/{courseId}/events`  
-写：Instructor，或 `canManageCourseEvents=true` 的 TA。
+前缀：`/v2/courses/{courseId}/events`
 
-### 7.1 列表 — `GET .../events`
+一次性日历条目（考试、外出等）。
 
-已入课。成功 `data` 示例：
+| Method | Path | 写权限 | Key |
+|--------|------|--------|-----|
+| GET | `/` | 可见成员 | |
+| GET | `/{eventId}` | 可见成员 | |
+| POST | `/` | Course Manager **或** 带 `canManageCourseEvents` 的 Active TA | 是 |
+| PUT | `/{eventId}` | 同 POST | 是 |
+| DELETE | `/{eventId}` | 同 POST | |
 
-```json
-[
-  {
-    "id": 2,
-    "courseId": 9,
-    "name": "Midterm Exam",
-    "date": "2026-03-15",
-    "startTime": "14:00:00",
-    "endTime": "16:00:00",
-    "location": "Hall B",
-    "description": "Bring ID",
-    "createdAt": "2026-07-24T15:00:00",
-    "updatedAt": "2026-07-24T15:00:00"
-  }
-]
-```
-
-### 7.2 单个 — `GET .../events/{eventId}`
-
-按 id 查单条。不存在 → `404 COURSE_EVENT_NOT_FOUND`。
-
-### 7.3 创建 — `POST .../events`
-
-需要幂等 Key；课已归档 → `400 COURSE_ARCHIVED`。
-
-| 字段 | 必填 |
-|------|------|
-| name, date, startTime, endTime | 是（end > start） |
-| location, description | 否 |
-
-无权限 → `403 ACCESS_DENIED`。
-
-### 7.4 更新 — `PUT .../events/{eventId}`
-
-| | |
-|--|--|
-| 谁可以调 | Instructor，或 `canManageCourseEvents=true` 的 TA |
-| 需要幂等 Key | 是 |
-| 成功 | `200`，`data` 为更新后的单条 event |
-| 常见错误 | `403 ACCESS_DENIED`；`400 COURSE_ARCHIVED`；`404 COURSE_EVENT_NOT_FOUND`；时间非法 `400 BAD_REQUEST` |
-
-**Body（字段均可选，传什么改什么）**
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| name | string | 不能传空串（会 `BAD_REQUEST`） |
-| date | date | `"2026-03-15"` |
-| startTime | time | `"14:00:00"` |
-| endTime | time | 合并后须 **>** startTime |
-| location | string | 传 `""` 会清成 `null` |
-| description | string | 传 `""` 会清成 `null` |
-
-请求示例（只改名称和说明）：
+**创建 body**：
 
 ```json
 {
-  "name": "Midterm Exam Updated",
-  "description": "Bring student ID"
+  "name": "Midterm Exam",
+  "date": "2026-03-15",
+  "startTime": "14:00:00",
+  "endTime": "16:00:00",
+  "location": "Hall B",
+  "description": "optional"
 }
 ```
 
-成功 `data` 形状同列表单条（含 `id`、`courseId`、时间地点、`updatedAt` 等）。
-
-### 7.5 删除 — `DELETE .../events/{eventId}`
-
-| | |
-|--|--|
-| 谁可以调 | Instructor，或 `canManageCourseEvents=true` 的 TA |
-| 需要幂等 Key | 否 |
-| 课已归档 | `400 COURSE_ARCHIVED` |
-| 成功 | `200`，`data` 为 `null` |
-| 常见错误 | `403 ACCESS_DENIED`；不存在 → `404 COURSE_EVENT_NOT_FOUND` |
-
-删除后再 `GET .../events/{eventId}` → `404 COURSE_EVENT_NOT_FOUND`。
+TA 无 `canManageCourseEvents` → `403 FORBIDDEN`。已归档 → `COURSE_ARCHIVED`。
 
 ---
 
-## 8. Members / TA
+## 8. Members
 
-前缀：`/v2/courses/{courseId}/members`  
-课已归档时不能改 TA / 停用成员。
+前缀：`/v2/courses/{courseId}/members`
 
-### 8.1 成员列表 — `GET .../members`
+**仅 GET。** 学生 / TA 选课变更已移至 §9 与 §10。
 
-仅 Instructor。成功单条示例：
-
-```json
-{
-  "id": 6,
-  "courseId": 9,
-  "userId": 385,
-  "userName": "Alex Rivera",
-  "userEmail": "regtest1@example.com",
-  "courseRole": "Student",
-  "canGrade": false,
-  "canPostAnnouncements": false,
-  "canManageGroups": false,
-  "canManageCourseEvents": false,
-  "active": true,
-  "enrolledAt": "2026-07-24T14:58:32",
-  "createdAt": "2026-07-24T14:58:32",
-  "updatedAt": "2026-07-24T14:58:32"
-}
-```
-
-### 8.2 提升 TA — `POST .../members/{userId}/ta`
-
-把该课里的 **Student** 提升为 **TA**，并可顺带设置 TA 权限开关。
+### 8.1 列表 — `GET .../members`
 
 | | |
 |--|--|
-| 方法与路径 | `POST /v2/courses/{courseId}/members/{userId}/ta` |
-| 谁可以调 | 仅 Instructor |
-| 需要幂等 Key | 是 |
-| Path | `courseId`：课程 id；`userId`：被提升用户的 userId（须已是该课成员） |
-| 课状态 | 已归档 → `400 COURSE_ARCHIVED` |
+| 谁 | 仅 Course Manager |
+| Query | `courseRole`、`active`、`q`（姓名 / 邮箱）、`page`、`size` |
 
-**前置条件（目标用户）**
+成功 `data`（`MemberPageResponse`）：
 
-- 已在该课 Enrollment 中，且 `active=true`
-- 当前 `courseRole` 必须是 `Student`（已是 TA / Instructor 不能再升）
+```json
+{
+  "items": [
+    {
+      "id": 101,
+      "courseId": 9,
+      "userId": 385,
+      "userName": "Reg Test One",
+      "userEmail": "regtest1@example.com",
+      "courseRole": "Student",
+      "canGrade": false,
+      "canPostAnnouncements": false,
+      "canManageGroups": false,
+      "canManageCourseEvents": false,
+      "active": true,
+      "enrolledAt": "2026-07-24T16:00:00"
+    }
+  ],
+  "page": 0,
+  "size": 20,
+  "total": 1
+}
+```
 
-**Body（可选）**
+非 Manager → `403 FORBIDDEN`。
 
-可不传 body，或传 `{}`：四个权限默认全是 `false`。  
-只有显式传 `true` 才会打开对应权限（未传 / `false` / `null` 都当关）。
+---
 
-| 字段 | 类型 | 缺省 | 含义（给前端控能力用） |
-|------|------|------|------------------------|
-| canGrade | boolean | false | 是否可批改（作业等模块用） |
-| canPostAnnouncements | boolean | false | 是否可发公告 |
-| canManageGroups | boolean | false | 是否可管小组 |
-| canManageCourseEvents | boolean | false | 是否可增删改本课 Events |
+## 9. Students
+
+前缀：`/v2/courses/{courseId}/students`
+
+所有路由需 **Course Manager**。
+
+| Method | Path | Body | Key |
+|--------|------|------|-----|
+| POST | `/` | `AdminEnrollRequest`：`{ "userId": N }` | 是 |
+| POST | `/batch` | `AdminBatchEnrollRequest`：`{ "userIds": [], "emails": [] }` | 是 |
+| DELETE | `/{userId}` | — | 否（天然幂等） |
+
+Batch 最多处理 **100** 个标识。逐项结果（`BatchStudentEnrollResponse`）：
+
+```json
+{
+  "requestedCount": 2,
+  "successCount": 1,
+  "failureCount": 1,
+  "items": [
+    {
+      "userId": 385,
+      "status": "SUCCESS",
+      "errorType": null,
+      "message": null,
+      "member": { "userId": 385, "courseRole": "Student", "active": true }
+    },
+    {
+      "userId": 999,
+      "status": "ERROR",
+      "errorType": "USER_NOT_FOUND",
+      "message": "...",
+      "member": null
+    }
+  ]
+}
+```
+
+退课将 `active=false`（软退课）。目标须为 active Student；否则 `409 CONFLICT`。非 Manager → `FORBIDDEN`。
+
+---
+
+## 10. TAs
+
+前缀：`/v2/courses/{courseId}/tas`
+
+所有路由需 **Course Manager**。TA 是**课程角色**：账号须 `role=USER` + `level=STUDENT`；同一条 Enrollment 上 `Student` ↔ `TA`。
+
+| Method | Path | Body | Key |
+|--------|------|------|-----|
+| POST | `/` | `{ "userId": N }` — **Active Student → Active TA** | 是 |
+| PATCH | `/{userId}/permissions` | 四个布尔（可部分更新） | 是 |
+| DELETE | `/{userId}` | — **Active TA → Active Student**（非停用） | 否 |
+
+**POST 成功：** `courseRole=TA`，`active=true`，四权限 false，`assignmentSubmitFrozen=true`；Group 以 `END_ON_TA_PROMOTION` 结束；Quiz 不合格联动；审计 `TA_ADDED`。已是 Active TA → 200 幂等、不写审计。
+
+**POST 常见错误：** `LEVEL_ENROLLMENT_MISMATCH`（非 STUDENT level，HTTP 409）；`ENROLLMENT_NOT_FOUND`；`ENROLLMENT_NOT_ACTIVE`；`COURSE_ARCHIVED`；目标 Disabled / 租户不匹配 → `ACCOUNT_DISABLED` / `TENANT_MISMATCH`。
+
+**DELETE：** 恢复 Active Student，四权限 false，**保持** `assignmentSubmitFrozen=true`；审计 `TA_REMOVED`。Active Student 重复 DELETE → 200 幂等。Active Instructor → `409 CONFLICT`。Archived → `COURSE_ARCHIVED`。
+
+**PATCH：** 目标须 Active TA，且账户仍为 USER+STUDENT+同租户 Active；`requireCourseManager` 不替代目标校验。
+
+**权限 body：**
 
 ```json
 {
@@ -558,682 +647,285 @@ Instructor；课已归档 → `COURSE_ARCHIVED`。成功 `data: null`；再 GET 
 }
 ```
 
-**成功 `200`，`data` 形状**
+经 `POST .../students` 恢复 **inactive TA** 时：变为 Active Student，权限全关，**不解冻** `assignmentSubmitFrozen`，审计 `ENROLLMENT_ROLE_CHANGED`。Active TA 不能用 Student API 撤销（须 `DELETE .../tas`）。
 
-```json
-{
-  "member": {
-    "id": 8,
-    "courseId": 9,
-    "userId": 387,
-    "userName": "Casey Morgan",
-    "userEmail": "regtest3@example.com",
-    "courseRole": "TA",
-    "canGrade": true,
-    "canPostAnnouncements": false,
-    "canManageGroups": false,
-    "canManageCourseEvents": true,
-    "active": true,
-    "enrolledAt": "2026-07-24T14:58:32",
-    "createdAt": "2026-07-24T14:58:32",
-    "updatedAt": "2026-07-24T15:00:00"
-  },
-  "warnings": []
-}
-```
-
-- `member`：提升后的成员对象（`courseRole` 变为 `TA`，权限字段已写入）
-- `warnings`：字符串数组；当前实现一般为 `[]`，前端可预留展示
-
-**常见错误**
-
-| code | 何时 |
-|------|------|
-| `NOT_COURSE_INSTRUCTOR` | 调用者不是该课 Instructor |
-| `COURSE_ARCHIVED` | 课已归档 |
-| `ENROLLMENT_NOT_FOUND` | 目标用户不在该课 |
-| `ENROLLMENT_NOT_ACTIVE` | 目标入课记录未激活 |
-| `INVALID_ROLE_TRANSITION` | 目标不是 Student（例如已是 TA） |
-| `COURSE_NOT_FOUND` | 课程不存在 |
-
-### 8.3 撤销 TA — `DELETE .../members/{userId}/ta`
-
-目标须是 TA。成功后 `courseRole` 变回 `Student`。
-
-### 8.4 改 TA 权限 — `PATCH .../members/{userId}/ta/permissions`
-
-需要幂等 Key；body 为上面四个 boolean。
-
-### 8.5 停用成员 — `DELETE .../members/{userId}`
-
-| | |
-|--|--|
-| 谁可以调 | Instructor |
-| 需要幂等 Key | 是 |
-| 语义 | 软停用：`active=false`；目标仅 Student/TA |
-| 停用 Instructor | `403 ACCESS_DENIED` |
-| 已 inactive | `200`（幂等） |
-| 归档课 | `COURSE_ARCHIVED` |
-
-停用后该用户 `GET /v2/me/courses` 不再包含本课。
+管理型 `GET /v2/courses`：Student（含课内 TA）→ 403，请用 `/v2/me/courses`。
 
 ---
 
-## 9. My courses
+## 11. My courses
 
-### `GET /v2/me/courses`
+### 11.1 列表 — `GET /v2/me/courses`
 
-已登录。返回自己 **active** enrollment 的课（课本身可为 Archived），每条带 `role`。
+| | |
+|--|--|
+| 谁 | 仅 `USER` 账号（Admin → `403 FORBIDDEN`） |
+| Query | `state`（`Active`/`Archived`）、`page`、`size` |
+
+成功 `data`（`MyCoursePageResponse`）：
 
 ```json
 {
-  "status": 200,
-  "code": "SUCCESS",
-  "data": [
+  "items": [
     {
       "id": 9,
-      "tenantId": 1,
-      "courseCode": "DEMO-ENROLL",
-      "title": "Demo Course With Students",
-      "termStartDate": "2026-01-01",
-      "termEndDate": "2026-06-30",
-      "description": "Created to inspect enroll responses",
-      "location": null,
-      "instructorId": 402,
+      "courseId": 9,
+      "courseCode": "DEMO",
+      "title": "Demo Course",
       "state": "Active",
-      "archivedAt": null,
-      "role": "Student"
+      "courseRole": "Student",
+      "role": "Student",
+      "primaryInstructor": { "userId": 402, "name": "Teach Test", "email": "teachtest2@example.com" },
+      "canGrade": false,
+      "canPostAnnouncements": false,
+      "canManageGroups": false,
+      "canManageCourseEvents": false
     }
-  ]
+  ],
+  "page": 0,
+  "size": 20,
+  "total": 1
 }
 ```
 
-用这里的 `role` 决定导航：学生课表 vs 教师备课入口。
+返回用户租户内 active 选课，按课程 `updatedAt` 降序。
 
 ---
 
-## 10. Admin enroll
+## 12. Admin enroll
 
-### 10.1 单人入课 — `POST /v2/admin/courses/{courseId}/enrollments`
+遗留平台 Admin 路径。调用方已是 Course Manager 时优先 `POST .../students`。
 
-| | |
-|--|--|
-| 谁可以调 | 平台 Admin |
-| 需要幂等 Key | 是 |
-| Body | `{ "userId": 385 }` |
+前缀：`/v2/admin/courses/{courseId}/enrollments`
 
-成功：成员对象，`courseRole: "Student"`。  
-非 Admin → `ACCESS_DENIED`；已 active 入课 → `CONFLICT`；已归档 → `COURSE_ARCHIVED`。
+| Method | Path | 谁 | Key |
+|--------|------|-----|-----|
+| POST | `/` | 仅 `SYSTEM_ADMIN` | 是 |
+| POST | `/batch` | 仅 `SYSTEM_ADMIN` | 是 |
+| DELETE | `/{userId}` | 仅 `SYSTEM_ADMIN` | 否 |
 
-### 10.2 批量 / 邮箱入课 — `POST /v2/admin/courses/{courseId}/enrollments/batch`
+Body 同 §9（`AdminEnrollRequest` / `AdminBatchEnrollRequest`）。委托与 `/students` 相同的 membership 服务。
 
-| | |
-|--|--|
-| 谁可以调 | 平台 Admin |
-| 需要幂等 Key | 是 |
-| Body | `{ "userIds": [385], "emails": ["regtest2@example.com"] }`（至少一项） |
+示例：
 
-成功 HTTP **始终 200**（部分成功也 200）：
+```http
+POST /api/v2/admin/courses/9/enrollments
+Authorization: Bearer {accessToken}
+Idempotency-Key: {uuid}
+Content-Type: application/json
 
-```json
-{
-  "succeeded": [ { "userId": 385, "courseRole": "Student", "active": true } ],
-  "failed": [ { "email": "missing@example.com", "code": "USER_NOT_FOUND", "message": "User not found" } ]
-}
+{ "userId": 385 }
 ```
 
-规则：邮箱解析用户；不存在进 `failed`；已 active → `CONFLICT`；inactive → 重新激活算成功。
-
-### 10.3 停用 enrollment — `DELETE /v2/admin/courses/{courseId}/enrollments/{userId}`
-
-| | |
-|--|--|
-| 谁可以调 | 平台 Admin |
-| 需要幂等 Key | 是 |
-| 语义 | 软停用 `active=false` |
-| 唯一 active Instructor | `409 CONFLICT` |
-| 已 inactive | `200` |
+用 `role: "ADMIN"` 或 `"SYSTEM_ADMIN"` 登录以获取 JWT `SYSTEM_ADMIN` 权限。
 
 ---
 
-## 11. Syllabus
+## 13. Syllabus
 
-前缀：`/v2/courses/{courseId}/syllabus`  
-上传仅 PDF；归档后不能上传/恢复/清空。
+前缀：`/v2/courses/{courseId}/syllabus`
 
-### 11.1 元信息 — `GET .../syllabus`
+| Method | Path | 写权限 | Key |
+|--------|------|--------|-----|
+| GET | `/` | 可见成员 | |
+| GET | `/preview` | 可见成员 | stream |
+| GET | `/download` | 可见成员 | stream |
+| POST | `/` | Course Manager；multipart `file`（PDF） | 是 |
+| POST | `/restore` | Course Manager | 是 |
+| DELETE | `/` | Course Manager（逻辑清空） | 否 |
 
-已入课。未上传：
+**GET JSON**（从未上传时）：
 
 ```json
 { "posted": false }
 ```
 
-已上传（教师可能多 `canRestorePrevious`）：
+已发布时含 `versionId`、`originalFilename`、`contentType`、`sizeBytes`、`uploadedBy`、`uploadedAt`。Manager 另见 `canRestorePrevious`。
 
-```json
-{
-  "posted": true,
-  "versionId": 1,
-  "originalFilename": "syllabus.pdf",
-  "contentType": "application/pdf",
-  "sizeBytes": 102400,
-  "uploadedBy": 402,
-  "uploadedAt": "2026-07-24T15:00:00",
-  "canRestorePrevious": false
-}
-```
-
-### 11.2 预览 / 下载
-
-返回**当前版本**大纲 PDF 的文件流（不是 `{ status, code, data }` JSON）。先调 §11.1，确认 `posted === true` 再请求。通用接法见 [§14](#14-文件流怎么接)。
-
-#### 预览 — `GET /v2/courses/{courseId}/syllabus/preview`
-
-| | |
-|--|--|
-| 谁可以调 | 已入课成员（Instructor / TA / Student）；Admin 可绕过入课 |
-| 需要幂等 Key | 否 |
-| 成功 | PDF 二进制流 |
-| Content-Type | 多为 `application/pdf` |
-| Content-Disposition | `inline; filename="原文件名.pdf"`（浏览器内嵌打开） |
-
-前端建议：带 Bearer 用 `fetch` → `blob` → `URL.createObjectURL`，用 `<iframe>` / 新窗口打开；或同源带 cookie 时直接 `window.open(url)`（本项目以 Bearer 为主，优先 blob）。
-
-#### 下载 — `GET /v2/courses/{courseId}/syllabus/download`
-
-| | |
-|--|--|
-| 谁可以调 | 同上（已入课 / Admin） |
-| 需要幂等 Key | 否 |
-| 成功 | PDF 二进制流 |
-| Content-Type | 多为 `application/pdf` |
-| Content-Disposition | `attachment; filename="原文件名.pdf"`（触发另存为） |
-
-前端建议：`fetch` + Bearer → `blob` → 创建 `<a download={originalFilename}>` 点击；`originalFilename` 可从 §11.1 的 `data.originalFilename` 取。
-
-#### 常见错误
-
-| code | 何时 |
-|------|------|
-| `NOT_COURSE_MEMBER` | 未入课（非 Admin） |
-| `SYLLABUS_NOT_FOUND` | 从未上传大纲，或当前版本文件读失败 |
-| `COURSE_NOT_FOUND` | 课程不存在 |
-| `UNAUTHORIZED` / `INVALID_TOKEN` | 未登录或 token 无效 |
-
-错误时响应仍可能是 JSON（`Content-Type: application/json`），前端先看响应类型再决定按 JSON 解析还是按文件处理。
-
-### 11.3 上传 — `POST .../syllabus`
-
-上传（或覆盖）当前大纲 PDF。再次上传时：新文件成为 current，旧 current 变为 previous（可供 §11.4 restore）。
-
-| | |
-|--|--|
-| 方法与路径 | `POST /v2/courses/{courseId}/syllabus` |
-| 谁可以调 | 仅 Instructor |
-| 需要幂等 Key | 是 |
-| Content-Type | `multipart/form-data`（FormData 勿手动设，浏览器自动带 boundary） |
-| 课状态 | 已归档 → `400 COURSE_ARCHIVED` |
-
-**表单字段**
-
-| 字段名 | 必填 | 说明 |
-|--------|------|------|
-| `file` | 是 | **单个** PDF 文件（`@RequestPart("file")`） |
-
-约束：
-
-- 仅 PDF（扩展名 `.pdf`，Content-Type 一般为 `application/pdf`）
-- 大小上限默认 **200MB**（配置项 `lms.content.max-file-bytes`）
-- 空文件不行
-
-**FormData 示例**
-
-```js
-const fd = new FormData();
-fd.append("file", pdfFile); // 字段名必须是 file
-await fetch(`${BASE}/v2/courses/${courseId}/syllabus`, {
-  method: "POST",
-  headers: {
-    Authorization: `Bearer ${token}`,
-    "Idempotency-Key": crypto.randomUUID(),
-  },
-  body: fd,
-});
-```
-
-**成功 `200`，`data`**（Instructor 视图，形状同 §11.1 已上传）：
-
-```json
-{
-  "posted": true,
-  "versionId": 2,
-  "originalFilename": "syllabus-v2.pdf",
-  "contentType": "application/pdf",
-  "sizeBytes": 102400,
-  "uploadedBy": 402,
-  "uploadedAt": "2026-07-24T16:00:00",
-  "canRestorePrevious": true
-}
-```
-
-第二次及以后上传成功时，`canRestorePrevious` 通常为 `true`（存在上一版可恢复）。
-
-**常见错误**
-
-| code | 何时 |
-|------|------|
-| `NOT_COURSE_INSTRUCTOR` | 非该课 Instructor |
-| `COURSE_ARCHIVED` | 课已归档 |
-| `UNSUPPORTED_FILE_TYPE` | 非 PDF |
-| `FILE_TOO_LARGE` | 超过大小上限 |
-| `BAD_REQUEST` / `PARAM_MISSING` | 未传 `file` 或文件为空 |
-| `INTERNAL_SERVER_ERROR` | 存储上传失败 |
-| `IDEMPOTENCY_KEY_REQUIRED` | 缺少幂等 Key |
-
-### 11.4 恢复上一版 — `POST .../syllabus/restore`
-
-Instructor；需要幂等 Key。无当前大纲 → `SYLLABUS_NOT_FOUND`；无上一版 → `NO_PREVIOUS_SYLLABUS_VERSION`。
-
-### 11.5 清空大纲 — `DELETE .../syllabus`
-
-| | |
-|--|--|
-| 谁可以调 | Instructor |
-| 需要幂等 Key | 是 |
-| 课已归档 | `COURSE_ARCHIVED` |
-
-清空当前/上一版指针（`posted: false`）；历史 version 行保留在库中但不暴露。无大纲再删仍 `200`。
+上传仅接受 **PDF**。已归档课程写操作 → `COURSE_ARCHIVED`。
 
 ---
 
-## 12. Weeks
+## 14. Weeks、Materials 与文件流
 
-前缀：`/v2/courses/{courseId}/weeks`  
-新建默认 `Draft`。写：Instructor 且未归档。
+### 14.1 Weeks
 
-### 12.1 列表 — `GET .../weeks`
+前缀：`/v2/courses/{courseId}/weeks`
 
-- **Instructor / Admin**：Draft + Published（全部可见）  
-- **TA / Student**：仅 Published（Draft 周不会出现在列表里；TA 与学生相同）
+| Method | Path | 写权限 | Key |
+|--------|------|--------|-----|
+| GET | `/` | 可见成员（学生：仅 Published） | |
+| POST | `/` | Course Manager | 是 |
+| PATCH | `/{weekId}` | Course Manager；`{ "title": "..." }` | 是 |
+| PUT | `/reorder` | Course Manager；`{ "weekIds": [3,1,2] }` 完整排列 | 是 |
+| POST | `/{weekId}/publish` | Course Manager | 是 |
+| POST | `/{weekId}/unpublish` | Course Manager | 是 |
+| DELETE | `/{weekId}` | Course Manager；空周才可删 | 否 |
+| GET | `/{weekId}/download.zip` | 可见成员 | stream |
 
-成功单条形状：
-
-```json
-{
-  "id": 1,
-  "courseId": 9,
-  "title": "Week 1",
-  "orderPosition": 0,
-  "state": "Published",
-  "createdAt": "2026-07-24T15:00:00",
-  "updatedAt": "2026-07-24T15:00:00",
-  "materials": [
-    {
-      "id": 10,
-      "weekId": 1,
-      "courseId": 9,
-      "materialType": "FILE",
-      "displayName": "slides.pdf",
-      "orderPosition": 0,
-      "originalFilename": "slides.pdf",
-      "contentType": "application/pdf",
-      "extension": "pdf",
-      "sizeBytes": 204800,
-      "linkUrl": null,
-      "uploadedBy": 402,
-      "previewAvailable": true,
-      "downloadUrl": "http://localhost:8080/api/v2/courses/9/weeks/1/materials/10/download",
-      "previewUrl": "http://localhost:8080/api/v2/courses/9/weeks/1/materials/10/preview",
-      "createdAt": "2026-07-24T15:01:00",
-      "updatedAt": "2026-07-24T15:01:00"
-    }
-  ]
-}
-```
-
-`downloadUrl` / `previewUrl`：相对或绝对 API 路径，**请求时仍要带 Bearer**（不要当匿名 CDN）。
-
-### 12.2 创建 — `POST .../weeks`
-
-在课程末尾追加一周，默认未发布。
-
-| | |
-|--|--|
-| 方法与路径 | `POST /v2/courses/{courseId}/weeks` |
-| 谁可以调 | 仅 Instructor（TA / Student → `403 NOT_COURSE_INSTRUCTOR`） |
-| 需要幂等 Key | 是 |
-| 课状态 | 已归档 → `400 COURSE_ARCHIVED` |
-
-**Body**
-
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| title | string | 是 | trim 后非空；最长 **255** 字符 |
-
-```json
-{ "title": "Week 1" }
-```
-
-**成功 `200`，`data` 示例**
+新建周次：`state=Draft`，`materials=[]`。Publish 后对学生可见。
 
 ```json
 {
   "id": 3,
   "courseId": 9,
   "title": "Week 1",
-  "orderPosition": 2,
+  "orderPosition": 0,
   "state": "Draft",
-  "createdAt": "2026-07-24T16:00:00",
-  "updatedAt": "2026-07-24T16:00:00",
   "materials": []
 }
 ```
 
-- `state` 固定为 `Draft`（学生/TA 列表里还看不到，需再 publish）
-- `orderPosition`：接在当前最大序号后（从 0 起）
+### 14.2 Materials
 
-**常见错误**：`NOT_COURSE_INSTRUCTOR`、`COURSE_ARCHIVED`、`PARAM_MISSING`（缺 title）、`BAD_REQUEST`（title > 255）
+前缀：`/v2/courses/{courseId}/weeks/{weekId}/materials`
 
----
+| Method | Path | 谁 | Key |
+|--------|------|-----|-----|
+| POST | `/` | Course Manager 或 Active TA 上传 | **是（必须）** |
+| PATCH | `/{materialId}` | Course Manager 重命名 | 是 |
+| PUT | `/reorder` | Course Manager | 是 |
+| POST | `/{materialId}/move` | Course Manager `{ "targetWeekId": N }` | 是 |
+| DELETE | `/{materialId}` | Manager 任意；TA 仅自己上传 | 否 |
+| GET | `/{materialId}/preview` | 可见成员 | stream |
+| GET | `/{materialId}/download` | 可见成员 | stream 或 LINK 时 302 |
 
-### 12.3 重命名 — `PATCH .../weeks/{weekId}`
-
-只改标题，不改 `state` / `orderPosition`。
-
-| | |
-|--|--|
-| 方法与路径 | `PATCH /v2/courses/{courseId}/weeks/{weekId}` |
-| 谁可以调 | 仅 Instructor |
-| 需要幂等 Key | 是 |
-| 课状态 | 已归档 → `COURSE_ARCHIVED` |
-
-**Body**
-
-| 字段 | 必填 | 说明 |
-|------|------|------|
-| title | 是 | 同创建：非空、≤255 |
-
-```json
-{ "title": "Week 1 — Intro" }
-```
-
-成功：`200`，`data` 为更新后的 week 对象（含 `materials`）。  
-周不存在或不属于该课 → `404 WEEK_NOT_FOUND`。
-
----
-
-### 12.4 重排 — `PUT .../weeks/reorder`
-
-按传入顺序重写全部周的 `orderPosition`（0, 1, 2, …）。
-
-| | |
-|--|--|
-| 方法与路径 | `PUT /v2/courses/{courseId}/weeks/reorder` |
-| 谁可以调 | 仅 Instructor |
-| 需要幂等 Key | 是 |
-| 课状态 | 已归档 → `COURSE_ARCHIVED` |
-
-**Body**
-
-| 字段 | 必填 | 说明 |
-|------|------|------|
-| weekIds | 是 | **当前该课全部 week id 的一个排列**（可含 Draft + Published） |
-
-规则：
-
-- 必须与当前列表的 id **集合完全一致**（不能少、不能多、不能重复、不能塞别的课的 id）
-- 数组顺序 = 新的展示顺序：`weekIds[0]` → `orderPosition=0`，以此类推
-
-```json
-{ "weekIds": [3, 1, 2] }
-```
-
-成功：`200`，`data` 为重排后的 **week 数组**（顺序已更新）。
-
-**常见错误**
-
-| code | 何时 |
-|------|------|
-| `PARAM_MISSING` | 未传 `weekIds` |
-| `BAD_REQUEST` | id 集合与当前不完全一致 |
-| `NOT_COURSE_INSTRUCTOR` | 非 Instructor |
-| `COURSE_ARCHIVED` | 课已归档 |
-
-前端拖拽排序：先 `GET .../weeks` 拿到全部 id → 按新顺序提交完整 `weekIds`。
-
----
-
-### 12.5 发布 / 取消发布
-
-- `POST .../weeks/{weekId}/publish`
-- `POST .../weeks/{weekId}/unpublish`
-
-均需幂等 Key。
-
-### 12.6 删除 — `DELETE .../weeks/{weekId}`
-
-周内还有资料 → `409 WEEK_NOT_EMPTY`（先删 materials）。
-
-### 12.7 下载周 ZIP — `GET .../weeks/{weekId}/download.zip`
-
-已入课；学生访问未发布周 → 表现像不存在（`WEEK_NOT_FOUND`）。  
-至少 1 个 FILE 资料，否则 `BAD_REQUEST`。见 §14。
-
----
-
-## 13. Materials
-
-前缀：`/v2/courses/{courseId}/weeks/{weekId}/materials`  
-
-- **上传 / 删除自己的**：Instructor 或 TA（课未归档）
-- **重命名 / 重排 / 移动 / 删他人的**：仅 Instructor（课未归档）
-
-### 13.1 创建 — `POST .../materials`
-
-| | |
-|--|--|
-| 谁可以调 | Instructor 或 TA（课未归档） |
-| 需要幂等 Key | 否 |
-
-`multipart/form-data`：
+**Multipart 创建**（`POST`）：
 
 | 字段 | 说明 |
 |------|------|
-| `files` | 文件，可多个（同名字段多次 / 数组） |
-| `linkUrl` | 可选外链 |
-| `linkDisplayName` | 可选，外链显示名 |
-| | `files` 与 `linkUrl` **至少一种** |
-
-#### 例 1：只上传文件（JS）
+| `files` | 一个或多个文件（重复字段名） |
+| `linkUrl` | 可选外部链接 |
+| `linkDisplayName` | 可选链接标题 |
+| | `files` 与 `linkUrl` 至少其一 |
 
 ```js
 const fd = new FormData();
-fd.append("files", pdfFile); // 字段名必须是 files；多个文件就多次 append("files", ...)
-
+fd.append("files", pdfFile);
 const res = await fetch(
-  "http://localhost:8080/api/v2/courses/9/weeks/1/materials",
+  `${base}/v2/courses/9/weeks/1/materials`,
   {
     method: "POST",
-    headers: { Authorization: `Bearer ${accessToken}` }, // 不要设 Content-Type
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Idempotency-Key": crypto.randomUUID(),
+    },
     body: fd,
   }
 );
-const json = await res.json();
-// json.data = Material 数组
 ```
 
-#### 例 2：只加外链（JS）
+允许文件类型：PDF、Office（pptx/docx/xlsx）、zip、常见图片。默认最大 **200 MB**（`lms.content.max-file-bytes`）。
 
-```js
-const fd = new FormData();
-fd.append("linkUrl", "https://example.com/reading");
-fd.append("linkDisplayName", "Week 1 Reading");
+成功返回 `MaterialResponse[]`，含 `downloadUrl` / `previewUrl`（同源 API 路径）及 `previewAvailable`。
 
-await fetch("http://localhost:8080/api/v2/courses/9/weeks/1/materials", {
-  method: "POST",
-  headers: { Authorization: `Bearer ${accessToken}` },
-  body: fd,
-});
-```
+### 14.3 周次列表内嵌 materials
 
-#### 例 3：curl（文件 + 链接一次提交）
+`GET .../weeks` 为方便起见，每个 week 内嵌 `materials`。
 
-```bash
-curl -X POST "http://localhost:8080/api/v2/courses/9/weeks/1/materials" \
-  -H "Authorization: Bearer <accessToken>" \
-  -F "files=@./slides.pdf" \
-  -F "linkUrl=https://example.com/reading" \
-  -F "linkDisplayName=Week 1 Reading"
-```
-
-#### 成功响应示例（`200`）
-
-```json
-{
-  "status": 200,
-  "code": "SUCCESS",
-  "data": [
-    {
-      "id": 10,
-      "weekId": 1,
-      "courseId": 9,
-      "materialType": "FILE",
-      "displayName": "slides",
-      "orderPosition": 0,
-      "originalFilename": "slides.pdf",
-      "contentType": "application/pdf",
-      "extension": "pdf",
-      "sizeBytes": 204800,
-      "linkUrl": null,
-      "uploadedBy": 402,
-      "previewAvailable": true,
-      "downloadUrl": "http://localhost:8080/api/v2/courses/9/weeks/1/materials/10/download",
-      "previewUrl": "http://localhost:8080/api/v2/courses/9/weeks/1/materials/10/preview",
-      "createdAt": "2026-07-24T15:01:00",
-      "updatedAt": "2026-07-24T15:01:00"
-    },
-    {
-      "id": 11,
-      "weekId": 1,
-      "courseId": 9,
-      "materialType": "LINK",
-      "displayName": "Week 1 Reading",
-      "orderPosition": 1,
-      "originalFilename": null,
-      "contentType": null,
-      "extension": null,
-      "sizeBytes": null,
-      "linkUrl": "https://example.com/reading",
-      "uploadedBy": 402,
-      "previewAvailable": false,
-      "downloadUrl": "http://localhost:8080/api/v2/courses/9/weeks/1/materials/11/download",
-      "previewUrl": null,
-      "createdAt": "2026-07-24T15:01:00",
-      "updatedAt": "2026-07-24T15:01:00"
-    }
-  ],
-  "message": "Success",
-  "timestamp": "2026-07-24T22:00:00Z"
-}
-```
-
-### 13.2 重命名 — `PATCH .../materials/{materialId}`
-
-仅 Instructor；需要幂等 Key。`{ "displayName": "..." }`。
-
-### 13.3 重排 — `PUT .../materials/reorder`
-
-仅 Instructor；需要幂等 Key。`materialIds` 必须等于该周**全部**资料 id 的排列。
-
-### 13.4 移动 — `POST .../materials/{materialId}/move`
-
-仅 Instructor；需要幂等 Key。`{ "targetWeekId": 12 }`。
-
-### 13.5 删除 — `DELETE .../materials/{materialId}`
-
-| | |
-|--|--|
-| 谁可以调 | Instructor：任意；TA：仅 `uploadedBy` 为自己的；否则 `403 ACCESS_DENIED` |
-
-### 13.6 预览 / 下载
-
-- `GET .../materials/{materialId}/preview` — 仅可预览类型（看 `previewAvailable`）
-- `GET .../materials/{materialId}/download` — FILE 下文件；**LINK 可能 302 跳到外链**
-
-见 §14。不可预览 → `BAD_REQUEST`。
-
----
-
-## 14. 文件流怎么接
+### 14.4 处理文件流
 
 适用于：syllabus preview/download、material preview/download、week `download.zip`。
 
-| 点 | 说明 |
-|----|------|
-| 鉴权 | 与 JSON 接口相同，带 `Authorization: Bearer` |
-| 成功体 | 二进制流，**不是** `{ status, code, data }` |
-| 预览 | `Content-Disposition: inline` → `blob` + `URL.createObjectURL` 或新窗口 |
-| 下载 | `attachment` → `blob` 后触发 `<a download>`，或用返回的 `downloadUrl` 同源请求 |
-| LINK download | 可能 **302 redirect** 到外站；用 `fetch` 时注意 `redirect`；或 `window.open(downloadUrl)`（外链场景） |
-| 错误 | 仍可能返回 JSON（如 `SYLLABUS_NOT_FOUND`），前端先看 `Content-Type` |
+| 要点 | 说明 |
+|------|------|
+| Auth | 每次请求带 `Authorization: Bearer` |
+| 成功 body | 二进制流，**不是** `{ status, code, data }` |
+| Preview | `Content-Disposition: inline` → blob + object URL |
+| Download | `attachment` 或跟随 `downloadUrl` |
+| LINK 资料 | `GET .../download` 可能 **302** 到外部 URL |
+| 错误 | 仍可能返回 JSON；先检查 `Content-Type` |
 
 ```js
-// 带 token 下载示例
 const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
 if (!res.ok) {
-  const err = await res.json(); // 可能是错误 JSON
+  const err = await res.json().catch(() => ({}));
   throw err;
 }
 const blob = await res.blob();
-const a = document.createElement("a");
-a.href = URL.createObjectURL(blob);
-a.download = filenameHint || "file";
-a.click();
 ```
 
 ---
 
 ## 15. 端点速查表
 
-| 方法 | 路径 | 谁调 | 幂等 Key |
-|------|------|------|----------|
-| POST | `/v2/courses` | level=INSTRUCTOR | 是 |
-| GET | `/v2/courses` | Admin / Instructor | |
-| GET | `/v2/courses/{id}` | 已入课 | |
-| PUT | `/v2/courses/{id}` | Instructor | 是 |
-| DELETE | `/v2/courses/{id}` | Instructor | |
-| POST | `/v2/courses/{id}/archive` | Instructor | 是 |
-| POST | `/v2/courses/{id}/unarchive` | Instructor | 是 |
-| POST | `/v2/courses/{id}/transfer-instructor` | Instructor | 是 |
-| GET | `/v2/courses/{id}/sessions` | 已入课 | |
-| POST/PUT/DELETE | `.../sessions` | Instructor | POST/PUT |
-| GET | `/v2/courses/{id}/events` | 已入课 | |
-| POST/PUT/DELETE | `.../events` | Instructor / 事件 TA | POST/PUT |
-| GET | `/v2/courses/{id}/members` | Instructor | |
-| POST/DELETE/PATCH | `.../members/.../ta` | Instructor | POST/PATCH |
-| DELETE | `.../members/{userId}` | Instructor（停用 Student/TA） | 是 |
-| GET | `/v2/me/courses` | 已登录 | |
-| POST | `/v2/admin/courses/{id}/enrollments` | Admin | 是 |
-| POST | `.../enrollments/batch` | Admin | 是 |
-| DELETE | `.../enrollments/{userId}` | Admin | 是 |
-| GET/POST/DELETE | `.../syllabus` | 读：成员；写/删：Instructor | 写/删是 |
-| GET/POST/... | `.../weeks` | 读：成员；写：Instructor | 多数写是 |
-| POST | `.../materials` | Instructor / TA 上传 | 否 |
-| DELETE | `.../materials/{id}` | Instructor；TA 仅自己的 | |
-| PATCH/PUT/POST move | `.../materials...` | 仅 Instructor | 是 |
+仅 Course 核心控制器。公告、分组、教学仪表盘与个人动态见链接模块文档。
+
+| Method | Path | 谁 | Key |
+|--------|------|-----|-----|
+| POST | `/v2/courses` | INSTRUCTOR / Admin | 是 |
+| GET | `/v2/courses` | Admin / Instructor 浏览 | |
+| GET | `/v2/courses/{id}` | 可见成员 | |
+| PATCH | `/v2/courses/{id}` | Course Manager | 是 |
+| DELETE | `/v2/courses/{id}` | Course Manager | |
+| POST | `/v2/courses/{id}/archive` | Course Manager | 是 |
+| POST | `/v2/courses/{id}/unarchive` | Course Manager | 是 |
+| POST | `/v2/courses/{id}/primary-instructor` | SYSTEM_ADMIN / TENANT_ADMIN | 是 |
+| GET | `/v2/courses/{id}/sessions` | 可见成员 | |
+| GET | `/v2/courses/{id}/sessions/{sessionId}` | 可见成员 | |
+| POST | `/v2/courses/{id}/sessions` | Course Manager | 是 |
+| PUT | `/v2/courses/{id}/sessions/{sessionId}` | Course Manager | 是 |
+| DELETE | `/v2/courses/{id}/sessions/{sessionId}` | Course Manager | |
+| GET | `/v2/courses/{id}/events` | 可见成员 | |
+| GET | `/v2/courses/{id}/events/{eventId}` | 可见成员 | |
+| POST | `/v2/courses/{id}/events` | Manager 或 event TA | 是 |
+| PUT | `/v2/courses/{id}/events/{eventId}` | Manager 或 event TA | 是 |
+| DELETE | `/v2/courses/{id}/events/{eventId}` | Manager 或 event TA | |
+| GET | `/v2/courses/{id}/members` | Course Manager | |
+| POST | `/v2/courses/{id}/students` | Course Manager | 是 |
+| POST | `/v2/courses/{id}/students/batch` | Course Manager | 是 |
+| DELETE | `/v2/courses/{id}/students/{userId}` | Course Manager | |
+| POST | `/v2/courses/{id}/tas` | Course Manager | 是 |
+| PATCH | `/v2/courses/{id}/tas/{userId}/permissions` | Course Manager | 是 |
+| DELETE | `/v2/courses/{id}/tas/{userId}` | Course Manager | |
+| GET | `/v2/me/courses` | USER | |
+| POST | `/v2/admin/courses/{id}/enrollments` | SYSTEM_ADMIN | 是 |
+| POST | `/v2/admin/courses/{id}/enrollments/batch` | SYSTEM_ADMIN | 是 |
+| DELETE | `/v2/admin/courses/{id}/enrollments/{userId}` | SYSTEM_ADMIN | |
+| GET | `/v2/courses/{id}/syllabus` | 可见成员 | |
+| GET | `/v2/courses/{id}/syllabus/preview` | 可见成员 | |
+| GET | `/v2/courses/{id}/syllabus/download` | 可见成员 | |
+| POST | `/v2/courses/{id}/syllabus` | Course Manager | 是 |
+| POST | `/v2/courses/{id}/syllabus/restore` | Course Manager | 是 |
+| DELETE | `/v2/courses/{id}/syllabus` | Course Manager | |
+| GET | `/v2/courses/{id}/weeks` | 可见成员 | |
+| POST | `/v2/courses/{id}/weeks` | Course Manager | 是 |
+| PATCH | `/v2/courses/{id}/weeks/{weekId}` | Course Manager | 是 |
+| PUT | `/v2/courses/{id}/weeks/reorder` | Course Manager | 是 |
+| POST | `/v2/courses/{id}/weeks/{weekId}/publish` | Course Manager | 是 |
+| POST | `/v2/courses/{id}/weeks/{weekId}/unpublish` | Course Manager | 是 |
+| DELETE | `/v2/courses/{id}/weeks/{weekId}` | Course Manager | |
+| GET | `/v2/courses/{id}/weeks/{weekId}/download.zip` | 可见成员 | |
+| POST | `/v2/courses/{id}/weeks/{weekId}/materials` | Manager / TA 上传 | **是** |
+| PATCH | `/v2/courses/{id}/weeks/{weekId}/materials/{materialId}` | Course Manager | 是 |
+| PUT | `/v2/courses/{id}/weeks/{weekId}/materials/reorder` | Course Manager | 是 |
+| POST | `/v2/courses/{id}/weeks/{weekId}/materials/{materialId}/move` | Course Manager | 是 |
+| DELETE | `/v2/courses/{id}/weeks/{weekId}/materials/{materialId}` | Manager；TA 仅自己 | |
+| GET | `/v2/courses/{id}/weeks/{weekId}/materials/{materialId}/preview` | 可见成员 | |
+| GET | `/v2/courses/{id}/weeks/{weekId}/materials/{materialId}/download` | 可见成员 | |
+
+**相关（其他控制器 — 见链接文档）：**
+
+| 模块文档 | 前缀 |
+|----------|------|
+| [`announcement_module-api.md`](./announcement_module-api.md) | `/v2/courses/{id}/announcements`、`/v2/me/announcements/recent` |
+| [`group_module-api.md`](./group_module-api.md) | `/v2/courses/{id}/group-sets/...` |
+| [`dashboard_module-api.md`](./dashboard_module-api.md) | `/v2/me/teaching/...`、`/v2/me/events/upcoming` |
 
 ---
 
 ## 16. 本地测试账号
 
-| 用途 | email | password |
-|------|-------|----------|
-| 学生 | `regtest1@example.com` … `regtest5@example.com` | `Test12345` |
-| 教师 | `teachtest2@example.com` | `Test12345` |
+所有账号密码：`Test12345`。登录细节见 [`auth_module-api.md`](./auth_module-api.md)。
+
+| 用途 | email | 登录 `role` | 说明 |
+|------|-------|-------------|------|
+| 平台 Admin | `admin@example.com` | `"ADMIN"` 或 `"SYSTEM_ADMIN"` | JWT → `SYSTEM_ADMIN`；userId 20 |
+| Instructor | `teachtest2@example.com` | `"USER"` | `level=INSTRUCTOR`；用于建课 / primary instructor |
+| Students | `regtest1@example.com` … `regtest5@example.com` | `"USER"` | userId 385–389；`level=STUDENT` |
 
 ```http
-POST /v1/auth/login
+POST /api/v1/auth/login
 Content-Type: application/json
 
 {
@@ -1243,4 +935,13 @@ Content-Type: application/json
 }
 ```
 
-响应里取 `data.accessToken` → `Authorization: Bearer ...`。
+取 `data.accessToken` → `Authorization: Bearer ...`。
+
+Admin 选课示例：
+
+```http
+POST /api/v1/auth/login
+Content-Type: application/json
+
+{ "email": "admin@example.com", "password": "Test12345", "role": "ADMIN" }
+```

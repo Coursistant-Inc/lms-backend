@@ -300,11 +300,16 @@ public class CourseService {
         }
 
         Enrollment targetEnrollment = enrollmentMapper.selectByCourseIdAndUserIdForUpdate(courseId, targetUserId);
-        if (targetEnrollment != null
-                && CoursePermissionService.ROLE_STUDENT.equals(targetEnrollment.getCourseRole())
-                && Boolean.TRUE.equals(targetEnrollment.getActive())) {
-            throw new ApiException(ErrorType.CONFLICT,
-                    "Cannot reassign to an active Student; withdraw Student enrollment first");
+        if (targetEnrollment != null && Boolean.TRUE.equals(targetEnrollment.getActive())) {
+            if (CoursePermissionService.ROLE_STUDENT.equals(targetEnrollment.getCourseRole())
+                    || CoursePermissionService.ROLE_TA.equals(targetEnrollment.getCourseRole())) {
+                throw new ApiException(ErrorType.CONFLICT,
+                        "Cannot reassign to an active Student or TA; withdraw or remove TA first");
+            }
+            if (CoursePermissionService.ROLE_INSTRUCTOR.equals(targetEnrollment.getCourseRole())) {
+                // Already sole active instructor handled by equality check above; treat as conflict otherwise.
+                throw new ApiException(ErrorType.CONFLICT, "Target already has an active Instructor enrollment");
+            }
         }
 
         LocalDateTime withdrawnAt = LocalDateTime.now(ZoneOffset.UTC);

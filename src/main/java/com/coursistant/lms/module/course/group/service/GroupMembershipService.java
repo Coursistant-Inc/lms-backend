@@ -373,16 +373,27 @@ public class GroupMembershipService {
     @Transactional
     public void endGroupMembershipsOnEnrollmentDeactivated(Integer courseId, Integer userId,
                                                            String actorType, Integer actorId) {
+        endGroupMemberships(courseId, userId, actorType, actorId, GroupMembershipAudit.END_ON_DROP);
+    }
+
+    /**
+     * Ends all memberships for a user in a course with an explicit audit reason.
+     */
+    @Transactional
+    public void endGroupMemberships(Integer courseId, Integer userId,
+                                    String actorType, Integer actorId, String action) {
         Course course = groupAccessService.requireCourse(courseId);
         List<GroupMembership> memberships = groupMembershipMapper.selectByCourseIdAndUserId(courseId, userId);
         if (memberships.isEmpty()) {
             return;
         }
+        String auditAction = action == null || action.isBlank()
+                ? GroupMembershipAudit.END_ON_DROP
+                : action;
         for (GroupMembership membership : memberships) {
             GroupMembership before = copy(membership);
             groupMembershipMapper.deleteById(membership.getId());
-            writeAudit(course, before, before, null, actorType, actorId,
-                    GroupMembershipAudit.END_ON_DROP, null);
+            writeAudit(course, before, before, null, actorType, actorId, auditAction, null);
         }
     }
 

@@ -7,8 +7,6 @@ import com.coursistant.lms.module.course.enrollment.dto.BatchEnrollFailure;
 import com.coursistant.lms.module.course.enrollment.dto.BatchEnrollResponse;
 import com.coursistant.lms.module.course.enrollment.dto.MemberResponse;
 import com.coursistant.lms.module.course.enrollment.dto.DashboardCourseResponse;
-import com.coursistant.lms.module.course.enrollment.dto.PromoteTaResponse;
-import com.coursistant.lms.module.course.enrollment.dto.UpdateTaPermissionsRequest;
 import com.coursistant.lms.shared.enums.LevelEnum;
 import com.coursistant.lms.shared.enums.RoleEnum;
 import com.coursistant.lms.module.course.enrollment.entity.Enrollment;
@@ -20,7 +18,6 @@ import com.coursistant.lms.module.user.account.entity.User;
 import com.coursistant.lms.module.user.account.repository.UserMapper;
 import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.shared.api.ErrorType;
-import com.coursistant.lms.shared.util.EmailUtil;
 import jakarta.annotation.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,9 +51,6 @@ public class EnrollmentService {
 
     @Resource
     private UserMapper userMapper;
-
-    @Resource
-    private EmailUtil emailUtil;
 
     @Lazy
     @Resource
@@ -286,87 +280,6 @@ public class EnrollmentService {
                 .collect(Collectors.toList());
     }
 
-    @Transactional
-    public PromoteTaResponse promoteToTa(Integer courseId, Integer userId, UpdateTaPermissionsRequest request, Integer actorId) {
-        Course course = requireCourse(courseId);
-        requireNotArchived(course);
-        Enrollment enrollment = requireMember(courseId, userId);
-        if (!Boolean.TRUE.equals(enrollment.getActive())) {
-            throw new ApiException(ErrorType.ENROLLMENT_NOT_ACTIVE);
-        }
-        if (!ROLE_STUDENT.equals(enrollment.getCourseRole())) {
-            throw new ApiException(ErrorType.INVALID_ROLE_TRANSITION, "Only a Student can be promoted to TA");
-        }
-
-        Enrollment patch = new Enrollment();
-        patch.setId(enrollment.getId());
-        patch.setCourseRole(ROLE_TA);
-        patch.setCanGrade(request != null && Boolean.TRUE.equals(request.getCanGrade()));
-        patch.setCanPostAnnouncements(request != null && Boolean.TRUE.equals(request.getCanPostAnnouncements()));
-        patch.setCanManageGroups(request != null && Boolean.TRUE.equals(request.getCanManageGroups()));
-        patch.setCanManageCourseEvents(request != null && Boolean.TRUE.equals(request.getCanManageCourseEvents()));
-        // A TA grades their former peers, so their own assignment submissions are frozen from
-        // here on. Revoking the TA role deliberately does not unfreeze it.
-        patch.setAssignmentSubmitFrozen(true);
-        enrollmentMapper.updateById(patch);
-        quizLifecycleHooks.onMembershipIneligible(courseId, userId);
-
-        sendTaChangeEmailBestEffort(userId, course, "promoted to Teaching Assistant");
-
-        PromoteTaResponse response = new PromoteTaResponse();
-        response.setMember(toMemberResponse(requireEnrollmentById(enrollment.getId())));
-        response.setWarnings(new ArrayList<>());
-        return response;
-    }
-
-    @Transactional
-    public MemberResponse revokeTa(Integer courseId, Integer userId, Integer actorId) {
-        Course course = requireCourse(courseId);
-        requireNotArchived(course);
-        Enrollment enrollment = requireMember(courseId, userId);
-        if (!ROLE_TA.equals(enrollment.getCourseRole())) {
-            throw new ApiException(ErrorType.INVALID_ROLE_TRANSITION, "User is not a TA in this course");
-        }
-
-        Enrollment patch = new Enrollment();
-        patch.setId(enrollment.getId());
-        patch.setCourseRole(ROLE_STUDENT);
-        patch.setCanGrade(false);
-        patch.setCanPostAnnouncements(false);
-        patch.setCanManageGroups(false);
-        patch.setCanManageCourseEvents(false);
-        enrollmentMapper.updateById(patch);
-
-        sendTaChangeEmailBestEffort(userId, course, "removed as Teaching Assistant");
-
-        return toMemberResponse(requireEnrollmentById(enrollment.getId()));
-    }
-
-    @Transactional
-    public MemberResponse updateTaPermissions(Integer courseId, Integer userId, UpdateTaPermissionsRequest request, Integer actorId) {
-        Course course = requireCourse(courseId);
-        requireNotArchived(course);
-        Enrollment enrollment = requireMember(courseId, userId);
-        if (!ROLE_TA.equals(enrollment.getCourseRole())) {
-            throw new ApiException(ErrorType.INVALID_ROLE_TRANSITION, "User is not a TA in this course");
-        }
-        if (request == null) {
-            throw new ApiException(ErrorType.BAD_REQUEST, "Request body is required");
-        }
-
-        Enrollment patch = new Enrollment();
-        patch.setId(enrollment.getId());
-        patch.setCanGrade(request.getCanGrade());
-        patch.setCanPostAnnouncements(request.getCanPostAnnouncements());
-        patch.setCanManageGroups(request.getCanManageGroups());
-        patch.setCanManageCourseEvents(request.getCanManageCourseEvents());
-        enrollmentMapper.updateById(patch);
-
-        sendTaChangeEmailBestEffort(userId, course, "had their Teaching Assistant permissions updated");
-
-        return toMemberResponse(requireEnrollmentById(enrollment.getId()));
-    }
-
     public List<Integer> listActiveCourseIdsForUser(Integer userId) {
         return enrollmentMapper.selectActiveByUserId(userId).stream()
                 .map(Enrollment::getCourseId)
@@ -441,19 +354,6 @@ public class EnrollmentService {
         failure.setCode(code);
         failure.setMessage(message);
         return failure;
-    }
-
-    private void sendTaChangeEmailBestEffort(Integer userId, Course course, String actionDescription) {
-        try {
-            User user = userMapper.selectById(userId);
-            if (user != null && user.getEmail() != null && !user.getEmail().isBlank()) {
-                String subject = "Course role update: " + course.getTitle();
-                String content = "You have been " + actionDescription + " for course " + course.getTitle() + ".";
-                emailUtil.sendEmail(user.getEmail(), subject, content);
-            }
-        } catch (Exception e) {
-            log.warn("Failed to send TA change email to user {} for course {}: {}", userId, course.getId(), e.getMessage());
-        }
     }
 
     private Course requireCourse(Integer courseId) {

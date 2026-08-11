@@ -15,6 +15,9 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Blocks illegal Role/Level/Status/Tenant changes that would leave Active Enrollment inconsistent.
  * Lock order: User FOR UPDATE first (caller or here), then enrollments.
+ * <p>
+ * Compatibility matrix: any Active Enrollment requires role=USER;
+ * Active Instructor requires level=INSTRUCTOR; Active Student/TA requires level=STUDENT.
  */
 @Service
 public class EnrollmentIdentityGuard {
@@ -35,26 +38,30 @@ public class EnrollmentIdentityGuard {
         if (user == null) {
             throw new ApiException(ErrorType.USER_NOT_FOUND);
         }
-        boolean toTenantAdmin = RoleEnum.TENANT_ADMIN.name().equals(newRole);
-        boolean toStudentLevel = LevelEnum.STUDENT.level.equalsIgnoreCase(newLevel);
-        boolean toInstructorLevel = LevelEnum.INSTRUCTOR.level.equalsIgnoreCase(newLevel);
 
-        if (enrollmentMapper.countActiveInstructorEnrollmentsByUserId(userId) > 0) {
-            if (toTenantAdmin || toStudentLevel) {
+        int activeInstructor = enrollmentMapper.countActiveInstructorEnrollmentsByUserId(userId);
+        int activeTa = enrollmentMapper.countActiveTaEnrollmentsByUserId(userId);
+        int activeStudent = enrollmentMapper.countActiveStudentEnrollmentsByUserId(userId);
+        boolean hasActiveEnrollment = activeInstructor > 0 || activeTa > 0 || activeStudent > 0;
+
+        if (hasActiveEnrollment) {
+            if (newRole != null && !RoleEnum.USER.name().equals(newRole)) {
+                throw new ApiException(ErrorType.CONFLICT,
+                        "User still has Active enrollments; role must remain USER");
+            }
+        }
+        if (activeInstructor > 0) {
+            if (newLevel != null && !LevelEnum.INSTRUCTOR.level.equalsIgnoreCase(newLevel)) {
                 throw new ApiException(ErrorType.CONFLICT,
                         "User is still an Active Primary Instructor; reassign before changing role/level");
             }
         }
-        if (enrollmentMapper.countActiveTaEnrollmentsByUserId(userId) > 0) {
-            if (toTenantAdmin || toStudentLevel) {
-                throw new ApiException(ErrorType.CONFLICT,
-                        "User still has Active TA enrollments; remove TA before changing role/level");
-            }
-        }
-        if (enrollmentMapper.countActiveStudentEnrollmentsByUserId(userId) > 0) {
-            if (toTenantAdmin || toInstructorLevel) {
-                throw new ApiException(ErrorType.CONFLICT,
-                        "User still has Active Student enrollments; withdraw before changing role/level");
+        if (activeTa > 0 || activeStudent > 0) {
+            if (newLevel != null && !LevelEnum.STUDENT.level.equalsIgnoreCase(newLevel)) {
+                String message = activeTa > 0
+                        ? "User still has Active TA enrollments; remove TA before changing role/level"
+                        : "User still has Active Student enrollments; withdraw before changing role/level";
+                throw new ApiException(ErrorType.CONFLICT, message);
             }
         }
         return user;

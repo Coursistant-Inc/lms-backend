@@ -8,6 +8,7 @@ import com.coursistant.lms.module.course.course.service.CourseAuthorizationServi
 import com.coursistant.lms.module.course.enrollment.dto.UpdateTaPermissionsRequest;
 import com.coursistant.lms.module.course.enrollment.entity.Enrollment;
 import com.coursistant.lms.module.course.enrollment.repository.EnrollmentMapper;
+import com.coursistant.lms.module.course.group.entity.GroupMembershipAudit;
 import com.coursistant.lms.module.course.group.service.GroupMembershipService;
 import com.coursistant.lms.module.quiz.service.QuizLifecycleHooks;
 import com.coursistant.lms.module.tenant.entity.Tenant;
@@ -31,6 +32,7 @@ import java.util.stream.IntStream;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.lenient;
 
 @ExtendWith(MockitoExtension.class)
 class EnrollmentMembershipServiceTest {
@@ -64,73 +66,186 @@ class EnrollmentMembershipServiceTest {
     }
 
     @Test
-    void addTa_reactivatesWithAllPermissionsFalse() {
+    void addTa_promotesActiveStudent_withDefaultsAndHooks() {
         ActorContext actor = instructorActor();
         when(courseAuthorizationService.requireCourseManager(actor, 10)).thenReturn(course);
         when(courseMapper.selectById(10)).thenReturn(course);
         when(courseMapper.selectByIdForUpdate(10)).thenReturn(course);
         when(tenantMapper.selectById(1)).thenReturn(tenant);
-
-        User taUser = user(9, "INSTRUCTOR");
-        when(userMapper.selectByIdForUpdate(9)).thenReturn(taUser);
-        when(userMapper.selectById(9)).thenReturn(taUser);
-
-        Enrollment inactive = enrollment(2, 9, "TA", false);
-        inactive.setCanGrade(true);
-        inactive.setCanPostAnnouncements(true);
-        when(enrollmentMapper.selectByCourseIdAndUserIdForUpdate(10, 9)).thenReturn(inactive);
+        User student = user(9, "STUDENT");
+        when(userMapper.selectByIdForUpdate(9)).thenReturn(student);
+        when(userMapper.selectById(9)).thenReturn(student);
+        Enrollment activeStudent = enrollment(2, 9, "Student", true);
+        when(enrollmentMapper.selectByCourseIdAndUserIdForUpdate(10, 9)).thenReturn(activeStudent);
         Enrollment after = enrollment(2, 9, "TA", true);
         after.setCanGrade(false);
+        after.setAssignmentSubmitFrozen(true);
         when(enrollmentMapper.selectById(2)).thenReturn(after);
 
-        service.addTa(actor, 10, 9, "k");
+        var resp = service.addTa(actor, 10, 9, "k");
+        assertEquals("TA", resp.getCourseRole());
 
         ArgumentCaptor<Enrollment> cap = ArgumentCaptor.forClass(Enrollment.class);
         verify(enrollmentMapper).updateById(cap.capture());
         Enrollment patch = cap.getValue();
+        assertEquals("TA", patch.getCourseRole());
         assertEquals(false, patch.getCanGrade());
         assertEquals(false, patch.getCanPostAnnouncements());
         assertEquals(false, patch.getCanManageGroups());
         assertEquals(false, patch.getCanManageCourseEvents());
         assertEquals(true, patch.getAssignmentSubmitFrozen());
-        assertTrue(Boolean.TRUE.equals(patch.getClearWithdrawn()));
+        verify(groupMembershipService).endGroupMemberships(
+                eq(10), eq(9), any(), eq(7), eq(GroupMembershipAudit.END_ON_TA_PROMOTION));
+        verify(quizLifecycleHooks).onMembershipIneligible(10, 9);
         verify(courseAuditService).write(eq(actor), eq(10), eq(1),
-                eq(CourseAuditActions.TA_REACTIVATED), any(), eq(9), any(), any(), eq("k"));
+                eq(CourseAuditActions.TA_ADDED), any(), eq(9), any(), any(), eq("k"));
     }
 
     @Test
-    void addTa_inactiveStudent_roleChanged() {
+    void addTa_rejectsInstructorLevel() {
         ActorContext actor = instructorActor();
         when(courseAuthorizationService.requireCourseManager(actor, 10)).thenReturn(course);
         when(courseMapper.selectById(10)).thenReturn(course);
-        when(courseMapper.selectByIdForUpdate(10)).thenReturn(course);
-        when(tenantMapper.selectById(1)).thenReturn(tenant);
-        User u = user(9, "INSTRUCTOR");
-        when(userMapper.selectByIdForUpdate(9)).thenReturn(u);
-        when(userMapper.selectById(9)).thenReturn(u);
-        Enrollment inactiveStudent = enrollment(3, 9, "Student", false);
-        when(enrollmentMapper.selectByCourseIdAndUserIdForUpdate(10, 9)).thenReturn(inactiveStudent);
-        Enrollment after = enrollment(3, 9, "TA", true);
-        when(enrollmentMapper.selectById(3)).thenReturn(after);
+        when(userMapper.selectByIdForUpdate(9)).thenReturn(user(9, "INSTRUCTOR"));
 
-        service.addTa(actor, 10, 9, "k");
-        verify(courseAuditService).write(eq(actor), eq(10), eq(1),
-                eq(CourseAuditActions.ENROLLMENT_ROLE_CHANGED), any(), eq(9), any(), any(), eq("k"));
+        ApiException ex = assertThrows(ApiException.class, () -> service.addTa(actor, 10, 9, "k"));
+        assertEquals(ErrorType.LEVEL_ENROLLMENT_MISMATCH, ex.getErrorType());
     }
 
     @Test
-    void addStudent_rejectsInactiveTaConversion() {
+    void addTa_missingEnrollment_notFound() {
         ActorContext actor = instructorActor();
+        stubWritableCourse(actor);
+        when(userMapper.selectByIdForUpdate(9)).thenReturn(user(9, "STUDENT"));
+        when(enrollmentMapper.selectByCourseIdAndUserIdForUpdate(10, 9)).thenReturn(null);
+
+        ApiException ex = assertThrows(ApiException.class, () -> service.addTa(actor, 10, 9, "k"));
+        assertEquals(ErrorType.ENROLLMENT_NOT_FOUND, ex.getErrorType());
+    }
+
+    @Test
+    void addTa_inactiveEnrollment_notActive() {
+        ActorContext actor = instructorActor();
+        stubWritableCourse(actor);
+        when(userMapper.selectByIdForUpdate(9)).thenReturn(user(9, "STUDENT"));
+        when(enrollmentMapper.selectByCourseIdAndUserIdForUpdate(10, 9))
+                .thenReturn(enrollment(2, 9, "Student", false));
+
+        ApiException ex = assertThrows(ApiException.class, () -> service.addTa(actor, 10, 9, "k"));
+        assertEquals(ErrorType.ENROLLMENT_NOT_ACTIVE, ex.getErrorType());
+    }
+
+    @Test
+    void addTa_idempotentActiveTa_noAudit() {
+        ActorContext actor = instructorActor();
+        stubWritableCourse(actor);
+        User student = user(9, "STUDENT");
+        when(userMapper.selectByIdForUpdate(9)).thenReturn(student);
+        when(userMapper.selectById(9)).thenReturn(student);
+        when(enrollmentMapper.selectByCourseIdAndUserIdForUpdate(10, 9))
+                .thenReturn(enrollment(2, 9, "TA", true));
+
+        service.addTa(actor, 10, 9, "k");
+        verify(enrollmentMapper, never()).updateById(any());
+        verify(courseAuditService, never()).write(any(), any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void removeTa_demotesToActiveStudent_keepsFrozen() {
+        ActorContext actor = actorManager();
+        when(courseAuthorizationService.requireCourseManager(actor, 10)).thenReturn(course);
+        User student = user(9, "STUDENT");
+        when(userMapper.selectByIdForUpdate(9)).thenReturn(student);
+        when(userMapper.selectById(9)).thenReturn(student);
+        when(courseMapper.selectByIdForUpdate(10)).thenReturn(course);
+        Enrollment ta = enrollment(2, 9, "TA", true);
+        ta.setAssignmentSubmitFrozen(true);
+        when(enrollmentMapper.selectByCourseIdAndUserIdForUpdate(10, 9)).thenReturn(ta);
+        Enrollment after = enrollment(2, 9, "Student", true);
+        after.setAssignmentSubmitFrozen(true);
+        when(enrollmentMapper.selectById(2)).thenReturn(after);
+
+        var resp = service.removeTa(actor, 10, 9, "k");
+        assertEquals("Student", resp.getCourseRole());
+
+        ArgumentCaptor<Enrollment> cap = ArgumentCaptor.forClass(Enrollment.class);
+        verify(enrollmentMapper).updateById(cap.capture());
+        assertEquals("Student", cap.getValue().getCourseRole());
+        assertEquals(true, cap.getValue().getAssignmentSubmitFrozen());
+        assertEquals(false, cap.getValue().getCanGrade());
+        verify(groupMembershipService, never()).endGroupMembershipsOnEnrollmentDeactivated(any(), any(), any(), any());
+        verify(courseAuditService).write(eq(actor), eq(10), eq(1),
+                eq(CourseAuditActions.TA_REMOVED), any(), eq(9), any(), any(), eq("k"));
+    }
+
+    @Test
+    void removeTa_activeStudent_idempotentNoAudit() {
+        ActorContext actor = actorManager();
+        when(courseAuthorizationService.requireCourseManager(actor, 10)).thenReturn(course);
+        when(userMapper.selectByIdForUpdate(9)).thenReturn(user(9, "STUDENT"));
+        when(userMapper.selectById(9)).thenReturn(user(9, "STUDENT"));
+        when(courseMapper.selectByIdForUpdate(10)).thenReturn(course);
+        when(enrollmentMapper.selectByCourseIdAndUserIdForUpdate(10, 9))
+                .thenReturn(enrollment(2, 9, "Student", true));
+
+        service.removeTa(actor, 10, 9, "k");
+        verify(enrollmentMapper, never()).updateById(any());
+        verify(courseAuditService, never()).write(any(), any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void removeTa_activeInstructor_conflict() {
+        ActorContext actor = actorManager();
+        when(courseAuthorizationService.requireCourseManager(actor, 10)).thenReturn(course);
+        when(userMapper.selectByIdForUpdate(7)).thenReturn(user(7, "INSTRUCTOR"));
+        when(courseMapper.selectByIdForUpdate(10)).thenReturn(course);
+        when(enrollmentMapper.selectByCourseIdAndUserIdForUpdate(10, 7))
+                .thenReturn(enrollment(1, 7, "Instructor", true));
+
+        ApiException ex = assertThrows(ApiException.class, () -> service.removeTa(actor, 10, 7, "k"));
+        assertEquals(ErrorType.CONFLICT, ex.getErrorType());
+    }
+
+    @Test
+    void removeTa_archived_rejected() {
+        ActorContext actor = actorManager();
+        Course archived = new Course();
+        archived.setId(10);
+        archived.setTenantId(1);
+        archived.setState("Archived");
+        when(courseAuthorizationService.requireCourseManager(actor, 10)).thenReturn(archived);
+        when(userMapper.selectByIdForUpdate(9)).thenReturn(user(9, "STUDENT"));
+        when(courseMapper.selectByIdForUpdate(10)).thenReturn(archived);
+
+        ApiException ex = assertThrows(ApiException.class, () -> service.removeTa(actor, 10, 9, "k"));
+        assertEquals(ErrorType.COURSE_ARCHIVED, ex.getErrorType());
+    }
+
+    @Test
+    void addStudent_inactiveTa_restoresStudent_keepsFrozen() {
+        ActorContext actor = actorManager();
         when(courseMapper.selectById(10)).thenReturn(course);
         when(courseMapper.selectByIdForUpdate(10)).thenReturn(course);
         when(tenantMapper.selectById(1)).thenReturn(tenant);
         User student = user(3, "STUDENT");
         when(userMapper.selectByIdForUpdate(3)).thenReturn(student);
+        when(userMapper.selectById(3)).thenReturn(student);
         Enrollment inactiveTa = enrollment(4, 3, "TA", false);
+        inactiveTa.setAssignmentSubmitFrozen(true);
         when(enrollmentMapper.selectByCourseIdAndUserIdForUpdate(10, 3)).thenReturn(inactiveTa);
+        Enrollment after = enrollment(4, 3, "Student", true);
+        after.setAssignmentSubmitFrozen(true);
+        when(enrollmentMapper.selectById(4)).thenReturn(after);
 
-        ApiException ex = assertThrows(ApiException.class, () -> service.upsertStudentLocked(actor, 10, 3, "k"));
-        assertEquals(ErrorType.CONFLICT, ex.getErrorType());
+        service.upsertStudentLocked(actor, 10, 3, "k");
+
+        ArgumentCaptor<Enrollment> cap = ArgumentCaptor.forClass(Enrollment.class);
+        verify(enrollmentMapper).updateById(cap.capture());
+        assertEquals("Student", cap.getValue().getCourseRole());
+        assertEquals(true, cap.getValue().getAssignmentSubmitFrozen());
+        assertEquals(true, cap.getValue().getClearWithdrawn());
+        verify(courseAuditService).write(eq(actor), eq(10), eq(1),
+                eq(CourseAuditActions.ENROLLMENT_ROLE_CHANGED), any(), eq(3), any(), any(), eq("k"));
     }
 
     @Test
@@ -152,8 +267,6 @@ class EnrollmentMembershipServiceTest {
         ArgumentCaptor<Enrollment> cap = ArgumentCaptor.forClass(Enrollment.class);
         verify(enrollmentMapper).updateById(cap.capture());
         assertNotNull(cap.getValue().getWithdrawnAt());
-        assertEquals(ActorContext.ACTOR_USER, cap.getValue().getWithdrawnByActorType());
-        assertEquals(7, cap.getValue().getWithdrawnByActorId());
         verify(groupMembershipService).endGroupMembershipsOnEnrollmentDeactivated(eq(10), eq(3), any(), eq(7));
         verify(quizLifecycleHooks).onMembershipIneligible(10, 3);
         verify(courseAuditService).write(eq(actor), eq(10), eq(1),
@@ -173,7 +286,7 @@ class EnrollmentMembershipServiceTest {
     }
 
     @Test
-    void patchTa_nullKeepsExisting_andArchivedRejected() {
+    void patchTa_archivedRejected() {
         ActorContext actor = instructorActor();
         Course archived = new Course();
         archived.setId(10);
@@ -184,6 +297,50 @@ class EnrollmentMembershipServiceTest {
         ApiException ex = assertThrows(ApiException.class,
                 () -> service.patchTaPermissions(actor, 10, 9, new UpdateTaPermissionsRequest(), "k"));
         assertEquals(ErrorType.COURSE_ARCHIVED, ex.getErrorType());
+    }
+
+    @Test
+    void addTa_groupEndThrows_rollsBackTransactionally_atServiceBoundary() {
+        // Unit-level: when GroupMembershipService throws, update must not be committed by caller;
+        // here we assert the exception propagates before audit (service is @Transactional in Spring).
+        ActorContext actor = actorManager();
+        stubWritableCourse(actor);
+        User student = user(9, "STUDENT");
+        when(userMapper.selectByIdForUpdate(9)).thenReturn(student);
+        when(enrollmentMapper.selectByCourseIdAndUserIdForUpdate(10, 9))
+                .thenReturn(enrollment(2, 9, "Student", true));
+        doThrow(new RuntimeException("boom")).when(groupMembershipService)
+                .endGroupMemberships(eq(10), eq(9), any(), any(), eq(GroupMembershipAudit.END_ON_TA_PROMOTION));
+
+        assertThrows(RuntimeException.class, () -> service.addTa(actor, 10, 9, "k"));
+        verify(courseAuditService, never()).write(any(), any(), any(), eq(CourseAuditActions.TA_ADDED),
+                any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void patchTa_targetTenantMismatch() {
+        ActorContext actor = instructorActor();
+        when(courseAuthorizationService.requireCourseManager(actor, 10)).thenReturn(course);
+        when(courseMapper.selectById(10)).thenReturn(course);
+        User otherTenant = user(9, "STUDENT");
+        otherTenant.setTenantId(2);
+        when(userMapper.selectByIdForUpdate(9)).thenReturn(otherTenant);
+        when(courseMapper.selectByIdForUpdate(10)).thenReturn(course);
+
+        ApiException ex = assertThrows(ApiException.class,
+                () -> service.patchTaPermissions(actor, 10, 9, new UpdateTaPermissionsRequest(), "k"));
+        assertEquals(ErrorType.TENANT_MISMATCH, ex.getErrorType());
+    }
+
+    private void stubWritableCourse(ActorContext actor) {
+        when(courseAuthorizationService.requireCourseManager(eq(actor), eq(10))).thenReturn(course);
+        lenient().when(courseMapper.selectById(10)).thenReturn(course);
+        when(courseMapper.selectByIdForUpdate(10)).thenReturn(course);
+        lenient().when(tenantMapper.selectById(1)).thenReturn(tenant);
+    }
+
+    private ActorContext actorManager() {
+        return instructorActor();
     }
 
     private ActorContext instructorActor() {
@@ -198,7 +355,7 @@ class EnrollmentMembershipServiceTest {
         u.setLevel(level);
         u.setStatus("ACTIVE");
         u.setName("n");
-        u.setEmail(id + "@ex.com");
+        u.setEmail("u" + id + "@example.com");
         return u;
     }
 

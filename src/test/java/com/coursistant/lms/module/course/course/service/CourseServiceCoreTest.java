@@ -264,7 +264,39 @@ class CourseServiceCoreTest {
     }
 
     @Test
-    void reassign_promotesTa_andDeactivatesOldInstructor() {
+    void reassign_rejectsActiveTa() {
+        Course course = baseCourse(10);
+        when(courseAuthorizationService.requireVisibleCourse(any(), eq(10))).thenReturn(course);
+        when(tenantMapper.selectById(1)).thenReturn(activeTenant);
+        User target = copyInstructor(9, 1);
+        when(userMapper.selectByIdForUpdate(9)).thenReturn(target);
+        when(userMapper.selectById(9)).thenReturn(target);
+        when(courseMapper.selectByIdForUpdate(10)).thenReturn(course);
+
+        Enrollment current = new Enrollment();
+        current.setId(1);
+        current.setUserId(7);
+        current.setCourseRole("Instructor");
+        current.setActive(true);
+        when(enrollmentMapper.selectActiveInstructorByCourseIdForUpdate(10)).thenReturn(current);
+
+        Enrollment ta = new Enrollment();
+        ta.setId(2);
+        ta.setUserId(9);
+        ta.setCourseRole("TA");
+        ta.setActive(true);
+        when(enrollmentMapper.selectByCourseIdAndUserIdForUpdate(10, 9)).thenReturn(ta);
+
+        ReassignPrimaryInstructorRequest req = new ReassignPrimaryInstructorRequest();
+        req.setPrimaryInstructorUserId(9);
+        ApiException ex = assertThrows(ApiException.class,
+                () -> courseService.reassignPrimaryInstructor(tenantAdmin(5, 1), 10, req, "k"));
+        assertEquals(ErrorType.CONFLICT, ex.getErrorType());
+        verify(enrollmentMapper, never()).updateById(any());
+    }
+
+    @Test
+    void reassign_promotesInactiveEnrollment_andDeactivatesOldInstructor() {
         Course course = baseCourse(10);
         when(courseAuthorizationService.requireVisibleCourse(any(), eq(10))).thenReturn(course);
         when(tenantMapper.selectById(1)).thenReturn(activeTenant);
@@ -281,12 +313,12 @@ class CourseServiceCoreTest {
         current.setActive(true);
         when(enrollmentMapper.selectActiveInstructorByCourseIdForUpdate(10)).thenReturn(current);
 
-        Enrollment ta = new Enrollment();
-        ta.setId(2);
-        ta.setUserId(9);
-        ta.setCourseRole("TA");
-        ta.setActive(true);
-        when(enrollmentMapper.selectByCourseIdAndUserIdForUpdate(10, 9)).thenReturn(ta);
+        Enrollment inactive = new Enrollment();
+        inactive.setId(2);
+        inactive.setUserId(9);
+        inactive.setCourseRole("Student");
+        inactive.setActive(false);
+        when(enrollmentMapper.selectByCourseIdAndUserIdForUpdate(10, 9)).thenReturn(inactive);
         when(enrollmentMapper.countActiveInstructorsByCourseId(10)).thenReturn(1);
 
         ReassignPrimaryInstructorRequest req = new ReassignPrimaryInstructorRequest();
