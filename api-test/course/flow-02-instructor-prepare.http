@@ -1,0 +1,168 @@
+### F2.2 Instructor creates and prepares course
+### Globals needed: instructor1Token, instructor1UserId, courseCode, idem Keys
+### Sets: courseId, sessionId, weekId, materialId
+
+### Create course
+POST {{baseUrl}}/v2/courses
+Authorization: Bearer {{instructor1Token}}
+Idempotency-Key: {{idemKeyCreate}}
+Content-Type: application/json
+
+{
+  "courseCode": "{{courseCode}}",
+  "title": "API Test {{courseCode}}",
+  "termStartDate": "2026-01-01",
+  "termEndDate": "2026-12-31",
+  "description": "IntelliJ course API run"
+}
+
+> {%
+client.test("F2.2 create course", function () {
+  client.assert(response.status === 200);
+  client.assert(response.body.code === "SUCCESS");
+  client.assert(response.body.data.state === "Active");
+  client.assert(!!response.body.data.id);
+});
+client.global.set("courseId", "" + response.body.data.id);
+%}
+
+### Missing Key on create → IDEMPOTENCY_KEY_REQUIRED
+POST {{baseUrl}}/v2/courses
+Authorization: Bearer {{instructor1Token}}
+Content-Type: application/json
+
+{
+  "courseCode": "{{courseCode}}-NOKEY",
+  "title": "Should Fail",
+  "termStartDate": "2026-01-01",
+  "termEndDate": "2026-12-31"
+}
+
+> {%
+client.test("F2.2 missing Key", function () {
+  client.assert(response.status === 400);
+  client.assert(response.body.code === "IDEMPOTENCY_KEY_REQUIRED");
+});
+%}
+
+### Create session
+POST {{baseUrl}}/v2/courses/{{courseId}}/sessions
+Authorization: Bearer {{instructor1Token}}
+Idempotency-Key: {{idemKeySession}}
+Content-Type: application/json
+
+{
+  "type": "Lecture",
+  "dayOfWeek": "MON",
+  "startTime": "09:00:00",
+  "endTime": "10:30:00",
+  "location": "A101"
+}
+
+> {%
+client.test("F2.2 create session", function () {
+  client.assert(response.status === 200);
+  client.assert(response.body.code === "SUCCESS");
+  client.assert(!!response.body.data.id);
+});
+client.global.set("sessionId", "" + response.body.data.id);
+%}
+
+### Upload syllabus PDF
+POST {{baseUrl}}/v2/courses/{{courseId}}/syllabus
+Authorization: Bearer {{instructor1Token}}
+Idempotency-Key: {{idemKeySyllabus}}
+Content-Type: multipart/form-data; boundary=SyllabusBoundary
+
+--SyllabusBoundary
+Content-Disposition: form-data; name="file"; filename="sample.pdf"
+Content-Type: application/pdf
+
+< ./fixtures/sample.pdf
+--SyllabusBoundary--
+
+> {%
+client.test("F2.2 syllabus upload", function () {
+  client.assert(response.status === 200);
+  client.assert(response.body.code === "SUCCESS");
+  client.assert(response.body.data.posted === true || response.body.data.posted === undefined || !!response.body.data.versionId || !!response.body.data.originalFilename);
+});
+%}
+
+### Create week
+POST {{baseUrl}}/v2/courses/{{courseId}}/weeks
+Authorization: Bearer {{instructor1Token}}
+Idempotency-Key: {{idemKeyWeek}}
+Content-Type: application/json
+
+{
+  "title": "Week 1"
+}
+
+> {%
+client.test("F2.2 create week", function () {
+  client.assert(response.status === 200);
+  client.assert(response.body.code === "SUCCESS");
+  client.assert(response.body.data.state === "Draft");
+});
+client.global.set("weekId", "" + response.body.data.id);
+%}
+
+### Upload material (must Key)
+POST {{baseUrl}}/v2/courses/{{courseId}}/weeks/{{weekId}}/materials
+Authorization: Bearer {{instructor1Token}}
+Idempotency-Key: {{idemKeyMaterial}}
+Content-Type: multipart/form-data; boundary=MatBoundary
+
+--MatBoundary
+Content-Disposition: form-data; name="files"; filename="sample.png"
+Content-Type: image/png
+
+< ./fixtures/sample.png
+--MatBoundary--
+
+> {%
+client.test("F2.2 material upload", function () {
+  client.assert(response.status === 200);
+  client.assert(response.body.code === "SUCCESS");
+  const data = response.body.data;
+  const first = Array.isArray(data) ? data[0] : data;
+  client.assert(!!first && !!first.id);
+  client.global.set("materialId", "" + first.id);
+});
+%}
+
+### Publish week
+POST {{baseUrl}}/v2/courses/{{courseId}}/weeks/{{weekId}}/publish
+Authorization: Bearer {{instructor1Token}}
+Idempotency-Key: {{idemKeyPublish}}
+
+> {%
+client.test("F2.2 publish week", function () {
+  client.assert(response.status === 200);
+  client.assert(response.body.code === "SUCCESS");
+  client.assert(response.body.data.state === "Published");
+});
+%}
+
+### Optional event
+POST {{baseUrl}}/v2/courses/{{courseId}}/events
+Authorization: Bearer {{instructor1Token}}
+Idempotency-Key: {{idemKeyEvent}}
+Content-Type: application/json
+
+{
+  "name": "Kickoff",
+  "date": "2026-03-15",
+  "startTime": "14:00:00",
+  "endTime": "16:00:00",
+  "location": "Hall B"
+}
+
+> {%
+client.test("F2.2 create event", function () {
+  client.assert(response.status === 200);
+  client.assert(response.body.code === "SUCCESS");
+});
+client.global.set("eventId", "" + response.body.data.id);
+%}

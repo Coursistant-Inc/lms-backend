@@ -1,0 +1,176 @@
+### TA Material permissions (T1–T4; T3 split a/b/c)
+### TA has four permissions all false. Uses studentEnrolled as TA.
+
+### Ensure Active Student then promote TA (permissions default false)
+POST {{baseUrl}}/v2/courses/{{courseId}}/students
+Authorization: Bearer {{instructor1Token}}
+Idempotency-Key: {{runId}}-ta-mat-stu
+Content-Type: application/json
+
+{
+  "userId": {{studentEnrolledUserId}}
+}
+
+> {%
+client.test("10 ensure student", function () {
+  client.assert(response.status === 200 || response.status === 409);
+});
+%}
+
+POST {{baseUrl}}/v2/courses/{{courseId}}/tas
+Authorization: Bearer {{instructor1Token}}
+Idempotency-Key: {{runId}}-ta-mat-promote
+Content-Type: application/json
+
+{
+  "userId": {{studentEnrolledUserId}}
+}
+
+> {%
+client.test("10 promote TA four perms false", function () {
+  client.assert(response.status === 200);
+  client.assert(response.body.data.courseRole === "TA");
+  client.assert(response.body.data.canGrade === false);
+  client.assert(response.body.data.canPostAnnouncements === false);
+  client.assert(response.body.data.canManageGroups === false);
+  client.assert(response.body.data.canManageCourseEvents === false);
+});
+%}
+
+### T1 TA upload without four permissions
+POST {{baseUrl}}/v2/courses/{{courseId}}/weeks/{{weekId}}/materials
+Authorization: Bearer {{studentEnrolledToken}}
+Idempotency-Key: {{runId}}-ta-mat-up
+Content-Type: multipart/form-data; boundary=TaMatBoundary
+
+--TaMatBoundary
+Content-Disposition: form-data; name="files"; filename="ta-upload.png"
+Content-Type: image/png
+
+< ./fixtures/sample.png
+--TaMatBoundary--
+
+> {%
+client.test("T1 TA upload 200", function () {
+  client.assert(response.status === 200);
+  client.assert(response.body.code === "SUCCESS");
+  const data = response.body.data;
+  const first = Array.isArray(data) ? data[0] : data;
+  client.assert(!!first.id);
+  client.global.set("taMaterialId", "" + first.id);
+});
+%}
+
+### Instructor upload (other's file) for T4
+POST {{baseUrl}}/v2/courses/{{courseId}}/weeks/{{weekId}}/materials
+Authorization: Bearer {{instructor1Token}}
+Idempotency-Key: {{runId}}-ins-mat-up
+Content-Type: multipart/form-data; boundary=InsMatBoundary
+
+--InsMatBoundary
+Content-Disposition: form-data; name="files"; filename="instructor-upload.png"
+Content-Type: image/png
+
+< ./fixtures/sample.png
+--InsMatBoundary--
+
+> {%
+client.test("10 instructor upload for T4", function () {
+  client.assert(response.status === 200);
+  const data = response.body.data;
+  const first = Array.isArray(data) ? data[0] : data;
+  client.global.set("instructorMaterialId", "" + first.id);
+});
+%}
+
+### T3a TA rename FORBIDDEN
+PATCH {{baseUrl}}/v2/courses/{{courseId}}/weeks/{{weekId}}/materials/{{taMaterialId}}
+Authorization: Bearer {{studentEnrolledToken}}
+Idempotency-Key: {{runId}}-ta-rename
+Content-Type: application/json
+
+{
+  "displayName": "Hacked Name"
+}
+
+> {%
+client.test("T3a TA rename FORBIDDEN", function () {
+  client.assert(response.status === 403);
+  client.assert(response.body.code === "FORBIDDEN");
+});
+%}
+
+### T3b TA reorder FORBIDDEN
+PUT {{baseUrl}}/v2/courses/{{courseId}}/weeks/{{weekId}}/materials/reorder
+Authorization: Bearer {{studentEnrolledToken}}
+Idempotency-Key: {{runId}}-ta-reorder
+Content-Type: application/json
+
+{
+  "materialIds": [{{taMaterialId}}, {{instructorMaterialId}}]
+}
+
+> {%
+client.test("T3b TA reorder FORBIDDEN", function () {
+  client.assert(response.status === 403);
+  client.assert(response.body.code === "FORBIDDEN");
+});
+%}
+
+### T3c TA move FORBIDDEN
+POST {{baseUrl}}/v2/courses/{{courseId}}/weeks/{{weekId}}/materials/{{taMaterialId}}/move
+Authorization: Bearer {{studentEnrolledToken}}
+Idempotency-Key: {{runId}}-ta-move
+Content-Type: application/json
+
+{
+  "targetWeekId": {{weekId}}
+}
+
+> {%
+client.test("T3c TA move FORBIDDEN", function () {
+  client.assert(response.status === 403);
+  client.assert(response.body.code === "FORBIDDEN");
+});
+%}
+
+### T4 TA delete instructor's file FORBIDDEN
+DELETE {{baseUrl}}/v2/courses/{{courseId}}/weeks/{{weekId}}/materials/{{instructorMaterialId}}
+Authorization: Bearer {{studentEnrolledToken}}
+
+> {%
+client.test("T4 TA delete others FORBIDDEN", function () {
+  client.assert(response.status === 403);
+  client.assert(response.body.code === "FORBIDDEN");
+});
+%}
+
+### T2 TA delete own file 200
+DELETE {{baseUrl}}/v2/courses/{{courseId}}/weeks/{{weekId}}/materials/{{taMaterialId}}
+Authorization: Bearer {{studentEnrolledToken}}
+
+> {%
+client.test("T2 TA delete own 200", function () {
+  client.assert(response.status === 200);
+  client.assert(response.body.code === "SUCCESS");
+});
+%}
+
+### Cleanup: demote TA; instructor may delete own leftover
+DELETE {{baseUrl}}/v2/courses/{{courseId}}/tas/{{studentEnrolledUserId}}
+Authorization: Bearer {{instructor1Token}}
+
+> {%
+client.test("10 demote TA cleanup", function () {
+  client.assert(response.status === 200);
+});
+%}
+
+DELETE {{baseUrl}}/v2/courses/{{courseId}}/weeks/{{weekId}}/materials/{{instructorMaterialId}}
+Authorization: Bearer {{instructor1Token}}
+
+> {%
+client.test("10 cleanup instructor material", function () {
+  client.assert(response.status === 200 || response.status === 404);
+});
+%}

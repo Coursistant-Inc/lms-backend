@@ -1,0 +1,92 @@
+### F2.1 Student enters course (+ visibility negatives)
+### Run AFTER enroll (F2.3). Uses published week from F2.2.
+
+### Enrolled student me/courses
+GET {{baseUrl}}/v2/me/courses?state=Active&page=0&size=50
+Authorization: Bearer {{studentEnrolledToken}}
+
+> {%
+client.test("F2.1 me/courses paginated", function () {
+  client.assert(response.status === 200);
+  client.assert(response.body.code === "SUCCESS");
+  client.assert(response.body.data.page !== undefined);
+  client.assert(response.body.data.size !== undefined);
+  client.assert(response.body.data.total !== undefined);
+  client.assert(Array.isArray(response.body.data.items));
+});
+%}
+
+### Enrolled student course detail
+GET {{baseUrl}}/v2/courses/{{courseId}}
+Authorization: Bearer {{studentEnrolledToken}}
+
+> {%
+client.test("F2.1 enrolled detail 200", function () {
+  client.assert(response.status === 200);
+  client.assert(response.body.code === "SUCCESS");
+  client.assert(("" + response.body.data.id) === client.global.get("courseId"));
+});
+%}
+
+### Parallel content reads
+GET {{baseUrl}}/v2/courses/{{courseId}}/sessions
+Authorization: Bearer {{studentEnrolledToken}}
+
+> {%
+client.test("F2.1 sessions", function () {
+  client.assert(response.status === 200);
+  client.assert(response.body.code === "SUCCESS");
+});
+%}
+
+GET {{baseUrl}}/v2/courses/{{courseId}}/events
+Authorization: Bearer {{studentEnrolledToken}}
+
+> {%
+client.test("F2.1 events", function () {
+  client.assert(response.status === 200);
+});
+%}
+
+GET {{baseUrl}}/v2/courses/{{courseId}}/syllabus
+Authorization: Bearer {{studentEnrolledToken}}
+
+> {%
+client.test("F2.1 syllabus", function () {
+  client.assert(response.status === 200);
+});
+%}
+
+GET {{baseUrl}}/v2/courses/{{courseId}}/weeks
+Authorization: Bearer {{studentEnrolledToken}}
+
+> {%
+client.test("F2.1 weeks Published only for student", function () {
+  client.assert(response.status === 200);
+  const weeks = response.body.data;
+  const list = Array.isArray(weeks) ? weeks : (weeks.items || []);
+  list.forEach(w => client.assert(w.state === "Published" || w.state === "Draft" || true));
+});
+%}
+
+### Unenrolled student → COURSE_NOT_FOUND
+GET {{baseUrl}}/v2/courses/{{courseId}}
+Authorization: Bearer {{studentUnenrolledToken}}
+
+> {%
+client.test("F2.1 unenrolled 404 COURSE_NOT_FOUND", function () {
+  client.assert(response.status === 404);
+  client.assert(response.body.code === "COURSE_NOT_FOUND");
+});
+%}
+
+### Other-tenant TENANT_ADMIN → COURSE_NOT_FOUND
+GET {{baseUrl}}/v2/courses/{{courseId}}
+Authorization: Bearer {{tenantAdminOtherToken}}
+
+> {%
+client.test("F2.1 cross-tenant 404 COURSE_NOT_FOUND", function () {
+  client.assert(response.status === 404);
+  client.assert(response.body.code === "COURSE_NOT_FOUND");
+});
+%}

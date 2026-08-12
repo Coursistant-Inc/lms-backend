@@ -1,0 +1,13 @@
+### Finish this run: archive the run's course (do NOT DELETE non-empty course)
+
+POST {{baseUrl}}/v2/courses/{{courseId}}/archive
+Authorization: Bearer {{adminToken}}
+Idempotency-Key: {{runId}}-finish-arch
+
+> {%
+client.test("99 finish archive this run", function () {
+  client.assert(response.status === 200);
+  client.assert(response.body.code === "SUCCESS");
+  client.assert(response.body.data.state === "Archived");
+});
+%}

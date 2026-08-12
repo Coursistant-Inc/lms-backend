@@ -1,0 +1,138 @@
+### Weeks/Materials gap: streams, move, reorder materials, delete empty week
+
+### Material preview / download
+GET {{baseUrl}}/v2/courses/{{courseId}}/weeks/{{weekId}}/materials/{{materialId}}/preview
+Authorization: Bearer {{instructor1Token}}
+
+> {%
+client.test("08 material preview", function () {
+  client.assert(response.status === 200 || response.status === 404 || response.status === 400);
+});
+%}
+
+GET {{baseUrl}}/v2/courses/{{courseId}}/weeks/{{weekId}}/materials/{{materialId}}/download
+Authorization: Bearer {{instructor1Token}}
+
+> {%
+client.test("08 material download", function () {
+  client.assert(response.status === 200 || response.status === 302);
+});
+%}
+
+### Week ZIP
+GET {{baseUrl}}/v2/courses/{{courseId}}/weeks/{{weekId}}/download.zip
+Authorization: Bearer {{instructor1Token}}
+
+> {%
+client.test("08 week zip", function () {
+  client.assert(response.status === 200);
+});
+%}
+
+### Missing Key on material upload
+POST {{baseUrl}}/v2/courses/{{courseId}}/weeks/{{weekId}}/materials
+Authorization: Bearer {{instructor1Token}}
+Content-Type: multipart/form-data; boundary=NoKeyBoundary
+
+--NoKeyBoundary
+Content-Disposition: form-data; name="files"; filename="sample.png"
+Content-Type: image/png
+
+< ./fixtures/sample.png
+--NoKeyBoundary--
+
+> {%
+client.test("08 material missing Key", function () {
+  client.assert(response.status === 400);
+  client.assert(response.body.code === "IDEMPOTENCY_KEY_REQUIRED");
+});
+%}
+
+### Upload second material for reorder
+POST {{baseUrl}}/v2/courses/{{courseId}}/weeks/{{weekId}}/materials
+Authorization: Bearer {{instructor1Token}}
+Idempotency-Key: {{runId}}-mat2
+Content-Type: multipart/form-data; boundary=Mat2Boundary
+
+--Mat2Boundary
+Content-Disposition: form-data; name="files"; filename="sample2.png"
+Content-Type: image/png
+
+< ./fixtures/sample.png
+--Mat2Boundary--
+
+> {%
+client.test("08 upload material2", function () {
+  client.assert(response.status === 200);
+  const data = response.body.data;
+  const first = Array.isArray(data) ? data[0] : data;
+  client.global.set("materialId2", "" + first.id);
+});
+%}
+
+### Rename material (Manager)
+PATCH {{baseUrl}}/v2/courses/{{courseId}}/weeks/{{weekId}}/materials/{{materialId2}}
+Authorization: Bearer {{instructor1Token}}
+Idempotency-Key: {{runId}}-mat-rename
+Content-Type: application/json
+
+{
+  "displayName": "Renamed Material"
+}
+
+> {%
+client.test("08 rename material", function () {
+  client.assert(response.status === 200);
+});
+%}
+
+### Reorder materials
+PUT {{baseUrl}}/v2/courses/{{courseId}}/weeks/{{weekId}}/materials/reorder
+Authorization: Bearer {{instructor1Token}}
+Idempotency-Key: {{runId}}-mat-reorder
+Content-Type: application/json
+
+{
+  "materialIds": [{{materialId2}}, {{materialId}}]
+}
+
+> {%
+client.test("08 reorder materials", function () {
+  client.assert(response.status === 200);
+});
+%}
+
+### Move material to week2
+POST {{baseUrl}}/v2/courses/{{courseId}}/weeks/{{weekId}}/materials/{{materialId2}}/move
+Authorization: Bearer {{instructor1Token}}
+Idempotency-Key: {{runId}}-mat-move
+Content-Type: application/json
+
+{
+  "targetWeekId": {{weekId2}}
+}
+
+> {%
+client.test("08 move material", function () {
+  client.assert(response.status === 200);
+});
+%}
+
+### Delete empty draft week (week2 may have material — delete material first if needed)
+DELETE {{baseUrl}}/v2/courses/{{courseId}}/weeks/{{weekId2}}/materials/{{materialId2}}
+Authorization: Bearer {{instructor1Token}}
+
+> {%
+client.test("08 delete moved material", function () {
+  client.assert(response.status === 200 || response.status === 404);
+});
+%}
+
+DELETE {{baseUrl}}/v2/courses/{{courseId}}/weeks/{{weekId2}}
+Authorization: Bearer {{instructor1Token}}
+
+> {%
+client.test("08 delete empty week2", function () {
+  client.assert(response.status === 200 || response.status === 409);
+});
+%}

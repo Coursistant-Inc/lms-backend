@@ -1,0 +1,82 @@
+### F2.7 Archive + reassign primary instructor
+### instructor2 must be level=INSTRUCTOR, same tenant, no conflicting active enrollment
+
+### Instructor self-reassign → FORBIDDEN
+POST {{baseUrl}}/v2/courses/{{courseId}}/primary-instructor
+Authorization: Bearer {{instructor1Token}}
+Idempotency-Key: {{runId}}-reas-forbid
+Content-Type: application/json
+
+{
+  "primaryInstructorUserId": {{instructor2UserId}}
+}
+
+> {%
+client.test("F2.7 instructor self-reassign FORBIDDEN", function () {
+  client.assert(response.status === 403);
+  client.assert(response.body.code === "FORBIDDEN");
+});
+%}
+
+### Admin reassigns to instructor2
+POST {{baseUrl}}/v2/courses/{{courseId}}/primary-instructor
+Authorization: Bearer {{adminToken}}
+Idempotency-Key: {{idemKeyReassign}}
+Content-Type: application/json
+
+{
+  "primaryInstructorUserId": {{instructor2UserId}}
+}
+
+> {%
+client.test("F2.7 reassign to instructor2", function () {
+  client.assert(response.status === 200);
+  client.assert(response.body.code === "SUCCESS");
+  const pi = response.body.data.primaryInstructor;
+  const iid = response.body.data.instructorId;
+  const ok = (pi && ("" + pi.userId) === client.global.get("instructor2UserId"))
+      || ("" + iid) === client.global.get("instructor2UserId");
+  client.assert(ok, "primary instructor not instructor2");
+});
+%}
+
+### Archive
+POST {{baseUrl}}/v2/courses/{{courseId}}/archive
+Authorization: Bearer {{adminToken}}
+Idempotency-Key: {{idemKeyArchive}}
+
+> {%
+client.test("F2.7 archive", function () {
+  client.assert(response.status === 200);
+  client.assert(response.body.data.state === "Archived");
+});
+%}
+
+### Write while archived → COURSE_ARCHIVED
+PATCH {{baseUrl}}/v2/courses/{{courseId}}
+Authorization: Bearer {{adminToken}}
+Idempotency-Key: {{runId}}-patch-arch
+Content-Type: application/json
+
+{
+  "title": "Should Fail Archived"
+}
+
+> {%
+client.test("F2.7 archived write COURSE_ARCHIVED", function () {
+  client.assert(response.status === 400);
+  client.assert(response.body.code === "COURSE_ARCHIVED");
+});
+%}
+
+### Unarchive (so 99-finish can archive again, or leave active for finish)
+POST {{baseUrl}}/v2/courses/{{courseId}}/unarchive
+Authorization: Bearer {{adminToken}}
+Idempotency-Key: {{idemKeyUnarchive}}
+
+> {%
+client.test("F2.7 unarchive", function () {
+  client.assert(response.status === 200);
+  client.assert(response.body.data.state === "Active");
+});
+%}

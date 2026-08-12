@@ -1,0 +1,92 @@
+### Gap coverage: Course CRUD extras not fully exercised in flows
+### Prefer running after bootstrap+create (courseId set). Some requests create a disposable empty course.
+
+### Browse GET /v2/courses as instructor
+GET {{baseUrl}}/v2/courses?page=0&size=20
+Authorization: Bearer {{instructor1Token}}
+
+> {%
+client.test("01 list courses instructor", function () {
+  client.assert(response.status === 200);
+  client.assert(response.body.code === "SUCCESS");
+});
+%}
+
+### Student browse GET /v2/courses → FORBIDDEN
+GET {{baseUrl}}/v2/courses?page=0&size=20
+Authorization: Bearer {{studentEnrolledToken}}
+
+> {%
+client.test("01 student browse FORBIDDEN", function () {
+  client.assert(response.status === 403);
+  client.assert(response.body.code === "FORBIDDEN");
+});
+%}
+
+### PATCH course (Active)
+PATCH {{baseUrl}}/v2/courses/{{courseId}}
+Authorization: Bearer {{instructor1Token}}
+Idempotency-Key: {{runId}}-patch-title
+Content-Type: application/json
+
+{
+  "title": "API Test Patched {{courseCode}}"
+}
+
+> {%
+client.test("01 patch course", function () {
+  client.assert(response.status === 200);
+  client.assert(response.body.code === "SUCCESS");
+});
+%}
+
+### GET session by id
+GET {{baseUrl}}/v2/courses/{{courseId}}/sessions/{{sessionId}}
+Authorization: Bearer {{instructor1Token}}
+
+> {%
+client.test("01 get session", function () {
+  client.assert(response.status === 200);
+});
+%}
+
+### Empty course DELETE (create then delete)
+POST {{baseUrl}}/v2/courses
+Authorization: Bearer {{instructor1Token}}
+Idempotency-Key: {{runId}}-empty-create
+Content-Type: application/json
+
+{
+  "courseCode": "{{courseCode}}-E",
+  "title": "Empty Disposable",
+  "termStartDate": "2026-01-01",
+  "termEndDate": "2026-06-30"
+}
+
+> {%
+client.test("01 create empty course", function () {
+  client.assert(response.status === 200);
+});
+client.global.set("emptyCourseId", "" + response.body.data.id);
+%}
+
+DELETE {{baseUrl}}/v2/courses/{{emptyCourseId}}
+Authorization: Bearer {{instructor1Token}}
+
+> {%
+client.test("01 delete empty course", function () {
+  client.assert(response.status === 200);
+  client.assert(response.body.code === "SUCCESS");
+});
+%}
+
+### Non-empty DELETE → CONFLICT
+DELETE {{baseUrl}}/v2/courses/{{courseId}}
+Authorization: Bearer {{instructor1Token}}
+
+> {%
+client.test("01 delete non-empty CONFLICT", function () {
+  client.assert(response.status === 409);
+  client.assert(response.body.code === "CONFLICT");
+});
+%}

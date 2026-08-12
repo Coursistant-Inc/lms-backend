@@ -1,0 +1,56 @@
+### Members / Students / TAs gap coverage
+
+GET {{baseUrl}}/v2/courses/{{courseId}}/members?page=0&size=20
+Authorization: Bearer {{instructor1Token}}
+
+> {%
+client.test("04 list members", function () {
+  client.assert(response.status === 200);
+  client.assert(response.body.data.total >= 1);
+});
+%}
+
+### Withdraw batch student then re-add via students API
+DELETE {{baseUrl}}/v2/courses/{{courseId}}/students/{{studentBatchUserId}}
+Authorization: Bearer {{instructor1Token}}
+
+> {%
+client.test("04 withdraw student", function () {
+  client.assert(response.status === 200);
+});
+%}
+
+POST {{baseUrl}}/v2/courses/{{courseId}}/students
+Authorization: Bearer {{instructor1Token}}
+Idempotency-Key: {{runId}}-readd-batch
+Content-Type: application/json
+
+{
+  "userId": {{studentBatchUserId}}
+}
+
+> {%
+client.test("04 re-add student", function () {
+  client.assert(response.status === 200);
+  client.assert(response.body.data.courseRole === "Student");
+});
+%}
+
+### Instructor level cannot become TA
+POST {{baseUrl}}/v2/courses/{{courseId}}/tas
+Authorization: Bearer {{instructor1Token}}
+Idempotency-Key: {{runId}}-ta-instr
+Content-Type: application/json
+
+{
+  "userId": {{instructor2UserId}}
+}
+
+> {%
+client.test("04 instructor level TA → LEVEL_ENROLLMENT_MISMATCH or CONFLICT", function () {
+  client.assert(response.status === 409);
+  client.assert(response.body.code === "LEVEL_ENROLLMENT_MISMATCH"
+      || response.body.code === "CONFLICT"
+      || response.body.code === "ENROLLMENT_NOT_FOUND");
+});
+%}

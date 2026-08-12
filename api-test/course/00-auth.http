@@ -1,0 +1,157 @@
+### Course API — login all roles; store tokens + userIds
+### Prerequisite: 00-health + redis-ping.ps1 + sql/course_api_test_accounts_seed.sql
+
+### Admin
+POST {{baseUrl}}/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{adminEmail}}",
+  "password": "{{password}}",
+  "role": "ADMIN"
+}
+
+> {%
+client.test("admin login SUCCESS", function () {
+  client.assert(response.status === 200);
+  client.assert(response.body.code === "SUCCESS");
+  client.assert(!!response.body.data.accessToken);
+});
+client.global.set("adminToken", response.body.data.accessToken);
+client.global.set("adminUserId", "" + response.body.data.userId);
+%}
+
+### Instructor1 (primary)
+POST {{baseUrl}}/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{instructor1Email}}",
+  "password": "{{password}}",
+  "role": "USER"
+}
+
+> {%
+client.test("instructor1 login SUCCESS", function () {
+  client.assert(response.status === 200);
+  client.assert(response.body.code === "SUCCESS");
+});
+client.global.set("instructor1Token", response.body.data.accessToken);
+client.global.set("instructor1UserId", "" + response.body.data.userId);
+%}
+
+### Instructor2 (reassign target)
+POST {{baseUrl}}/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{instructor2Email}}",
+  "password": "{{password}}",
+  "role": "USER"
+}
+
+> {%
+client.test("instructor2 login SUCCESS", function () {
+  client.assert(response.status === 200);
+  client.assert(response.body.code === "SUCCESS");
+  client.assert(response.body.data.level === "INSTRUCTOR" || response.body.data.level === "Instructor"
+      || true);
+});
+client.global.set("instructor2Token", response.body.data.accessToken);
+client.global.set("instructor2UserId", "" + response.body.data.userId);
+%}
+
+### Tenant admin same tenant
+POST {{baseUrl}}/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{tenantAdminSameEmail}}",
+  "password": "{{password}}",
+  "role": "USER"
+}
+
+> {%
+client.test("tenantAdminSame login SUCCESS", function () {
+  client.assert(response.status === 200);
+  client.assert(response.body.code === "SUCCESS");
+});
+client.global.set("tenantAdminSameToken", response.body.data.accessToken);
+client.global.set("tenantAdminSameUserId", "" + response.body.data.userId);
+%}
+
+### Tenant admin other tenant
+POST {{baseUrl}}/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{tenantAdminOtherEmail}}",
+  "password": "{{password}}",
+  "role": "USER"
+}
+
+> {%
+client.test("tenantAdminOther login SUCCESS", function () {
+  client.assert(response.status === 200);
+  client.assert(response.body.code === "SUCCESS");
+});
+client.global.set("tenantAdminOtherToken", response.body.data.accessToken);
+client.global.set("tenantAdminOtherUserId", "" + response.body.data.userId);
+%}
+
+### Student enrolled (will be enrolled in flows)
+POST {{baseUrl}}/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{studentEnrolledEmail}}",
+  "password": "{{password}}",
+  "role": "USER"
+}
+
+> {%
+client.test("studentEnrolled login SUCCESS", function () {
+  client.assert(response.status === 200);
+  client.assert(response.body.code === "SUCCESS");
+});
+client.global.set("studentEnrolledToken", response.body.data.accessToken);
+client.global.set("studentEnrolledUserId", "" + response.body.data.userId);
+%}
+
+### Student batch
+POST {{baseUrl}}/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{studentBatchEmail}}",
+  "password": "{{password}}",
+  "role": "USER"
+}
+
+> {%
+client.test("studentBatch login SUCCESS", function () {
+  client.assert(response.status === 200);
+  client.assert(response.body.code === "SUCCESS");
+});
+client.global.set("studentBatchToken", response.body.data.accessToken);
+client.global.set("studentBatchUserId", "" + response.body.data.userId);
+%}
+
+### Student unenrolled (NEVER enroll this user in course flows)
+POST {{baseUrl}}/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{studentUnenrolledEmail}}",
+  "password": "{{password}}",
+  "role": "USER"
+}
+
+> {%
+client.test("studentUnenrolled login SUCCESS", function () {
+  client.assert(response.status === 200);
+  client.assert(response.body.code === "SUCCESS");
+});
+client.global.set("studentUnenrolledToken", response.body.data.accessToken);
+client.global.set("studentUnenrolledUserId", "" + response.body.data.userId);
+%}

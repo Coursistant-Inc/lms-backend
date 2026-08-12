@@ -1,0 +1,49 @@
+### Syllabus streams + restore + clear
+
+GET {{baseUrl}}/v2/courses/{{courseId}}/syllabus
+Authorization: Bearer {{instructor1Token}}
+
+> {%
+client.test("07 syllabus json", function () {
+  client.assert(response.status === 200);
+});
+%}
+
+GET {{baseUrl}}/v2/courses/{{courseId}}/syllabus/preview
+Authorization: Bearer {{instructor1Token}}
+
+> {%
+client.test("07 syllabus preview stream", function () {
+  client.assert(response.status === 200 || response.status === 404);
+});
+%}
+
+GET {{baseUrl}}/v2/courses/{{courseId}}/syllabus/download
+Authorization: Bearer {{instructor1Token}}
+
+> {%
+client.test("07 syllabus download stream", function () {
+  client.assert(response.status === 200 || response.status === 404);
+});
+%}
+
+### Soft-clear then restore
+DELETE {{baseUrl}}/v2/courses/{{courseId}}/syllabus
+Authorization: Bearer {{instructor1Token}}
+
+> {%
+client.test("07 syllabus clear", function () {
+  client.assert(response.status === 200);
+});
+%}
+
+POST {{baseUrl}}/v2/courses/{{courseId}}/syllabus/restore
+Authorization: Bearer {{instructor1Token}}
+Idempotency-Key: {{runId}}-syl-restore
+
+> {%
+client.test("07 syllabus restore", function () {
+  client.assert(response.status === 200);
+  client.assert(response.body.code === "SUCCESS");
+});
+%}

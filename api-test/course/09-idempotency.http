@@ -1,0 +1,159 @@
+### Idempotency — I1 same Key+Body replay vs I2 same Key+different Body
+### Uses a fresh disposable course for I1/I2 to avoid polluting main run courseCode.
+### Do NOT count "different Key + already TA" as I1.
+
+### --- I1: same Key + same Body ---
+POST {{baseUrl}}/v2/courses
+Authorization: Bearer {{instructor1Token}}
+Idempotency-Key: {{runId}}-idem-i1
+Content-Type: application/json
+
+{
+  "courseCode": "{{courseCode}}-I1",
+  "title": "Idempotency I1",
+  "termStartDate": "2026-01-01",
+  "termEndDate": "2026-06-30"
+}
+
+> {%
+client.test("I1 first create", function () {
+  client.assert(response.status === 200);
+  client.assert(response.body.code === "SUCCESS");
+  client.assert(!!response.body.data.id);
+});
+client.global.set("i1CourseId", "" + response.body.data.id);
+client.global.set("i1Title", response.body.data.title);
+%}
+
+POST {{baseUrl}}/v2/courses
+Authorization: Bearer {{instructor1Token}}
+Idempotency-Key: {{runId}}-idem-i1
+Content-Type: application/json
+
+{
+  "courseCode": "{{courseCode}}-I1",
+  "title": "Idempotency I1",
+  "termStartDate": "2026-01-01",
+  "termEndDate": "2026-06-30"
+}
+
+> {%
+client.test("I1 replay same Key+Body", function () {
+  client.assert(response.status === 200);
+  client.assert(response.body.code === "SUCCESS");
+  client.assert(("" + response.body.data.id) === client.global.get("i1CourseId"));
+  client.assert(response.body.data.title === client.global.get("i1Title"));
+});
+%}
+
+### HTTP side-effect check: list by code filter or get by id still single course
+GET {{baseUrl}}/v2/courses/{{i1CourseId}}
+Authorization: Bearer {{instructor1Token}}
+
+> {%
+client.test("I1 single resource still exists", function () {
+  client.assert(response.status === 200);
+  client.assert(("" + response.body.data.id) === client.global.get("i1CourseId"));
+});
+%}
+
+### Cleanup empty I1 course
+DELETE {{baseUrl}}/v2/courses/{{i1CourseId}}
+Authorization: Bearer {{instructor1Token}}
+
+> {%
+client.test("I1 cleanup empty course", function () {
+  client.assert(response.status === 200);
+});
+%}
+
+### --- I2: same Key + different Body → MISMATCH ---
+POST {{baseUrl}}/v2/courses
+Authorization: Bearer {{instructor1Token}}
+Idempotency-Key: {{runId}}-idem-i2
+Content-Type: application/json
+
+{
+  "courseCode": "{{courseCode}}-I2A",
+  "title": "Idempotency I2 A",
+  "termStartDate": "2026-01-01",
+  "termEndDate": "2026-06-30"
+}
+
+> {%
+client.test("I2 first create", function () {
+  client.assert(response.status === 200);
+  client.assert(response.body.code === "SUCCESS");
+});
+client.global.set("i2CourseId", "" + response.body.data.id);
+%}
+
+POST {{baseUrl}}/v2/courses
+Authorization: Bearer {{instructor1Token}}
+Idempotency-Key: {{runId}}-idem-i2
+Content-Type: application/json
+
+{
+  "courseCode": "{{courseCode}}-I2B",
+  "title": "Idempotency I2 B DIFFERENT",
+  "termStartDate": "2026-01-01",
+  "termEndDate": "2026-06-30"
+}
+
+> {%
+client.test("I2 same Key different Body → IDEMPOTENCY_KEY_MISMATCH", function () {
+  client.assert(response.status === 409);
+  client.assert(response.body.code === "IDEMPOTENCY_KEY_MISMATCH");
+});
+%}
+
+DELETE {{baseUrl}}/v2/courses/{{i2CourseId}}
+Authorization: Bearer {{instructor1Token}}
+
+> {%
+client.test("I2 cleanup", function () {
+  client.assert(response.status === 200);
+});
+%}
+
+### Contrast (NOT I1): business natural idempotency with different Key on Active TA
+POST {{baseUrl}}/v2/courses/{{courseId}}/tas
+Authorization: Bearer {{instructor1Token}}
+Idempotency-Key: {{runId}}-biz-ta-1
+Content-Type: application/json
+
+{
+  "userId": {{studentEnrolledUserId}}
+}
+
+> {%
+client.test("biz promote TA (setup)", function () {
+  client.assert(response.status === 200);
+  client.assert(response.body.data.courseRole === "TA");
+});
+%}
+
+POST {{baseUrl}}/v2/courses/{{courseId}}/tas
+Authorization: Bearer {{instructor1Token}}
+Idempotency-Key: {{runId}}-biz-ta-2
+Content-Type: application/json
+
+{
+  "userId": {{studentEnrolledUserId}}
+}
+
+> {%
+client.test("biz natural idempotent DIFFERENT Key (not Redis I1)", function () {
+  client.assert(response.status === 200);
+  client.assert(response.body.data.courseRole === "TA");
+});
+%}
+
+DELETE {{baseUrl}}/v2/courses/{{courseId}}/tas/{{studentEnrolledUserId}}
+Authorization: Bearer {{instructor1Token}}
+
+> {%
+client.test("biz demote after contrast", function () {
+  client.assert(response.status === 200);
+});
+%}

@@ -1,0 +1,42 @@
+### Admin enrollments batch + delete
+
+POST {{baseUrl}}/v2/admin/courses/{{courseId}}/enrollments/batch
+Authorization: Bearer {{adminToken}}
+Idempotency-Key: {{runId}}-admin-batch
+Content-Type: application/json
+
+{
+  "userIds": [{{studentBatchUserId}}]
+}
+
+> {%
+client.test("06 admin batch enroll", function () {
+  client.assert(response.status === 200);
+  client.assert(response.body.code === "SUCCESS");
+});
+%}
+
+DELETE {{baseUrl}}/v2/admin/courses/{{courseId}}/enrollments/{{studentBatchUserId}}
+Authorization: Bearer {{adminToken}}
+
+> {%
+client.test("06 admin withdraw", function () {
+  client.assert(response.status === 200);
+});
+%}
+
+### Re-enroll for later flows
+POST {{baseUrl}}/v2/admin/courses/{{courseId}}/enrollments
+Authorization: Bearer {{adminToken}}
+Idempotency-Key: {{runId}}-admin-reenroll
+Content-Type: application/json
+
+{
+  "userId": {{studentBatchUserId}}
+}
+
+> {%
+client.test("06 admin re-enroll", function () {
+  client.assert(response.status === 200);
+});
+%}

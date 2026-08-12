@@ -1,0 +1,39 @@
+### Course API — pre-run health (IntelliJ HTTP Client)
+### Environment: local | Run BEFORE any flow. Stop if any client.test fails.
+### Also run: api-test/course/scripts/redis-ping.ps1 → must print PONG
+
+### Boot + MySQL (login endpoint reachable with JSON body)
+POST {{baseUrl}}/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "health-check-nonexistent@example.com",
+  "password": "wrong-password",
+  "role": "USER"
+}
+
+> {%
+client.test("Boot reachable: HTTP response with ApiResponse code", function () {
+  client.assert(response.status !== 0, "connection failed — is Spring Boot up?");
+  client.assert(response.body !== null && response.body.code !== undefined,
+      "expected JSON ApiResponse with code");
+});
+%}
+
+### MinIO live
+GET {{minioHealthBase}}/minio/health/live
+
+> {%
+client.test("MinIO live 200", function () {
+  client.assert(response.status === 200, "MinIO live failed — check tunnel/process on :9000");
+});
+%}
+
+### MinIO ready
+GET {{minioHealthBase}}/minio/health/ready
+
+> {%
+client.test("MinIO ready 200", function () {
+  client.assert(response.status === 200, "MinIO ready failed");
+});
+%}

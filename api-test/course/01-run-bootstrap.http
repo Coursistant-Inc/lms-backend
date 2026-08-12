@@ -1,0 +1,38 @@
+### Generate unique runId / courseCode for this IntelliJ run
+### Run after 00-auth
+
+### Bootstrap via no-op login using instructor (script only needs a response context)
+POST {{baseUrl}}/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{instructor1Email}}",
+  "password": "{{password}}",
+  "role": "USER"
+}
+
+> {%
+client.test("bootstrap runId", function () {
+  client.assert(response.status === 200);
+  const runId = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  const courseCode = ("API-" + runId).substring(0, 32);
+  client.global.set("runId", runId);
+  client.global.set("courseCode", courseCode);
+  client.global.set("idemKeyCreate", runId + "-create");
+  client.global.set("idemKeySession", runId + "-session");
+  client.global.set("idemKeyWeek", runId + "-week");
+  client.global.set("idemKeyWeek2", runId + "-week2");
+  client.global.set("idemKeyMaterial", runId + "-mat");
+  client.global.set("idemKeyPublish", runId + "-pub");
+  client.global.set("idemKeyStudent", runId + "-stu");
+  client.global.set("idemKeyBatch", runId + "-batch");
+  client.global.set("idemKeyTa", runId + "-ta");
+  client.global.set("idemKeyTaPatch", runId + "-tap");
+  client.global.set("idemKeyEvent", runId + "-evt");
+  client.global.set("idemKeyArchive", runId + "-arch");
+  client.global.set("idemKeyUnarchive", runId + "-unar");
+  client.global.set("idemKeyReassign", runId + "-reas");
+  client.global.set("idemKeySyllabus", runId + "-syl");
+  client.assert(!!client.global.get("courseCode"));
+});
+%}

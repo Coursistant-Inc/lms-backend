@@ -1,0 +1,106 @@
+### Events gap: GET id / PUT / DELETE + TA without canManageCourseEvents FORBIDDEN
+
+GET {{baseUrl}}/v2/courses/{{courseId}}/events/{{eventId}}
+Authorization: Bearer {{instructor1Token}}
+
+> {%
+client.test("03 get event", function () {
+  client.assert(response.status === 200);
+});
+%}
+
+PUT {{baseUrl}}/v2/courses/{{courseId}}/events/{{eventId}}
+Authorization: Bearer {{instructor1Token}}
+Idempotency-Key: {{runId}}-evt-put
+Content-Type: application/json
+
+{
+  "name": "Kickoff Updated",
+  "date": "2026-03-15",
+  "startTime": "14:00:00",
+  "endTime": "16:30:00",
+  "location": "Hall C"
+}
+
+> {%
+client.test("03 put event", function () {
+  client.assert(response.status === 200);
+});
+%}
+
+### Promote student to TA without event permission, try create event → FORBIDDEN
+POST {{baseUrl}}/v2/courses/{{courseId}}/tas
+Authorization: Bearer {{instructor1Token}}
+Idempotency-Key: {{runId}}-ta-for-evt
+Content-Type: application/json
+
+{
+  "userId": {{studentEnrolledUserId}}
+}
+
+> {%
+client.test("03 ensure TA for event negative", function () {
+  client.assert(response.status === 200);
+  client.assert(response.body.data.courseRole === "TA");
+  client.assert(response.body.data.canManageCourseEvents === false);
+});
+%}
+
+POST {{baseUrl}}/v2/courses/{{courseId}}/events
+Authorization: Bearer {{studentEnrolledToken}}
+Idempotency-Key: {{runId}}-evt-ta-forbid
+Content-Type: application/json
+
+{
+  "name": "TA Event",
+  "date": "2026-04-01",
+  "startTime": "10:00:00",
+  "endTime": "11:00:00"
+}
+
+> {%
+client.test("03 TA without canManageCourseEvents FORBIDDEN", function () {
+  client.assert(response.status === 403);
+  client.assert(response.body.code === "FORBIDDEN");
+});
+%}
+
+### Restore student for later tests
+DELETE {{baseUrl}}/v2/courses/{{courseId}}/tas/{{studentEnrolledUserId}}
+Authorization: Bearer {{instructor1Token}}
+
+> {%
+client.test("03 demote TA after event negative", function () {
+  client.assert(response.status === 200);
+  client.assert(response.body.data.courseRole === "Student");
+});
+%}
+
+### Create disposable event then delete
+POST {{baseUrl}}/v2/courses/{{courseId}}/events
+Authorization: Bearer {{instructor1Token}}
+Idempotency-Key: {{runId}}-evt-del
+Content-Type: application/json
+
+{
+  "name": "Temp Event",
+  "date": "2026-05-01",
+  "startTime": "09:00:00",
+  "endTime": "10:00:00"
+}
+
+> {%
+client.test("03 create temp event", function () {
+  client.assert(response.status === 200);
+});
+client.global.set("tempEventId", "" + response.body.data.id);
+%}
+
+DELETE {{baseUrl}}/v2/courses/{{courseId}}/events/{{tempEventId}}
+Authorization: Bearer {{instructor1Token}}
+
+> {%
+client.test("03 delete event", function () {
+  client.assert(response.status === 200);
+});
+%}

@@ -1,0 +1,22 @@
+### GET /v2/me/courses
+
+GET {{baseUrl}}/v2/me/courses?page=0&size=10
+Authorization: Bearer {{instructor1Token}}
+
+> {%
+client.test("05 me/courses instructor", function () {
+  client.assert(response.status === 200);
+  client.assert(response.body.code === "SUCCESS");
+  client.assert(Array.isArray(response.body.data.items));
+});
+%}
+
+GET {{baseUrl}}/v2/me/courses?state=Active&page=0&size=10
+Authorization: Bearer {{studentEnrolledToken}}
+
+> {%
+client.test("05 me/courses student Active filter", function () {
+  client.assert(response.status === 200);
+  client.assert(response.body.data.page === 0);
+});
+%}

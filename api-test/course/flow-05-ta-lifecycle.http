@@ -1,0 +1,101 @@
+### F2.5 Student ↔ TA lifecycle
+### Requires Active Student enrollment for studentEnrolledUserId
+
+### Missing Idempotency-Key
+POST {{baseUrl}}/v2/courses/{{courseId}}/tas
+Authorization: Bearer {{instructor1Token}}
+Content-Type: application/json
+
+{
+  "userId": {{studentEnrolledUserId}}
+}
+
+> {%
+client.test("F2.5 missing Key", function () {
+  client.assert(response.status === 400);
+  client.assert(response.body.code === "IDEMPOTENCY_KEY_REQUIRED");
+});
+%}
+
+### Promote Active Student → TA
+POST {{baseUrl}}/v2/courses/{{courseId}}/tas
+Authorization: Bearer {{instructor1Token}}
+Idempotency-Key: {{idemKeyTa}}
+Content-Type: application/json
+
+{
+  "userId": {{studentEnrolledUserId}}
+}
+
+> {%
+client.test("F2.5 promote TA", function () {
+  client.assert(response.status === 200);
+  client.assert(response.body.code === "SUCCESS");
+  client.assert(response.body.data.courseRole === "TA");
+  client.assert(response.body.data.active === true);
+  client.assert(response.body.data.canGrade === false);
+  client.assert(response.body.data.canPostAnnouncements === false);
+  client.assert(response.body.data.canManageGroups === false);
+  client.assert(response.body.data.canManageCourseEvents === false);
+  client.assert(response.body.data.assignmentSubmitFrozen === true);
+});
+%}
+
+### PATCH canGrade
+PATCH {{baseUrl}}/v2/courses/{{courseId}}/tas/{{studentEnrolledUserId}}/permissions
+Authorization: Bearer {{instructor1Token}}
+Idempotency-Key: {{idemKeyTaPatch}}
+Content-Type: application/json
+
+{
+  "canGrade": true,
+  "canPostAnnouncements": false,
+  "canManageGroups": false,
+  "canManageCourseEvents": false
+}
+
+> {%
+client.test("F2.5 patch canGrade", function () {
+  client.assert(response.status === 200);
+  client.assert(response.body.data.canGrade === true);
+  client.assert(response.body.data.courseRole === "TA");
+});
+%}
+
+### List TAs
+GET {{baseUrl}}/v2/courses/{{courseId}}/members?courseRole=TA&page=0&size=20
+Authorization: Bearer {{instructor1Token}}
+
+> {%
+client.test("F2.5 members TA", function () {
+  client.assert(response.status === 200);
+  client.assert(response.body.data.total >= 1);
+});
+%}
+
+### Revoke TA → Active Student
+DELETE {{baseUrl}}/v2/courses/{{courseId}}/tas/{{studentEnrolledUserId}}
+Authorization: Bearer {{instructor1Token}}
+
+> {%
+client.test("F2.5 revoke TA", function () {
+  client.assert(response.status === 200);
+  client.assert(response.body.code === "SUCCESS");
+  client.assert(response.body.data.courseRole === "Student");
+  client.assert(response.body.data.active === true);
+  client.assert(response.body.data.canGrade === false);
+  client.assert(response.body.data.assignmentSubmitFrozen === true);
+});
+%}
+
+### Idempotent DELETE again (Active Student)
+DELETE {{baseUrl}}/v2/courses/{{courseId}}/tas/{{studentEnrolledUserId}}
+Authorization: Bearer {{instructor1Token}}
+
+> {%
+client.test("F2.5 revoke idempotent", function () {
+  client.assert(response.status === 200);
+  client.assert(response.body.code === "SUCCESS");
+  client.assert(response.body.data.courseRole === "Student");
+});
+%}

@@ -1,0 +1,78 @@
+### F2.6 Week publish / reorder / unpublish
+### Requires courseId, weekId; creates week2 for reorder
+
+### Second week
+POST {{baseUrl}}/v2/courses/{{courseId}}/weeks
+Authorization: Bearer {{instructor1Token}}
+Idempotency-Key: {{idemKeyWeek2}}
+Content-Type: application/json
+
+{
+  "title": "Week 2"
+}
+
+> {%
+client.test("F2.6 create week2", function () {
+  client.assert(response.status === 200);
+  client.assert(response.body.data.state === "Draft");
+});
+client.global.set("weekId2", "" + response.body.data.id);
+%}
+
+### Reorder
+PUT {{baseUrl}}/v2/courses/{{courseId}}/weeks/reorder
+Authorization: Bearer {{instructor1Token}}
+Idempotency-Key: {{runId}}-reorder
+Content-Type: application/json
+
+{
+  "weekIds": [{{weekId2}}, {{weekId}}]
+}
+
+> {%
+client.test("F2.6 reorder weeks", function () {
+  client.assert(response.status === 200);
+  client.assert(response.body.code === "SUCCESS");
+});
+%}
+
+### Unpublish week1
+POST {{baseUrl}}/v2/courses/{{courseId}}/weeks/{{weekId}}/unpublish
+Authorization: Bearer {{instructor1Token}}
+Idempotency-Key: {{runId}}-unpub
+
+> {%
+client.test("F2.6 unpublish", function () {
+  client.assert(response.status === 200);
+  client.assert(response.body.data.state === "Draft");
+});
+%}
+
+### Re-publish week1 (restore student visibility for later flows if needed)
+POST {{baseUrl}}/v2/courses/{{courseId}}/weeks/{{weekId}}/publish
+Authorization: Bearer {{instructor1Token}}
+Idempotency-Key: {{runId}}-repub
+
+> {%
+client.test("F2.6 republish", function () {
+  client.assert(response.status === 200);
+  client.assert(response.body.data.state === "Published");
+});
+%}
+
+### Patch week title
+PATCH {{baseUrl}}/v2/courses/{{courseId}}/weeks/{{weekId}}
+Authorization: Bearer {{instructor1Token}}
+Idempotency-Key: {{runId}}-week-patch
+Content-Type: application/json
+
+{
+  "title": "Week 1 Updated"
+}
+
+> {%
+client.test("F2.6 patch week", function () {
+  client.assert(response.status === 200);
+  client.assert(response.body.data.title === "Week 1 Updated");
+});
+%}

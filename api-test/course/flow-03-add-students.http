@@ -1,0 +1,83 @@
+### F2.3 Course Manager adds students
+### Requires: courseId, instructor1Token, tenantAdminSameToken, student tokens/ids
+
+### Non-manager (unenrolled student) → COURSE_NOT_FOUND (anti-enumeration)
+POST {{baseUrl}}/v2/courses/{{courseId}}/students
+Authorization: Bearer {{studentUnenrolledToken}}
+Idempotency-Key: {{runId}}-stu-forbid
+Content-Type: application/json
+
+{
+  "userId": {{studentEnrolledUserId}}
+}
+
+> {%
+client.test("F2.3 unenrolled non-manager 404 COURSE_NOT_FOUND", function () {
+  client.assert(response.status === 404);
+  client.assert(response.body.code === "COURSE_NOT_FOUND");
+});
+%}
+
+### Instructor adds studentEnrolled
+POST {{baseUrl}}/v2/courses/{{courseId}}/students
+Authorization: Bearer {{instructor1Token}}
+Idempotency-Key: {{idemKeyStudent}}
+Content-Type: application/json
+
+{
+  "userId": {{studentEnrolledUserId}}
+}
+
+> {%
+client.test("F2.3 add student", function () {
+  client.assert(response.status === 200);
+  client.assert(response.body.code === "SUCCESS");
+  client.assert(response.body.data.courseRole === "Student");
+  client.assert(response.body.data.active === true);
+});
+%}
+
+### Batch add studentBatch (by email)
+POST {{baseUrl}}/v2/courses/{{courseId}}/students/batch
+Authorization: Bearer {{instructor1Token}}
+Idempotency-Key: {{idemKeyBatch}}
+Content-Type: application/json
+
+{
+  "emails": ["{{studentBatchEmail}}"]
+}
+
+> {%
+client.test("F2.3 batch enroll", function () {
+  client.assert(response.status === 200);
+  client.assert(response.body.code === "SUCCESS");
+  client.assert(response.body.data.successCount >= 1);
+});
+%}
+
+### Same-tenant TENANT_ADMIN can add (idempotent if already enrolled — use another key for re-assert manager)
+GET {{baseUrl}}/v2/courses/{{courseId}}/members?courseRole=Student&page=0&size=20
+Authorization: Bearer {{tenantAdminSameToken}}
+
+> {%
+client.test("F2.3 tenantAdminSame can list members", function () {
+  client.assert(response.status === 200);
+  client.assert(response.body.code === "SUCCESS");
+  client.assert(response.body.data.total >= 1);
+});
+%}
+
+### Student sees course in me/courses
+GET {{baseUrl}}/v2/me/courses?state=Active&page=0&size=50
+Authorization: Bearer {{studentEnrolledToken}}
+
+> {%
+client.test("F2.3 student me/courses contains course", function () {
+  client.assert(response.status === 200);
+  client.assert(response.body.code === "SUCCESS");
+  const items = response.body.data.items || [];
+  const found = items.some(i => ("" + i.id) === client.global.get("courseId")
+      || ("" + i.courseId) === client.global.get("courseId"));
+  client.assert(found, "courseId not in me/courses");
+});
+%}

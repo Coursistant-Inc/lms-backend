@@ -1,0 +1,50 @@
+### Sessions gap: PUT + DELETE (uses disposable session)
+
+POST {{baseUrl}}/v2/courses/{{courseId}}/sessions
+Authorization: Bearer {{instructor1Token}}
+Idempotency-Key: {{runId}}-sess2
+Content-Type: application/json
+
+{
+  "type": "Lab",
+  "dayOfWeek": "WED",
+  "startTime": "13:00:00",
+  "endTime": "14:00:00",
+  "location": "Lab1"
+}
+
+> {%
+client.test("02 create session2", function () {
+  client.assert(response.status === 200);
+});
+client.global.set("sessionId2", "" + response.body.data.id);
+%}
+
+PUT {{baseUrl}}/v2/courses/{{courseId}}/sessions/{{sessionId2}}
+Authorization: Bearer {{instructor1Token}}
+Idempotency-Key: {{runId}}-sess2-put
+Content-Type: application/json
+
+{
+  "type": "Lab",
+  "dayOfWeek": "FRI",
+  "startTime": "13:00:00",
+  "endTime": "15:00:00",
+  "location": "Lab2"
+}
+
+> {%
+client.test("02 put session", function () {
+  client.assert(response.status === 200);
+  client.assert(response.body.data.dayOfWeek === "FRI" || response.body.data.location === "Lab2");
+});
+%}
+
+DELETE {{baseUrl}}/v2/courses/{{courseId}}/sessions/{{sessionId2}}
+Authorization: Bearer {{instructor1Token}}
+
+> {%
+client.test("02 delete session", function () {
+  client.assert(response.status === 200);
+});
+%}

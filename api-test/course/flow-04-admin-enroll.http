@@ -1,0 +1,33 @@
+### F2.4 Platform Admin enrolls a student
+### Prefer F2.3 for Manager path; this uses /v2/admin/courses/{id}/enrollments
+### Uses studentBatch if not already enrolled — or re-assert SUCCESS idempotent
+
+POST {{baseUrl}}/v2/admin/courses/{{courseId}}/enrollments
+Authorization: Bearer {{adminToken}}
+Idempotency-Key: {{runId}}-admin-enroll
+Content-Type: application/json
+
+{
+  "userId": {{studentBatchUserId}}
+}
+
+> {%
+client.test("F2.4 admin enroll", function () {
+  client.assert(response.status === 200);
+  client.assert(response.body.code === "SUCCESS");
+  client.assert(response.body.data.courseRole === "Student" || response.body.data.active === true);
+});
+%}
+
+GET {{baseUrl}}/v2/me/courses?state=Active&page=0&size=50
+Authorization: Bearer {{studentBatchToken}}
+
+> {%
+client.test("F2.4 batch student sees course", function () {
+  client.assert(response.status === 200);
+  const items = response.body.data.items || [];
+  const found = items.some(i => ("" + i.id) === client.global.get("courseId")
+      || ("" + i.courseId) === client.global.get("courseId"));
+  client.assert(found);
+});
+%}
