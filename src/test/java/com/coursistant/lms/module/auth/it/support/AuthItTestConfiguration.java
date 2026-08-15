@@ -9,6 +9,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
 import org.springframework.mail.javamail.JavaMailSender;
+import software.amazon.awssdk.services.s3.S3Client;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -48,6 +49,12 @@ public class AuthItTestConfiguration {
     @Primary
     public MinioClient minioClient() {
         return Mockito.mock(MinioClient.class);
+    }
+
+    @Bean
+    @Primary
+    public S3Client s3Client() {
+        return Mockito.mock(S3Client.class);
     }
 
     @Bean

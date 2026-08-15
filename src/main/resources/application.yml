@@ -91,6 +91,15 @@ minio:
   access-key: ${MINIO_ACCESS_KEY}
   secret-key: ${MINIO_SECRET_KEY}
 
+# S3 is assembled when enabled=true (default). Until callers switch off MinIO,
+# local/CI should set AWS_S3_ENABLED=false unless AWS_S3_REGION and AWS_S3_BUCKET are set.
+aws:
+  s3:
+    enabled: ${AWS_S3_ENABLED:true}
+    region: ${AWS_S3_REGION:us-west-2}
+    bucket: ${AWS_S3_BUCKET:}
+    endpoint-override: ${AWS_S3_ENDPOINT:}
+
 lms:
   content:
     max-file-bytes: 209715200

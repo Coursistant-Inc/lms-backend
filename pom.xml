@@ -22,8 +22,20 @@
         <lombok.version>1.18.36</lombok.version>
         <spring-boot.version>3.4.4</spring-boot.version>
         <testcontainers.version>1.21.4</testcontainers.version>
+        <aws.sdk.version>2.52.1</aws.sdk.version>
     </properties>
 
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>bom</artifactId>
+                <version>${aws.sdk.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <!-- ======================== 1. Spring Boot 核心依赖 ======================== -->
@@ -140,6 +152,11 @@
             <artifactId>minio</artifactId>
             <version>8.5.17</version>
         </dependency> <!-- MinIO dependency -->
+
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>s3</artifactId>
+        </dependency> <!-- AWS S3 (SDK v2, version from BOM) -->
 
         <!-- ======================== 7. API 相关 ======================== -->
         <dependency>

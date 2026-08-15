@@ -30,6 +30,13 @@ minio:
   access-key: openapi
   secret-key: openapi
 
+aws:
+  s3:
+    enabled: true
+    region: us-west-2
+    bucket: openapi-placeholder
+
+
 token:
   access-expire-hours: 2
   refresh-expire-days: 14

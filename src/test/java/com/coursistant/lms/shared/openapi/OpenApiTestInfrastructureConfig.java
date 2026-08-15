@@ -10,6 +10,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.mail.javamail.JavaMailSender;
+import software.amazon.awssdk.services.s3.S3Client;
 
 /**
  * Stubs external infra for the openapi profile so contract export needs no Redis/MinIO/Mail.
@@ -57,6 +58,12 @@ public class OpenApiTestInfrastructureConfig {
     @Primary
     public MinioClient minioClient() {
         return Mockito.mock(MinioClient.class);
+    }
+
+    @Bean
+    @Primary
+    public S3Client s3Client() {
+        return Mockito.mock(S3Client.class);
     }
 
     @Bean
