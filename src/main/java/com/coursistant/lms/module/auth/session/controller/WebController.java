@@ -12,12 +12,22 @@ import com.coursistant.lms.module.user.account.dto.RegisterRequest;
 import com.coursistant.lms.module.user.account.entity.Account;
 import com.coursistant.lms.module.auth.session.dto.AuthResult;
 import com.coursistant.lms.module.auth.session.dto.ChangePasswordRequest;
+import com.coursistant.lms.module.auth.session.dto.LoginRequest;
 import com.coursistant.lms.module.auth.session.dto.PasswordResetRequest;
 import com.coursistant.lms.module.auth.token.dto.RefreshResult;
 import com.coursistant.lms.module.auth.admin.service.AdminService;
 import com.coursistant.lms.module.user.account.service.UserService;
 import com.coursistant.lms.shared.idempotency.Idempotent;
 import com.coursistant.lms.shared.security.AuthzService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
+import io.swagger.v3.oas.annotations.headers.Header;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
@@ -27,6 +37,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseCookie;
 
 import java.util.concurrent.TimeUnit;
@@ -37,7 +48,17 @@ import java.util.concurrent.TimeUnit;
  */
 @Slf4j
 @RestController
+@Tag(name = "Auth", description = "Session login, register, token refresh, password flows")
 public class WebController {
+
+    private static final String REFRESH_COOKIE_DESC =
+            "HttpOnly refresh token cookie (name=refreshToken). Secure; Path=/; SameSite=Lax; Max-Age=1209600 (14 days) when set.";
+
+    private static final String SET_COOKIE_REFRESH_DESC =
+            "Sets refreshToken HttpOnly cookie: refreshToken=<token>; Path=/; Max-Age=1209600; HttpOnly; Secure; SameSite=Lax";
+
+    private static final String SET_COOKIE_CLEAR_DESC =
+            "Clears refreshToken cookie: refreshToken=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax";
 
     @Resource
     private AdminService adminService;
@@ -51,12 +72,32 @@ public class WebController {
     private AuthzService authzService;
 
     @GetMapping("/v1")
+    @Operation(operationId = "authHello", summary = "Health / hello probe")
     public ApiResponse<String> hello() {
         return ApiResponse.success("访问成功");
     }
 
     @PostMapping("/v1/auth/login")
-    public ApiResponse<AuthResult> login(@RequestBody Account account, HttpServletResponse response) {
+    @Operation(operationId = "authLogin", summary = "Login and issue access token + refresh cookie")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "Login succeeded; refresh token is only in Set-Cookie",
+                    headers = @Header(name = "Set-Cookie", description = SET_COOKIE_REFRESH_DESC,
+                            schema = @Schema(type = "string")))
+    })
+    public ApiResponse<AuthResult> login(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    required = true,
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = LoginRequest.class),
+                            examples = @ExampleObject(
+                                    name = "studentLogin",
+                                    value = "{\"email\":\"student@example.com\",\"password\":\"Passw0rd1\",\"role\":\"USER\"}")))
+            @RequestBody LoginRequest loginRequest,
+            HttpServletResponse response) {
+        Account account = toAccount(loginRequest);
         if (ObjectUtil.isEmpty(account.getEmail()) || ObjectUtil.isEmpty(account.getPassword())
                 || ObjectUtil.isEmpty(account.getRole())) {
             throw new ApiException(ErrorType.PARAM_MISSING, "Parameter Missing");
@@ -81,6 +122,16 @@ public class WebController {
     }
 
     @PostMapping("/v1/auth/refresh-token")
+    @Operation(operationId = "authRefreshToken", summary = "Rotate refresh cookie and return new access token")
+    @Parameter(name = "refreshToken", in = ParameterIn.COOKIE, required = true,
+            description = REFRESH_COOKIE_DESC, schema = @Schema(type = "string"))
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "New access token in body; rotated refresh token only in Set-Cookie",
+                    headers = @Header(name = "Set-Cookie", description = SET_COOKIE_REFRESH_DESC,
+                            schema = @Schema(type = "string")))
+    })
     public ApiResponse<String> refreshToken(HttpServletRequest request, HttpServletResponse response) {
         try {
             String rateLimitKey = "ratelimit:refresh:" + request.getRemoteAddr();
@@ -117,6 +168,16 @@ public class WebController {
     }
 
     @PostMapping("/v1/auth/logout")
+    @Operation(operationId = "authLogout", summary = "Revoke refresh token and clear cookie")
+    @Parameter(name = "refreshToken", in = ParameterIn.COOKIE, required = false,
+            description = REFRESH_COOKIE_DESC, schema = @Schema(type = "string"))
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "Logged out; refresh cookie cleared",
+                    headers = @Header(name = "Set-Cookie", description = SET_COOKIE_CLEAR_DESC,
+                            schema = @Schema(type = "string")))
+    })
     public ApiResponse<Void> logout(HttpServletRequest request, HttpServletResponse response) {
         String refreshToken = readRefreshCookie(request);
         if (StrUtil.isNotBlank(refreshToken)) {
@@ -127,7 +188,25 @@ public class WebController {
     }
 
     @PostMapping("/v1/auth/register")
-    public ApiResponse<AuthResult> register(@RequestBody RegisterRequest request, HttpServletResponse response) {
+    @Operation(operationId = "authRegister", summary = "Register and issue access token + refresh cookie")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "Registration succeeded; refresh token is only in Set-Cookie",
+                    headers = @Header(name = "Set-Cookie", description = SET_COOKIE_REFRESH_DESC,
+                            schema = @Schema(type = "string")))
+    })
+    public ApiResponse<AuthResult> register(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    required = true,
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = RegisterRequest.class),
+                            examples = @ExampleObject(
+                                    name = "register",
+                                    value = "{\"email\":\"student@example.com\",\"verificationCode\":\"123456\",\"password\":\"Passw0rd1\",\"name\":\"Student One\",\"username\":\"student1\",\"tenantId\":1}")))
+            @RequestBody RegisterRequest request,
+            HttpServletResponse response) {
         if (request == null || StrUtil.isBlank(request.getPassword()) || StrUtil.isBlank(request.getEmail())
                 || StrUtil.isBlank(request.getName()) || StrUtil.isBlank(request.getVerificationCode())) {
             throw new ApiException(ErrorType.PARAM_MISSING, "Parameter Missing");
@@ -139,20 +218,37 @@ public class WebController {
     }
 
     @PostMapping("/v1/auth/email-verifications/register")
-    public ApiResponse<Void> sendRegisterEmailVerification(String email) {
+    @Operation(operationId = "authSendRegisterEmailVerification", summary = "Send registration email verification code")
+    public ApiResponse<Void> sendRegisterEmailVerification(
+            @Parameter(description = "Email to verify", example = "student@example.com", required = true)
+            String email) {
         userService.sendEmailVerificationCode(email, "register");
         return ApiResponse.success();
     }
 
     @PostMapping("/v1/auth/email-verifications/reset")
-    public ApiResponse<Void> sendResetEmailVerification(String email) {
+    @Operation(operationId = "authSendResetEmailVerification", summary = "Send password-reset email verification code")
+    public ApiResponse<Void> sendResetEmailVerification(
+            @Parameter(description = "Email to verify", example = "student@example.com", required = true)
+            String email) {
         userService.sendEmailVerificationCode(email, "reset");
         return ApiResponse.success();
     }
 
     @Idempotent
     @PutMapping("/v1/auth/password")
-    public ApiResponse<Void> updatePassword(HttpServletRequest request, @RequestBody ChangePasswordRequest body) {
+    @Operation(operationId = "authUpdatePassword", summary = "Change password for the authenticated principal")
+    public ApiResponse<Void> updatePassword(
+            HttpServletRequest request,
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    required = true,
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ChangePasswordRequest.class),
+                            examples = @ExampleObject(
+                                    name = "changePassword",
+                                    value = "{\"currentPassword\":\"OldPassw0rd\",\"newPassword\":\"NewPassw0rd1\"}")))
+            @RequestBody ChangePasswordRequest body) {
         if (body == null || StrUtil.isBlank(body.getCurrentPassword()) || StrUtil.isBlank(body.getNewPassword())) {
             throw new ApiException(ErrorType.PARAM_MISSING, "Parameter Missing");
         }
@@ -170,13 +266,33 @@ public class WebController {
 
     @Idempotent
     @PostMapping("/v1/auth/password-resets")
-    public ApiResponse<Void> resetPassword(@RequestBody PasswordResetRequest dto) {
+    @Operation(operationId = "authResetPassword", summary = "Reset password with email verification code")
+    public ApiResponse<Void> resetPassword(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    required = true,
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = PasswordResetRequest.class),
+                            examples = @ExampleObject(
+                                    name = "resetPassword",
+                                    value = "{\"email\":\"student@example.com\",\"verificationCode\":\"123456\",\"newPassword\":\"NewPassw0rd1\"}")))
+            @RequestBody PasswordResetRequest dto) {
         if (dto == null || StrUtil.isBlank(dto.getEmail()) || StrUtil.isBlank(dto.getNewPassword())
                 || StrUtil.isBlank(dto.getVerificationCode())) {
             throw new ApiException(ErrorType.PARAM_MISSING, "Parameter Missing");
         }
         userService.resetPassword(dto);
         return ApiResponse.success();
+    }
+
+    private static Account toAccount(LoginRequest loginRequest) {
+        Account account = new Account();
+        if (loginRequest != null) {
+            account.setEmail(loginRequest.getEmail());
+            account.setPassword(loginRequest.getPassword());
+            account.setRole(loginRequest.getRole());
+        }
+        return account;
     }
 
     private String readRefreshCookie(HttpServletRequest request) {

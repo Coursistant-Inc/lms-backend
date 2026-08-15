@@ -10,6 +10,13 @@ import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.shared.api.ApiResponse;
 import com.coursistant.lms.shared.api.ErrorType;
 import com.coursistant.lms.shared.idempotency.Idempotent;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
@@ -28,7 +35,11 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/v2/courses/{courseId}/announcements")
+@Tag(name = "Announcements", description = "Course announcements")
 public class CourseAnnouncementController {
+
+    private static final String IDEMPOTENCY_KEY_DESC =
+            "Optional idempotency key for safe retries of this mutating request";
 
     @Resource
     private CourseAnnouncementService courseAnnouncementService;
@@ -37,6 +48,7 @@ public class CourseAnnouncementController {
     private CoursePermissionService coursePermissionService;
 
     @GetMapping
+    @Operation(operationId = "courseAnnouncementList", summary = "List course announcements")
     public ApiResponse<List<AnnouncementSummaryResponse>> list(HttpServletRequest request,
                                                                @PathVariable Integer courseId) {
         Integer userId = currentUserId(request);
@@ -47,6 +59,7 @@ public class CourseAnnouncementController {
     }
 
     @GetMapping("/{announcementId}")
+    @Operation(operationId = "courseAnnouncementGet", summary = "Get an announcement by id")
     public ApiResponse<AnnouncementResponse> get(HttpServletRequest request,
                                                  @PathVariable Integer courseId,
                                                  @PathVariable Integer announcementId) {
@@ -59,6 +72,12 @@ public class CourseAnnouncementController {
 
     @Idempotent
     @PostMapping
+    @Operation(
+            operationId = "courseAnnouncementCreate",
+            summary = "Create an announcement",
+            parameters = @Parameter(name = "Idempotency-Key", in = ParameterIn.HEADER, required = false,
+                    description = IDEMPOTENCY_KEY_DESC, schema = @Schema(type = "string"))
+    )
     public ApiResponse<AnnouncementResponse> create(HttpServletRequest request,
                                                     @PathVariable Integer courseId,
                                                     @RequestBody CreateAnnouncementRequest body) {
@@ -68,6 +87,12 @@ public class CourseAnnouncementController {
 
     @Idempotent
     @PatchMapping("/{announcementId}")
+    @Operation(
+            operationId = "courseAnnouncementUpdate",
+            summary = "Update an announcement",
+            parameters = @Parameter(name = "Idempotency-Key", in = ParameterIn.HEADER, required = false,
+                    description = IDEMPOTENCY_KEY_DESC, schema = @Schema(type = "string"))
+    )
     public ApiResponse<AnnouncementResponse> update(HttpServletRequest request,
                                                     @PathVariable Integer courseId,
                                                     @PathVariable Integer announcementId,
@@ -77,6 +102,17 @@ public class CourseAnnouncementController {
     }
 
     @DeleteMapping("/{announcementId}")
+    @Operation(
+            operationId = "courseAnnouncementDelete",
+            summary = "Delete an announcement",
+            description = "Returns 204 No Content with an empty body on success."
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "204",
+                    description = "Announcement deleted; no response body",
+                    content = @Content)
+    })
     public ResponseEntity<Void> delete(HttpServletRequest request,
                                        @PathVariable Integer courseId,
                                        @PathVariable Integer announcementId,

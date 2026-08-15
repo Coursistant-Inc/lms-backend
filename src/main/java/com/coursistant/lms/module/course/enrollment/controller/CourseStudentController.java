@@ -11,6 +11,11 @@ import com.coursistant.lms.shared.api.ErrorType;
 import com.coursistant.lms.shared.idempotency.Idempotent;
 import com.coursistant.lms.shared.security.ActorContext;
 import com.coursistant.lms.shared.security.ActorContextResolver;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -22,7 +27,11 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/v2/courses/{courseId}/students")
+@Tag(name = "Enrollment", description = "Course membership: students, TAs, members, admin enroll")
 public class CourseStudentController {
+
+    private static final String IDEMPOTENCY_KEY_DESC =
+            "Optional idempotency key for safe retries of this mutating request";
 
     @Resource
     private EnrollmentMembershipService enrollmentMembershipService;
@@ -31,6 +40,12 @@ public class CourseStudentController {
 
     @Idempotent
     @PostMapping
+    @Operation(
+            operationId = "courseStudentAdd",
+            summary = "Add a student to the course",
+            parameters = @Parameter(name = "Idempotency-Key", in = ParameterIn.HEADER, required = false,
+                    description = IDEMPOTENCY_KEY_DESC, schema = @Schema(type = "string"))
+    )
     public ApiResponse<MemberResponse> add(HttpServletRequest request,
                                            @PathVariable Integer courseId,
                                            @RequestBody AdminEnrollRequest body) {
@@ -44,6 +59,12 @@ public class CourseStudentController {
 
     @Idempotent
     @PostMapping("/batch")
+    @Operation(
+            operationId = "courseStudentBatch",
+            summary = "Batch add students by userIds and/or emails",
+            parameters = @Parameter(name = "Idempotency-Key", in = ParameterIn.HEADER, required = false,
+                    description = IDEMPOTENCY_KEY_DESC, schema = @Schema(type = "string"))
+    )
     public ApiResponse<BatchStudentEnrollResponse> batch(HttpServletRequest request,
                                                          @PathVariable Integer courseId,
                                                          @RequestBody AdminBatchEnrollRequest body) {
@@ -56,6 +77,7 @@ public class CourseStudentController {
     }
 
     @DeleteMapping("/{userId}")
+    @Operation(operationId = "courseStudentWithdraw", summary = "Withdraw a student from the course")
     public ApiResponse<MemberResponse> withdraw(HttpServletRequest request,
                                                 @PathVariable Integer courseId,
                                                 @PathVariable Integer userId) {

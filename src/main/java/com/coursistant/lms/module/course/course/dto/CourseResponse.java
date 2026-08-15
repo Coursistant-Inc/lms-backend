@@ -1,8 +1,11 @@
 package com.coursistant.lms.module.course.course.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+@Schema(name = "CourseResponse", description = "Course detail view")
 public class CourseResponse {
 
     private Integer id;

@@ -1,7 +1,10 @@
 package com.coursistant.lms.module.course.group.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 import java.time.LocalDateTime;
 
+@Schema(name = "CreateGroupSetRequest", description = "Create a course group set")
 public class CreateGroupSetRequest {
     private String name;
     private Integer defaultCapacity;

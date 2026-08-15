@@ -1,6 +1,7 @@
 package com.coursistant.lms.module.assignment.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -10,6 +11,7 @@ import java.util.List;
  * One immutable submission attempt. {@code usedGraceBuffer} marks an attempt that landed in
  * the 5-minute grace window after the due date and is therefore not counted as late.
  */
+@Schema(name = "SubmissionVersionResponse", description = "One immutable submission attempt")
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class SubmissionVersionResponse {
 

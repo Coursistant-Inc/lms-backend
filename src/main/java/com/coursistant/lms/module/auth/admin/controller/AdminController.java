@@ -8,8 +8,16 @@ import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.shared.api.ApiResponse;
 import com.coursistant.lms.shared.api.ErrorType;
 import com.coursistant.lms.shared.security.AuthzService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.extensions.Extension;
+import io.swagger.v3.oas.annotations.extensions.ExtensionProperty;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,6 +30,7 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/v2/admins")
+@Tag(name = "Admins", description = "System admin read APIs; write APIs disabled until Phase 2")
 public class AdminController {
 
     @Resource
@@ -31,12 +40,14 @@ public class AdminController {
     private AuthzService authzService;
 
     @GetMapping("/{id}")
+    @Operation(operationId = "adminGetById", summary = "Get admin by id")
     public ApiResponse<AdminResponse> selectById(HttpServletRequest request, @PathVariable Integer id) {
         authzService.requireSystemAdmin(request);
         return ApiResponse.success(toResponse(adminService.selectById(id)));
     }
 
     @GetMapping
+    @Operation(operationId = "adminList", summary = "List admins with optional filters")
     public ApiResponse<List<AdminResponse>> selectAll(HttpServletRequest request, AdminQuery query) {
         authzService.requireSystemAdmin(request);
         List<AdminResponse> list = adminService.selectAll(toProbe(query)).stream()
@@ -46,21 +57,81 @@ public class AdminController {
     }
 
     @org.springframework.web.bind.annotation.PostMapping
+    @Operation(
+            operationId = "adminAddDisabled",
+            summary = "Create admin (disabled)",
+            description = "Phase 2 disabled. Always returns 403 FORBIDDEN until secure management APIs ship.",
+            deprecated = true,
+            extensions = @Extension(properties = {
+                    @ExtensionProperty(name = "x-availability", value = "disabled")
+            }))
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "403",
+                    description = "FORBIDDEN — write API disabled",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
+    })
     public ApiResponse<Void> addDisabled() {
         throw new ApiException(ErrorType.FORBIDDEN, "Admin write APIs are disabled until secure management APIs ship");
     }
 
     @org.springframework.web.bind.annotation.DeleteMapping("/{id}")
+    @Operation(
+            operationId = "adminDeleteDisabled",
+            summary = "Delete admin (disabled)",
+            description = "Phase 2 disabled. Always returns 403 FORBIDDEN until secure management APIs ship.",
+            deprecated = true,
+            extensions = @Extension(properties = {
+                    @ExtensionProperty(name = "x-availability", value = "disabled")
+            }))
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "403",
+                    description = "FORBIDDEN — write API disabled",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
+    })
     public ApiResponse<Void> deleteDisabled(@PathVariable Integer id) {
         throw new ApiException(ErrorType.FORBIDDEN, "Admin write APIs are disabled until secure management APIs ship");
     }
 
     @org.springframework.web.bind.annotation.DeleteMapping("/batch")
+    @Operation(
+            operationId = "adminDeleteBatchDisabled",
+            summary = "Batch delete admins (disabled)",
+            description = "Phase 2 disabled. Always returns 403 FORBIDDEN until secure management APIs ship.",
+            deprecated = true,
+            extensions = @Extension(properties = {
+                    @ExtensionProperty(name = "x-availability", value = "disabled")
+            }))
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "403",
+                    description = "FORBIDDEN — write API disabled",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
+    })
     public ApiResponse<Void> deleteBatchDisabled() {
         throw new ApiException(ErrorType.FORBIDDEN, "Admin write APIs are disabled until secure management APIs ship");
     }
 
     @org.springframework.web.bind.annotation.PutMapping("/{id}")
+    @Operation(
+            operationId = "adminUpdateDisabled",
+            summary = "Update admin (disabled)",
+            description = "Phase 2 disabled. Always returns 403 FORBIDDEN until secure management APIs ship.",
+            deprecated = true,
+            extensions = @Extension(properties = {
+                    @ExtensionProperty(name = "x-availability", value = "disabled")
+            }))
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "403",
+                    description = "FORBIDDEN — write API disabled",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
+    })
     public ApiResponse<Void> updateDisabled(@PathVariable Integer id) {
         throw new ApiException(ErrorType.FORBIDDEN, "Admin write APIs are disabled until secure management APIs ship");
     }

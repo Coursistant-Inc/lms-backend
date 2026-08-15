@@ -1,0 +1,60 @@
+# OpenAPI contract export profile — no MySQL/Redis/MinIO/Mail required.
+spring:
+  main:
+    allow-bean-definition-overriding: true
+  task:
+    scheduling:
+      enabled: false
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
+      - org.springframework.boot.autoconfigure.mail.MailSenderAutoConfiguration
+  datasource:
+    driver-class-name: org.h2.Driver
+    url: jdbc:h2:mem:openapi;MODE=MySQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE
+    username: sa
+    password:
+  sql:
+    init:
+      mode: never
+
+mybatis:
+  # Avoid alias-scanning Testcontainers IT classes under module.*.it
+  type-aliases-package: com.coursistant.lms.module.auth.admin.entity,com.coursistant.lms.module.auth.token.entity,com.coursistant.lms.module.user.account.entity,com.coursistant.lms.module.course,com.coursistant.lms.module.assignment.entity,com.coursistant.lms.module.quiz.entity,com.coursistant.lms.module.tenant
+  configuration:
+    log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl
+
+minio:
+  url: http://127.0.0.1:9
+  access-key: openapi
+  secret-key: openapi
+
+token:
+  access-expire-hours: 2
+  refresh-expire-days: 14
+  refresh-rotation-grace-seconds: 30
+  private-key-path: classpath:test-private.pem
+  public-key-path: classpath:test-public.pem
+
+auth:
+  docs-public: true
+  jwt:
+    issuer: https://usc.xlearnedu.com
+    audience: com.coursistant.lms
+    min-issued-at:
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+    enabled: true
+  swagger-ui:
+    enabled: true
+  writer-with-default-pretty-printer: true
+  writer-with-order-by-keys: true
+
+logging:
+  level:
+    root: WARN
+    com.coursistant.lms: INFO
+    org.springdoc: INFO

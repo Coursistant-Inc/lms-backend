@@ -1,6 +1,7 @@
 package com.coursistant.lms.module.assignment.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.LocalDateTime;
 
@@ -8,6 +9,7 @@ import java.time.LocalDateTime;
  * Current rubric pointer for an assignment. {@code posted=false} means no rubric has ever
  * been uploaded (or the pointer was cleared); older versions stay in the version table.
  */
+@Schema(name = "RubricResponse", description = "Current rubric pointer and metadata")
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class RubricResponse {
 

@@ -1,12 +1,14 @@
 package com.coursistant.lms.module.assignment.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.LocalDateTime;
 
 /**
  * Impact summary for a proposed due date change. Nothing is persisted by the preview.
  */
+@Schema(name = "DueDateChangePreviewResponse", description = "Impact summary for a proposed due date change")
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class DueDateChangePreviewResponse {
 

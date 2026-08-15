@@ -11,6 +11,11 @@ import com.coursistant.lms.shared.api.ApiResponse;
 import com.coursistant.lms.shared.idempotency.Idempotent;
 import com.coursistant.lms.shared.security.ActorContext;
 import com.coursistant.lms.shared.security.ActorContextResolver;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -25,7 +30,11 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/v2/courses")
+@Tag(name = "Courses", description = "Course lifecycle, archive, and primary instructor")
 public class CourseController {
+
+    private static final String IDEMPOTENCY_KEY_DESC =
+            "Optional idempotency key for safe retries of this mutating request";
 
     @Resource
     private CourseService courseService;
@@ -38,6 +47,12 @@ public class CourseController {
 
     @Idempotent
     @PostMapping
+    @Operation(
+            operationId = "courseCreate",
+            summary = "Create a course",
+            parameters = @Parameter(name = "Idempotency-Key", in = ParameterIn.HEADER, required = false,
+                    description = IDEMPOTENCY_KEY_DESC, schema = @Schema(type = "string"))
+    )
     public ApiResponse<CourseResponse> create(HttpServletRequest request,
                                               @RequestBody CreateCourseRequest body) {
         ActorContext actor = actorContextResolver.resolve(request);
@@ -45,6 +60,7 @@ public class CourseController {
     }
 
     @GetMapping
+    @Operation(operationId = "courseList", summary = "Browse/list courses with optional filters")
     public ApiResponse<CoursePageResponse> list(HttpServletRequest request,
                                                 @RequestParam(value = "q", required = false) String q,
                                                 @RequestParam(value = "state", required = false) String state,
@@ -56,6 +72,7 @@ public class CourseController {
     }
 
     @GetMapping("/{id}")
+    @Operation(operationId = "courseGetById", summary = "Get course by id")
     public ApiResponse<CourseResponse> getById(HttpServletRequest request, @PathVariable Integer id) {
         ActorContext actor = actorContextResolver.resolve(request);
         courseAuthorizationService.requireVisibleCourse(actor, id);
@@ -64,6 +81,12 @@ public class CourseController {
 
     @Idempotent
     @PatchMapping("/{id}")
+    @Operation(
+            operationId = "coursePatch",
+            summary = "Partial update of course fields",
+            parameters = @Parameter(name = "Idempotency-Key", in = ParameterIn.HEADER, required = false,
+                    description = IDEMPOTENCY_KEY_DESC, schema = @Schema(type = "string"))
+    )
     public ApiResponse<CourseResponse> patch(HttpServletRequest request,
                                              @PathVariable Integer id,
                                              @RequestBody PatchCourseRequest body) {
@@ -72,6 +95,7 @@ public class CourseController {
     }
 
     @DeleteMapping("/{id}")
+    @Operation(operationId = "courseDelete", summary = "Delete a course")
     public ApiResponse<Void> delete(HttpServletRequest request, @PathVariable Integer id) {
         ActorContext actor = actorContextResolver.resolve(request);
         courseService.delete(actor, id, requestId(request));
@@ -80,6 +104,12 @@ public class CourseController {
 
     @Idempotent
     @PostMapping("/{id}/archive")
+    @Operation(
+            operationId = "courseArchive",
+            summary = "Archive a course",
+            parameters = @Parameter(name = "Idempotency-Key", in = ParameterIn.HEADER, required = false,
+                    description = IDEMPOTENCY_KEY_DESC, schema = @Schema(type = "string"))
+    )
     public ApiResponse<CourseResponse> archive(HttpServletRequest request, @PathVariable Integer id) {
         ActorContext actor = actorContextResolver.resolve(request);
         return ApiResponse.success(courseService.archive(actor, id, requestId(request)));
@@ -87,6 +117,12 @@ public class CourseController {
 
     @Idempotent
     @PostMapping("/{id}/unarchive")
+    @Operation(
+            operationId = "courseUnarchive",
+            summary = "Unarchive a course",
+            parameters = @Parameter(name = "Idempotency-Key", in = ParameterIn.HEADER, required = false,
+                    description = IDEMPOTENCY_KEY_DESC, schema = @Schema(type = "string"))
+    )
     public ApiResponse<CourseResponse> unarchive(HttpServletRequest request, @PathVariable Integer id) {
         ActorContext actor = actorContextResolver.resolve(request);
         return ApiResponse.success(courseService.unarchive(actor, id, requestId(request)));
@@ -94,6 +130,12 @@ public class CourseController {
 
     @Idempotent
     @PostMapping("/{id}/primary-instructor")
+    @Operation(
+            operationId = "courseReassignPrimaryInstructor",
+            summary = "Reassign the primary instructor",
+            parameters = @Parameter(name = "Idempotency-Key", in = ParameterIn.HEADER, required = false,
+                    description = IDEMPOTENCY_KEY_DESC, schema = @Schema(type = "string"))
+    )
     public ApiResponse<CourseResponse> reassignPrimaryInstructor(HttpServletRequest request,
                                                                  @PathVariable Integer id,
                                                                  @RequestBody ReassignPrimaryInstructorRequest body) {

@@ -41,7 +41,10 @@ public class WebConfig implements WebMvcConfigurer {
                 .excludePathPatterns("/v1/auth/password-resets")
                 .excludePathPatterns("/swagger-ui/**")
                 .excludePathPatterns("/swagger-ui.html")
+                .excludePathPatterns("/v3/api-docs")
                 .excludePathPatterns("/v3/api-docs/**")
+                .excludePathPatterns("/v3/api-docs.yaml")
+                .excludePathPatterns("/v3/api-docs.yaml/**")
         ;
 
         registry.addInterceptor(idempotencyInterceptor).addPathPatterns("/**")
@@ -53,7 +56,10 @@ public class WebConfig implements WebMvcConfigurer {
                 .excludePathPatterns("/files/**")
                 .excludePathPatterns("/swagger-ui/**")
                 .excludePathPatterns("/swagger-ui.html")
+                .excludePathPatterns("/v3/api-docs")
                 .excludePathPatterns("/v3/api-docs/**")
+                .excludePathPatterns("/v3/api-docs.yaml")
+                .excludePathPatterns("/v3/api-docs.yaml/**")
         ;
     }
 

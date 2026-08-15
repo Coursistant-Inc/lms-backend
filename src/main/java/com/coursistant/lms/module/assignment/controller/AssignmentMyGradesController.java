@@ -5,6 +5,8 @@ import com.coursistant.lms.module.assignment.service.AssignmentMyGradesService;
 import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.shared.api.ApiResponse;
 import com.coursistant.lms.shared.api.ErrorType;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,12 +21,19 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/v2/courses/{courseId}/my-grades")
+@Tag(name = "MyGrades", description = "Student view of own released/unreleased assignment grades in a course")
 public class AssignmentMyGradesController {
 
     @Resource
     private AssignmentMyGradesService assignmentMyGradesService;
 
     @GetMapping
+    @Operation(
+            operationId = "assignmentListMyGrades",
+            summary = "List my grades for a course",
+            description = "Student only. Score, feedback, and annotated file appear only when grade status is Released; "
+                    + "otherwise released=false and score fields are omitted."
+    )
     public ApiResponse<List<MyGradeResponse>> listMyGrades(HttpServletRequest request,
                                                            @PathVariable Integer courseId) {
         return ApiResponse.success(assignmentMyGradesService.listMyGrades(courseId, currentUserId(request)));

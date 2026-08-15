@@ -1,5 +1,8 @@
 package com.coursistant.lms.module.assignment.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
+@Schema(name = "GradeTransitionSkip", description = "Skipped student/group during release/retract")
 public class GradeTransitionSkip {
 
     private Integer studentUserId;

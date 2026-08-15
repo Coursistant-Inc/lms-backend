@@ -1,6 +1,7 @@
 package com.coursistant.lms.module.assignment.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -9,6 +10,7 @@ import java.time.LocalDateTime;
  * Slim assignment list card for any course member: title, due, type, and (students only)
  * current submission status. {@code id} is included so the client can open the detail page.
  */
+@Schema(name = "AssignmentSummaryResponse", description = "Slim assignment card for course members")
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class AssignmentSummaryResponse {
 

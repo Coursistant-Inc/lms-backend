@@ -2,6 +2,7 @@ package com.coursistant.lms.module.assignment.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -15,6 +16,7 @@ import java.util.stream.Collectors;
  * {@code skippedStudentIds}, {@code alreadyReleasedStudentIds}) are exposed alongside the
  * richer {@code skipped} detail list for graders that need the prior status.</p>
  */
+@Schema(name = "GradeTransitionResponse", description = "Bulk release/retract result with skipped detail")
 public class GradeTransitionResponse {
 
     private int changedCount;

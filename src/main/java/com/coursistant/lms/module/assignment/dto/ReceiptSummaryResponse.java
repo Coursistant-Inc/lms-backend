@@ -1,10 +1,12 @@
 package com.coursistant.lms.module.assignment.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
+@Schema(name = "ReceiptSummaryResponse", description = "Submission receipt summary")
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class ReceiptSummaryResponse {
 
@@ -36,6 +38,7 @@ public class ReceiptSummaryResponse {
         this.files = files;
     }
 
+    @Schema(name = "ReceiptFileSummary")
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public static class ReceiptFileSummary {
         private String originalName;

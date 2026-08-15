@@ -1,6 +1,7 @@
 package com.coursistant.lms.module.assignment.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -10,6 +11,7 @@ import java.util.List;
  * One row of the grading roster. Individual assignments list students; Group assignments list
  * groups (with members / actual submitter).
  */
+@Schema(name = "GradingRosterItemResponse", description = "One grading roster row (student or group)")
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class GradingRosterItemResponse {
 

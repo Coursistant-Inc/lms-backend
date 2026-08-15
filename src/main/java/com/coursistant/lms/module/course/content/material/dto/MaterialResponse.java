@@ -1,7 +1,10 @@
 package com.coursistant.lms.module.course.content.material.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 import java.time.LocalDateTime;
 
+@Schema(name = "MaterialResponse", description = "Week material (file or link)")
 public class MaterialResponse {
     private Integer id;
     private Integer weekId;

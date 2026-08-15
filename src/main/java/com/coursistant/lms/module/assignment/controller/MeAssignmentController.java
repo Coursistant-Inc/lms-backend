@@ -5,6 +5,9 @@ import com.coursistant.lms.module.assignment.service.AssignmentService;
 import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.shared.api.ApiResponse;
 import com.coursistant.lms.shared.api.ErrorType;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,14 +19,21 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/v2/me/assignments")
+@Tag(name = "MeAssignments", description = "Current-user cross-course assignment dashboard")
 public class MeAssignmentController {
 
     @Resource
     private AssignmentService assignmentService;
 
     @GetMapping("/upcoming")
+    @Operation(
+            operationId = "meAssignmentUpcoming",
+            summary = "List upcoming assignment deadlines",
+            description = "Authenticated user. Returns published assignments due within the window across enrolled courses."
+    )
     public ApiResponse<List<UpcomingAssignmentDeadlineResponse>> upcoming(
             HttpServletRequest request,
+            @Parameter(description = "Look-ahead window in days; server default applies when omitted")
             @RequestParam(required = false) Integer days) {
         return ApiResponse.success(
                 assignmentService.listUpcomingDeadlines(currentUserId(request), days));

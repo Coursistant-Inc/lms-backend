@@ -1,5 +1,6 @@
 package com.coursistant.lms.module.course.content.material.controller;
 
+import com.coursistant.lms.module.course.content.material.dto.MaterialCreateRequest;
 import com.coursistant.lms.module.course.content.material.dto.MaterialResponse;
 import com.coursistant.lms.module.course.content.material.dto.MoveMaterialRequest;
 import com.coursistant.lms.module.course.content.material.dto.RenameMaterialRequest;
@@ -9,6 +10,14 @@ import com.coursistant.lms.shared.api.ApiResponse;
 import com.coursistant.lms.shared.idempotency.Idempotent;
 import com.coursistant.lms.shared.security.ActorContext;
 import com.coursistant.lms.shared.security.ActorContextResolver;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
+import io.swagger.v3.oas.annotations.headers.Header;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.core.io.InputStreamResource;
@@ -30,7 +39,11 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/v2/courses/{courseId}/weeks/{weekId}/materials")
+@Tag(name = "Materials", description = "Week materials: files, links, preview/download")
 public class CourseMaterialController {
+
+    private static final String IDEMPOTENCY_KEY_DESC =
+            "Optional idempotency key for safe retries of this mutating request";
 
     @Resource
     private CourseMaterialService courseMaterialService;
@@ -40,6 +53,20 @@ public class CourseMaterialController {
 
     @Idempotent
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(
+            operationId = "courseMaterialCreate",
+            summary = "Create file and/or link materials",
+            description = "Multipart parts: `files` (optional array), `linkUrl` (optional), `linkDisplayName` (optional). "
+                    + "Provide at least one file or a linkUrl.",
+            parameters = @Parameter(name = "Idempotency-Key", in = ParameterIn.HEADER, required = false,
+                    description = IDEMPOTENCY_KEY_DESC, schema = @Schema(type = "string")),
+            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    required = true,
+                    content = @Content(
+                            mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
+                            schema = @Schema(implementation = MaterialCreateRequest.class))
+            )
+    )
     public ApiResponse<List<MaterialResponse>> create(HttpServletRequest request,
                                                        @PathVariable Integer courseId,
                                                        @PathVariable Integer weekId,
@@ -53,6 +80,12 @@ public class CourseMaterialController {
 
     @Idempotent
     @PatchMapping("/{materialId}")
+    @Operation(
+            operationId = "courseMaterialRename",
+            summary = "Rename a material",
+            parameters = @Parameter(name = "Idempotency-Key", in = ParameterIn.HEADER, required = false,
+                    description = IDEMPOTENCY_KEY_DESC, schema = @Schema(type = "string"))
+    )
     public ApiResponse<MaterialResponse> rename(HttpServletRequest request,
                                                 @PathVariable Integer courseId,
                                                 @PathVariable Integer weekId,
@@ -65,6 +98,12 @@ public class CourseMaterialController {
 
     @Idempotent
     @PutMapping("/reorder")
+    @Operation(
+            operationId = "courseMaterialReorder",
+            summary = "Reorder materials in a week",
+            parameters = @Parameter(name = "Idempotency-Key", in = ParameterIn.HEADER, required = false,
+                    description = IDEMPOTENCY_KEY_DESC, schema = @Schema(type = "string"))
+    )
     public ApiResponse<List<MaterialResponse>> reorder(HttpServletRequest request,
                                                         @PathVariable Integer courseId,
                                                         @PathVariable Integer weekId,
@@ -75,6 +114,12 @@ public class CourseMaterialController {
 
     @Idempotent
     @PostMapping("/{materialId}/move")
+    @Operation(
+            operationId = "courseMaterialMove",
+            summary = "Move a material to another week",
+            parameters = @Parameter(name = "Idempotency-Key", in = ParameterIn.HEADER, required = false,
+                    description = IDEMPOTENCY_KEY_DESC, schema = @Schema(type = "string"))
+    )
     public ApiResponse<MaterialResponse> move(HttpServletRequest request,
                                               @PathVariable Integer courseId,
                                               @PathVariable Integer weekId,
@@ -86,6 +131,7 @@ public class CourseMaterialController {
     }
 
     @DeleteMapping("/{materialId}")
+    @Operation(operationId = "courseMaterialDelete", summary = "Delete a material")
     public ApiResponse<Void> delete(HttpServletRequest request,
                                     @PathVariable Integer courseId,
                                     @PathVariable Integer weekId,
@@ -96,6 +142,22 @@ public class CourseMaterialController {
     }
 
     @GetMapping("/{materialId}/preview")
+    @Operation(
+            operationId = "courseMaterialPreview",
+            summary = "Preview a file material (inline binary)",
+            description = "Returns raw file bytes (not JSON ApiResponse). Only for previewable FILE materials."
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "Material file bytes for inline preview",
+                    content = @Content(mediaType = "application/octet-stream",
+                            schema = @Schema(type = "string", format = "binary")),
+                    headers = @Header(
+                            name = "Content-Disposition",
+                            description = "inline; filename=\"...\"",
+                            schema = @Schema(type = "string")))
+    })
     public ResponseEntity<InputStreamResource> preview(HttpServletRequest request,
                                                         @PathVariable Integer courseId,
                                                         @PathVariable Integer weekId,
@@ -105,6 +167,31 @@ public class CourseMaterialController {
     }
 
     @GetMapping("/{materialId}/download")
+    @Operation(
+            operationId = "courseMaterialDownload",
+            summary = "Download a material (file bytes or link redirect)",
+            description = "FILE materials return 200 binary with Content-Disposition attachment. "
+                    + "LINK materials return 302 with Location set to the external URL."
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "File material bytes",
+                    content = @Content(mediaType = "application/octet-stream",
+                            schema = @Schema(type = "string", format = "binary")),
+                    headers = @Header(
+                            name = "Content-Disposition",
+                            description = "attachment; filename=\"...\"",
+                            schema = @Schema(type = "string"))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "302",
+                    description = "Link material redirect to external URL",
+                    content = @Content,
+                    headers = @Header(
+                            name = "Location",
+                            description = "External link URL",
+                            schema = @Schema(type = "string", format = "uri")))
+    })
     public ResponseEntity<?> download(HttpServletRequest request,
                                       @PathVariable Integer courseId,
                                       @PathVariable Integer weekId,

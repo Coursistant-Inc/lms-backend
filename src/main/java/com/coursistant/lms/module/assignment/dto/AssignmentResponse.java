@@ -1,6 +1,7 @@
 package com.coursistant.lms.module.assignment.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -12,6 +13,8 @@ import java.util.List;
  * the assemblers: staff callers receive the roster/grading counters, students receive their own
  * submission state. Unset fields are omitted from the JSON.
  */
+@Schema(name = "AssignmentResponse",
+        description = "Assignment list/detail payload; staff vs student fields are role-shaped")
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class AssignmentResponse {
 
@@ -449,6 +452,7 @@ public class AssignmentResponse {
         this.submissionArea = submissionArea;
     }
 
+    @Schema(name = "AssignmentLatePolicyResponse")
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public static class LatePolicyResponse {
         private Boolean acceptsLate;
@@ -480,6 +484,7 @@ public class AssignmentResponse {
         }
     }
 
+    @Schema(name = "AssignmentSubmissionAreaResponse")
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public static class SubmissionAreaResponse {
         private Integer maxFileCount;

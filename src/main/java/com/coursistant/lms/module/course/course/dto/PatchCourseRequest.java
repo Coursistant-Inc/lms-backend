@@ -1,5 +1,7 @@
 package com.coursistant.lms.module.course.course.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 import java.time.LocalDate;
 
 /**
@@ -7,6 +9,8 @@ import java.time.LocalDate;
  * Use {@code clearDescription}/{@code clearLocation} to explicitly null those fields.
  * {@code tenantId} and instructor identity are rejected if present.
  */
+@Schema(name = "PatchCourseRequest",
+        description = "Partial course update; only non-null whitelist fields are applied")
 public class PatchCourseRequest {
 
     private Integer tenantId;

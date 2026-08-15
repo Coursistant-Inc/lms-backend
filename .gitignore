@@ -28,12 +28,26 @@ out/
 Thumbs.db
 .env
 private.pem
+public.pem
+*.pem
 *.md
+!docs/api/**/*.md
+!README.md
 xlearnedu_west2.pem
+
+# 🔹 已移除的旧 markdown API 文档（勿再入库）
+api doc/
+
+# 🔹 根目录临时 Python 探测脚本（正式测试在 src/test 与 api-test）
+/test_idempotency.py
+/test_session_admin_apis.py
+/test_session_multidevice.py
 
 # 🔹 本地测试资源
 test_avatars/
 test_files/
 
-# 🔹 本地脚本（不入库）
-scripts/
+# 🔹 本地脚本（不入库）；OpenAPI tooling scripts are tracked
+scripts/*
+!scripts/export-openapi.ps1
+!scripts/verify-openapi.ps1

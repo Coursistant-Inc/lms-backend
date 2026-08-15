@@ -9,6 +9,11 @@ import com.coursistant.lms.shared.api.ApiResponse;
 import com.coursistant.lms.shared.idempotency.Idempotent;
 import com.coursistant.lms.shared.security.ActorContext;
 import com.coursistant.lms.shared.security.ActorContextResolver;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -24,7 +29,11 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/v2/courses/{courseId}/events")
+@Tag(name = "Events", description = "Course calendar events")
 public class CourseEventController {
+
+    private static final String IDEMPOTENCY_KEY_DESC =
+            "Optional idempotency key for safe retries of this mutating request";
 
     @Resource
     private CourseEventService courseEventService;
@@ -36,6 +45,7 @@ public class CourseEventController {
     private CourseAuthorizationService courseAuthorizationService;
 
     @GetMapping
+    @Operation(operationId = "courseEventList", summary = "List events for a course")
     public ApiResponse<List<CourseEventResponse>> list(HttpServletRequest request, @PathVariable Integer courseId) {
         ActorContext actor = actorContextResolver.resolve(request);
         courseAuthorizationService.requireVisibleCourse(actor, courseId);
@@ -43,6 +53,7 @@ public class CourseEventController {
     }
 
     @GetMapping("/{eventId}")
+    @Operation(operationId = "courseEventGet", summary = "Get a course event by id")
     public ApiResponse<CourseEventResponse> get(HttpServletRequest request,
                                                 @PathVariable Integer courseId,
                                                 @PathVariable Integer eventId) {
@@ -53,6 +64,12 @@ public class CourseEventController {
 
     @Idempotent
     @PostMapping
+    @Operation(
+            operationId = "courseEventCreate",
+            summary = "Create a course event",
+            parameters = @Parameter(name = "Idempotency-Key", in = ParameterIn.HEADER, required = false,
+                    description = IDEMPOTENCY_KEY_DESC, schema = @Schema(type = "string"))
+    )
     public ApiResponse<CourseEventResponse> create(HttpServletRequest request,
                                                    @PathVariable Integer courseId,
                                                    @RequestBody CreateCourseEventRequest body) {
@@ -62,6 +79,12 @@ public class CourseEventController {
 
     @Idempotent
     @PutMapping("/{eventId}")
+    @Operation(
+            operationId = "courseEventUpdate",
+            summary = "Update a course event",
+            parameters = @Parameter(name = "Idempotency-Key", in = ParameterIn.HEADER, required = false,
+                    description = IDEMPOTENCY_KEY_DESC, schema = @Schema(type = "string"))
+    )
     public ApiResponse<CourseEventResponse> update(HttpServletRequest request,
                                                    @PathVariable Integer courseId,
                                                    @PathVariable Integer eventId,
@@ -71,6 +94,7 @@ public class CourseEventController {
     }
 
     @DeleteMapping("/{eventId}")
+    @Operation(operationId = "courseEventDelete", summary = "Delete a course event")
     public ApiResponse<Void> delete(HttpServletRequest request,
                                     @PathVariable Integer courseId,
                                     @PathVariable Integer eventId) {

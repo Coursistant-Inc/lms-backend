@@ -1,17 +1,28 @@
 package com.coursistant.lms.module.auth.admin.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
  * Safe admin read model — never includes password, authVersion, or invitation.
  */
+@Schema(name = "AdminResponse", description = "Public admin profile fields (no secrets)")
 public class AdminResponse {
 
+    @Schema(description = "Admin id", example = "1")
     private Integer id;
+    @Schema(description = "Username", example = "sysadmin")
     private String username;
+    @Schema(description = "Display name", example = "System Admin")
     private String name;
+    @Schema(description = "Phone", example = "+1-555-0100")
     private String phone;
+    @Schema(description = "Email", example = "admin@example.com")
     private String email;
+    @Schema(description = "Avatar URL or object key")
     private String avatar;
+    @Schema(description = "Role", example = "SYSTEM_ADMIN")
     private String role;
+    @Schema(description = "Account status", example = "ACTIVE")
     private String status;
 
     public Integer getId() {

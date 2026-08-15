@@ -1,6 +1,7 @@
 package com.coursistant.lms.module.assignment.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -8,6 +9,7 @@ import java.time.Instant;
 /**
  * Student-visible grade block. Only populated when status is Released.
  */
+@Schema(name = "StudentGradeViewResponse", description = "Student-visible grade block when Released")
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class StudentGradeViewResponse {
 

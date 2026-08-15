@@ -1,6 +1,7 @@
 package com.coursistant.lms.module.assignment.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -11,6 +12,7 @@ import java.time.LocalDateTime;
  * only populated once the grade status is {@code Released}; before that {@code released=false}
  * and the score fields stay absent.
  */
+@Schema(name = "MyGradeResponse", description = "Student view of one assignment grade")
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class MyGradeResponse {
 

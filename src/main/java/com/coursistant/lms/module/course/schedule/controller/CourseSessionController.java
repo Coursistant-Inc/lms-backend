@@ -9,6 +9,11 @@ import com.coursistant.lms.shared.api.ApiResponse;
 import com.coursistant.lms.shared.idempotency.Idempotent;
 import com.coursistant.lms.shared.security.ActorContext;
 import com.coursistant.lms.shared.security.ActorContextResolver;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -24,7 +29,11 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/v2/courses/{courseId}/sessions")
+@Tag(name = "Sessions", description = "Course schedule sessions")
 public class CourseSessionController {
+
+    private static final String IDEMPOTENCY_KEY_DESC =
+            "Optional idempotency key for safe retries of this mutating request";
 
     @Resource
     private CourseSessionService courseSessionService;
@@ -36,6 +45,7 @@ public class CourseSessionController {
     private CourseAuthorizationService courseAuthorizationService;
 
     @GetMapping
+    @Operation(operationId = "courseSessionList", summary = "List sessions for a course")
     public ApiResponse<List<SessionResponse>> list(HttpServletRequest request, @PathVariable Integer courseId) {
         ActorContext actor = actorContextResolver.resolve(request);
         courseAuthorizationService.requireVisibleCourse(actor, courseId);
@@ -43,6 +53,7 @@ public class CourseSessionController {
     }
 
     @GetMapping("/{sessionId}")
+    @Operation(operationId = "courseSessionGet", summary = "Get a session by id")
     public ApiResponse<SessionResponse> get(HttpServletRequest request,
                                             @PathVariable Integer courseId,
                                             @PathVariable Integer sessionId) {
@@ -53,6 +64,12 @@ public class CourseSessionController {
 
     @Idempotent
     @PostMapping
+    @Operation(
+            operationId = "courseSessionCreate",
+            summary = "Create a session",
+            parameters = @Parameter(name = "Idempotency-Key", in = ParameterIn.HEADER, required = false,
+                    description = IDEMPOTENCY_KEY_DESC, schema = @Schema(type = "string"))
+    )
     public ApiResponse<SessionResponse> create(HttpServletRequest request,
                                                @PathVariable Integer courseId,
                                                @RequestBody CreateSessionRequest body) {
@@ -62,6 +79,12 @@ public class CourseSessionController {
 
     @Idempotent
     @PutMapping("/{sessionId}")
+    @Operation(
+            operationId = "courseSessionUpdate",
+            summary = "Update a session",
+            parameters = @Parameter(name = "Idempotency-Key", in = ParameterIn.HEADER, required = false,
+                    description = IDEMPOTENCY_KEY_DESC, schema = @Schema(type = "string"))
+    )
     public ApiResponse<SessionResponse> update(HttpServletRequest request,
                                                @PathVariable Integer courseId,
                                                @PathVariable Integer sessionId,
@@ -71,6 +94,7 @@ public class CourseSessionController {
     }
 
     @DeleteMapping("/{sessionId}")
+    @Operation(operationId = "courseSessionDelete", summary = "Delete a session")
     public ApiResponse<Void> delete(HttpServletRequest request,
                                     @PathVariable Integer courseId,
                                     @PathVariable Integer sessionId) {

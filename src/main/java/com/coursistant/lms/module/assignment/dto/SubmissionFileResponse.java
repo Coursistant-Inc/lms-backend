@@ -1,9 +1,11 @@
 package com.coursistant.lms.module.assignment.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.Instant;
 
+@Schema(name = "SubmissionFileResponse", description = "File belonging to a submission version")
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class SubmissionFileResponse {
 

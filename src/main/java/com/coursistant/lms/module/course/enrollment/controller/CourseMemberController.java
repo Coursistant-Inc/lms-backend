@@ -5,6 +5,8 @@ import com.coursistant.lms.module.course.enrollment.service.EnrollmentMembership
 import com.coursistant.lms.shared.api.ApiResponse;
 import com.coursistant.lms.shared.security.ActorContext;
 import com.coursistant.lms.shared.security.ActorContextResolver;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/v2/courses/{courseId}/members")
+@Tag(name = "Enrollment", description = "Course membership: students, TAs, members, admin enroll")
 public class CourseMemberController {
 
     @Resource
@@ -27,6 +30,7 @@ public class CourseMemberController {
     private ActorContextResolver actorContextResolver;
 
     @GetMapping
+    @Operation(operationId = "courseMemberList", summary = "List course members with optional filters")
     public ApiResponse<MemberPageResponse> list(HttpServletRequest request,
                                                 @PathVariable Integer courseId,
                                                 @RequestParam(value = "courseRole", required = false) String courseRole,

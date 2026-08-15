@@ -1,6 +1,7 @@
 package com.coursistant.lms.module.assignment.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -10,6 +11,7 @@ import java.util.List;
  * A student's submission state for one assignment: the current version (if any), the derived
  * status, and whether another attempt is still accepted.
  */
+@Schema(name = "SubmissionResponse", description = "Submission state for one assignment")
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class SubmissionResponse {
 

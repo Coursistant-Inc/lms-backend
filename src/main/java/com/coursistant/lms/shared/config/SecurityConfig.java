@@ -39,7 +39,13 @@ public class SecurityConfig {
                             "/v1/auth/email-verifications/reset",
                             "/v1/auth/password-resets").permitAll();
                     if (docsPublic) {
-                        auth.requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll();
+                        auth.requestMatchers(
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/v3/api-docs",
+                                "/v3/api-docs/**",
+                                "/v3/api-docs.yaml",
+                                "/v3/api-docs.yaml/**").permitAll();
                     }
                     auth.anyRequest().authenticated();
                 })

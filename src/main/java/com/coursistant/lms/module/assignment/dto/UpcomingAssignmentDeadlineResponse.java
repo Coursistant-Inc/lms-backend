@@ -1,9 +1,13 @@
 package com.coursistant.lms.module.assignment.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 import java.time.Instant;
 import java.time.LocalDateTime;
 
 /** Dashboard card: assignment due within the upcoming window across enrolled courses. */
+@Schema(name = "UpcomingAssignmentDeadlineResponse",
+        description = "Upcoming deadline card across enrolled courses")
 public class UpcomingAssignmentDeadlineResponse {
 
     private Integer courseId;

@@ -18,6 +18,8 @@ import com.coursistant.lms.module.course.group.service.GroupSetService;
 import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.shared.api.ApiResponse;
 import com.coursistant.lms.shared.api.ErrorType;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -34,6 +36,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/v2/courses/{courseId}/group-sets")
+@Tag(name = "Groups", description = "Group sets, groups, and membership")
 public class GroupSetController {
 
     @Resource
@@ -43,6 +46,7 @@ public class GroupSetController {
     private GroupMembershipService groupMembershipService;
 
     @PostMapping
+    @Operation(operationId = "courseGroupSetCreate", summary = "Create a group set")
     public ApiResponse<GroupSetResponse> create(HttpServletRequest request,
                                                 @PathVariable Integer courseId,
                                                 @RequestBody CreateGroupSetRequest body) {
@@ -50,12 +54,14 @@ public class GroupSetController {
     }
 
     @GetMapping
+    @Operation(operationId = "courseGroupSetList", summary = "List group sets for a course")
     public ApiResponse<List<GroupSetResponse>> list(HttpServletRequest request,
                                                     @PathVariable Integer courseId) {
         return ApiResponse.success(groupSetService.listGroupSets(courseId, currentUserId(request)));
     }
 
     @GetMapping("/{groupSetId}")
+    @Operation(operationId = "courseGroupSetGet", summary = "Get a group set by id")
     public ApiResponse<GroupSetResponse> get(HttpServletRequest request,
                                              @PathVariable Integer courseId,
                                              @PathVariable Integer groupSetId) {
@@ -63,6 +69,7 @@ public class GroupSetController {
     }
 
     @PatchMapping("/{groupSetId}")
+    @Operation(operationId = "courseGroupSetPatch", summary = "Patch a group set")
     public ApiResponse<GroupSetResponse> patch(HttpServletRequest request,
                                                @PathVariable Integer courseId,
                                                @PathVariable Integer groupSetId,
@@ -71,6 +78,7 @@ public class GroupSetController {
     }
 
     @DeleteMapping("/{groupSetId}")
+    @Operation(operationId = "courseGroupSetDelete", summary = "Delete a group set")
     public ApiResponse<Void> delete(HttpServletRequest request,
                                     @PathVariable Integer courseId,
                                     @PathVariable Integer groupSetId) {
@@ -79,6 +87,7 @@ public class GroupSetController {
     }
 
     @PostMapping("/{groupSetId}/groups")
+    @Operation(operationId = "courseGroupCreate", summary = "Create a group in a set")
     public ApiResponse<GroupResponse> createGroup(HttpServletRequest request,
                                                   @PathVariable Integer courseId,
                                                   @PathVariable Integer groupSetId,
@@ -87,6 +96,7 @@ public class GroupSetController {
     }
 
     @PostMapping("/{groupSetId}/groups/batch")
+    @Operation(operationId = "courseGroupBatchCreate", summary = "Batch create groups in a set")
     public ApiResponse<List<GroupResponse>> batchCreateGroups(HttpServletRequest request,
                                                               @PathVariable Integer courseId,
                                                               @PathVariable Integer groupSetId,
@@ -95,6 +105,7 @@ public class GroupSetController {
     }
 
     @PatchMapping("/{groupSetId}/groups/{groupId}")
+    @Operation(operationId = "courseGroupPatch", summary = "Patch a group")
     public ApiResponse<GroupResponse> patchGroup(HttpServletRequest request,
                                                  @PathVariable Integer courseId,
                                                  @PathVariable Integer groupSetId,
@@ -105,6 +116,7 @@ public class GroupSetController {
     }
 
     @DeleteMapping("/{groupSetId}/groups/{groupId}")
+    @Operation(operationId = "courseGroupDelete", summary = "Delete a group")
     public ApiResponse<Void> deleteGroup(HttpServletRequest request,
                                          @PathVariable Integer courseId,
                                          @PathVariable Integer groupSetId,
@@ -114,6 +126,7 @@ public class GroupSetController {
     }
 
     @PostMapping("/{groupSetId}/groups/{groupId}/join")
+    @Operation(operationId = "courseGroupJoin", summary = "Join a group")
     public ApiResponse<MembershipMutationResponse> join(HttpServletRequest request,
                                                         @PathVariable Integer courseId,
                                                         @PathVariable Integer groupSetId,
@@ -123,6 +136,7 @@ public class GroupSetController {
     }
 
     @PostMapping("/{groupSetId}/groups/{groupId}/leave")
+    @Operation(operationId = "courseGroupLeave", summary = "Leave a group")
     public ApiResponse<MembershipMutationResponse> leave(HttpServletRequest request,
                                                          @PathVariable Integer courseId,
                                                          @PathVariable Integer groupSetId,
@@ -132,6 +146,7 @@ public class GroupSetController {
     }
 
     @PostMapping("/{groupSetId}/switch")
+    @Operation(operationId = "courseGroupSwitch", summary = "Switch to another group in the set")
     public ApiResponse<MembershipMutationResponse> switchGroup(HttpServletRequest request,
                                                                @PathVariable Integer courseId,
                                                                @PathVariable Integer groupSetId,
@@ -141,6 +156,7 @@ public class GroupSetController {
     }
 
     @GetMapping("/{groupSetId}/ungrouped-students")
+    @Operation(operationId = "courseGroupUngroupedStudents", summary = "List ungrouped students in a set")
     public ApiResponse<List<UngroupedStudentResponse>> ungrouped(HttpServletRequest request,
                                                                  @PathVariable Integer courseId,
                                                                  @PathVariable Integer groupSetId) {
@@ -149,6 +165,7 @@ public class GroupSetController {
     }
 
     @PostMapping("/{groupSetId}/groups/{groupId}/members")
+    @Operation(operationId = "courseGroupMemberAssign", summary = "Assign a member to a group")
     public ApiResponse<MembershipMutationResponse> assign(HttpServletRequest request,
                                                           @PathVariable Integer courseId,
                                                           @PathVariable Integer groupSetId,
@@ -159,6 +176,7 @@ public class GroupSetController {
     }
 
     @PostMapping("/{groupSetId}/members/{userId}/move")
+    @Operation(operationId = "courseGroupMemberMove", summary = "Move a member between groups")
     public ApiResponse<MembershipMutationResponse> move(HttpServletRequest request,
                                                         @PathVariable Integer courseId,
                                                         @PathVariable Integer groupSetId,
@@ -169,6 +187,7 @@ public class GroupSetController {
     }
 
     @DeleteMapping("/{groupSetId}/groups/{groupId}/members/{userId}")
+    @Operation(operationId = "courseGroupMemberRemove", summary = "Remove a member from a group")
     public ApiResponse<MembershipMutationResponse> remove(HttpServletRequest request,
                                                           @PathVariable Integer courseId,
                                                           @PathVariable Integer groupSetId,
@@ -180,6 +199,7 @@ public class GroupSetController {
     }
 
     @PostMapping("/{groupSetId}/distribute-random")
+    @Operation(operationId = "courseGroupDistributeRandom", summary = "Randomly distribute ungrouped students")
     public ApiResponse<List<MembershipResponse>> distributeRandom(HttpServletRequest request,
                                                                   @PathVariable Integer courseId,
                                                                   @PathVariable Integer groupSetId) {

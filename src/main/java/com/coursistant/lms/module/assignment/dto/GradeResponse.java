@@ -1,6 +1,7 @@
 package com.coursistant.lms.module.assignment.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -9,6 +10,7 @@ import java.time.Instant;
  * Grade as seen by grading staff. Students never receive this shape directly; scores are only
  * exposed to a student once the grade is Released (see {@link MyGradeResponse}).
  */
+@Schema(name = "GradeResponse", description = "Staff-facing grade record")
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class GradeResponse {
 

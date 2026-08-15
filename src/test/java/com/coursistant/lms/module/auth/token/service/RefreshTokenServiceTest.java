@@ -2,9 +2,12 @@ package com.coursistant.lms.module.auth.token.service;
 
 import com.coursistant.lms.shared.api.ErrorType;
 import com.coursistant.lms.shared.api.ApiException;
+import com.coursistant.lms.module.auth.admin.repository.AdminMapper;
 import com.coursistant.lms.module.auth.token.dto.RefreshResult;
 import com.coursistant.lms.module.auth.token.entity.RefreshToken;
 import com.coursistant.lms.module.auth.token.repository.RefreshTokenMapper;
+import com.coursistant.lms.module.tenant.repository.TenantMapper;
+import com.coursistant.lms.module.user.account.repository.UserMapper;
 import com.coursistant.lms.shared.security.TokenUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -37,6 +40,15 @@ class RefreshTokenServiceTest {
     @Mock
     private ValueOperations<String, Object> valueOperations;
 
+    @Mock
+    private UserMapper userMapper;
+
+    @Mock
+    private AdminMapper adminMapper;
+
+    @Mock
+    private TenantMapper tenantMapper;
+
     @InjectMocks
     private RefreshTokenService refreshTokenService;
 
@@ -60,7 +72,7 @@ class RefreshTokenServiceTest {
         when(refreshTokenMapper.selectBySessionIdForUpdate("sess1")).thenReturn(dbToken);
 
         try (MockedStatic<TokenUtils> tokenUtils = mockStatic(TokenUtils.class)) {
-            tokenUtils.when(() -> TokenUtils.createAccessToken(1, "USER")).thenReturn("new-access-token");
+            tokenUtils.when(() -> TokenUtils.createAccessToken(1, "USER", 1, 1)).thenReturn("new-access-token");
 
             RefreshResult result = refreshTokenService.getNewAccessToken(oldToken);
 
@@ -90,7 +102,7 @@ class RefreshTokenServiceTest {
         when(refreshTokenMapper.selectBySessionIdForUpdate("sess1")).thenReturn(locked);
 
         try (MockedStatic<TokenUtils> tokenUtils = mockStatic(TokenUtils.class)) {
-            tokenUtils.when(() -> TokenUtils.createAccessToken(1, "USER")).thenReturn("access-from-grace");
+            tokenUtils.when(() -> TokenUtils.createAccessToken(1, "USER", 1, 1)).thenReturn("access-from-grace");
 
             RefreshResult result = refreshTokenService.getNewAccessToken(previous);
 

@@ -1,6 +1,7 @@
 package com.coursistant.lms.module.assignment.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -9,6 +10,7 @@ import java.util.List;
  * Everything a grader needs for one student: the roster row, the submission history, the
  * rubric in force, and the current grade (absent when Ungraded).
  */
+@Schema(name = "GradingViewResponse", description = "Full grading workspace for one student or group")
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class GradingViewResponse {
 

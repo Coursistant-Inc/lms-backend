@@ -37,7 +37,8 @@ public class QuizQuestionService {
     @Resource
     private QuizRegradeService quizRegradeService;
 
-    public List<?> listQuestions(HttpServletRequest request, Integer courseId, Integer quizId, Integer userId) {
+    public List<? extends QuestionView> listQuestions(HttpServletRequest request, Integer courseId,
+                                                      Integer quizId, Integer userId) {
         quizAccessService.requireQuizReadable(request, courseId, quizId, userId);
         boolean instructor = quizAccessService.isInstructor(courseId, userId);
         List<QuizQuestion> questions = quizQuestionMapper.selectByQuizId(quizId);
@@ -47,8 +48,8 @@ public class QuizQuestionService {
         return questions.stream().map(this::toStudentResponse).collect(Collectors.toList());
     }
 
-    public Object getQuestion(HttpServletRequest request, Integer courseId, Integer quizId,
-                              Integer questionId, Integer userId) {
+    public QuestionView getQuestion(HttpServletRequest request, Integer courseId, Integer quizId,
+                                    Integer questionId, Integer userId) {
         quizAccessService.requireQuizReadable(request, courseId, quizId, userId);
         QuizQuestion q = requireQuestion(quizId, questionId);
         if (quizAccessService.isInstructor(courseId, userId)) {

@@ -1,6 +1,7 @@
 package com.coursistant.lms.module.assignment.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -9,6 +10,7 @@ import java.time.LocalDateTime;
  * A file the student has uploaded but not yet submitted. Uploading is not submitting:
  * staging rows expire and are only turned into a submission version by POST .../submissions.
  */
+@Schema(name = "StagingFileResponse", description = "Staged upload not yet submitted")
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class StagingFileResponse {
 

@@ -9,6 +9,14 @@ import com.coursistant.lms.shared.api.ApiResponse;
 import com.coursistant.lms.shared.idempotency.Idempotent;
 import com.coursistant.lms.shared.security.ActorContext;
 import com.coursistant.lms.shared.security.ActorContextResolver;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
+import io.swagger.v3.oas.annotations.headers.Header;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
@@ -27,7 +35,11 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/v2/courses/{courseId}/weeks")
+@Tag(name = "Weeks", description = "Course content weeks and zip download")
 public class CourseWeekController {
+
+    private static final String IDEMPOTENCY_KEY_DESC =
+            "Optional idempotency key for safe retries of this mutating request";
 
     @Resource
     private CourseWeekService courseWeekService;
@@ -36,6 +48,7 @@ public class CourseWeekController {
     private ActorContextResolver actorContextResolver;
 
     @GetMapping
+    @Operation(operationId = "courseWeekList", summary = "List weeks for a course")
     public ApiResponse<List<WeekResponse>> list(HttpServletRequest request, @PathVariable Integer courseId) {
         ActorContext actor = actorContextResolver.resolve(request);
         return ApiResponse.success(courseWeekService.list(actor, courseId));
@@ -43,6 +56,12 @@ public class CourseWeekController {
 
     @Idempotent
     @PostMapping
+    @Operation(
+            operationId = "courseWeekCreate",
+            summary = "Create a week",
+            parameters = @Parameter(name = "Idempotency-Key", in = ParameterIn.HEADER, required = false,
+                    description = IDEMPOTENCY_KEY_DESC, schema = @Schema(type = "string"))
+    )
     public ApiResponse<WeekResponse> create(HttpServletRequest request,
                                             @PathVariable Integer courseId,
                                             @RequestBody CreateWeekRequest body) {
@@ -52,6 +71,12 @@ public class CourseWeekController {
 
     @Idempotent
     @PatchMapping("/{weekId}")
+    @Operation(
+            operationId = "courseWeekRename",
+            summary = "Rename a week",
+            parameters = @Parameter(name = "Idempotency-Key", in = ParameterIn.HEADER, required = false,
+                    description = IDEMPOTENCY_KEY_DESC, schema = @Schema(type = "string"))
+    )
     public ApiResponse<WeekResponse> rename(HttpServletRequest request,
                                             @PathVariable Integer courseId,
                                             @PathVariable Integer weekId,
@@ -62,6 +87,12 @@ public class CourseWeekController {
 
     @Idempotent
     @PutMapping("/reorder")
+    @Operation(
+            operationId = "courseWeekReorder",
+            summary = "Reorder weeks",
+            parameters = @Parameter(name = "Idempotency-Key", in = ParameterIn.HEADER, required = false,
+                    description = IDEMPOTENCY_KEY_DESC, schema = @Schema(type = "string"))
+    )
     public ApiResponse<List<WeekResponse>> reorder(HttpServletRequest request,
                                                    @PathVariable Integer courseId,
                                                    @RequestBody ReorderWeeksRequest body) {
@@ -71,6 +102,12 @@ public class CourseWeekController {
 
     @Idempotent
     @PostMapping("/{weekId}/publish")
+    @Operation(
+            operationId = "courseWeekPublish",
+            summary = "Publish a week",
+            parameters = @Parameter(name = "Idempotency-Key", in = ParameterIn.HEADER, required = false,
+                    description = IDEMPOTENCY_KEY_DESC, schema = @Schema(type = "string"))
+    )
     public ApiResponse<WeekResponse> publish(HttpServletRequest request,
                                              @PathVariable Integer courseId,
                                              @PathVariable Integer weekId) {
@@ -80,6 +117,12 @@ public class CourseWeekController {
 
     @Idempotent
     @PostMapping("/{weekId}/unpublish")
+    @Operation(
+            operationId = "courseWeekUnpublish",
+            summary = "Unpublish a week",
+            parameters = @Parameter(name = "Idempotency-Key", in = ParameterIn.HEADER, required = false,
+                    description = IDEMPOTENCY_KEY_DESC, schema = @Schema(type = "string"))
+    )
     public ApiResponse<WeekResponse> unpublish(HttpServletRequest request,
                                                @PathVariable Integer courseId,
                                                @PathVariable Integer weekId) {
@@ -88,6 +131,7 @@ public class CourseWeekController {
     }
 
     @DeleteMapping("/{weekId}")
+    @Operation(operationId = "courseWeekDelete", summary = "Delete a week")
     public ApiResponse<Void> delete(HttpServletRequest request,
                                     @PathVariable Integer courseId,
                                     @PathVariable Integer weekId) {
@@ -97,6 +141,22 @@ public class CourseWeekController {
     }
 
     @GetMapping("/{weekId}/download.zip")
+    @Operation(
+            operationId = "courseWeekDownloadZip",
+            summary = "Download week materials as ZIP",
+            description = "Streams a ZIP archive (not JSON ApiResponse). Content-Disposition is attachment."
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "ZIP stream of week materials",
+                    content = @Content(mediaType = "application/zip",
+                            schema = @Schema(type = "string", format = "binary")),
+                    headers = @Header(
+                            name = "Content-Disposition",
+                            description = "attachment; filename=\"...\"",
+                            schema = @Schema(type = "string", example = "attachment; filename=\"week-1.zip\"")))
+    })
     public ResponseEntity<StreamingResponseBody> downloadZip(HttpServletRequest request,
                                                              @PathVariable Integer courseId,
                                                              @PathVariable Integer weekId) {

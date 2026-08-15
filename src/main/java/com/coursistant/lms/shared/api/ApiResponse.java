@@ -1,15 +1,22 @@
 package com.coursistant.lms.shared.api;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
+@Schema(name = "ApiResponse", description = "Unified JSON envelope for LMS APIs")
 public class ApiResponse<T> {
 
+    @Schema(description = "HTTP status mirrored in body", example = "200")
     private Integer status;
+    @Schema(description = "Stable machine code (ErrorType.name() or SUCCESS)", example = "SUCCESS")
     private String code;
+    @Schema(description = "Payload; omitted or null on many errors")
     private T data;
+    @Schema(description = "Human-readable message", example = "Success")
     private String message;
+    @Schema(description = "ISO-8601 timestamp", format = "date-time", example = "2026-07-23T10:00:00Z")
     private String timestamp;
 
     public ApiResponse() {

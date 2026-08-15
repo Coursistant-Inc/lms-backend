@@ -1,7 +1,9 @@
 package com.coursistant.lms.module.assignment.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import io.swagger.v3.oas.annotations.media.Schema;
 
+@Schema(name = "GroupMemberSummary", description = "Group member summary for grading/submission views")
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class GroupMemberSummary {
 

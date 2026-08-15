@@ -29,6 +29,21 @@ public class AuthPublicPaths {
             "/v1/auth/password-resets"
     );
 
+    /** Exact POST paths that are public (context-path stripped). Used by OpenAPI security sync. */
+    public static Set<String> publicPostPaths() {
+        return PUBLIC_POST;
+    }
+
+    /** Exact method+path pairs that must appear as security: [] in OpenAPI (excluding docs). */
+    public static Set<String> publicMethodPaths() {
+        java.util.LinkedHashSet<String> out = new java.util.LinkedHashSet<>();
+        out.add("GET /v1");
+        for (String path : PUBLIC_POST) {
+            out.add("POST " + path);
+        }
+        return Set.copyOf(out);
+    }
+
     public static boolean isPublic(String method, String requestUri, String contextPath) {
         String path = stripContext(requestUri, contextPath);
         if (HttpMethod.GET.matches(method) && "/v1".equals(path)) {
@@ -46,7 +61,10 @@ public class AuthPublicPaths {
     private static boolean isDocsPath(String path) {
         return path.startsWith("/swagger-ui")
                 || path.equals("/swagger-ui.html")
-                || path.startsWith("/v3/api-docs");
+                || path.equals("/v3/api-docs")
+                || path.startsWith("/v3/api-docs/")
+                || path.equals("/v3/api-docs.yaml")
+                || path.startsWith("/v3/api-docs.yaml/");
     }
 
     /** Context-path stripping shared with PasswordChangeGuard. */
