@@ -53,7 +53,6 @@ public class WebConfig implements WebMvcConfigurer {
                 .excludePathPatterns("/v1/auth/register")
                 .excludePathPatterns("/v1/auth/refresh-token")
                 .excludePathPatterns("/v1/auth/logout")
-                .excludePathPatterns("/files/**")
                 .excludePathPatterns("/swagger-ui/**")
                 .excludePathPatterns("/swagger-ui.html")
                 .excludePathPatterns("/v3/api-docs")
