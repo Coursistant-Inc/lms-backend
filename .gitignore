@@ -38,10 +38,13 @@ xlearnedu_west2.pem
 # 🔹 已移除的旧 markdown API 文档（勿再入库）
 api doc/
 
-# 🔹 根目录临时 Python 探测脚本（正式测试在 src/test 与 api-test）
+# 🔹 根目录临时 Python 探测脚本
 /test_idempotency.py
 /test_session_admin_apis.py
 /test_session_multidevice.py
+
+# 🔹 本地 API 探测目录（勿入库）
+api-test/
 
 # 🔹 本地测试资源
 test_avatars/
