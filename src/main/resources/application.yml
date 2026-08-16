@@ -64,7 +64,9 @@ mybatis:
   mapper-locations: classpath:mapper/**/*.xml
   type-aliases-package: com.coursistant.lms.module
   configuration:
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    # Use slf4j so scheduled empty polls are not dumped to stdout.
+    # Enable SQL with: logging.level.com.coursistant.lms.module.<mapper>=DEBUG
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
     map-underscore-to-camel-case: true
 
 mail:
