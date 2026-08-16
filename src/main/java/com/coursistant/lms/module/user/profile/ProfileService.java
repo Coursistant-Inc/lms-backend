@@ -1,7 +1,12 @@
 package com.coursistant.lms.module.user.profile;
 
 import cn.hutool.core.util.StrUtil;
-import com.coursistant.lms.module.file.service.MinIOService;
+import com.coursistant.lms.module.file.storage.S3DownloadBody;
+import com.coursistant.lms.module.file.storage.S3ObjectKeyResolver;
+import com.coursistant.lms.module.file.storage.S3ObjectNotFoundException;
+import com.coursistant.lms.module.file.storage.S3ObjectPayload;
+import com.coursistant.lms.module.file.storage.S3ObjectStorage;
+import com.coursistant.lms.module.file.storage.S3StorageException;
 import com.coursistant.lms.module.user.account.entity.User;
 import com.coursistant.lms.module.user.account.repository.UserMapper;
 import com.coursistant.lms.module.user.profile.dto.ProfileResponse;
@@ -17,7 +22,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.InputStream;
 import java.util.Locale;
 import java.util.UUID;
 import java.util.logging.Level;
@@ -34,7 +38,10 @@ public class ProfileService {
     private UserMapper userMapper;
 
     @Resource
-    private MinIOService minIOService;
+    private S3ObjectStorage s3ObjectStorage;
+
+    @Resource
+    private S3ObjectKeyResolver s3ObjectKeyResolver;
 
     @Resource
     private AvatarUrlBuilder avatarUrlBuilder;
@@ -89,10 +96,10 @@ public class ProfileService {
         String newKey = userId + "/" + UUID.randomUUID().toString().replace("-", "") + "." + extension;
 
         try {
-            minIOService.uploadFile(newKey, file, AVATAR_BUCKET);
-        } catch (Exception e) {
-            logger.log(Level.WARNING, "Avatar upload to MinIO failed for user " + userId, e);
-            throw new ApiException(ErrorType.INVALID_AVATAR_FILE, "Failed to upload avatar");
+            s3ObjectStorage.putObject(physicalKey(newKey), file);
+        } catch (S3StorageException e) {
+            logger.log(Level.WARNING, "Avatar upload to S3 failed for user " + userId, e);
+            throw new ApiException(ErrorType.STORAGE_FAILURE, "Failed to upload avatar");
         }
 
         User patch = new User();
@@ -103,11 +110,7 @@ public class ProfileService {
         evictUserCache(user);
 
         if (StrUtil.isNotBlank(oldKey) && !oldKey.equals(newKey)) {
-            try {
-                minIOService.deleteFile(oldKey, AVATAR_BUCKET);
-            } catch (Exception e) {
-                logger.log(Level.WARNING, "Failed to delete old avatar object: " + oldKey, e);
-            }
+            deleteQuietly(oldKey);
         }
 
         return toResponse(user);
@@ -124,11 +127,7 @@ public class ProfileService {
         user.setAvatar(null);
         evictUserCache(user);
 
-        try {
-            minIOService.deleteFile(oldKey, AVATAR_BUCKET);
-        } catch (Exception e) {
-            logger.log(Level.WARNING, "Failed to delete avatar object: " + oldKey, e);
-        }
+        deleteQuietly(oldKey);
         return toResponse(user);
     }
 
@@ -139,17 +138,33 @@ public class ProfileService {
         }
         String key = user.getAvatar();
         try {
-            InputStream stream = minIOService.downloadFile(key, AVATAR_BUCKET);
+            S3ObjectPayload payload = s3ObjectStorage.getObject(physicalKey(key));
             MediaType mediaType = mediaTypeForKey(key);
-            return ResponseEntity.ok()
+            long length = S3DownloadBody.contentLength(payload);
+            ResponseEntity.BodyBuilder builder = ResponseEntity.ok()
                     .header(HttpHeaders.CACHE_CONTROL, "private, max-age=300")
-                    .contentType(mediaType)
-                    .body(new InputStreamResource(stream));
-        } catch (ApiException e) {
-            throw e;
-        } catch (Exception e) {
-            logger.log(Level.WARNING, "Failed to download avatar for user " + userId, e);
+                    .contentType(mediaType);
+            if (length >= 0) {
+                builder.contentLength(length);
+            }
+            return builder.body(S3DownloadBody.resource(payload));
+        } catch (S3ObjectNotFoundException e) {
             throw new ApiException(ErrorType.NOT_FOUND, "Avatar not found");
+        } catch (S3StorageException e) {
+            logger.log(Level.WARNING, "Failed to download avatar for user " + userId, e);
+            throw new ApiException(ErrorType.STORAGE_FAILURE, "Failed to load avatar");
+        }
+    }
+
+    private String physicalKey(String objectKey) {
+        return s3ObjectKeyResolver.resolve(AVATAR_BUCKET, objectKey);
+    }
+
+    private void deleteQuietly(String objectKey) {
+        try {
+            s3ObjectStorage.deleteObject(physicalKey(objectKey));
+        } catch (S3StorageException e) {
+            logger.log(Level.WARNING, "Failed to delete avatar object: " + objectKey, e);
         }
     }
 

@@ -23,6 +23,12 @@ auth:
     audience: com.coursistant.lms
     min-issued-at:
 
+aws:
+  s3:
+    enabled: true
+    region: us-west-2
+    bucket: auth-test-placeholder
+
 logging:
   level:
     root: WARN

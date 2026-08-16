@@ -13,7 +13,9 @@ import com.coursistant.lms.module.course.content.week.entity.CourseWeek;
 import com.coursistant.lms.module.course.content.week.repository.CourseWeekMapper;
 import com.coursistant.lms.module.course.course.service.CourseAuditActions;
 import com.coursistant.lms.module.course.course.service.CourseAuditService;
-import com.coursistant.lms.module.file.service.MinIOService;
+import com.coursistant.lms.module.file.storage.S3ObjectKeyResolver;
+import com.coursistant.lms.module.file.storage.S3ObjectPayload;
+import com.coursistant.lms.module.file.storage.S3ObjectStorage;
 import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.shared.api.ErrorType;
 import com.coursistant.lms.shared.security.ActorContext;
@@ -27,7 +29,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
-import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -61,7 +62,10 @@ public class CourseWeekService {
     private CourseContentFilePolicy courseContentFilePolicy;
 
     @Resource
-    private MinIOService minIOService;
+    private S3ObjectStorage s3ObjectStorage;
+
+    @Resource
+    private S3ObjectKeyResolver s3ObjectKeyResolver;
 
     @Resource
     private MaterialResponseAssembler materialResponseAssembler;
@@ -187,13 +191,9 @@ public class CourseWeekService {
                 String entryName = uniqueEntryName(safeEntryName(baseName), usedNames);
 
                 zipOut.putNextEntry(new ZipEntry(entryName));
-                try {
-                    InputStream in = minIOService.downloadFile(material.getObjectKey(), courseContentFilePolicy.bucket());
-                    try {
-                        in.transferTo(zipOut);
-                    } finally {
-                        in.close();
-                    }
+                try (S3ObjectPayload payload = s3ObjectStorage.getObject(
+                        s3ObjectKeyResolver.resolve(courseContentFilePolicy.bucket(), material.getObjectKey()))) {
+                    payload.content().transferTo(zipOut);
                 } catch (Exception e) {
                     log.warn("Failed to add material {} to week zip", material.getId(), e);
                 } finally {

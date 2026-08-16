@@ -43,14 +43,15 @@ class S3ConfigConditionTest {
     }
 
     @Test
-    void enabledFalse_doesNotCreateConditionalS3Client() {
+    void enabledFalse_failsFast() {
         baseRunner()
                 .withUserConfiguration(EnabledMarkerConfig.class)
-                .withPropertyValues("aws.s3.enabled=false")
+                .withPropertyValues("aws.s3.enabled=false", "aws.s3.region=us-west-2", "aws.s3.bucket=lms-test-bucket")
                 .run(context -> {
-                    assertThat(context).hasNotFailed();
-                    assertThat(context).doesNotHaveBean(S3Client.class);
-                    assertThat(context.getBean(S3Properties.class).isEnabled()).isFalse();
+                    assertThat(context).hasFailed();
+                    assertThat(context.getStartupFailure())
+                            .hasRootCauseInstanceOf(IllegalStateException.class)
+                            .hasRootCauseMessage("aws.s3.enabled=false is not allowed; S3 object storage is required");
                 });
     }
 

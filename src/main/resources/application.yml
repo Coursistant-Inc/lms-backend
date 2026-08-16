@@ -91,8 +91,8 @@ minio:
   access-key: ${MINIO_ACCESS_KEY}
   secret-key: ${MINIO_SECRET_KEY}
 
-# S3 is assembled when enabled=true (default). Until callers switch off MinIO,
-# local/CI should set AWS_S3_ENABLED=false unless AWS_S3_REGION and AWS_S3_BUCKET are set.
+# S3 is required. enabled=false or a blank region/bucket fails startup.
+# Credentials come from DefaultCredentialsProvider (process env / ~/.aws), not these keys.
 aws:
   s3:
     enabled: ${AWS_S3_ENABLED:true}

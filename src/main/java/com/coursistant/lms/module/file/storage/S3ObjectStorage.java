@@ -1,8 +1,6 @@
 package com.coursistant.lms.module.file.storage;
 
 import com.coursistant.lms.shared.config.S3Properties;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.ResponseInputStream;
@@ -24,8 +22,6 @@ import java.io.InputStream;
 import java.util.Optional;
 
 @Service
-@ConditionalOnBean(S3Client.class)
-@ConditionalOnProperty(prefix = "aws.s3", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class S3ObjectStorage {
 
     static final String DEFAULT_CONTENT_TYPE = "application/octet-stream";

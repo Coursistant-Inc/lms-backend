@@ -16,9 +16,9 @@ public class S3Properties {
     private String endpointOverride = "";
 
     @PostConstruct
-    void validateWhenEnabled() {
+    void validateRequired() {
         if (!enabled) {
-            return;
+            throw new IllegalStateException("aws.s3.enabled=false is not allowed; S3 object storage is required");
         }
         if (isBlank(region)) {
             throw new IllegalStateException("aws.s3.region must be set when aws.s3.enabled=true");

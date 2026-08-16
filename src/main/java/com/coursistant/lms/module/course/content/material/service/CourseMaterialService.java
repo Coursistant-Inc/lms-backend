@@ -14,7 +14,12 @@ import com.coursistant.lms.module.course.course.service.CourseAuditService;
 import com.coursistant.lms.module.course.storage.entity.UploadOperation;
 import com.coursistant.lms.module.course.storage.service.MinioOutboxService;
 import com.coursistant.lms.module.course.storage.service.UploadOperationService;
-import com.coursistant.lms.module.file.service.MinIOService;
+import com.coursistant.lms.module.file.storage.S3DownloadBody;
+import com.coursistant.lms.module.file.storage.S3ObjectKeyResolver;
+import com.coursistant.lms.module.file.storage.S3ObjectNotFoundException;
+import com.coursistant.lms.module.file.storage.S3ObjectPayload;
+import com.coursistant.lms.module.file.storage.S3ObjectStorage;
+import com.coursistant.lms.module.file.storage.S3StorageException;
 import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.shared.api.ErrorType;
 import com.coursistant.lms.shared.security.ActorContext;
@@ -31,7 +36,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.InputStream;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -60,7 +64,10 @@ public class CourseMaterialService {
     private CourseContentFilePolicy courseContentFilePolicy;
 
     @Resource
-    private MinIOService minIOService;
+    private S3ObjectStorage s3ObjectStorage;
+
+    @Resource
+    private S3ObjectKeyResolver s3ObjectKeyResolver;
 
     @Resource
     private MaterialResponseAssembler materialResponseAssembler;
@@ -116,10 +123,10 @@ public class CourseMaterialService {
                             originalFilename);
 
                     try {
-                        minIOService.uploadFile(objectKey, file, courseContentFilePolicy.bucket());
-                    } catch (Exception e) {
-                        log.warn("Failed to upload course material to MinIO: key={}", objectKey, e);
-                        throw new ApiException(ErrorType.INTERNAL_SERVER_ERROR, "Failed to upload file");
+                        s3ObjectStorage.putObject(physicalKey(objectKey), file);
+                    } catch (S3StorageException e) {
+                        log.warn("Failed to upload course material to S3: key={}", objectKey, e);
+                        throw new ApiException(ErrorType.STORAGE_FAILURE, "Failed to upload file");
                     }
 
                     String finalKey = objectKey;
@@ -127,13 +134,16 @@ public class CourseMaterialService {
                         finalKey = courseContentFilePolicy.buildObjectKey(
                                 "course-content/" + courseId + "/weeks/" + weekId + "/materials", originalFilename);
                         try {
-                            minIOService.copyObject(courseContentFilePolicy.bucket(), objectKey, finalKey);
+                            s3ObjectStorage.copyObject(physicalKey(objectKey), physicalKey(finalKey));
                             minioOutboxService.enqueueDelete(
                                     courseContentFilePolicy.bucket(), objectKey, courseId, uploadOp.getId());
-                        } catch (Exception e) {
+                        } catch (RuntimeException e) {
                             minioOutboxService.enqueueAbortStagingIndependent(
                                     courseContentFilePolicy.bucket(), objectKey, courseId, uploadOp.getId());
-                            throw new ApiException(ErrorType.INTERNAL_SERVER_ERROR, "Failed to commit uploaded file");
+                            if (e instanceof ApiException api) {
+                                throw api;
+                            }
+                            throw new ApiException(ErrorType.STORAGE_FAILURE, "Failed to commit uploaded file");
                         }
                     }
 
@@ -279,15 +289,21 @@ public class CourseMaterialService {
         }
 
         try {
-            InputStream stream = minIOService.downloadFile(material.getObjectKey(), courseContentFilePolicy.bucket());
-            MediaType mediaType = resolveMediaType(material.getContentType());
-            return ResponseEntity.ok()
+            S3ObjectPayload payload = s3ObjectStorage.getObject(physicalKey(material.getObjectKey()));
+            MediaType mediaType = resolveMediaType(material.getContentType(), payload);
+            long length = S3DownloadBody.contentLength(payload);
+            ResponseEntity.BodyBuilder builder = ResponseEntity.ok()
                     .contentType(mediaType)
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + sanitizeHeaderValue(material.getDisplayName()) + "\"")
-                    .body(new InputStreamResource(stream));
-        } catch (Exception e) {
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + sanitizeHeaderValue(material.getDisplayName()) + "\"");
+            if (length >= 0) {
+                builder.contentLength(length);
+            }
+            return builder.body(S3DownloadBody.resource(payload));
+        } catch (S3ObjectNotFoundException e) {
+            throw new ApiException(ErrorType.NOT_FOUND, "Material file not found");
+        } catch (S3StorageException e) {
             log.warn("Failed to stream course material preview: key={}", material.getObjectKey(), e);
-            throw new ApiException(ErrorType.INTERNAL_SERVER_ERROR, "Failed to load preview");
+            throw new ApiException(ErrorType.STORAGE_FAILURE, "Failed to load preview");
         }
     }
 
@@ -303,15 +319,21 @@ public class CourseMaterialService {
         }
 
         try {
-            InputStream stream = minIOService.downloadFile(material.getObjectKey(), courseContentFilePolicy.bucket());
-            MediaType mediaType = resolveMediaType(material.getContentType());
-            return ResponseEntity.ok()
+            S3ObjectPayload payload = s3ObjectStorage.getObject(physicalKey(material.getObjectKey()));
+            MediaType mediaType = resolveMediaType(material.getContentType(), payload);
+            long length = S3DownloadBody.contentLength(payload);
+            ResponseEntity.BodyBuilder builder = ResponseEntity.ok()
                     .contentType(mediaType)
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + sanitizeHeaderValue(material.getOriginalFilename()) + "\"")
-                    .body(new InputStreamResource(stream));
-        } catch (Exception e) {
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + sanitizeHeaderValue(material.getOriginalFilename()) + "\"");
+            if (length >= 0) {
+                builder.contentLength(length);
+            }
+            return builder.body(S3DownloadBody.resource(payload));
+        } catch (S3ObjectNotFoundException e) {
+            throw new ApiException(ErrorType.NOT_FOUND, "Material file not found");
+        } catch (S3StorageException e) {
             log.warn("Failed to stream course material download: key={}", material.getObjectKey(), e);
-            throw new ApiException(ErrorType.INTERNAL_SERVER_ERROR, "Failed to download file");
+            throw new ApiException(ErrorType.STORAGE_FAILURE, "Failed to download file");
         }
     }
 
@@ -348,6 +370,22 @@ public class CourseMaterialService {
             return null;
         }
         return value.length() > MAX_DISPLAY_NAME_LENGTH ? value.substring(0, MAX_DISPLAY_NAME_LENGTH) : value;
+    }
+
+    private String physicalKey(String objectKey) {
+        return s3ObjectKeyResolver.resolve(courseContentFilePolicy.bucket(), objectKey);
+    }
+
+    private MediaType resolveMediaType(String contentType, S3ObjectPayload payload) {
+        if (contentType != null && !contentType.isBlank()) {
+            try {
+                return MediaType.parseMediaType(contentType);
+            } catch (Exception e) {
+                return MediaType.APPLICATION_OCTET_STREAM;
+            }
+        }
+        String fromStorage = payload.metadata() != null ? payload.metadata().contentType() : null;
+        return resolveMediaType(fromStorage);
     }
 
     private MediaType resolveMediaType(String contentType) {

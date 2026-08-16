@@ -2,7 +2,8 @@ package com.coursistant.lms.module.course.storage.service;
 
 import com.coursistant.lms.module.course.storage.entity.MinioObjectOutbox;
 import com.coursistant.lms.module.course.storage.repository.MinioObjectOutboxMapper;
-import com.coursistant.lms.module.file.service.MinIOService;
+import com.coursistant.lms.module.file.storage.S3ObjectKeyResolver;
+import com.coursistant.lms.module.file.storage.S3ObjectStorage;
 import jakarta.annotation.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,7 +27,10 @@ public class MinioOutboxService {
     private MinioObjectOutboxMapper minioObjectOutboxMapper;
 
     @Resource
-    private MinIOService minIOService;
+    private S3ObjectStorage s3ObjectStorage;
+
+    @Resource
+    private S3ObjectKeyResolver s3ObjectKeyResolver;
 
     @Transactional
     public void enqueueDelete(String bucket, String objectKey, Integer courseId, String uploadOperationId) {
@@ -54,24 +58,16 @@ public class MinioOutboxService {
             try {
                 if (MinioObjectOutbox.ACTION_DELETE.equals(row.getAction())
                         || MinioObjectOutbox.ACTION_ABORT_STAGING.equals(row.getAction())) {
-                    try {
-                        minIOService.deleteFile(row.getObjectKey(), row.getBucket());
-                    } catch (Exception e) {
-                        // Object already gone is success for DELETE/ABORT.
-                        if (!isNotFound(e)) {
-                            throw e;
-                        }
-                    }
+                    s3ObjectStorage.deleteObject(s3ObjectKeyResolver.resolve(row.getBucket(), row.getObjectKey()));
                 } else if (MinioObjectOutbox.ACTION_COMMIT_OBJECT.equals(row.getAction())) {
-                    // COMMIT is normally done inline; worker only cleans/retries recorded commits.
                     log.debug("COMMIT_OBJECT worker noop for key={}", row.getObjectKey());
                 }
                 minioObjectOutboxMapper.markDone(row.getId());
-            } catch (Exception e) {
+            } catch (RuntimeException e) {
                 int next = (row.getRetryCount() == null ? 0 : row.getRetryCount()) + 1;
                 String err = truncate(e.getMessage());
                 if (next >= MAX_RETRIES) {
-                    log.error("MinIO outbox DEAD id={} action={} key={}: {}",
+                    log.error("S3 object storage outbox DEAD id={} action={} key={}: {}",
                             row.getId(), row.getAction(), row.getObjectKey(), err);
                     minioObjectOutboxMapper.markDead(row.getId(), err);
                 } else {
@@ -94,11 +90,6 @@ public class MinioOutboxService {
         row.setCourseId(courseId);
         row.setUploadOperationId(uploadOperationId);
         return row;
-    }
-
-    private static boolean isNotFound(Exception e) {
-        String msg = e.getMessage();
-        return msg != null && (msg.contains("NoSuchKey") || msg.contains("Not Found") || msg.contains("404"));
     }
 
     private static String truncate(String msg) {
