@@ -29,7 +29,7 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         // Keep interceptor as compatibility layer; Security filter is primary auth gate.
-        // Exact public auth paths only — no /files/** or avatar bypass.
+        // Exact public auth paths plus GET /v2/users/{id}/avatar — no /files/** or /v2/users/** bypass.
         registry.addInterceptor(jwtInterceptor).addPathPatterns("/**")
                 .excludePathPatterns("/v1")
                 .excludePathPatterns("/v1/auth/login")
@@ -39,6 +39,7 @@ public class WebConfig implements WebMvcConfigurer {
                 .excludePathPatterns("/v1/auth/email-verifications/register")
                 .excludePathPatterns("/v1/auth/email-verifications/reset")
                 .excludePathPatterns("/v1/auth/password-resets")
+                .excludePathPatterns("/v2/users/*/avatar")
                 .excludePathPatterns("/swagger-ui/**")
                 .excludePathPatterns("/swagger-ui.html")
                 .excludePathPatterns("/v3/api-docs")

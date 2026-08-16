@@ -30,6 +30,7 @@ public class SecurityConfig {
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> {
                     auth.requestMatchers(HttpMethod.GET, "/v1").permitAll();
+                    auth.requestMatchers(HttpMethod.GET, "/v2/users/*/avatar").permitAll();
                     auth.requestMatchers(HttpMethod.POST,
                             "/v1/auth/login",
                             "/v1/auth/register",

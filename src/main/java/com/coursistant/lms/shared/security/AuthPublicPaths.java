@@ -5,6 +5,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Component;
 
 import java.util.Set;
+import java.util.regex.Pattern;
 
 /**
  * Exact method+path public whitelist (context-path stripped).
@@ -29,6 +30,10 @@ public class AuthPublicPaths {
             "/v1/auth/password-resets"
     );
 
+    /** Numeric user-id avatar proxy. Query string is not part of requestURI. */
+    private static final Pattern USER_AVATAR_GET = Pattern.compile("^/v2/users/\\d+/avatar$");
+    static final String PUBLIC_USER_AVATAR_GET = "GET /v2/users/{userId}/avatar";
+
     /** Exact POST paths that are public (context-path stripped). Used by OpenAPI security sync. */
     public static Set<String> publicPostPaths() {
         return PUBLIC_POST;
@@ -41,12 +46,16 @@ public class AuthPublicPaths {
         for (String path : PUBLIC_POST) {
             out.add("POST " + path);
         }
+        out.add(PUBLIC_USER_AVATAR_GET);
         return Set.copyOf(out);
     }
 
     public static boolean isPublic(String method, String requestUri, String contextPath) {
         String path = stripContext(requestUri, contextPath);
         if (HttpMethod.GET.matches(method) && "/v1".equals(path)) {
+            return true;
+        }
+        if (HttpMethod.GET.matches(method) && USER_AVATAR_GET.matcher(path).matches()) {
             return true;
         }
         if (HttpMethod.POST.matches(method) && PUBLIC_POST.contains(path)) {

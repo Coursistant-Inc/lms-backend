@@ -37,9 +37,25 @@ class AuthPublicPathsSecurityTest {
     }
 
     @Test
-    void filesAndAvatar_notPublic() {
-        assertFalse(AuthPublicPaths.isPublic("GET", "/files/x.png", "/api"));
-        assertFalse(AuthPublicPaths.isPublic("GET", "/v2/users/1/avatar", ""));
+    void getUserAvatar_public() {
+        assertTrue(AuthPublicPaths.isPublic("GET", "/v2/users/1/avatar", ""));
+        assertTrue(AuthPublicPaths.isPublic("GET", "/v2/users/385/avatar", ""));
+        assertTrue(AuthPublicPaths.isPublic("GET", "/api/v2/users/385/avatar", "/api"));
+        assertTrue(AuthPublicPaths.publicMethodPaths().contains("GET /v2/users/{userId}/avatar"));
+        assertEquals(9, AuthPublicPaths.publicMethodPaths().size());
+    }
+
+    @Test
+    void getUserAvatar_notPublicWhenNarrowed() {
+        assertFalse(AuthPublicPaths.isPublic("GET", "/v2/users/1", ""));
+        assertFalse(AuthPublicPaths.isPublic("GET", "/v2/users/1/avatar/extra", ""));
+        assertFalse(AuthPublicPaths.isPublic("GET", "/v2/users/abc/avatar", ""));
+        assertFalse(AuthPublicPaths.isPublic("PUT", "/v2/users/1/avatar", ""));
+        assertFalse(AuthPublicPaths.isPublic("DELETE", "/v2/users/1/avatar", ""));
+        assertFalse(AuthPublicPaths.isPublic("POST", "/v2/users/385/avatar", ""));
+        assertFalse(AuthPublicPaths.isPublic("GET", "/files/x.png", ""));
+        assertFalse(AuthPublicPaths.isPublic("GET", "/api/files/x.png", "/api"));
+        assertFalse(AuthPublicPaths.isPublic("GET", "/v2/me/profile/avatar", ""));
     }
 
     @Test

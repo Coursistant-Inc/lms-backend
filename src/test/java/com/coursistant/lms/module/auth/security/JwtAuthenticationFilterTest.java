@@ -49,6 +49,35 @@ class JwtAuthenticationFilterTest {
     }
 
     @Test
+    void publicAvatarGet_skipsAuthEvenWithQueryString() throws Exception {
+        JwtAuthenticationFilter filter = new JwtAuthenticationFilter(accessTokenAuthService, writer);
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v2/users/385/avatar");
+        request.setContextPath("/api");
+        request.setQueryString("v=fe3143012c4144ba9c986d4fb91ed8d1");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        filter.doFilter(request, response, filterChain);
+
+        verifyNoInteractions(accessTokenAuthService);
+        verify(filterChain).doFilter(request, response);
+    }
+
+    @Test
+    void nearbyUserPath_doesNotSkipAuth() throws Exception {
+        JwtAuthenticationFilter filter = new JwtAuthenticationFilter(accessTokenAuthService, writer);
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v2/users/1");
+        request.setContextPath("/api");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        when(accessTokenAuthService.authenticateBearer(isNull(), eq(request)))
+                .thenThrow(new ApiException(ErrorType.INVALID_TOKEN));
+
+        filter.doFilter(request, response, filterChain);
+
+        assertEquals(401, response.getStatus());
+        verify(filterChain, never()).doFilter(any(), any());
+    }
+
+    @Test
     void protectedPath_setsSecurityContext() throws Exception {
         JwtAuthenticationFilter filter = new JwtAuthenticationFilter(accessTokenAuthService, writer);
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v2/users/me");

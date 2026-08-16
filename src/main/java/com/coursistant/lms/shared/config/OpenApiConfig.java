@@ -62,29 +62,27 @@ public class OpenApiConfig {
     }
 
     static void applyPublicPathSecurity(OpenAPI openApi) {
-        Set<String> publicPosts = AuthPublicPaths.publicPostPaths();
+        Set<String> publicKeys = AuthPublicPaths.publicMethodPaths();
         if (openApi.getPaths() == null) {
             return;
         }
         for (Map.Entry<String, PathItem> entry : openApi.getPaths().entrySet()) {
             String path = entry.getKey();
             PathItem item = entry.getValue();
-            clearSecurityIfPublic(item.getGet(), HttpMethod.GET, path, publicPosts);
-            clearSecurityIfPublic(item.getPost(), HttpMethod.POST, path, publicPosts);
-            clearSecurityIfPublic(item.getPut(), HttpMethod.PUT, path, publicPosts);
-            clearSecurityIfPublic(item.getPatch(), HttpMethod.PATCH, path, publicPosts);
-            clearSecurityIfPublic(item.getDelete(), HttpMethod.DELETE, path, publicPosts);
+            clearSecurityIfPublic(item.getGet(), HttpMethod.GET, path, publicKeys);
+            clearSecurityIfPublic(item.getPost(), HttpMethod.POST, path, publicKeys);
+            clearSecurityIfPublic(item.getPut(), HttpMethod.PUT, path, publicKeys);
+            clearSecurityIfPublic(item.getPatch(), HttpMethod.PATCH, path, publicKeys);
+            clearSecurityIfPublic(item.getDelete(), HttpMethod.DELETE, path, publicKeys);
         }
     }
 
     private static void clearSecurityIfPublic(Operation operation, HttpMethod method, String path,
-                                             Set<String> publicPosts) {
+                                             Set<String> publicKeys) {
         if (operation == null) {
             return;
         }
-        boolean isPublic = (method == HttpMethod.GET && "/v1".equals(path))
-                || (method == HttpMethod.POST && publicPosts.contains(path));
-        if (isPublic) {
+        if (publicKeys.contains(method.name() + " " + path)) {
             operation.setSecurity(Collections.emptyList());
         }
     }

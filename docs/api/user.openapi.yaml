@@ -302,6 +302,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiErrorResponse"
           description: Avatar not found
+      security: []
       summary: Get user avatar image
       tags:
       - User Avatars
@@ -444,6 +445,7 @@ components:
           writeOnly: true
         password:
           type: string
+          writeOnly: true
         role:
           type: string
         status:

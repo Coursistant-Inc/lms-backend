@@ -3,6 +3,8 @@ package com.coursistant.lms.shared.openapi;
 import com.coursistant.lms.shared.config.OpenApiConfig;
 import com.coursistant.lms.shared.security.AuthPublicPaths;
 import io.swagger.v3.oas.models.OpenAPI;
+import io.swagger.v3.oas.models.Operation;
+import io.swagger.v3.oas.models.PathItem;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,6 +25,8 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -92,6 +96,10 @@ class OpenApiContractExportIT {
             List<String> sec = OpenApiContractSupport.collectSecurityMismatches(api);
             assertTrue(sec.isEmpty(), module + " security mismatches: " + sec);
 
+            if ("user".equals(module)) {
+                assertAvatarGetIsPublicAndNeighborsInheritBearer(api);
+            }
+
             if (verifyCommitted) {
                 Path committed = Path.of("docs/api", module + ".openapi.yaml");
                 assertTrue(Files.exists(committed), "Missing committed contract: " + committed);
@@ -105,9 +113,10 @@ class OpenApiContractExportIT {
             OpenApiContractSupport.assertNoDuplicateOperationIds(parsed);
         }
 
-        // AuthPublicPaths sync smoke: public set non-empty and contains login
+        // AuthPublicPaths sync smoke: public set non-empty and contains login + public avatar GET
         assertTrue(AuthPublicPaths.publicMethodPaths().contains("POST /v1/auth/login"));
-        assertEquals(8, AuthPublicPaths.publicMethodPaths().size());
+        assertTrue(AuthPublicPaths.publicMethodPaths().contains("GET /v2/users/{userId}/avatar"));
+        assertEquals(9, AuthPublicPaths.publicMethodPaths().size());
 
         if (runNegativeChecks) {
             runNegativeFixtures();
@@ -134,6 +143,30 @@ class OpenApiContractExportIT {
             }
         }
         return list;
+    }
+
+    private static void assertAvatarGetIsPublicAndNeighborsInheritBearer(OpenAPI api) {
+        Operation avatarGet = requireOperation(api, "/v2/users/{userId}/avatar", PathItem.HttpMethod.GET);
+        assertNotNull(avatarGet.getSecurity(), "GET /v2/users/{userId}/avatar must set security: []");
+        assertTrue(avatarGet.getSecurity().isEmpty(), "GET /v2/users/{userId}/avatar must be security: []");
+
+        assertInheritsRootBearer(api, "/v2/users/{id}", PathItem.HttpMethod.GET);
+        assertInheritsRootBearer(api, "/v2/me/profile/avatar", PathItem.HttpMethod.PUT);
+        assertInheritsRootBearer(api, "/v2/me/profile/avatar", PathItem.HttpMethod.DELETE);
+    }
+
+    private static void assertInheritsRootBearer(OpenAPI api, String path, PathItem.HttpMethod method) {
+        Operation op = requireOperation(api, path, method);
+        assertNull(op.getSecurity(), method.name() + " " + path + " should inherit root bearerAuth");
+    }
+
+    private static Operation requireOperation(OpenAPI api, String path, PathItem.HttpMethod method) {
+        assertNotNull(api.getPaths(), "OpenAPI paths missing");
+        var item = api.getPaths().get(path);
+        assertNotNull(item, "Missing path " + path);
+        Operation op = item.readOperationsMap().get(method);
+        assertNotNull(op, "Missing operation " + method.name() + " " + path);
+        return op;
     }
 
     private void runNegativeFixtures() {
