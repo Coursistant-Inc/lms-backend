@@ -39,8 +39,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import org.mockito.InOrder;
+
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -120,11 +123,12 @@ class CourseMaterialServiceStorageTest {
 
         service.create(actor, 1, 2, new MockMultipartFile[]{file}, null, null, request);
 
-        verify(s3ObjectStorage).putObject(eq("lms-uploads/staging/op-1/materials/abc.pdf"), eq(file));
-        verify(s3ObjectStorage).copyObject(
+        InOrder inOrder = inOrder(s3ObjectStorage, minioOutboxService);
+        inOrder.verify(s3ObjectStorage).putObject(eq("lms-uploads/staging/op-1/materials/abc.pdf"), eq(file));
+        inOrder.verify(s3ObjectStorage).copyObject(
                 "lms-uploads/staging/op-1/materials/abc.pdf",
                 "lms-uploads/course-content/1/weeks/2/materials/abc.pdf");
-        verify(minioOutboxService).enqueueDelete("lms-uploads", "staging/op-1/materials/abc.pdf", 1, "op-1");
+        inOrder.verify(minioOutboxService).enqueueDelete("lms-uploads", "staging/op-1/materials/abc.pdf", 1, "op-1");
     }
 
     @Test

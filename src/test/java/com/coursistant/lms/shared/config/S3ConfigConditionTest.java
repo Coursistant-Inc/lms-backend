@@ -43,6 +43,18 @@ class S3ConfigConditionTest {
     }
 
     @Test
+    void enabledTrue_blankRegion_failsFast() {
+        baseRunner()
+                .withPropertyValues("aws.s3.enabled=true", "aws.s3.region=", "aws.s3.bucket=lms-test-bucket")
+                .run(context -> {
+                    assertThat(context).hasFailed();
+                    assertThat(context.getStartupFailure())
+                            .hasRootCauseInstanceOf(IllegalStateException.class)
+                            .hasRootCauseMessage("aws.s3.region must be set when aws.s3.enabled=true");
+                });
+    }
+
+    @Test
     void enabledFalse_failsFast() {
         baseRunner()
                 .withUserConfiguration(EnabledMarkerConfig.class)
