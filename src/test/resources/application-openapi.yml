@@ -36,6 +36,14 @@ aws:
     region: us-west-2
     bucket: openapi-placeholder
 
+lms:
+  notification:
+    outbox:
+      enabled: false
+    email:
+      enabled: false
+      provider: log
+
 
 token:
   access-expire-hours: 2

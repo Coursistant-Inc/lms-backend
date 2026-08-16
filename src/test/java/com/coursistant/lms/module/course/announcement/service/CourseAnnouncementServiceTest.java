@@ -10,10 +10,10 @@ import com.coursistant.lms.module.course.course.repository.CourseMapper;
 import com.coursistant.lms.module.course.enrollment.service.CoursePermissionService;
 import com.coursistant.lms.module.interaction.notification.dto.NotificationDispatchPayload;
 import com.coursistant.lms.module.interaction.notification.enums.NotificationType;
+import com.coursistant.lms.module.interaction.notification.enums.RecipientMode;
 import com.coursistant.lms.module.interaction.notification.enums.SubjectType;
 import com.coursistant.lms.module.interaction.notification.service.NotificationCommitHook;
 import com.coursistant.lms.module.interaction.notification.service.NotificationMessageFactory;
-import com.coursistant.lms.module.interaction.notification.service.NotificationRecipientResolver;
 import com.coursistant.lms.module.interaction.notification.service.NotificationTimeSupport;
 import com.coursistant.lms.module.user.account.entity.User;
 import com.coursistant.lms.module.user.account.repository.UserMapper;
@@ -26,11 +26,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -58,9 +54,6 @@ class CourseAnnouncementServiceTest {
     private CoursePermissionService coursePermissionService;
 
     @Mock
-    private NotificationRecipientResolver notificationRecipientResolver;
-
-    @Mock
     private NotificationMessageFactory notificationMessageFactory;
 
     @Mock
@@ -73,7 +66,7 @@ class CourseAnnouncementServiceTest {
     private CourseAnnouncementService courseAnnouncementService;
 
     @Test
-    void create_dispatchesStudentRecipientsExcludingAuthor() {
+    void create_publishesCourseActiveStudentsInTransaction() {
         Course course = new Course();
         course.setId(17);
         course.setTenantId(3);
@@ -101,11 +94,9 @@ class CourseAnnouncementServiceTest {
             a.setAuthorName("Teacher");
             return a;
         });
-        when(notificationRecipientResolver.resolveActiveStudentRecipients(17))
-                .thenReturn(new ArrayList<>(List.of(10, 385, 50)));
         when(notificationMessageFactory.announcementPosted("Hello")).thenReturn("New announcement: Hello");
         when(notificationTimeSupport.nowUtc()).thenReturn(java.time.LocalDateTime.of(2026, 7, 1, 12, 0, 0));
-        doNothing().when(notificationCommitHook).afterCommitDispatch(any());
+        doNothing().when(notificationCommitHook).publishInTransaction(any());
 
         CreateAnnouncementRequest request = new CreateAnnouncementRequest();
         request.setTitle("Hello");
@@ -118,7 +109,7 @@ class CourseAnnouncementServiceTest {
 
         ArgumentCaptor<NotificationDispatchPayload> captor =
                 ArgumentCaptor.forClass(NotificationDispatchPayload.class);
-        verify(notificationCommitHook).afterCommitDispatch(captor.capture());
+        verify(notificationCommitHook).publishInTransaction(captor.capture());
         NotificationDispatchPayload payload = captor.getValue();
         assertEquals(3, payload.getTenantId());
         assertEquals(17, payload.getCourseId());
@@ -127,12 +118,13 @@ class CourseAnnouncementServiceTest {
         assertEquals(99, payload.getSubjectId());
         assertEquals("published", payload.getEventKey());
         assertEquals("/courses/17/announcements/99", payload.getDeepLink());
-        assertEquals(List.of(385, 50), payload.getRecipientIds());
-        assertFalse(payload.getRecipientIds().contains(10));
+        assertEquals(RecipientMode.COURSE_ACTIVE_STUDENTS, payload.getRecipientMode());
+        assertEquals(10, payload.getActorUserId());
+        verify(notificationCommitHook, never()).afterCommitDispatch(any());
     }
 
     @Test
-    void create_whenResolverReturnsEmpty_stillSucceedsWithoutFailingBusiness() {
+    void create_stillSucceedsWhenLiveRosterIsEmptyAtRelayTime() {
         Course course = new Course();
         course.setId(17);
         course.setTenantId(3);
@@ -160,11 +152,9 @@ class CourseAnnouncementServiceTest {
             a.setAuthorName("Teacher");
             return a;
         });
-        when(notificationRecipientResolver.resolveActiveStudentRecipients(17))
-                .thenReturn(List.of());
         when(notificationMessageFactory.announcementPosted("Hello")).thenReturn("New announcement: Hello");
         when(notificationTimeSupport.nowUtc()).thenReturn(java.time.LocalDateTime.of(2026, 7, 1, 12, 0, 0));
-        doNothing().when(notificationCommitHook).afterCommitDispatch(any());
+        doNothing().when(notificationCommitHook).publishInTransaction(any());
 
         CreateAnnouncementRequest request = new CreateAnnouncementRequest();
         request.setTitle("Hello");
@@ -176,8 +166,8 @@ class CourseAnnouncementServiceTest {
 
         ArgumentCaptor<NotificationDispatchPayload> captor =
                 ArgumentCaptor.forClass(NotificationDispatchPayload.class);
-        verify(notificationCommitHook).afterCommitDispatch(captor.capture());
-        assertEquals(List.of(), captor.getValue().getRecipientIds());
+        verify(notificationCommitHook).publishInTransaction(captor.capture());
+        assertEquals(RecipientMode.COURSE_ACTIVE_STUDENTS, captor.getValue().getRecipientMode());
     }
 
     @Test

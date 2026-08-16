@@ -546,9 +546,7 @@ public class AssignmentService {
         assignmentAuditService.write(courseId, assignmentId, userId, AssignmentAuditService.ASSIGNMENT_PUBLISHED, (String) null);
 
         Assignment updated = requireAssignment(courseId, assignmentId, userId);
-        List<Integer> recipients = notificationRecipientResolver.resolveActiveStudentRecipients(courseId);
-        assignmentNotificationService.afterCommit(
-                () -> assignmentNotificationService.notifyAssignmentPublished(updated, recipients));
+        assignmentNotificationService.recordAssignmentPublished(updated);
         return buildStaffResponse(updated, zone, activeStudents(courseId).size());
     }
 

@@ -5,5 +5,6 @@ public enum SubjectType {
     ASSIGNMENT,
     QUIZ,
     ASSIGNMENT_GRADE,
-    QUIZ_GRADE
+    QUIZ_GRADE,
+    ASSIGNMENT_SUBMISSION
 }

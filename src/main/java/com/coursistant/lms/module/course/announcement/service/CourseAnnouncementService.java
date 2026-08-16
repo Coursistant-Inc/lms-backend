@@ -14,10 +14,10 @@ import com.coursistant.lms.module.course.course.repository.CourseMapper;
 import com.coursistant.lms.module.course.enrollment.service.CoursePermissionService;
 import com.coursistant.lms.module.interaction.notification.dto.NotificationDispatchPayload;
 import com.coursistant.lms.module.interaction.notification.enums.NotificationType;
+import com.coursistant.lms.module.interaction.notification.enums.RecipientMode;
 import com.coursistant.lms.module.interaction.notification.enums.SubjectType;
 import com.coursistant.lms.module.interaction.notification.service.NotificationCommitHook;
 import com.coursistant.lms.module.interaction.notification.service.NotificationMessageFactory;
-import com.coursistant.lms.module.interaction.notification.service.NotificationRecipientResolver;
 import com.coursistant.lms.module.interaction.notification.service.NotificationTimeSupport;
 import com.coursistant.lms.module.user.account.entity.User;
 import com.coursistant.lms.module.user.account.repository.UserMapper;
@@ -29,7 +29,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class CourseAnnouncementService {
@@ -54,9 +56,6 @@ public class CourseAnnouncementService {
 
     @Resource
     private CoursePermissionService coursePermissionService;
-
-    @Resource
-    private NotificationRecipientResolver notificationRecipientResolver;
 
     @Resource
     private NotificationMessageFactory notificationMessageFactory;
@@ -104,10 +103,6 @@ public class CourseAnnouncementService {
         courseAnnouncementMapper.insert(announcement);
 
         CourseAnnouncement persisted = courseAnnouncementMapper.selectById(announcement.getId());
-        List<Integer> recipientIds = new ArrayList<>(
-                notificationRecipientResolver.resolveActiveStudentRecipients(courseId));
-        recipientIds.removeIf(id -> authorUserId != null && authorUserId.equals(id));
-
         NotificationDispatchPayload payload = new NotificationDispatchPayload();
         payload.setTenantId(course.getTenantId());
         payload.setCourseId(courseId);
@@ -117,9 +112,16 @@ public class CourseAnnouncementService {
         payload.setSubjectId(persisted.getId());
         payload.setEventKey("published");
         payload.setDeepLink("/courses/" + courseId + "/announcements/" + persisted.getId());
-        payload.setRecipientIds(recipientIds);
+        payload.setActorUserId(authorUserId);
+        payload.setRecipientMode(RecipientMode.COURSE_ACTIVE_STUDENTS);
         payload.setCreatedAt(notificationTimeSupport.nowUtc());
-        notificationCommitHook.afterCommitDispatch(payload);
+        Map<String, String> vars = new LinkedHashMap<>();
+        vars.put("courseCode", course.getCourseCode() == null ? "" : course.getCourseCode());
+        vars.put("courseTitle", course.getTitle() == null ? "" : course.getTitle());
+        vars.put("announcementTitle", persisted.getTitle() == null ? "" : persisted.getTitle());
+        vars.put("deepLink", payload.getDeepLink());
+        payload.setTemplateVars(vars);
+        notificationCommitHook.publishInTransaction(payload);
         return toDetail(persisted, false);
     }
 

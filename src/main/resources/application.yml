@@ -56,6 +56,9 @@ spring:
           auth: true
           starttls:
             enable: true
+          connectiontimeout: 10000
+          timeout: 20000
+          writetimeout: 20000
 
 
 
@@ -105,6 +108,30 @@ aws:
 lms:
   content:
     max-file-bytes: 209715200
+  notification:
+    outbox:
+      enabled: true
+      poll-ms: 5000
+      batch-size: 100
+      max-attempts: 8
+      recipient-insert-chunk: 500
+      lease-seconds: 120
+    digest:
+      default-time-zone: America/Los_Angeles
+      batch-size: 200
+      lease-seconds: 120
+      max-attempts: 5
+    email:
+      enabled: true
+      provider: ${LMS_NOTIFICATION_EMAIL_PROVIDER:log}
+      from-address: ${MAIL_USERNAME:do.not.reply@coursistant.com}
+      from-name: xLearn
+      base-url: ${APP_BASE_URL:https://dev.xlearnedu.com}
+      max-attempts: 5
+      backoff-base-seconds: 2
+      poll-ms: 5000
+      batch-size: 50
+      lease-seconds: 120
 
 ip: localhost
 

@@ -94,6 +94,8 @@ public interface UserMapper {
 
     List<User> selectUsersByIds(List<Integer> userIds);
 
+    List<User> selectNotificationContactsByIds(@org.apache.ibatis.annotations.Param("userIds") List<Integer> userIds);
+
     void updateMustChangePassword( Integer id, boolean mustChangePassword);
 
     void clearAvatar(Integer id);

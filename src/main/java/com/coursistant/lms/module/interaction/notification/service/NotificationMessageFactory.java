@@ -35,6 +35,12 @@ public class NotificationMessageFactory {
         return truncate("Your assignment grade has been updated: " + title);
     }
 
+    public String submissionReceived(String assignmentTitle, java.time.LocalDateTime submittedAt) {
+        String title = blankToDefault(assignmentTitle, "Assignment");
+        String when = submittedAt == null ? "" : submittedAt.toString();
+        return truncate("Submission received: " + title + " at " + when + ".");
+    }
+
     public String quizGradeCorrected(String quizTitle) {
         String title = blankToDefault(quizTitle, "Quiz");
         return truncate("Your quiz grade has been updated: " + title);

@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.coursistant.lms.module.interaction.notification.repository.NotificationEventOutboxMapper">
+
+    <sql id="Base_Column_List">
+        id, event_id AS eventId, tenant_id AS tenantId, course_id AS courseId,
+        notification_type AS notificationType, subject_type AS subjectType, subject_id AS subjectId,
+        event_key AS eventKey, actor_user_id AS actorUserId, message, deep_link AS deepLink,
+        occurred_at AS occurredAt, recipient_mode AS recipientMode, template_vars_json AS templateVarsJson,
+        status, attempt_count AS attemptCount, next_attempt_at AS nextAttemptAt,
+        lease_until AS leaseUntil, claim_token AS claimToken, last_error AS lastError,
+        created_at AS createdAt, updated_at AS updatedAt
+    </sql>
+
+    <insert id="insertIgnoreDuplicate" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO notification_event_outbox (
+            event_id, tenant_id, course_id, notification_type, subject_type, subject_id, event_key,
+            actor_user_id, message, deep_link, occurred_at, recipient_mode, template_vars_json,
+            status, attempt_count, next_attempt_at, created_at, updated_at
+        ) VALUES (
+            #{eventId}, #{tenantId}, #{courseId}, #{notificationType}, #{subjectType}, #{subjectId}, #{eventKey},
+            #{actorUserId}, #{message}, #{deepLink}, #{occurredAt}, #{recipientMode}, #{templateVarsJson},
+            #{status}, 0, #{nextAttemptAt}, #{createdAt}, #{updatedAt}
+        )
+        ON DUPLICATE KEY UPDATE id = id
+    </insert>
+
+    <select id="selectByDedupeKey" resultType="com.coursistant.lms.module.interaction.notification.entity.NotificationEventOutbox">
+        SELECT <include refid="Base_Column_List"/>
+        FROM notification_event_outbox
+        WHERE tenant_id = #{tenantId}
+          AND notification_type = #{notificationType}
+          AND subject_type = #{subjectType}
+          AND subject_id = #{subjectId}
+          AND event_key = #{eventKey}
+    </select>
+
+    <select id="selectById" resultType="com.coursistant.lms.module.interaction.notification.entity.NotificationEventOutbox">
+        SELECT <include refid="Base_Column_List"/>
+        FROM notification_event_outbox
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectClaimBatch" resultType="long">
+        SELECT id
+        FROM notification_event_outbox
+        WHERE status IN ('PENDING', 'FAILED_RETRYABLE', 'PROCESSING')
+          AND next_attempt_at &lt;= #{now}
+          AND (lease_until IS NULL OR lease_until &lt; #{now})
+        ORDER BY next_attempt_at
+        LIMIT #{batchSize}
+        FOR UPDATE SKIP LOCKED
+    </select>
+
+    <update id="claim">
+        UPDATE notification_event_outbox
+        SET status = 'PROCESSING',
+            claim_token = #{claimToken},
+            lease_until = #{leaseUntil},
+            attempt_count = attempt_count + 1,
+            updated_at = #{now}
+        WHERE id = #{id}
+          AND status IN ('PENDING', 'FAILED_RETRYABLE', 'PROCESSING')
+          AND next_attempt_at &lt;= #{now}
+          AND (lease_until IS NULL OR lease_until &lt; #{now})
+    </update>
+
+    <update id="markDone">
+        UPDATE notification_event_outbox
+        SET status = 'DONE', updated_at = #{now}
+        WHERE id = #{id} AND claim_token = #{claimToken}
+    </update>
+
+    <update id="markRetryable">
+        UPDATE notification_event_outbox
+        SET status = 'FAILED_RETRYABLE',
+            next_attempt_at = #{nextAttemptAt},
+            last_error = #{lastError},
+            lease_until = NULL,
+            updated_at = #{now}
+        WHERE id = #{id} AND claim_token = #{claimToken}
+    </update>
+
+    <update id="markPermanent">
+        UPDATE notification_event_outbox
+        SET status = 'FAILED_PERMANENT',
+            last_error = #{lastError},
+            lease_until = NULL,
+            updated_at = #{now}
+        WHERE id = #{id} AND claim_token = #{claimToken}
+    </update>
+</mapper>

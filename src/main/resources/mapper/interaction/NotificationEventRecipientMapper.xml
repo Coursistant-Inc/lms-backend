@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.coursistant.lms.module.interaction.notification.repository.NotificationEventRecipientMapper">
+
+    <insert id="insertChunk">
+        INSERT INTO notification_event_recipient (outbox_id, recipient_user_id) VALUES
+        <foreach collection="rows" item="row" separator=",">
+            (#{row.outboxId}, #{row.recipientUserId})
+        </foreach>
+        ON DUPLICATE KEY UPDATE recipient_user_id = recipient_user_id
+    </insert>
+
+    <select id="selectRecipientIds" resultType="int">
+        SELECT recipient_user_id
+        FROM notification_event_recipient
+        WHERE outbox_id = #{outboxId}
+        ORDER BY id
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countByOutboxId" resultType="int">
+        SELECT COUNT(*)
+        FROM notification_event_recipient
+        WHERE outbox_id = #{outboxId}
+    </select>
+</mapper>

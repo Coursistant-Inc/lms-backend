@@ -300,12 +300,26 @@ public class AssignmentSubmissionService {
         auditDetail.put("usedGraceBuffer", usedGraceBuffer);
         assignmentAuditService.write(courseId, assignmentId, userId, AssignmentAuditService.SUBMISSION_CREATED, auditDetail);
 
-        assignmentNotificationService.afterCommit(() -> assignmentNotificationService
-                .notifySubmissionReceived(assignment, userId, nextVersionNo, now));
+        List<Integer> receiptRecipients = new ArrayList<>();
+        if (groupAssignment) {
+            List<GroupMembership> members = groupMembershipMapper.selectByGroupId(groupId);
+            if (members != null) {
+                for (GroupMembership member : members) {
+                    if (member != null && member.getUserId() != null) {
+                        receiptRecipients.add(member.getUserId());
+                    }
+                }
+            }
+            if (!receiptRecipients.contains(userId)) {
+                receiptRecipients.add(userId);
+            }
+        } else {
+            receiptRecipients.add(userId);
+        }
+        assignmentNotificationService.recordSubmissionReceived(
+                assignment, receiptRecipients, submission.getId(), nextVersionNo, version.getId(), now);
         if (groupAssignment && replacing) {
-            Integer notifyGroupId = groupId;
-            assignmentNotificationService.afterCommit(() -> assignmentNotificationService
-                    .notifyGroupSubmissionReplaced(assignment, notifyGroupId, userId, nextVersionNo));
+            assignmentNotificationService.notifyGroupSubmissionReplaced(assignment, groupId, userId, nextVersionNo);
         }
 
         return buildSubmissionResponse(assignment, userId, zone, assignmentTimeSupport.nowUtc());

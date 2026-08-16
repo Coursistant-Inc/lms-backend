@@ -4,6 +4,7 @@ import com.coursistant.lms.module.course.course.entity.Course;
 import com.coursistant.lms.module.course.course.repository.CourseMapper;
 import com.coursistant.lms.module.interaction.notification.dto.NotificationDispatchPayload;
 import com.coursistant.lms.module.interaction.notification.enums.NotificationType;
+import com.coursistant.lms.module.interaction.notification.enums.RecipientMode;
 import com.coursistant.lms.module.interaction.notification.enums.SubjectType;
 import com.coursistant.lms.module.interaction.notification.service.NotificationCommitHook;
 import com.coursistant.lms.module.interaction.notification.service.NotificationMessageFactory;
@@ -25,7 +26,9 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
@@ -204,7 +207,9 @@ public class QuizGradingService {
                 payload.setEventKey("release:" + auditId);
                 payload.setDeepLink("/courses/" + courseId + "/quizzes/" + quizId + "/my-grade");
                 payload.setRecipientIds(recipients);
+                payload.setRecipientMode(RecipientMode.EXPLICIT);
                 payload.setCreatedAt(notificationTimeSupport.nowUtc());
+                payload.setTemplateVars(quizVars(course, quiz, payload.getDeepLink()));
                 notificationCommitHook.afterCommitDispatch(payload);
             }
         }
@@ -240,8 +245,19 @@ public class QuizGradingService {
         payload.setEventKey("correct:" + scoreAuditId);
         payload.setDeepLink("/courses/" + courseId + "/quizzes/" + quizId + "/my-grade");
         payload.setRecipientIds(recipients);
+        payload.setRecipientMode(RecipientMode.EXPLICIT);
         payload.setCreatedAt(createdAt != null ? createdAt : notificationTimeSupport.nowUtc());
+        payload.setTemplateVars(quizVars(course, quiz, payload.getDeepLink()));
         notificationCommitHook.afterCommitDispatch(payload);
+    }
+
+    private Map<String, String> quizVars(Course course, Quiz quiz, String deepLink) {
+        Map<String, String> vars = new LinkedHashMap<>();
+        vars.put("courseCode", course.getCourseCode() == null ? "" : course.getCourseCode());
+        vars.put("courseTitle", course.getTitle() == null ? "" : course.getTitle());
+        vars.put("quizTitle", quiz.getTitle() == null ? "" : quiz.getTitle());
+        vars.put("deepLink", deepLink);
+        return vars;
     }
 
     private void validateUserIds(ReleaseGradesRequest body) {

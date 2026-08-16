@@ -66,6 +66,20 @@
         </foreach>
     </select>
 
+    <select id="selectNotificationContactsByIds" resultType="com.coursistant.lms.module.user.account.entity.User">
+        SELECT
+            id,
+            tenant_id AS tenantId,
+            email,
+            status,
+            email_notifications AS emailNotifications
+        FROM user
+        WHERE id IN
+        <foreach item="id" collection="userIds" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </select>
+
     <!-- ====== DML ====== -->
 
     <delete id="deleteById">

@@ -110,7 +110,7 @@ class AssignmentGradingServiceGroupNotificationTest {
         assertEquals(List.of(50), candidates.getValue());
         verify(assignmentGradeReleaseRecipientMapper).selectByGradeId(88);
         verify(groupMembershipMapper, never()).selectByGroupId(any());
-        verify(assignmentNotificationService).afterCommit(any());
+        verify(assignmentNotificationService).notifyGradeCorrectedAfterRelease(any(), eq(List.of(50)), eq(77));
     }
 
     @Test
@@ -140,7 +140,7 @@ class AssignmentGradingServiceGroupNotificationTest {
         assignmentGradingService.upsertGroupGrade(1, 9, 3, 20, body);
 
         verify(notificationRecipientResolver).filterCandidateRecipients(eq(course), eq(List.of()));
-        verify(assignmentNotificationService).afterCommit(any());
+        verify(assignmentNotificationService).notifyGradeCorrectedAfterRelease(any(), eq(List.of()), any());
     }
 
     @Test
@@ -174,7 +174,7 @@ class AssignmentGradingServiceGroupNotificationTest {
         verify(assignmentGradeReleaseRecipientMapper).selectByGradeId(88);
         verify(notificationRecipientResolver).filterCandidateRecipients(eq(course), eq(List.of(50)));
         verify(groupMembershipMapper, never()).selectByGroupId(any());
-        verify(assignmentNotificationService).afterCommit(any());
+        verify(assignmentNotificationService).notifyGradeCorrectedAfterRelease(any(), eq(List.of(50)), any());
     }
 
     private static Assignment groupAssignment() {

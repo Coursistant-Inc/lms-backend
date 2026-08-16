@@ -4,6 +4,7 @@ import com.coursistant.lms.module.course.course.entity.Course;
 import com.coursistant.lms.module.course.course.repository.CourseMapper;
 import com.coursistant.lms.module.interaction.notification.dto.NotificationDispatchPayload;
 import com.coursistant.lms.module.interaction.notification.enums.NotificationType;
+import com.coursistant.lms.module.interaction.notification.enums.RecipientMode;
 import com.coursistant.lms.module.interaction.notification.enums.SubjectType;
 import com.coursistant.lms.module.interaction.notification.service.NotificationCommitHook;
 import com.coursistant.lms.module.interaction.notification.service.NotificationMessageFactory;
@@ -21,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -137,7 +139,14 @@ public class QuizRegradeService {
                 payload.setEventKey("correct:regrade:" + questionId + ":" + question.getVersion());
                 payload.setDeepLink("/courses/" + courseId + "/quizzes/" + quizId + "/my-grade");
                 payload.setRecipientIds(recipients);
+                payload.setRecipientMode(RecipientMode.EXPLICIT);
                 payload.setCreatedAt(notificationTimeSupport.nowUtc());
+                Map<String, String> vars = new LinkedHashMap<>();
+                vars.put("courseCode", course.getCourseCode() == null ? "" : course.getCourseCode());
+                vars.put("courseTitle", course.getTitle() == null ? "" : course.getTitle());
+                vars.put("quizTitle", quiz.getTitle() == null ? "" : quiz.getTitle());
+                vars.put("deepLink", payload.getDeepLink());
+                payload.setTemplateVars(vars);
                 notificationCommitHook.afterCommitDispatch(payload);
             }
         }

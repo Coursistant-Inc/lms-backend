@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.coursistant.lms.module.interaction.notification.repository.NotificationDigestEmailMapper">
+
+    <sql id="Base_Column_List">
+        id, tenant_id AS tenantId, recipient_user_id AS recipientUserId, digest_date AS digestDate,
+        status, item_count AS itemCount, attempt_count AS attemptCount,
+        next_attempt_at AS nextAttemptAt, lease_until AS leaseUntil, claim_token AS claimToken,
+        send_attempted_at AS sendAttemptedAt, unknown_outcome_count AS unknownOutcomeCount,
+        failure_category AS failureCategory, last_error AS lastError,
+        provider_message_id AS providerMessageId, created_at AS createdAt, sent_at AS sentAt,
+        updated_at AS updatedAt
+    </sql>
+
+    <insert id="insertCollecting" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO notification_digest_email (
+            tenant_id, recipient_user_id, digest_date, status, item_count, attempt_count,
+            next_attempt_at, unknown_outcome_count, created_at, updated_at
+        ) VALUES (
+            #{tenantId}, #{recipientUserId}, #{digestDate}, 'COLLECTING', 0, 0,
+            #{nextAttemptAt}, 0, #{createdAt}, #{updatedAt}
+        )
+        ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)
+    </insert>
+
+    <select id="selectByKey" resultType="com.coursistant.lms.module.interaction.notification.entity.NotificationDigestEmail">
+        SELECT <include refid="Base_Column_List"/>
+        FROM notification_digest_email
+        WHERE tenant_id = #{tenantId}
+          AND recipient_user_id = #{recipientUserId}
+          AND digest_date = #{digestDate}
+    </select>
+
+    <select id="selectById" resultType="com.coursistant.lms.module.interaction.notification.entity.NotificationDigestEmail">
+        SELECT <include refid="Base_Column_List"/>
+        FROM notification_digest_email
+        WHERE id = #{id}
+    </select>
+
+    <update id="freezeCollected">
+        UPDATE notification_digest_email
+        SET status = 'PENDING', item_count = #{itemCount}, updated_at = #{now}
+        WHERE id = #{id} AND status = 'COLLECTING'
+    </update>
+
+    <update id="markSkippedIneligible">
+        UPDATE notification_digest_email
+        SET status = 'SKIPPED_INELIGIBLE', updated_at = #{now}
+        WHERE id = #{id} AND status = 'COLLECTING'
+    </update>
+
+    <select id="selectClaimBatch" resultType="long">
+        SELECT id
+        FROM notification_digest_email
+        WHERE status IN ('PENDING', 'FAILED_RETRYABLE', 'PROCESSING')
+          AND next_attempt_at &lt;= #{now}
+          AND (lease_until IS NULL OR lease_until &lt; #{now})
+        ORDER BY next_attempt_at
+        LIMIT #{batchSize}
+        FOR UPDATE SKIP LOCKED
+    </select>
+
+    <update id="claim">
+        UPDATE notification_digest_email
+        SET status = 'PROCESSING',
+            claim_token = #{claimToken},
+            lease_until = #{leaseUntil},
+            attempt_count = attempt_count + 1,
+            updated_at = #{now}
+        WHERE id = #{id}
+          AND status IN ('PENDING', 'FAILED_RETRYABLE', 'PROCESSING')
+          AND next_attempt_at &lt;= #{now}
+          AND (lease_until IS NULL OR lease_until &lt; #{now})
+    </update>
+
+    <update id="promoteUnknownOnce">
+        UPDATE notification_digest_email
+        SET unknown_outcome_count = 1,
+            send_attempted_at = NULL,
+            updated_at = #{now}
+        WHERE id = #{id}
+          AND claim_token = #{claimToken}
+          AND send_attempted_at IS NOT NULL
+          AND unknown_outcome_count = 0
+    </update>
+
+    <update id="markSendAttempted">
+        UPDATE notification_digest_email
+        SET send_attempted_at = #{now}, updated_at = #{now}
+        WHERE id = #{id}
+          AND claim_token = #{claimToken}
+          AND status = 'PROCESSING'
+          AND lease_until &gt; #{now}
+    </update>
+
+    <update id="markSent">
+        UPDATE notification_digest_email
+        SET status = 'SENT', sent_at = #{now}, provider_message_id = #{providerMessageId},
+            lease_until = NULL, updated_at = #{now}
+        WHERE id = #{id} AND claim_token = #{claimToken}
+    </update>
+
+    <update id="markDryRun">
+        UPDATE notification_digest_email
+        SET status = 'DRY_RUN', sent_at = #{now}, provider_message_id = #{providerMessageId},
+            lease_until = NULL, updated_at = #{now}
+        WHERE id = #{id} AND claim_token = #{claimToken}
+    </update>
+
+    <update id="markRetry">
+        UPDATE notification_digest_email
+        SET status = 'FAILED_RETRYABLE',
+            next_attempt_at = #{nextAttemptAt},
+            failure_category = #{failureCategory},
+            last_error = #{lastError},
+            lease_until = NULL,
+            updated_at = #{now}
+        WHERE id = #{id} AND claim_token = #{claimToken}
+    </update>
+
+    <update id="markPermanent">
+        UPDATE notification_digest_email
+        SET status = 'FAILED_PERMANENT',
+            failure_category = #{failureCategory},
+            last_error = #{lastError},
+            lease_until = NULL,
+            updated_at = #{now}
+        WHERE id = #{id} AND claim_token = #{claimToken}
+    </update>
+
+    <update id="markSkipped">
+        UPDATE notification_digest_email
+        SET status = #{status},
+            failure_category = #{failureCategory},
+            lease_until = NULL,
+            updated_at = #{now}
+        WHERE id = #{id} AND claim_token = #{claimToken}
+    </update>
+
+    <update id="cancelPendingForRecipient">
+        UPDATE notification_digest_email
+        SET status = 'SKIPPED_PREFERENCE',
+            failure_category = 'PERMANENT_PREFERENCE',
+            claim_token = NULL,
+            lease_until = NULL,
+            updated_at = #{now}
+        WHERE recipient_user_id = #{recipientUserId}
+          AND (
+                status IN ('PENDING', 'FAILED_RETRYABLE', 'COLLECTING')
+                OR (status = 'PROCESSING' AND (lease_until IS NULL OR lease_until &lt; #{now}))
+          )
+    </update>
+
+    <update id="requeueDigestEmail">
+        UPDATE notification_digest_email
+        SET status = 'PENDING',
+            claim_token = NULL, lease_until = NULL,
+            attempt_count = 0, next_attempt_at = #{now},
+            send_attempted_at = NULL, unknown_outcome_count = 0,
+            provider_message_id = NULL, sent_at = NULL,
+            failure_category = NULL, last_error = NULL,
+            updated_at = #{now}
+        WHERE id = #{id} AND status IN ('DRY_RUN', 'FAILED_PERMANENT')
+    </update>
+
+    <select id="selectDryRunOrPermanentIds" resultType="long">
+        SELECT id
+        FROM notification_digest_email
+        WHERE status IN ('DRY_RUN', 'FAILED_PERMANENT')
+          AND created_at &gt;= #{from}
+          AND created_at &lt;= #{to}
+          <if test="tenantId != null">AND tenant_id = #{tenantId}</if>
+    </select>
+
+    <update id="requeueDryRunInRange">
+        UPDATE notification_digest_email
+        SET status = 'PENDING',
+            claim_token = NULL, lease_until = NULL,
+            attempt_count = 0, next_attempt_at = #{now},
+            send_attempted_at = NULL, unknown_outcome_count = 0,
+            provider_message_id = NULL, sent_at = NULL,
+            failure_category = NULL, last_error = NULL,
+            updated_at = #{now}
+        WHERE status = 'DRY_RUN'
+          AND created_at &gt;= #{from}
+          AND created_at &lt;= #{to}
+          <if test="tenantId != null">AND tenant_id = #{tenantId}</if>
+    </update>
+</mapper>

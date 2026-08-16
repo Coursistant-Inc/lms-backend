@@ -1,11 +1,14 @@
 package com.coursistant.lms.module.interaction.notification.dto;
 
 import com.coursistant.lms.module.interaction.notification.enums.NotificationType;
+import com.coursistant.lms.module.interaction.notification.enums.RecipientMode;
 import com.coursistant.lms.module.interaction.notification.enums.SubjectType;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 public class NotificationDispatchPayload {
 
@@ -19,6 +22,9 @@ public class NotificationDispatchPayload {
     private String deepLink;
     private List<Integer> recipientIds = new ArrayList<>();
     private LocalDateTime createdAt;
+    private Integer actorUserId;
+    private RecipientMode recipientMode;
+    private Map<String, String> templateVars = new LinkedHashMap<>();
 
     public Integer getTenantId() {
         return tenantId;
@@ -98,5 +104,29 @@ public class NotificationDispatchPayload {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public Integer getActorUserId() {
+        return actorUserId;
+    }
+
+    public void setActorUserId(Integer actorUserId) {
+        this.actorUserId = actorUserId;
+    }
+
+    public RecipientMode getRecipientMode() {
+        return recipientMode;
+    }
+
+    public void setRecipientMode(RecipientMode recipientMode) {
+        this.recipientMode = recipientMode;
+    }
+
+    public Map<String, String> getTemplateVars() {
+        return templateVars;
+    }
+
+    public void setTemplateVars(Map<String, String> templateVars) {
+        this.templateVars = templateVars == null ? new LinkedHashMap<>() : templateVars;
     }
 }

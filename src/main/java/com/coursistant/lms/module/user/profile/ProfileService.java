@@ -11,6 +11,8 @@ import com.coursistant.lms.module.user.account.entity.User;
 import com.coursistant.lms.module.user.account.repository.UserMapper;
 import com.coursistant.lms.module.user.profile.dto.ProfileResponse;
 import com.coursistant.lms.module.user.profile.dto.UpdateProfileRequest;
+import com.coursistant.lms.module.interaction.notification.service.NotificationDeliveryOpsService;
+import com.coursistant.lms.module.interaction.notification.service.NotificationSupport;
 import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.shared.api.ErrorType;
 import jakarta.annotation.Resource;
@@ -20,6 +22,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Locale;
@@ -49,11 +52,18 @@ public class ProfileService {
     @Resource(name = "generalRedisTemplate")
     private RedisTemplate<String, Object> generalRedisTemplate;
 
+    @Resource
+    private NotificationDeliveryOpsService notificationDeliveryOpsService;
+
+    @Resource
+    private NotificationSupport notificationSupport;
+
     public ProfileResponse getMyProfile(Integer userId) {
         User user = requireUser(userId);
         return toResponse(user);
     }
 
+    @Transactional
     public ProfileResponse updateMyProfile(Integer userId, UpdateProfileRequest request) {
         if (request == null
                 || (request.getDisplayName() == null && request.getEmailNotifications() == null)) {
@@ -72,13 +82,19 @@ public class ProfileService {
             patch.setName(name);
             user.setName(name);
         }
+        boolean disableEmail = false;
         if (request.getEmailNotifications() != null) {
+            boolean previous = user.getEmailNotifications() == null || user.getEmailNotifications();
             patch.setEmailNotifications(request.getEmailNotifications());
             user.setEmailNotifications(request.getEmailNotifications());
+            disableEmail = previous && !request.getEmailNotifications();
         }
 
         userMapper.updateById(patch);
         evictUserCache(user);
+        if (disableEmail) {
+            notificationSupport.afterCommit(() -> notificationDeliveryOpsService.cancelPendingEmailsFor(userId));
+        }
         return toResponse(user);
     }
 

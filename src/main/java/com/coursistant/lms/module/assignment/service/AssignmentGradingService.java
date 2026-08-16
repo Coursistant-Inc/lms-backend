@@ -386,11 +386,8 @@ public class AssignmentGradingService {
             Course course = assignmentAccessService.requireCourse(courseId);
             List<Integer> recipients = notificationRecipientResolver.filterCandidateRecipients(
                     course, List.of(studentUserId));
-            Assignment assignmentForNotify = assignment;
-            Integer auditIdForNotify = correctionAuditId;
-            assignmentNotificationService.afterCommit(
-                    () -> assignmentNotificationService.notifyGradeCorrectedAfterRelease(
-                            assignmentForNotify, recipients, auditIdForNotify));
+            assignmentNotificationService.notifyGradeCorrectedAfterRelease(
+                    assignment, recipients, correctionAuditId);
         }
 
         return toGradeResponse(assignment, requireGrade(courseId, assignmentId, studentUserId, userId));
@@ -433,11 +430,8 @@ public class AssignmentGradingService {
             Course course = assignmentAccessService.requireCourse(courseId);
             List<Integer> recipients = notificationRecipientResolver.filterCandidateRecipients(
                     course, List.of(studentUserId));
-            Assignment assignmentForNotify = assignment;
-            Integer auditIdForNotify = correctionAuditId;
-            assignmentNotificationService.afterCommit(
-                    () -> assignmentNotificationService.notifyGradeCorrectedAfterRelease(
-                            assignmentForNotify, recipients, auditIdForNotify));
+            assignmentNotificationService.notifyGradeCorrectedAfterRelease(
+                    assignment, recipients, correctionAuditId);
         }
 
         if (previousKey != null && !previousKey.equals(objectKey)) {
@@ -513,11 +507,8 @@ public class AssignmentGradingService {
             List<Integer> snapshotUserIds = releaseRecipientUserIds(existing.getId());
             List<Integer> recipients = notificationRecipientResolver.filterCandidateRecipients(
                     course, snapshotUserIds);
-            Assignment assignmentForNotify = assignment;
-            Integer auditIdForNotify = correctionAuditId;
-            assignmentNotificationService.afterCommit(
-                    () -> assignmentNotificationService.notifyGradeCorrectedAfterRelease(
-                            assignmentForNotify, recipients, auditIdForNotify));
+            assignmentNotificationService.notifyGradeCorrectedAfterRelease(
+                    assignment, recipients, correctionAuditId);
         }
 
         if (previousKey != null && !previousKey.equals(objectKey)) {
@@ -742,11 +733,8 @@ public class AssignmentGradingService {
             List<Integer> snapshotUserIds = releaseRecipientUserIds(existing.getId());
             List<Integer> recipients = notificationRecipientResolver.filterCandidateRecipients(
                     course, snapshotUserIds);
-            Assignment assignmentForNotify = assignment;
-            Integer auditIdForNotify = correctionAuditId;
-            assignmentNotificationService.afterCommit(
-                    () -> assignmentNotificationService.notifyGradeCorrectedAfterRelease(
-                            assignmentForNotify, recipients, auditIdForNotify));
+            assignmentNotificationService.notifyGradeCorrectedAfterRelease(
+                    assignment, recipients, correctionAuditId);
         }
 
         return toGradeResponse(assignment, requireGroupGrade(courseId, assignmentId, groupId, userId));
@@ -807,11 +795,8 @@ public class AssignmentGradingService {
                     Map.of("studentUserIds", changed));
             Course course = assignmentAccessService.requireCourse(courseId);
             List<Integer> recipients = notificationRecipientResolver.filterCandidateRecipients(course, changed);
-            Assignment assignmentForNotify = assignment;
-            Integer auditIdForNotify = releaseAuditId;
-            assignmentNotificationService.afterCommit(
-                    () -> assignmentNotificationService.notifyGradesReleased(
-                            assignmentForNotify, recipients, auditIdForNotify));
+            assignmentNotificationService.notifyGradesReleased(
+                    assignment, recipients, releaseAuditId);
         }
         return response;
     }
@@ -847,11 +832,8 @@ public class AssignmentGradingService {
                     Map.of("groupIds", response.getChangedGroupIds()));
             Course course = assignmentAccessService.requireCourse(courseId);
             List<Integer> recipients = notificationRecipientResolver.filterCandidateRecipients(course, notified);
-            Assignment assignmentForNotify = assignment;
-            Integer auditIdForNotify = releaseAuditId;
-            assignmentNotificationService.afterCommit(
-                    () -> assignmentNotificationService.notifyGradesReleased(
-                            assignmentForNotify, recipients, auditIdForNotify));
+            assignmentNotificationService.notifyGradesReleased(
+                    assignment, recipients, releaseAuditId);
         }
         return response;
     }
