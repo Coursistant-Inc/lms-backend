@@ -89,14 +89,4 @@ public interface NotificationDeliveryMapper {
     int markItemsByDigestEmailId(@Param("digestEmailId") Long digestEmailId,
                                  @Param("status") String status,
                                  @Param("now") LocalDateTime now);
-
-    int requeueDelivery(@Param("id") Long id, @Param("now") LocalDateTime now);
-
-    int requeueDryRunInRange(@Param("from") LocalDateTime from,
-                             @Param("to") LocalDateTime to,
-                             @Param("tenantId") Integer tenantId,
-                             @Param("channel") String channel,
-                             @Param("now") LocalDateTime now);
-
-    int restoreItemsForDigestEmails(@Param("digestEmailIds") List<Long> digestEmailIds);
 }

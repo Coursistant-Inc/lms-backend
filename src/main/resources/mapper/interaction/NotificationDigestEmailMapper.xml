@@ -151,40 +151,4 @@
                 OR (status = 'PROCESSING' AND (lease_until IS NULL OR lease_until &lt; #{now}))
           )
     </update>
-
-    <update id="requeueDigestEmail">
-        UPDATE notification_digest_email
-        SET status = 'PENDING',
-            claim_token = NULL, lease_until = NULL,
-            attempt_count = 0, next_attempt_at = #{now},
-            send_attempted_at = NULL, unknown_outcome_count = 0,
-            provider_message_id = NULL, sent_at = NULL,
-            failure_category = NULL, last_error = NULL,
-            updated_at = #{now}
-        WHERE id = #{id} AND status IN ('DRY_RUN', 'FAILED_PERMANENT')
-    </update>
-
-    <select id="selectDryRunOrPermanentIds" resultType="long">
-        SELECT id
-        FROM notification_digest_email
-        WHERE status IN ('DRY_RUN', 'FAILED_PERMANENT')
-          AND created_at &gt;= #{from}
-          AND created_at &lt;= #{to}
-          <if test="tenantId != null">AND tenant_id = #{tenantId}</if>
-    </select>
-
-    <update id="requeueDryRunInRange">
-        UPDATE notification_digest_email
-        SET status = 'PENDING',
-            claim_token = NULL, lease_until = NULL,
-            attempt_count = 0, next_attempt_at = #{now},
-            send_attempted_at = NULL, unknown_outcome_count = 0,
-            provider_message_id = NULL, sent_at = NULL,
-            failure_category = NULL, last_error = NULL,
-            updated_at = #{now}
-        WHERE status = 'DRY_RUN'
-          AND created_at &gt;= #{from}
-          AND created_at &lt;= #{to}
-          <if test="tenantId != null">AND tenant_id = #{tenantId}</if>
-    </update>
 </mapper>

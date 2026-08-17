@@ -49,7 +49,6 @@
           AND (lease_until IS NULL OR lease_until &lt; #{now})
         ORDER BY next_attempt_at
         LIMIT #{batchSize}
-        FOR UPDATE SKIP LOCKED
     </select>
 
     <update id="claim">
@@ -205,49 +204,5 @@
         SET status = #{status}, lease_until = NULL, sent_at = CASE WHEN #{status} IN ('SENT', 'DRY_RUN') THEN #{now} ELSE sent_at END,
             updated_at = #{now}
         WHERE digest_email_id = #{digestEmailId}
-    </update>
-
-    <update id="requeueDelivery">
-        UPDATE notification_delivery
-        SET status = 'PENDING',
-            claim_token = NULL, lease_until = NULL,
-            attempt_count = 0, next_attempt_at = #{now},
-            send_attempted_at = NULL, unknown_outcome_count = 0,
-            provider_message_id = NULL, sent_at = NULL,
-            failure_category = NULL, last_error = NULL,
-            updated_at = #{now}
-        WHERE id = #{id} AND status IN ('DRY_RUN', 'FAILED_PERMANENT')
-    </update>
-
-    <update id="requeueDryRunInRange">
-        UPDATE notification_delivery
-        SET status = 'PENDING',
-            claim_token = NULL, lease_until = NULL,
-            attempt_count = 0, next_attempt_at = #{now},
-            send_attempted_at = NULL, unknown_outcome_count = 0,
-            provider_message_id = NULL, sent_at = NULL,
-            failure_category = NULL, last_error = NULL,
-            updated_at = #{now}
-        WHERE status = 'DRY_RUN'
-          AND created_at &gt;= #{from}
-          AND created_at &lt;= #{to}
-          AND channel IN ('IMMEDIATE_EMAIL')
-          <if test="tenantId != null">AND tenant_id = #{tenantId}</if>
-          <if test="channel != null">AND channel = #{channel}</if>
-    </update>
-
-    <update id="restoreItemsForDigestEmails">
-        UPDATE notification_delivery
-        SET status = 'PROCESSING',
-            claim_token = NULL, lease_until = NULL,
-            attempt_count = 0, next_attempt_at = CURRENT_TIMESTAMP(3),
-            send_attempted_at = NULL, unknown_outcome_count = 0,
-            provider_message_id = NULL, sent_at = NULL,
-            failure_category = NULL, last_error = NULL
-        WHERE digest_email_id IN
-        <foreach collection="digestEmailIds" item="id" open="(" separator="," close=")">
-            #{id}
-        </foreach>
-          AND status IN ('DRY_RUN', 'FAILED_PERMANENT')
     </update>
 </mapper>

@@ -74,15 +74,4 @@ public interface NotificationDigestEmailMapper {
 
     int cancelPendingForRecipient(@Param("recipientUserId") Integer recipientUserId,
                                   @Param("now") LocalDateTime now);
-
-    int requeueDigestEmail(@Param("id") Long id, @Param("now") LocalDateTime now);
-
-    List<Long> selectDryRunOrPermanentIds(@Param("from") LocalDateTime from,
-                                          @Param("to") LocalDateTime to,
-                                          @Param("tenantId") Integer tenantId);
-
-    int requeueDryRunInRange(@Param("from") LocalDateTime from,
-                             @Param("to") LocalDateTime to,
-                             @Param("tenantId") Integer tenantId,
-                             @Param("now") LocalDateTime now);
 }

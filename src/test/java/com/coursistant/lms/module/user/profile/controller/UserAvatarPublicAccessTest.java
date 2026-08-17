@@ -4,6 +4,8 @@ import com.coursistant.lms.module.file.storage.S3ObjectKeyResolver;
 import com.coursistant.lms.module.file.storage.S3ObjectMetadata;
 import com.coursistant.lms.module.file.storage.S3ObjectPayload;
 import com.coursistant.lms.module.file.storage.S3ObjectStorage;
+import com.coursistant.lms.module.interaction.notification.service.NotificationDeliveryOpsService;
+import com.coursistant.lms.module.interaction.notification.service.NotificationSupport;
 import com.coursistant.lms.module.user.account.entity.User;
 import com.coursistant.lms.module.user.account.repository.UserMapper;
 import com.coursistant.lms.module.user.profile.AvatarUrlBuilder;
@@ -98,6 +100,12 @@ class UserAvatarPublicAccessTest {
 
     @MockitoBean
     private AvatarUrlBuilder avatarUrlBuilder;
+
+    @MockitoBean
+    private NotificationDeliveryOpsService notificationDeliveryOpsService;
+
+    @MockitoBean
+    private NotificationSupport notificationSupport;
 
     @MockitoBean(name = "generalRedisTemplate")
     private RedisTemplate<String, Object> generalRedisTemplate;
