@@ -31,7 +31,8 @@ public class OpenApiConfig {
     public static final String BEARER_SCHEME = "bearerAuth";
     public static final String API_VERSION = "1.0.0";
 
-    public static final List<String> MODULES = List.of("auth", "user", "course", "assignment", "quiz");
+    public static final List<String> MODULES = List.of(
+            "auth", "user", "course", "assignment", "quiz", "notification");
 
     @Bean
     public OpenAPI lmsOpenAPI() {
@@ -136,6 +137,17 @@ public class OpenApiConfig {
                 .group("quiz")
                 .packagesToScan("com.coursistant.lms.module.quiz")
                 .pathsToMatch("/v2/courses/*/quizzes/**")
+                .addOpenApiCustomizer(OpenApiConfig::applyPublicPathSecurity)
+                .build();
+    }
+
+    @Bean
+    public GroupedOpenApi notificationApi() {
+        return GroupedOpenApi.builder()
+                .group("notification")
+                .packagesToScan("com.coursistant.lms.module.interaction.notification")
+                .pathsToMatch("/v2/me/notifications", "/v2/me/notifications/**",
+                        "/v2/admin/notifications/**")
                 .addOpenApiCustomizer(OpenApiConfig::applyPublicPathSecurity)
                 .build();
     }

@@ -1,15 +1,22 @@
 package com.coursistant.lms.module.interaction.notification.it.support;
 
+import com.coursistant.lms.module.assignment.service.AssignmentStorageService;
+import com.coursistant.lms.module.assignment.service.AssignmentSubmissionService;
+import com.coursistant.lms.module.file.storage.S3ObjectStorage;
 import com.coursistant.lms.module.interaction.notification.dto.NotificationDispatchPayload;
 import com.coursistant.lms.module.interaction.notification.enums.NotificationType;
 import com.coursistant.lms.module.interaction.notification.enums.RecipientMode;
 import com.coursistant.lms.module.interaction.notification.enums.SubjectType;
 import com.coursistant.lms.module.interaction.notification.event.NotificationPublisher;
+import com.coursistant.lms.module.quiz.service.QuizRegradeService;
+import com.coursistant.lms.shared.enums.RoleEnum;
+import com.coursistant.lms.shared.security.ActorContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import java.util.List;
 
@@ -24,18 +31,41 @@ public abstract class NotificationPhase2SpringITBase extends NotificationPhase1S
     @Autowired
     protected NotificationPublisher notificationPublisher;
 
+    @MockitoBean
+    private S3ObjectStorage s3ObjectStorage;
+
+    @MockitoBean
+    private QuizRegradeService quizRegradeService;
+
+    @MockitoBean
+    private AssignmentStorageService assignmentStorageService;
+
+    @MockitoBean
+    private AssignmentSubmissionService assignmentSubmissionService;
+
     @Override
     protected void wipeTables() {
         ensurePhase2Schema();
         jdbcTemplate.execute("SET FOREIGN_KEY_CHECKS=0");
         for (String table : new String[]{
+                "group_membership_audit",
                 "group_membership",
                 "course_group",
                 "group_set",
                 "course_event",
                 "course_announcement",
+                "course_material",
                 "course_week",
+                "course_audit_log",
+                "quiz_question_option",
+                "quiz_question",
+                "quiz_attempt",
+                "quiz_audit_log",
                 "quiz",
+                "assignment_grade",
+                "assignment_attachment",
+                "assignment_submission_version",
+                "assignment_audit_log",
                 "assignment_submission",
                 "assignment"
         }) {
@@ -112,6 +142,22 @@ public abstract class NotificationPhase2SpringITBase extends NotificationPhase1S
                 courseId, state);
         Integer id = jdbcTemplate.queryForObject("SELECT MAX(id) FROM course_week", Integer.class);
         return id == null ? -1 : id;
+    }
+
+    protected void enrollInstructor(int courseId, int userId) {
+        enrollRole(courseId, userId, "Instructor");
+    }
+
+    protected ActorContext instructorActor(int instructorId) {
+        return new ActorContext(ActorContext.ACTOR_USER, instructorId, RoleEnum.USER.name(), 1,
+                "INSTRUCTOR", "ACTIVE");
+    }
+
+    protected void insertShortAnswerQuestion(int quizId) {
+        jdbcTemplate.update("""
+                INSERT INTO quiz_question (quiz_id, type, stem, points, position, version, created_at, updated_at)
+                VALUES (?, 'ShortAnswer', 'Explain', 1, 1, 1, UTC_TIMESTAMP(3), UTC_TIMESTAMP(3))
+                """, quizId);
     }
 
     protected Long publishExplicit(int courseId, NotificationType type, SubjectType subjectType, int subjectId,

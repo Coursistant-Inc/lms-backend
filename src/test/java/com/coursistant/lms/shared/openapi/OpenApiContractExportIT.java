@@ -5,6 +5,7 @@ import com.coursistant.lms.shared.security.AuthPublicPaths;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.Operation;
 import io.swagger.v3.oas.models.PathItem;
+import io.swagger.v3.oas.models.media.Schema;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -100,6 +101,10 @@ class OpenApiContractExportIT {
                 assertAvatarGetIsPublicAndNeighborsInheritBearer(api);
             }
 
+            if ("notification".equals(module)) {
+                assertNotificationContract(api);
+            }
+
             if (verifyCommitted) {
                 Path committed = Path.of("docs/api", module + ".openapi.yaml");
                 assertTrue(Files.exists(committed), "Missing committed contract: " + committed);
@@ -153,6 +158,54 @@ class OpenApiContractExportIT {
         assertInheritsRootBearer(api, "/v2/users/{id}", PathItem.HttpMethod.GET);
         assertInheritsRootBearer(api, "/v2/me/profile/avatar", PathItem.HttpMethod.PUT);
         assertInheritsRootBearer(api, "/v2/me/profile/avatar", PathItem.HttpMethod.DELETE);
+    }
+
+    private static void assertNotificationContract(OpenAPI api) {
+        assertEquals("meNotificationList",
+                requireOperation(api, "/v2/me/notifications", PathItem.HttpMethod.GET).getOperationId());
+        assertEquals("meNotificationUnreadCount",
+                requireOperation(api, "/v2/me/notifications/unread-count", PathItem.HttpMethod.GET)
+                        .getOperationId());
+        assertEquals("meNotificationMarkRead",
+                requireOperation(api, "/v2/me/notifications/{notificationId}/read", PathItem.HttpMethod.PATCH)
+                        .getOperationId());
+        assertEquals("meNotificationMarkAllRead",
+                requireOperation(api, "/v2/me/notifications/read-all", PathItem.HttpMethod.PATCH)
+                        .getOperationId());
+        assertEquals("adminNotificationDigestRun",
+                requireOperation(api, "/v2/admin/notifications/digest/run", PathItem.HttpMethod.POST)
+                        .getOperationId());
+
+        Operation list = requireOperation(api, "/v2/me/notifications", PathItem.HttpMethod.GET);
+        assertNotNull(list.getResponses(), "list responses missing");
+        assertNotNull(list.getResponses().get("200"), "GET /v2/me/notifications missing 200");
+
+        assertInheritsRootBearer(api, "/v2/me/notifications", PathItem.HttpMethod.GET);
+        assertInheritsRootBearer(api, "/v2/admin/notifications/digest/run", PathItem.HttpMethod.POST);
+
+        assertNotNull(api.getComponents(), "notification components missing");
+        assertNotNull(api.getComponents().getSchemas(), "notification schemas missing");
+        var schemas = api.getComponents().getSchemas();
+        assertTrue(schemas.containsKey("NotificationResponse"), "Missing NotificationResponse schema");
+        assertTrue(schemas.containsKey("NotificationPageResponse"), "Missing NotificationPageResponse schema");
+        assertTrue(schemas.containsKey("UnreadCountResponse"), "Missing UnreadCountResponse schema");
+        assertTrue(schemas.containsKey("DigestRunRequest"), "Missing DigestRunRequest schema");
+
+        Schema<?> item = schemas.get("NotificationResponse");
+        assertNotNull(item.getProperties(), "NotificationResponse properties missing");
+        assertTrue(item.getProperties().containsKey("availability"),
+                "NotificationResponse.availability missing");
+        assertTrue(item.getProperties().containsKey("notificationType"),
+                "NotificationResponse.notificationType missing");
+        assertTrue(item.getProperties().containsKey("deepLink"),
+                "NotificationResponse.deepLink missing");
+
+        Schema<?> availability = item.getProperties().get("availability");
+        assertNotNull(availability, "availability schema missing");
+        assertNotNull(availability.getEnum(), "availability must be an enum");
+        assertTrue(availability.getEnum().contains("AVAILABLE"), "availability missing AVAILABLE");
+        assertTrue(availability.getEnum().contains("NO_LONGER_AVAILABLE"),
+                "availability missing NO_LONGER_AVAILABLE");
     }
 
     private static void assertInheritsRootBearer(OpenAPI api, String path, PathItem.HttpMethod method) {

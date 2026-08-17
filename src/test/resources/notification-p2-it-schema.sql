@@ -127,3 +127,160 @@ CREATE TABLE IF NOT EXISTS group_membership (
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS group_membership_audit (
+  id INT NOT NULL AUTO_INCREMENT,
+  tenant_id INT NOT NULL,
+  course_id INT NOT NULL,
+  group_set_id INT NULL,
+  group_id INT NULL,
+  target_user_id INT NOT NULL,
+  actor_type VARCHAR(16) NOT NULL,
+  actor_user_id INT NULL,
+  action VARCHAR(64) NOT NULL,
+  before_json TEXT NULL,
+  after_json TEXT NULL,
+  detail_json TEXT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS assignment_audit_log (
+  id INT NOT NULL AUTO_INCREMENT,
+  course_id INT NOT NULL,
+  assignment_id INT NOT NULL,
+  actor_user_id INT NOT NULL,
+  action VARCHAR(64) NOT NULL,
+  detail_json TEXT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS assignment_attachment (
+  id INT NOT NULL AUTO_INCREMENT,
+  assignment_id INT NOT NULL,
+  object_key VARCHAR(512) NOT NULL,
+  original_name VARCHAR(255) NOT NULL,
+  content_type VARCHAR(128) NULL,
+  size_bytes BIGINT NOT NULL,
+  uploaded_by INT NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS assignment_submission_version (
+  id INT NOT NULL AUTO_INCREMENT,
+  submission_id INT NOT NULL,
+  assignment_id INT NOT NULL,
+  owner_user_id INT NOT NULL,
+  actual_submitter_user_id INT NOT NULL,
+  version_no INT NOT NULL,
+  submitted_at DATETIME NOT NULL,
+  used_grace_buffer TINYINT(1) NOT NULL DEFAULT 0,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS assignment_grade (
+  id INT NOT NULL AUTO_INCREMENT,
+  assignment_id INT NOT NULL,
+  student_user_id INT NULL,
+  group_id INT NULL,
+  submission_version_id INT NULL,
+  rubric_version_id INT NULL,
+  score DECIMAL(10, 2) NOT NULL,
+  feedback_html MEDIUMTEXT NULL,
+  annotated_object_key VARCHAR(512) NULL,
+  annotated_original_name VARCHAR(255) NULL,
+  annotated_content_type VARCHAR(128) NULL,
+  annotated_size_bytes BIGINT NULL,
+  status VARCHAR(16) NOT NULL DEFAULT 'Entered',
+  entered_by INT NOT NULL,
+  entered_at DATETIME NOT NULL,
+  edited_by INT NOT NULL,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  released_at DATETIME NULL,
+  ai_assisted TINYINT(1) NOT NULL DEFAULT 0,
+  ai_provenance_json JSON NULL,
+  PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS quiz_audit_log (
+  id INT NOT NULL AUTO_INCREMENT,
+  course_id INT NOT NULL,
+  quiz_id INT NULL,
+  attempt_id INT NULL,
+  actor_user_id INT NULL,
+  action VARCHAR(64) NOT NULL,
+  reason VARCHAR(500) NULL,
+  detail_json JSON NOT NULL,
+  created_at DATETIME(3) NOT NULL,
+  PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS quiz_attempt (
+  id INT NOT NULL AUTO_INCREMENT,
+  quiz_id INT NOT NULL,
+  user_id INT NOT NULL,
+  attempt_number INT NOT NULL DEFAULT 1,
+  status VARCHAR(16) NOT NULL,
+  PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS quiz_question (
+  id INT NOT NULL AUTO_INCREMENT,
+  quiz_id INT NOT NULL,
+  type VARCHAR(32) NOT NULL,
+  stem TEXT NOT NULL,
+  points DECIMAL(10,2) NOT NULL,
+  position INT NOT NULL,
+  version INT NOT NULL DEFAULT 1,
+  created_at DATETIME(3) NOT NULL,
+  updated_at DATETIME(3) NOT NULL,
+  PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS quiz_question_option (
+  id INT NOT NULL AUTO_INCREMENT,
+  question_id INT NOT NULL,
+  label VARCHAR(500) NOT NULL,
+  is_correct TINYINT(1) NOT NULL DEFAULT 0,
+  position INT NOT NULL,
+  PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS course_audit_log (
+  id BIGINT NOT NULL AUTO_INCREMENT,
+  course_id INT NOT NULL,
+  tenant_id INT NULL,
+  actor_type VARCHAR(16) NOT NULL,
+  actor_id INT NOT NULL,
+  actor_role VARCHAR(32) NULL,
+  action VARCHAR(64) NOT NULL,
+  target_type VARCHAR(32) NULL,
+  target_id INT NULL,
+  before_json JSON NULL,
+  after_json JSON NULL,
+  request_id VARCHAR(64) NULL,
+  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS course_material (
+  id INT NOT NULL AUTO_INCREMENT,
+  week_id INT NOT NULL,
+  course_id INT NOT NULL,
+  material_type VARCHAR(16) NOT NULL,
+  display_name VARCHAR(255) NOT NULL,
+  order_position INT NOT NULL DEFAULT 0,
+  original_filename VARCHAR(255) NULL,
+  content_type VARCHAR(128) NULL,
+  extension VARCHAR(32) NULL,
+  size_bytes BIGINT NULL,
+  object_key VARCHAR(512) NULL,
+  link_url VARCHAR(2048) NULL,
+  uploaded_by INT NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

@@ -37,7 +37,8 @@ import org.springframework.transaction.support.TransactionTemplate;
                         AdminNotificationController.class,
                         MeNotificationController.class,
                         LoggingNotificationEmailSender.class,
-                        SmtpNotificationEmailSender.class
+                        SmtpNotificationEmailSender.class,
+                        NotificationPhase2ExtraConfig.class
                 })
         }
 )

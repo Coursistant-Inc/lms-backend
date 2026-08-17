@@ -2,6 +2,7 @@ package com.coursistant.lms.module.user.account.repository;
 
 import java.util.List;
 
+import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
 
 import com.coursistant.lms.module.user.account.entity.User;
@@ -10,6 +11,7 @@ import com.coursistant.lms.module.user.account.entity.User;
  * 操作 user 相关数据接口
  * Data access interface for user-related operations
  */
+@Mapper
 public interface UserMapper {
 
     /**

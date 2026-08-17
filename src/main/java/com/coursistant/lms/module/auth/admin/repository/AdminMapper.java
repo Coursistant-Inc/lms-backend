@@ -1,6 +1,7 @@
 package com.coursistant.lms.module.auth.admin.repository;
 
 import com.coursistant.lms.module.auth.admin.entity.Admin;
+import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
 
 import java.util.List;
@@ -9,6 +10,7 @@ import java.util.List;
  * 操作 admin 相关数据接口
  * Data access interface for admin-related operations
  */
+@Mapper
 public interface AdminMapper {
 
     /**

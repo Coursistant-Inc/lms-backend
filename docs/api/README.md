@@ -11,6 +11,7 @@ Formal API contracts for frontend client generation. Spec format: **OpenAPI 3.0*
 | course | [`course.openapi.yaml`](course.openapi.yaml) |
 | assignment | [`assignment.openapi.yaml`](assignment.openapi.yaml) |
 | quiz | [`quiz.openapi.yaml`](quiz.openapi.yaml) |
+| notification | [`notification.openapi.yaml`](notification.openapi.yaml) · [human notes](notification.md) |
 
 Base URL / server: `/api` (matches `server.servlet.context-path`).
 
@@ -43,7 +44,7 @@ Re-exports to `target/openapi-check/` and fails if committed YAML drifts or inve
 
 ## Live Swagger UI
 
-With the app running: `/api/swagger-ui/index.html` — select groups `auth`, `user`, `course`, `assignment`, `quiz`.
+With the app running: `/api/swagger-ui/index.html` — select groups `auth`, `user`, `course`, `assignment`, `quiz`, `notification`.
 
 YAML endpoints: `/api/v3/api-docs.yaml/{group}`.
 

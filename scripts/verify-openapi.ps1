@@ -1,5 +1,5 @@
 param(
-    [ValidateSet("auth", "user", "course", "assignment", "quiz", "all")]
+    [ValidateSet("auth", "user", "course", "assignment", "quiz", "notification", "all")]
     [string]$Module = "all"
 )
 

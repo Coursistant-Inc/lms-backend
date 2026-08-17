@@ -38,6 +38,9 @@ class NotificationPhase2SchemaStaticTest {
         String sql = Files.readString(stats);
         assertTrue(sql.contains("empty_snapshot_count"));
         assertTrue(sql.contains("unexpected_immediate_email"));
+        assertTrue(sql.contains("type_subject_mismatch"));
+        assertTrue(sql.contains("subject_course_mismatch"));
+        assertTrue(sql.contains("empty_suspect"));
         String ddl = Files.readString(Path.of("sql/notification_phase2.sql")).toLowerCase(Locale.ROOT);
         assertTrue(ddl.contains("do not mix"));
     }

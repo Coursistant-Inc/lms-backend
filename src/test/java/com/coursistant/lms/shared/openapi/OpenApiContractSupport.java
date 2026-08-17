@@ -41,7 +41,8 @@ public final class OpenApiContractSupport {
             "user", 13,
             "course", 79,
             "assignment", 39,
-            "quiz", 29
+            "quiz", 29,
+            "notification", 5
     );
 
     public static final Map<String, String> MODULE_PACKAGES = Map.of(
@@ -49,7 +50,8 @@ public final class OpenApiContractSupport {
             "user", "com.coursistant.lms.module.user",
             "course", "com.coursistant.lms.module.course",
             "assignment", "com.coursistant.lms.module.assignment",
-            "quiz", "com.coursistant.lms.module.quiz"
+            "quiz", "com.coursistant.lms.module.quiz",
+            "notification", "com.coursistant.lms.module.interaction.notification"
     );
 
     private static final Pattern AUTO_DISAMBIG = Pattern.compile(".*_\\d+$");

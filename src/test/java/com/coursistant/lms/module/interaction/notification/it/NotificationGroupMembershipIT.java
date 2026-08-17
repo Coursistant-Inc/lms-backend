@@ -3,6 +3,7 @@ package com.coursistant.lms.module.interaction.notification.it;
 import com.coursistant.lms.module.course.course.entity.Course;
 import com.coursistant.lms.module.course.course.repository.CourseMapper;
 import com.coursistant.lms.module.course.group.entity.GroupMembershipAudit;
+import com.coursistant.lms.module.course.group.service.GroupMembershipService;
 import com.coursistant.lms.module.course.group.service.GroupNotificationService;
 import com.coursistant.lms.module.interaction.notification.it.support.NotificationPhase2SpringITBase;
 import org.junit.jupiter.api.Test;
@@ -13,11 +14,13 @@ import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class NotificationGroupMembershipIT extends NotificationPhase2SpringITBase {
 
     @Autowired private GroupNotificationService groupNotificationService;
+    @Autowired private GroupMembershipService groupMembershipService;
     @Autowired private CourseMapper courseMapper;
 
     @Test
@@ -102,15 +105,72 @@ class NotificationGroupMembershipIT extends NotificationPhase2SpringITBase {
     }
 
     @Test
-    void distributeRandomSource_keepsFullAudienceNotSelfOnly() throws Exception {
-        String src = java.nio.file.Files.readString(java.nio.file.Path.of(
-                "src/main/java/com/coursistant/lms/module/course/group/service/GroupMembershipService.java"));
-        int start = src.indexOf("public List<MembershipResponse> distributeRandom(");
-        int end = src.indexOf("public void endGroupMembershipsOnEnrollmentDeactivated(");
-        String body = src.substring(start, end);
-        assertTrue(body.contains("notifyAdded"));
-        assertTrue(body.contains("membersByGroup"));
-        assertTrue(body.contains("new ArrayList<>(members)"));
+    void distributeRandom_notifiesFullGroupAudienceNotSelfOnly() {
+        int instructorId = insertInstructor();
+        int seed = insertUser("g-seed-" + uuid() + "@example.com", true, "ACTIVE");
+        int studentA = insertUser("g-da-" + uuid() + "@example.com", true, "ACTIVE");
+        int studentB = insertUser("g-db-" + uuid() + "@example.com", true, "ACTIVE");
+        int courseId = insertCourse(instructorId);
+        enrollInstructor(courseId, instructorId);
+        enrollStudent(courseId, seed);
+        enrollStudent(courseId, studentA);
+        enrollStudent(courseId, studentB);
+        int groupSetId = insertGroupSet(courseId);
+        int alpha = insertGroup(courseId, groupSetId, "Alpha");
+        insertGroup(courseId, groupSetId, "Beta");
+        jdbcTemplate.update("""
+                INSERT INTO group_membership (group_id, group_set_id, course_id, user_id, joined_at,
+                  added_by_type, added_by_user_id)
+                VALUES (?, ?, ?, ?, UTC_TIMESTAMP(), 'Staff', ?)
+                """, alpha, groupSetId, courseId, seed, instructorId);
+
+        List<?> assigned = groupMembershipService.distributeRandom(courseId, groupSetId, instructorId);
+        assertEquals(2, assigned.size());
+
+        assertEquals(2, count("""
+                SELECT COUNT(*) FROM notification_event_outbox
+                WHERE notification_type = 'GROUP_MEMBER_ADDED'
+                  AND subject_type = 'GROUP_SET'
+                  AND subject_id = ?
+                  AND event_key LIKE '%:added:target'
+                """, groupSetId));
+        assertTrue(count("""
+                SELECT COUNT(*) FROM notification_event_outbox
+                WHERE notification_type = 'GROUP_MEMBER_ADDED'
+                  AND subject_id = ?
+                  AND event_key LIKE '%:added:members'
+                """, groupSetId) >= 1);
+
+        Set<Integer> targetRecipients = new HashSet<>(jdbcTemplate.queryForList("""
+                SELECT r.recipient_user_id
+                FROM notification_event_recipient r
+                JOIN notification_event_outbox o ON o.id = r.outbox_id
+                WHERE o.notification_type = 'GROUP_MEMBER_ADDED'
+                  AND o.subject_id = ?
+                  AND o.event_key LIKE '%:added:target'
+                """, Integer.class, groupSetId));
+        assertEquals(Set.of(studentA, studentB), targetRecipients);
+
+        List<Integer> memberRecipients = jdbcTemplate.queryForList("""
+                SELECT r.recipient_user_id
+                FROM notification_event_recipient r
+                JOIN notification_event_outbox o ON o.id = r.outbox_id
+                WHERE o.notification_type = 'GROUP_MEMBER_ADDED'
+                  AND o.subject_id = ?
+                  AND o.event_key LIKE '%:added:members'
+                """, Integer.class, groupSetId);
+        assertTrue(memberRecipients.contains(seed), "members variant must include existing group members");
+        assertFalse(memberRecipients.contains(studentA) && memberRecipients.size() == 1
+                        && memberRecipients.get(0).equals(studentA),
+                "members variant must not be the new student only");
+        assertEquals("GROUP_SET", jdbcTemplate.queryForObject("""
+                SELECT subject_type FROM notification_event_outbox
+                WHERE notification_type = 'GROUP_MEMBER_ADDED' AND subject_id = ? LIMIT 1
+                """, String.class, groupSetId));
+        assertEquals(groupSetId, jdbcTemplate.queryForObject("""
+                SELECT subject_id FROM notification_event_outbox
+                WHERE notification_type = 'GROUP_MEMBER_ADDED' AND subject_id = ? LIMIT 1
+                """, Integer.class, groupSetId));
     }
 
     private int insertGroupSet(int courseId) {
