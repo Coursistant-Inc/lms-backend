@@ -13,6 +13,7 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Component;
 
+import java.net.ConnectException;
 import java.net.SocketTimeoutException;
 
 @Component
@@ -52,30 +53,78 @@ public class SmtpNotificationEmailSender implements NotificationEmailSender {
         } catch (MailAuthenticationException e) {
             return EmailSendResult.retryable(FailureCategory.RETRYABLE_PROVIDER_5XX, "auth-failed");
         } catch (MailSendException e) {
-            if (isTimeout(e)) {
-                return EmailSendResult.retryable(FailureCategory.RETRYABLE_TIMEOUT, "timeout");
-            }
-            return EmailSendResult.retryable(FailureCategory.RETRYABLE_NETWORK, "send-failed");
+            return mapTransportFailure(e, "send-failed");
         } catch (Exception e) {
-            if (isTimeout(e)) {
-                return EmailSendResult.retryable(FailureCategory.RETRYABLE_TIMEOUT, "timeout");
-            }
-            return EmailSendResult.retryable(FailureCategory.RETRYABLE_NETWORK, "provider-error");
+            return mapTransportFailure(e, "provider-error");
         }
     }
 
-    private boolean isTimeout(Throwable e) {
+    EmailSendResult mapTransportFailure(Throwable e, String networkDetail) {
+        if (isConnectFailure(e)) {
+            if (containsTimeout(e)) {
+                return EmailSendResult.retryable(FailureCategory.RETRYABLE_TIMEOUT, "connect-timeout");
+            }
+            return EmailSendResult.retryable(FailureCategory.RETRYABLE_NETWORK, networkDetail);
+        }
+        if (isWriteTimeout(e)) {
+            return EmailSendResult.retryable(FailureCategory.RETRYABLE_TIMEOUT, "write-timeout");
+        }
+        if (containsTimeout(e)) {
+            return EmailSendResult.unknown(FailureCategory.UNKNOWN_OUTCOME, "smtp-read-timeout");
+        }
+        return EmailSendResult.retryable(FailureCategory.RETRYABLE_NETWORK, networkDetail);
+    }
+
+    private boolean isConnectFailure(Throwable e) {
         Throwable cur = e;
         while (cur != null) {
-            if (cur instanceof SocketTimeoutException) {
+            if (cur instanceof ConnectException) {
                 return true;
             }
-            String msg = cur.getMessage();
-            if (msg != null && msg.toLowerCase().contains("timed out")) {
+            String name = cur.getClass().getName();
+            if (name.endsWith("MailConnectException")) {
+                return true;
+            }
+            String lower = messageOf(cur);
+            if (lower.contains("connect timed out")
+                    || lower.contains("connection timed out")
+                    || lower.contains("connection refused")) {
                 return true;
             }
             cur = cur.getCause();
         }
         return false;
+    }
+
+    private boolean isWriteTimeout(Throwable e) {
+        Throwable cur = e;
+        while (cur != null) {
+            String lower = messageOf(cur);
+            if (lower.contains("write timed out") || lower.contains("writetimeout")) {
+                return true;
+            }
+            cur = cur.getCause();
+        }
+        return false;
+    }
+
+    private boolean containsTimeout(Throwable e) {
+        Throwable cur = e;
+        while (cur != null) {
+            if (cur instanceof SocketTimeoutException) {
+                return true;
+            }
+            String lower = messageOf(cur);
+            if (lower.contains("timed out") || lower.contains("timeout")) {
+                return true;
+            }
+            cur = cur.getCause();
+        }
+        return false;
+    }
+
+    private static String messageOf(Throwable cur) {
+        String msg = cur.getMessage();
+        return msg == null ? "" : msg.toLowerCase();
     }
 }

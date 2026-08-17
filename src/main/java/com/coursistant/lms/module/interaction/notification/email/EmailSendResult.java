@@ -20,4 +20,8 @@ public record EmailSendResult(EmailSendStatus status, String providerMessageId,
     public static EmailSendResult permanent(FailureCategory category, String error) {
         return new EmailSendResult(EmailSendStatus.PERMANENT_FAILURE, null, category, error);
     }
+
+    public static EmailSendResult unknown(FailureCategory category, String error) {
+        return new EmailSendResult(EmailSendStatus.UNKNOWN_OUTCOME, null, category, error);
+    }
 }

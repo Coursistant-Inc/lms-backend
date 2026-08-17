@@ -115,24 +115,41 @@ public class NotificationEventRelayWorker {
                 if (row == null) {
                     return;
                 }
-                List<Integer> recipients = resolveRecipients(row);
-                notificationFanoutService.persist(toPayload(row), recipients);
+                List<Integer> recipients;
+                try {
+                    recipients = resolveRecipients(row);
+                } catch (RuntimeException e) {
+                    throw new RelayFailure("recipient_resolution_failed", e.getMessage(), e);
+                }
+                try {
+                    notificationFanoutService.persist(toPayload(row), recipients);
+                } catch (RuntimeException e) {
+                    throw new RelayFailure("fanout_failed", e.getMessage(), e);
+                }
                 int done = outboxMapper.markDone(outboxId, token, now);
                 if (done == 0) {
-                    throw new IllegalStateException("markDone stale");
+                    throw new RelayFailure("stale_claim", "markDone stale", null);
                 }
             });
         } catch (RuntimeException e) {
-            NotificationLog.warn("recipient_resolution_failed", claimedRow.getEventId(), claimedRow.getTenantId(),
+            String event = e instanceof RelayFailure failure ? failure.event : "relay_failed";
+            NotificationLog.warn(event, claimedRow.getEventId(), claimedRow.getTenantId(),
                     claimedRow.getNotificationType(), null, "FAILED_RETRYABLE",
                     FailureCategory.RETRYABLE_CHANNEL_PERSIST.name(), null, null,
-                    claimedRow.getAttemptCount(), token, e.getMessage());
+                    claimedRow.getAttemptCount(), token,
+                    e.getMessage() == null ? "fanout_failed" : e.getMessage());
+            LocalDateTime retryNow = notificationTimeSupport.nowUtc();
             TransactionTemplate retry = new TransactionTemplate(transactionManager);
             retry.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
-            retry.executeWithoutResult(status -> outboxMapper.markRetryable(outboxId, token,
-                    backoff(now, claimedRow.getAttemptCount()),
+            Integer retried = retry.execute(status -> outboxMapper.markRetryable(outboxId, token,
+                    backoff(retryNow, claimedRow.getAttemptCount()),
                     NotificationLog.truncateLastError(e.getMessage() == null ? "fanout_failed" : e.getMessage()),
-                    now));
+                    retryNow));
+            if (retried == null || retried == 0) {
+                NotificationLog.warn("stale_claim", claimedRow.getEventId(), claimedRow.getTenantId(),
+                        claimedRow.getNotificationType(), null, claimedRow.getStatus(),
+                        null, null, null, claimedRow.getAttemptCount(), token, "markRetryable");
+            }
         }
     }
 
@@ -201,6 +218,15 @@ public class NotificationEventRelayWorker {
         int n = attempt == null ? 1 : attempt;
         long seconds = (long) Math.min(3600, Math.pow(notificationProperties.getEmail().getBackoffBaseSeconds(), n));
         return now.plusSeconds(Math.max(2, seconds));
+    }
+
+    private static final class RelayFailure extends RuntimeException {
+        private final String event;
+
+        private RelayFailure(String event, String message, Throwable cause) {
+            super(message, cause);
+            this.event = event;
+        }
     }
 
 }

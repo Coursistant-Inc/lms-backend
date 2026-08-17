@@ -85,6 +85,8 @@ Old builds treat `enabled=false` as “skip outbox and dispatch after commit”;
 
 SMTP has no idempotency key. If the process dies after the provider accepts a message and before `SENT` is written, recovery may send that message **once more**. A second unknown outcome becomes `FAILED_PERMANENT(UNKNOWN_OUTCOME)`.
 
+SMTP connection failures (`connect timed out`, connection refused) stay `RETRYABLE_FAILURE` and clear the send marker. A read/response timeout after the DATA command may mean the provider already accepted the message; that result is `UNKNOWN_OUTCOME`, keeps `send_attempted_at`, and follows the one-resend unknown protocol.
+
 Normal paths (concurrency, restart, lease reclaim) do not duplicate.
 
 ## Admin

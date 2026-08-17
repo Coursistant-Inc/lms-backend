@@ -87,11 +87,27 @@ class NotificationEventRelayWorkerTest {
         when(recipientMapper.selectRecipientIds(eq(5L), anyInt(), anyInt())).thenReturn(List.of(8));
         when(explicitRecipientValidator.validate(eq(1), anyList())).thenReturn(List.of(8));
         doThrow(new RuntimeException("fail")).when(notificationFanoutService).persist(any(), anyList());
+        when(outboxMapper.markRetryable(eq(5L), eq("tok"), any(), anyString(), any())).thenReturn(1);
 
         worker.processOne(5L);
 
         verify(outboxMapper).markRetryable(eq(5L), eq("tok"), any(), anyString(), any());
         verify(outboxMapper, never()).markDone(any(), any(), any());
+    }
+
+    @Test
+    void markRetryableZero_doesNotThrow() {
+        when(claimService.claimOutbox(eq(5L), any(), any(), anyInt()))
+                .thenReturn(Optional.of(new NotificationClaimService.Claimed<>(outbox(), "tok")));
+        when(outboxMapper.lockClaimed(eq(5L), eq("tok"), any())).thenReturn(outbox());
+        when(recipientMapper.selectRecipientIds(eq(5L), anyInt(), anyInt())).thenReturn(List.of(8));
+        when(explicitRecipientValidator.validate(eq(1), anyList())).thenReturn(List.of(8));
+        doThrow(new RuntimeException("fail")).when(notificationFanoutService).persist(any(), anyList());
+        when(outboxMapper.markRetryable(eq(5L), eq("tok"), any(), anyString(), any())).thenReturn(0);
+
+        worker.processOne(5L);
+
+        verify(outboxMapper).markRetryable(eq(5L), eq("tok"), any(), anyString(), any());
     }
 
     @Test
@@ -101,6 +117,7 @@ class NotificationEventRelayWorkerTest {
         when(outboxMapper.lockClaimed(eq(5L), eq("tok"), any())).thenReturn(outbox());
         when(recipientMapper.selectRecipientIds(eq(5L), anyInt(), anyInt())).thenReturn(List.of(8));
         when(explicitRecipientValidator.validate(eq(1), anyList())).thenThrow(new RuntimeException("db down"));
+        when(outboxMapper.markRetryable(eq(5L), eq("tok"), any(), anyString(), any())).thenReturn(1);
 
         worker.processOne(5L);
 

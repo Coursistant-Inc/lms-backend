@@ -120,7 +120,15 @@ public class ImmediateEmailDeliveryWorker {
         }
         EmailSendResult result = emailSender.send(new EmailMessage(
                 row.getRecipientUserId(), user.getEmail(), rendered.subject(), rendered.textBody()));
-        applyResult(row, token, result, now);
+        LocalDateTime resultNow = notificationTimeSupport.nowUtc();
+        if (result.status() == EmailSendStatus.UNKNOWN_OUTCOME) {
+            NotificationLog.warn("unknown_outcome", row.getEventId(), row.getTenantId(),
+                    row.getNotificationType(), row.getChannel(), "PROCESSING",
+                    FailureCategory.UNKNOWN_OUTCOME.name(), null, row.getRecipientUserId(),
+                    row.getAttemptCount(), token, "smtp-read-timeout");
+            return;
+        }
+        applyResult(row, token, result, resultNow);
     }
 
     private void applyResult(NotificationDelivery row, String token, EmailSendResult result, LocalDateTime now) {
@@ -136,6 +144,7 @@ public class ImmediateEmailDeliveryWorker {
                     result.failureCategory() == null ? FailureCategory.PERMANENT_NO_EMAIL.name()
                             : result.failureCategory().name(),
                     NotificationLog.truncateLastError(result.errorMessage()), now);
+            case UNKNOWN_OUTCOME -> 1;
         };
         if (n == 0) {
             stale(row, token, "applyResult");

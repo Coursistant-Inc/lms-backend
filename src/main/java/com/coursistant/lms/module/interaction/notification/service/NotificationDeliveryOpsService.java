@@ -4,6 +4,7 @@ import com.coursistant.lms.module.interaction.notification.repository.Notificati
 import com.coursistant.lms.module.interaction.notification.repository.NotificationDigestEmailMapper;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
@@ -19,6 +20,7 @@ public class NotificationDeliveryOpsService {
     @Resource
     private NotificationTimeSupport notificationTimeSupport;
 
+    @Transactional
     public void cancelPendingEmailsFor(Integer userId) {
         if (userId == null) {
             return;

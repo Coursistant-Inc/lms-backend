@@ -118,6 +118,63 @@ class ImmediateEmailDeliveryWorkerTest {
     }
 
     @Test
+    void unknownOutcome_doesNotClearMarkerViaRetry() {
+        NotificationDelivery row = delivery();
+        when(claimService.claimDelivery(eq(9L), any(), any(), anyInt()))
+                .thenReturn(Optional.of(new NotificationClaimService.Claimed<>(row, "tok")));
+        User user = new User();
+        user.setId(4);
+        user.setEmail("a@b.com");
+        user.setEmailNotifications(true);
+        user.setStatus("ACTIVE");
+        when(contactLookup.load(anyList())).thenReturn(Map.of(4, user));
+        when(contactLookup.emailEnabled(user)).thenReturn(true);
+        when(contactLookup.hasUsableEmail(user)).thenReturn(true);
+        when(contactLookup.accountActive(user)).thenReturn(true);
+        when(templateFactory.renderImmediate(any(), any())).thenReturn(new RenderedEmail("s", "b"));
+        when(claimService.markDeliverySendAttempted(eq(9L), eq("tok"), any(), any())).thenReturn(1);
+        when(emailSender.send(any())).thenReturn(EmailSendResult.unknown(
+                com.coursistant.lms.module.interaction.notification.enums.FailureCategory.UNKNOWN_OUTCOME,
+                "smtp-read-timeout"));
+
+        worker.processOne(9L);
+
+        verify(deliveryMapper, never()).markRetry(any(), any(), any(), any(), any(), any());
+        verify(deliveryMapper, never()).markSent(any(), any(), any(), any());
+        verify(deliveryMapper, never()).markPermanent(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void retryableFailure_usesNowAfterSend() {
+        LocalDateTime t1 = t0.plusMinutes(3);
+        LocalDateTime t2 = t0.plusMinutes(4);
+        when(notificationTimeSupport.nowUtc()).thenReturn(t0, t1, t1, t2);
+        NotificationDelivery row = delivery();
+        when(claimService.claimDelivery(eq(9L), eq(t0), any(), anyInt()))
+                .thenReturn(Optional.of(new NotificationClaimService.Claimed<>(row, "tok")));
+        User user = new User();
+        user.setId(4);
+        user.setEmail("a@b.com");
+        user.setEmailNotifications(true);
+        user.setStatus("ACTIVE");
+        when(contactLookup.load(anyList())).thenReturn(Map.of(4, user));
+        when(contactLookup.emailEnabled(user)).thenReturn(true);
+        when(contactLookup.hasUsableEmail(user)).thenReturn(true);
+        when(contactLookup.accountActive(user)).thenReturn(true);
+        when(templateFactory.renderImmediate(any(), any())).thenReturn(new RenderedEmail("s", "b"));
+        when(claimService.markDeliverySendAttempted(eq(9L), eq("tok"), eq(t1), eq(t1.plusSeconds(120))))
+                .thenReturn(1);
+        when(emailSender.send(any())).thenReturn(EmailSendResult.retryable(
+                com.coursistant.lms.module.interaction.notification.enums.FailureCategory.RETRYABLE_NETWORK, "down"));
+        when(deliveryMapper.markRetry(eq(9L), eq("tok"), any(), anyString(), anyString(), eq(t2))).thenReturn(1);
+
+        worker.processOne(9L);
+
+        verify(deliveryMapper).markRetry(eq(9L), eq("tok"), eq(t2.plusSeconds(2)),
+                eq("RETRYABLE_NETWORK"), anyString(), eq(t2));
+    }
+
+    @Test
     void processOne_emailDisabled_doesNotClaim() {
         properties.getEmail().setEnabled(false);
 

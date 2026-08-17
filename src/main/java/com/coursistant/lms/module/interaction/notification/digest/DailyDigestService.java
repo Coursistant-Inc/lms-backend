@@ -183,12 +183,13 @@ public class DailyDigestService {
         }
         EmailSendResult result = emailSender.send(new EmailMessage(
                 row.getRecipientUserId(), user.getEmail(), rendered.subject(), rendered.textBody()));
+        LocalDateTime resultNow = notificationTimeSupport.nowUtc();
         switch (result.status()) {
             case SENT -> {
                 if (!claimService.completeDigestTerminal(digestEmailId, token,
                         new NotificationClaimService.DigestTerminal(
                                 DigestEmailStatus.SENT.name(), DeliveryStatus.SENT.name(),
-                                null, null, result.providerMessageId()), now)) {
+                                null, null, result.providerMessageId()), resultNow)) {
                     stale(row, token, DigestEmailStatus.SENT.name(), "markSent");
                 }
             }
@@ -196,17 +197,17 @@ public class DailyDigestService {
                 if (!claimService.completeDigestTerminal(digestEmailId, token,
                         new NotificationClaimService.DigestTerminal(
                                 DigestEmailStatus.DRY_RUN.name(), DeliveryStatus.DRY_RUN.name(),
-                                null, null, result.providerMessageId()), now)) {
+                                null, null, result.providerMessageId()), resultNow)) {
                     stale(row, token, DigestEmailStatus.DRY_RUN.name(), "markDryRun");
                 }
             }
             case RETRYABLE_FAILURE -> digestEmailMapper.markRetry(digestEmailId, token,
-                    now.plusSeconds(Math.max(2, (long) Math.min(3600,
+                    resultNow.plusSeconds(Math.max(2, (long) Math.min(3600,
                             Math.pow(notificationProperties.getEmail().getBackoffBaseSeconds(),
                                     row.getAttemptCount() == null ? 1 : row.getAttemptCount())))),
                     result.failureCategory() == null ? FailureCategory.RETRYABLE_NETWORK.name()
                             : result.failureCategory().name(),
-                    NotificationLog.truncateLastError(result.errorMessage()), now);
+                    NotificationLog.truncateLastError(result.errorMessage()), resultNow);
             case PERMANENT_FAILURE -> {
                 if (!claimService.completeDigestTerminal(digestEmailId, token,
                         new NotificationClaimService.DigestTerminal(
@@ -214,10 +215,13 @@ public class DailyDigestService {
                                 DeliveryStatus.FAILED_PERMANENT.name(),
                                 result.failureCategory() == null ? FailureCategory.PERMANENT_NO_EMAIL.name()
                                         : result.failureCategory().name(),
-                                NotificationLog.truncateLastError(result.errorMessage()), null), now)) {
+                                NotificationLog.truncateLastError(result.errorMessage()), null), resultNow)) {
                     stale(row, token, DigestEmailStatus.FAILED_PERMANENT.name(), "provider");
                 }
             }
+            case UNKNOWN_OUTCOME -> NotificationLog.warn("unknown_outcome", null, row.getTenantId(), null,
+                    "DAILY_DIGEST", "PROCESSING", FailureCategory.UNKNOWN_OUTCOME.name(), null,
+                    row.getRecipientUserId(), row.getAttemptCount(), token, "smtp-read-timeout");
         }
     }
 

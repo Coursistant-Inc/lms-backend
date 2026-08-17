@@ -24,6 +24,10 @@ public class FakeNotificationEmailSender implements NotificationEmailSender {
         behavior = msg -> EmailSendResult.sent(providerMessageId);
     }
 
+    public void failUnknown(FailureCategory category, String error) {
+        behavior = msg -> EmailSendResult.unknown(category, error);
+    }
+
     public List<EmailMessage> messages() {
         return new ArrayList<>(sent);
     }

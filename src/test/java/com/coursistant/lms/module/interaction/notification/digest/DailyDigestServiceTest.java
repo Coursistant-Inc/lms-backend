@@ -198,6 +198,64 @@ class DailyDigestServiceTest {
     }
 
     @Test
+    void sendOne_unknownOutcome_doesNotMarkRetry() {
+        NotificationDigestEmail row = new NotificationDigestEmail();
+        row.setId(20L);
+        row.setRecipientUserId(4);
+        row.setTenantId(1);
+        row.setDigestDate(digestDate);
+        row.setAttemptCount(1);
+        when(claimService.claimDigestEmail(eq(20L), any(), any(), anyInt()))
+                .thenReturn(Optional.of(new NotificationClaimService.Claimed<>(row, "tok")));
+        User user = enabledUser();
+        when(contactLookup.load(List.of(4))).thenReturn(Map.of(4, user));
+        when(contactLookup.emailEnabled(user)).thenReturn(true);
+        when(contactLookup.hasUsableEmail(user)).thenReturn(true);
+        when(contactLookup.accountActive(user)).thenReturn(true);
+        when(deliveryMapper.selectByDigestEmailId(20L)).thenReturn(List.of(item("CS101", "Intro", "A")));
+        when(templateFactory.renderDigest(any(), anyList())).thenReturn(new RenderedEmail("s", "b"));
+        when(claimService.markDigestSendAttempted(eq(20L), eq("tok"), any(), any())).thenReturn(1);
+        when(emailSender.send(any())).thenReturn(EmailSendResult.unknown(
+                FailureCategory.UNKNOWN_OUTCOME, "smtp-read-timeout"));
+
+        service.sendOne(20L);
+
+        verify(digestEmailMapper, never()).markRetry(any(), any(), any(), any(), any(), any());
+        verify(claimService, never()).completeDigestTerminal(any(), any(), any(), any());
+    }
+
+    @Test
+    void sendOne_retryable_usesNowAfterSend() {
+        LocalDateTime t0 = LocalDateTime.of(2026, 8, 16, 1, 0);
+        LocalDateTime t1 = t0.plusMinutes(3);
+        LocalDateTime t2 = t0.plusMinutes(4);
+        when(notificationTimeSupport.nowUtc()).thenReturn(t0, t1, t1, t2);
+        NotificationDigestEmail row = new NotificationDigestEmail();
+        row.setId(20L);
+        row.setRecipientUserId(4);
+        row.setTenantId(1);
+        row.setDigestDate(digestDate);
+        row.setAttemptCount(1);
+        when(claimService.claimDigestEmail(eq(20L), eq(t0), any(), anyInt()))
+                .thenReturn(Optional.of(new NotificationClaimService.Claimed<>(row, "tok")));
+        User user = enabledUser();
+        when(contactLookup.load(List.of(4))).thenReturn(Map.of(4, user));
+        when(contactLookup.emailEnabled(user)).thenReturn(true);
+        when(contactLookup.hasUsableEmail(user)).thenReturn(true);
+        when(contactLookup.accountActive(user)).thenReturn(true);
+        when(deliveryMapper.selectByDigestEmailId(20L)).thenReturn(List.of(item("CS101", "Intro", "A")));
+        when(templateFactory.renderDigest(any(), anyList())).thenReturn(new RenderedEmail("s", "b"));
+        when(claimService.markDigestSendAttempted(eq(20L), eq("tok"), eq(t1), eq(t1.plusSeconds(120))))
+                .thenReturn(1);
+        when(emailSender.send(any())).thenReturn(EmailSendResult.retryable(
+                FailureCategory.RETRYABLE_NETWORK, "smtp"));
+
+        service.sendOne(20L);
+
+        verify(digestEmailMapper).markRetry(eq(20L), eq("tok"), eq(t2.plusSeconds(2)), any(), any(), eq(t2));
+    }
+
+    @Test
     void sendOne_preferenceOff_usesCompleteDigestTerminal() {
         NotificationDigestEmail row = new NotificationDigestEmail();
         row.setId(20L);
