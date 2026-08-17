@@ -2,18 +2,29 @@ package com.coursistant.lms.module.interaction.notification.it;
 
 import com.coursistant.lms.module.interaction.notification.claim.NotificationClaimService;
 import com.coursistant.lms.module.interaction.notification.config.NotificationProperties;
+import com.coursistant.lms.module.interaction.notification.digest.DailyDigestService;
+import com.coursistant.lms.module.interaction.notification.enums.FailureCategory;
 import com.coursistant.lms.module.interaction.notification.it.support.NotificationPhase1SpringITBase;
+import com.coursistant.lms.module.interaction.notification.repository.NotificationDigestEmailMapper;
 import com.coursistant.lms.module.interaction.notification.service.NotificationTimeSupport;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doReturn;
 
 /**
- * Pins digest terminal transitions that only update the parent row, leaving items PROCESSING.
+ * Pins digest terminal transitions: parent token update and item cascade stay in one transaction.
  */
 class DigestTerminalCascadeIT extends NotificationPhase1SpringITBase {
 
@@ -28,9 +39,20 @@ class DigestTerminalCascadeIT extends NotificationPhase1SpringITBase {
     @Autowired
     private NotificationTimeSupport notificationTimeSupport;
 
+    @Autowired
+    private DailyDigestService dailyDigestService;
+
+    @MockitoSpyBean
+    private NotificationDigestEmailMapper digestEmailMapper;
+
+    @AfterEach
+    void resetSpies() {
+        Mockito.reset(digestEmailMapper);
+    }
+
     @Test
     void orphanMaxAttempts_marksItemsPermanentWithParent() {
-        long digestId = seedDigestWithItem(5, null, 0);
+        long digestId = seedDigestWithItem(5, null, 0, true, "cascade-orphan-" + uuid() + "@example.com");
         LocalDateTime now = notificationTimeSupport.nowUtc();
         claimService.claimDigestEmail(digestId, now, now.plusMinutes(2),
                 notificationProperties.getDigest().getMaxAttempts());
@@ -47,7 +69,7 @@ class DigestTerminalCascadeIT extends NotificationPhase1SpringITBase {
     @Test
     void secondUnknownOutcome_marksItemsPermanentWithParent() {
         LocalDateTime sentAt = notificationTimeSupport.nowUtc().minusMinutes(5);
-        long digestId = seedDigestWithItem(1, sentAt, 1);
+        long digestId = seedDigestWithItem(1, sentAt, 1, true, "cascade-unknown-" + uuid() + "@example.com");
         LocalDateTime now = notificationTimeSupport.nowUtc();
         claimService.claimDigestEmail(digestId, now, now.plusMinutes(2),
                 notificationProperties.getDigest().getMaxAttempts());
@@ -63,8 +85,89 @@ class DigestTerminalCascadeIT extends NotificationPhase1SpringITBase {
                 "SELECT failure_category FROM notification_digest_email WHERE id = ?", String.class, digestId));
     }
 
-    private long seedDigestWithItem(int attemptCount, LocalDateTime sendAttemptedAt, int unknownCount) {
-        int userId = insertUser("cascade-" + uuid() + "@example.com", true, "ACTIVE");
+    @Test
+    void sendOne_preferenceOff_cascadesSkippedPreference() {
+        long digestId = seedDigestWithItem(0, null, 0, false, "cascade-pref-" + uuid() + "@example.com");
+        dailyDigestService.sendOne(digestId);
+
+        assertParentAndItems(digestId, "SKIPPED_PREFERENCE", "SKIPPED_PREFERENCE");
+        assertEquals("PERMANENT_PREFERENCE", jdbcTemplate.queryForObject(
+                "SELECT failure_category FROM notification_digest_email WHERE id = ?", String.class, digestId));
+        assertTrue(fakeNotificationEmailSender.messages().isEmpty());
+    }
+
+    @Test
+    void sendOne_noUsableEmail_cascadesPermanent() {
+        long digestId = seedDigestWithItem(0, null, 0, true, "no-at-sign-" + uuid());
+        dailyDigestService.sendOne(digestId);
+
+        assertParentAndItems(digestId, "FAILED_PERMANENT", "FAILED_PERMANENT");
+        assertEquals("PERMANENT_NO_EMAIL", jdbcTemplate.queryForObject(
+                "SELECT failure_category FROM notification_digest_email WHERE id = ?", String.class, digestId));
+        assertTrue(fakeNotificationEmailSender.messages().isEmpty());
+    }
+
+    @Test
+    void sendOne_providerSent_cascadesSent() {
+        long digestId = seedDigestWithItem(0, null, 0, true, "cascade-sent-" + uuid() + "@example.com");
+        fakeNotificationEmailSender.succeed("smtp-1");
+        dailyDigestService.sendOne(digestId);
+
+        assertParentAndItems(digestId, "SENT", "SENT");
+        assertEquals("smtp-1", jdbcTemplate.queryForObject(
+                "SELECT provider_message_id FROM notification_digest_email WHERE id = ?", String.class, digestId));
+        assertEquals(1, fakeNotificationEmailSender.messages().size());
+    }
+
+    @Test
+    void sendOne_dryRun_cascadesDryRun() {
+        long digestId = seedDigestWithItem(0, null, 0, true, "cascade-dry-" + uuid() + "@example.com");
+        dailyDigestService.sendOne(digestId);
+
+        assertParentAndItems(digestId, "DRY_RUN", "DRY_RUN");
+        assertEquals(1, fakeNotificationEmailSender.messages().size());
+    }
+
+    @Test
+    void sendOne_providerPermanent_cascadesFailedPermanent() {
+        long digestId = seedDigestWithItem(0, null, 0, true, "cascade-perm-" + uuid() + "@example.com");
+        fakeNotificationEmailSender.failPermanent(FailureCategory.PERMANENT_INVALID_EMAIL, "bad-addr");
+        dailyDigestService.sendOne(digestId);
+
+        assertParentAndItems(digestId, "FAILED_PERMANENT", "FAILED_PERMANENT");
+        assertEquals("PERMANENT_INVALID_EMAIL", jdbcTemplate.queryForObject(
+                "SELECT failure_category FROM notification_digest_email WHERE id = ?", String.class, digestId));
+    }
+
+    @Test
+    void sendOne_staleParentUpdate_doesNotTouchItems() {
+        long digestId = seedDigestWithItem(0, null, 0, false, "cascade-stale-" + uuid() + "@example.com");
+        doReturn(0).when(digestEmailMapper).markSkipped(anyLong(), anyString(), anyString(), anyString(), any());
+
+        dailyDigestService.sendOne(digestId);
+
+        assertEquals("PROCESSING", jdbcTemplate.queryForObject(
+                "SELECT status FROM notification_digest_email WHERE id = ?", String.class, digestId));
+        assertEquals(1, count(
+                "SELECT COUNT(*) FROM notification_delivery WHERE digest_email_id = ? AND status = 'PROCESSING'",
+                digestId));
+        assertTrue(fakeNotificationEmailSender.messages().isEmpty());
+    }
+
+    private void assertParentAndItems(long digestId, String parentStatus, String itemStatus) {
+        assertEquals(parentStatus, jdbcTemplate.queryForObject(
+                "SELECT status FROM notification_digest_email WHERE id = ?", String.class, digestId));
+        assertEquals(0, count(
+                "SELECT COUNT(*) FROM notification_delivery WHERE digest_email_id = ? AND status = 'PROCESSING'",
+                digestId));
+        assertEquals(1, count(
+                "SELECT COUNT(*) FROM notification_delivery WHERE digest_email_id = ? AND status = ?",
+                digestId, itemStatus));
+    }
+
+    private long seedDigestWithItem(int attemptCount, LocalDateTime sendAttemptedAt, int unknownCount,
+                                    boolean emailNotifications, String email) {
+        int userId = insertUser(email, emailNotifications, "ACTIVE");
         int instructorId = insertInstructor();
         int courseId = insertCourse(instructorId);
         jdbcTemplate.update("""
