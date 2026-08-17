@@ -1,9 +1,8 @@
 package com.coursistant.lms.module.interaction.notification.event;
 
-import com.coursistant.lms.module.interaction.notification.channel.DispatchOutcome;
-import com.coursistant.lms.module.interaction.notification.channel.NotificationChannelDispatcher;
-import com.coursistant.lms.module.interaction.notification.channel.NotificationChannelRouter;
+import com.coursistant.lms.module.interaction.notification.claim.NotificationClaimService;
 import com.coursistant.lms.module.interaction.notification.config.NotificationProperties;
+import com.coursistant.lms.module.interaction.notification.dto.NotificationDispatchPayload;
 import com.coursistant.lms.module.interaction.notification.entity.NotificationEventOutbox;
 import com.coursistant.lms.module.interaction.notification.enums.FailureCategory;
 import com.coursistant.lms.module.interaction.notification.enums.NotificationType;
@@ -12,6 +11,7 @@ import com.coursistant.lms.module.interaction.notification.enums.SubjectType;
 import com.coursistant.lms.module.interaction.notification.repository.NotificationEventOutboxMapper;
 import com.coursistant.lms.module.interaction.notification.repository.NotificationEventRecipientMapper;
 import com.coursistant.lms.module.interaction.notification.service.ExplicitRecipientValidator;
+import com.coursistant.lms.module.interaction.notification.service.NotificationFanoutService;
 import com.coursistant.lms.module.interaction.notification.service.NotificationRecipientResolver;
 import com.coursistant.lms.module.interaction.notification.service.NotificationTimeSupport;
 import com.coursistant.lms.module.interaction.notification.support.NotificationJson;
@@ -21,12 +21,13 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 @Component
 @Profile("!openapi")
@@ -39,16 +40,16 @@ public class NotificationEventRelayWorker {
     private NotificationEventRecipientMapper recipientMapper;
 
     @Resource
-    private NotificationChannelDispatcher channelDispatcher;
-
-    @Resource
-    private NotificationChannelRouter channelRouter;
+    private NotificationFanoutService notificationFanoutService;
 
     @Resource
     private NotificationRecipientResolver notificationRecipientResolver;
 
     @Resource
     private ExplicitRecipientValidator explicitRecipientValidator;
+
+    @Resource
+    private NotificationClaimService claimService;
 
     @Resource
     private NotificationJson notificationJson;
@@ -58,6 +59,9 @@ public class NotificationEventRelayWorker {
 
     @Resource
     private NotificationProperties notificationProperties;
+
+    @Resource
+    private PlatformTransactionManager transactionManager;
 
     @Async("notificationExecutor")
     public void triggerFastPath(Long outboxId) {
@@ -92,62 +96,56 @@ public class NotificationEventRelayWorker {
         }
     }
 
-    @Transactional
     public void processOne(Long outboxId) {
         if (!notificationProperties.getOutbox().isEnabled()) {
             return;
         }
         LocalDateTime now = notificationTimeSupport.nowUtc();
-        String token = UUID.randomUUID().toString();
         LocalDateTime leaseUntil = now.plusSeconds(notificationProperties.getOutbox().getLeaseSeconds());
-        int claimed = outboxMapper.claim(outboxId, token, leaseUntil, now);
-        if (claimed == 0) {
+        var claimed = claimService.claimOutbox(outboxId, now, leaseUntil,
+                notificationProperties.getOutbox().getMaxAttempts());
+        if (claimed.isEmpty()) {
             return;
         }
-        NotificationEventOutbox row = outboxMapper.selectById(outboxId);
-        if (row == null) {
-            return;
-        }
-        if (row.getAttemptCount() != null
-                && row.getAttemptCount() > notificationProperties.getOutbox().getMaxAttempts()) {
-            outboxMapper.markPermanent(outboxId, token, FailureCategory.ORPHAN_MAX_ATTEMPTS.name(), now);
-            return;
-        }
-        NotificationEvent event = toEvent(row);
-        List<Integer> recipients = resolveRecipients(row, event);
-        DispatchOutcome outcome = channelDispatcher.dispatch(event, recipients);
-        if (outcome.allPersisted()) {
-            int done = outboxMapper.markDone(outboxId, token, now);
-            if (done == 0) {
-                NotificationLog.warn("stale_claim", event.getEventId(), event.getTenantId(),
-                        event.getEventType().name(), null, "DONE", null, null, null,
-                        row.getAttemptCount(), token, "markDone");
-            }
-        } else {
-            NotificationLog.warn("channel_persist_incomplete", event.getEventId(), event.getTenantId(),
-                    event.getEventType().name(), String.valueOf(outcome.failedChannels()),
-                    "FAILED_RETRYABLE", FailureCategory.RETRYABLE_CHANNEL_PERSIST.name(),
-                    null, null, row.getAttemptCount(), token, "retry");
-            int updated = outboxMapper.markRetryable(outboxId, token, backoff(now, row.getAttemptCount()),
-                    "channels_not_persisted=" + outcome.failedChannels(), now);
-            if (updated == 0) {
-                NotificationLog.warn("stale_claim", event.getEventId(), event.getTenantId(),
-                        event.getEventType().name(), null, "FAILED_RETRYABLE", null, null, null,
-                        row.getAttemptCount(), token, "markRetryable");
-            }
+        NotificationEventOutbox claimedRow = claimed.get().row();
+        String token = claimed.get().token();
+        try {
+            new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+                NotificationEventOutbox row = outboxMapper.lockClaimed(outboxId, token, now);
+                if (row == null) {
+                    return;
+                }
+                List<Integer> recipients = resolveRecipients(row);
+                notificationFanoutService.persist(toPayload(row), recipients);
+                int done = outboxMapper.markDone(outboxId, token, now);
+                if (done == 0) {
+                    throw new IllegalStateException("markDone stale");
+                }
+            });
+        } catch (RuntimeException e) {
+            NotificationLog.warn("recipient_resolution_failed", claimedRow.getEventId(), claimedRow.getTenantId(),
+                    claimedRow.getNotificationType(), null, "FAILED_RETRYABLE",
+                    FailureCategory.RETRYABLE_CHANNEL_PERSIST.name(), null, null,
+                    claimedRow.getAttemptCount(), token, e.getMessage());
+            TransactionTemplate retry = new TransactionTemplate(transactionManager);
+            retry.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+            retry.executeWithoutResult(status -> outboxMapper.markRetryable(outboxId, token,
+                    backoff(now, claimedRow.getAttemptCount()),
+                    NotificationLog.truncateLastError(e.getMessage() == null ? "fanout_failed" : e.getMessage()),
+                    now));
         }
     }
 
-    private List<Integer> resolveRecipients(NotificationEventOutbox row, NotificationEvent event) {
+    private List<Integer> resolveRecipients(NotificationEventOutbox row) {
         RecipientMode mode = RecipientMode.valueOf(row.getRecipientMode());
         List<Integer> raw;
         if (mode == RecipientMode.EXPLICIT) {
             raw = loadExplicit(row.getId());
             List<Integer> validated = explicitRecipientValidator.validate(row.getTenantId(), raw);
-            return excludeActor(event.getEventType(), event.getActorUserId(), validated);
+            return excludeActor(NotificationType.valueOf(row.getNotificationType()), row.getActorUserId(), validated);
         }
         raw = notificationRecipientResolver.resolveActiveStudentRecipients(row.getCourseId());
-        return excludeActor(event.getEventType(), event.getActorUserId(), raw);
+        return excludeActor(NotificationType.valueOf(row.getNotificationType()), row.getActorUserId(), raw);
     }
 
     private List<Integer> loadExplicit(Long outboxId) {
@@ -181,22 +179,22 @@ public class NotificationEventRelayWorker {
         return filtered;
     }
 
-    private NotificationEvent toEvent(NotificationEventOutbox row) {
-        NotificationEvent event = new NotificationEvent();
-        event.setEventId(row.getEventId());
-        event.setEventType(NotificationType.valueOf(row.getNotificationType()));
-        event.setEventKey(row.getEventKey());
-        event.setTenantId(row.getTenantId());
-        event.setCourseId(row.getCourseId());
-        event.setActorUserId(row.getActorUserId());
-        event.setRecipientMode(RecipientMode.valueOf(row.getRecipientMode()));
-        event.setSubjectType(SubjectType.valueOf(row.getSubjectType()));
-        event.setSubjectId(row.getSubjectId());
-        event.setMessage(row.getMessage());
-        event.setDeepLink(row.getDeepLink());
-        event.setOccurredAt(row.getOccurredAt());
-        event.setTemplateVars(notificationJson.readVars(row.getTemplateVarsJson()));
-        return event;
+    private NotificationDispatchPayload toPayload(NotificationEventOutbox row) {
+        NotificationDispatchPayload payload = new NotificationDispatchPayload();
+        payload.setEventId(row.getEventId());
+        payload.setNotificationType(NotificationType.valueOf(row.getNotificationType()));
+        payload.setEventKey(row.getEventKey());
+        payload.setTenantId(row.getTenantId());
+        payload.setCourseId(row.getCourseId());
+        payload.setActorUserId(row.getActorUserId());
+        payload.setRecipientMode(RecipientMode.valueOf(row.getRecipientMode()));
+        payload.setSubjectType(SubjectType.valueOf(row.getSubjectType()));
+        payload.setSubjectId(row.getSubjectId());
+        payload.setMessage(row.getMessage());
+        payload.setDeepLink(row.getDeepLink());
+        payload.setCreatedAt(row.getOccurredAt());
+        payload.setTemplateVars(notificationJson.readVars(row.getTemplateVarsJson()));
+        return payload;
     }
 
     private LocalDateTime backoff(LocalDateTime now, Integer attempt) {
@@ -204,4 +202,5 @@ public class NotificationEventRelayWorker {
         long seconds = (long) Math.min(3600, Math.pow(notificationProperties.getEmail().getBackoffBaseSeconds(), n));
         return now.plusSeconds(Math.max(2, seconds));
     }
+
 }

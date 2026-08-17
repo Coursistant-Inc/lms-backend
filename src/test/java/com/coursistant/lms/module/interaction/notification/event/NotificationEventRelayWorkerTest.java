@@ -1,18 +1,15 @@
 package com.coursistant.lms.module.interaction.notification.event;
 
-import com.coursistant.lms.module.interaction.notification.channel.ChannelPersistResult;
-import com.coursistant.lms.module.interaction.notification.channel.DispatchOutcome;
-import com.coursistant.lms.module.interaction.notification.channel.NotificationChannelDispatcher;
-import com.coursistant.lms.module.interaction.notification.channel.NotificationChannelRouter;
+import com.coursistant.lms.module.interaction.notification.claim.NotificationClaimService;
 import com.coursistant.lms.module.interaction.notification.config.NotificationProperties;
 import com.coursistant.lms.module.interaction.notification.entity.NotificationEventOutbox;
-import com.coursistant.lms.module.interaction.notification.enums.NotificationChannel;
 import com.coursistant.lms.module.interaction.notification.enums.NotificationType;
 import com.coursistant.lms.module.interaction.notification.enums.RecipientMode;
 import com.coursistant.lms.module.interaction.notification.enums.SubjectType;
 import com.coursistant.lms.module.interaction.notification.repository.NotificationEventOutboxMapper;
 import com.coursistant.lms.module.interaction.notification.repository.NotificationEventRecipientMapper;
 import com.coursistant.lms.module.interaction.notification.service.ExplicitRecipientValidator;
+import com.coursistant.lms.module.interaction.notification.service.NotificationFanoutService;
 import com.coursistant.lms.module.interaction.notification.service.NotificationRecipientResolver;
 import com.coursistant.lms.module.interaction.notification.service.NotificationTimeSupport;
 import com.coursistant.lms.module.interaction.notification.support.NotificationJson;
@@ -23,15 +20,20 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.SimpleTransactionStatus;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -42,55 +44,69 @@ class NotificationEventRelayWorkerTest {
 
     @Mock private NotificationEventOutboxMapper outboxMapper;
     @Mock private NotificationEventRecipientMapper recipientMapper;
-    @Mock private NotificationChannelDispatcher channelDispatcher;
+    @Mock private NotificationFanoutService notificationFanoutService;
     @Mock private NotificationRecipientResolver notificationRecipientResolver;
     @Mock private ExplicitRecipientValidator explicitRecipientValidator;
+    @Mock private NotificationClaimService claimService;
     @Mock private NotificationTimeSupport notificationTimeSupport;
+    @Mock private PlatformTransactionManager transactionManager;
     @InjectMocks private NotificationEventRelayWorker worker;
 
     @BeforeEach
     void init() {
-        org.springframework.test.util.ReflectionTestUtils.setField(worker, "channelRouter", new NotificationChannelRouter());
-        org.springframework.test.util.ReflectionTestUtils.setField(worker, "notificationJson", new NotificationJson(new ObjectMapper()));
-        org.springframework.test.util.ReflectionTestUtils.setField(worker, "notificationProperties", new NotificationProperties());
+        org.springframework.test.util.ReflectionTestUtils.setField(worker, "notificationJson",
+                new NotificationJson(new ObjectMapper()));
+        org.springframework.test.util.ReflectionTestUtils.setField(worker, "notificationProperties",
+                new NotificationProperties());
         when(notificationTimeSupport.nowUtc()).thenReturn(LocalDateTime.of(2026, 8, 16, 1, 0));
+        lenient().when(transactionManager.getTransaction(any())).thenReturn(new SimpleTransactionStatus());
     }
 
     @Test
     void allPersisted_marksDone() {
-        when(outboxMapper.claim(eq(5L), anyString(), any(), any())).thenReturn(1);
-        when(outboxMapper.selectById(5L)).thenReturn(outbox());
+        when(claimService.claimOutbox(eq(5L), any(), any(), anyInt()))
+                .thenReturn(Optional.of(new NotificationClaimService.Claimed<>(outbox(), "tok")));
+        when(outboxMapper.lockClaimed(eq(5L), eq("tok"), any())).thenReturn(outbox());
         when(recipientMapper.selectRecipientIds(eq(5L), anyInt(), anyInt())).thenReturn(List.of(8));
         when(explicitRecipientValidator.validate(eq(1), anyList())).thenReturn(List.of(8));
-        when(channelDispatcher.dispatch(any(), anyList())).thenReturn(new DispatchOutcome(List.of(
-                new ChannelPersistResult(NotificationChannel.IN_APP, true, 1, null),
-                new ChannelPersistResult(NotificationChannel.IMMEDIATE_EMAIL, true, 1, null)
-        )));
-        when(outboxMapper.markDone(eq(5L), anyString(), any())).thenReturn(1);
+        when(outboxMapper.markDone(eq(5L), eq("tok"), any())).thenReturn(1);
 
         worker.processOne(5L);
 
-        verify(outboxMapper).markDone(eq(5L), anyString(), any());
+        verify(notificationFanoutService).persist(any(), eq(List.of(8)));
+        verify(outboxMapper).markDone(eq(5L), eq("tok"), any());
         verify(outboxMapper, never()).markRetryable(any(), any(), any(), any(), any());
         verifyNoInteractions(notificationRecipientResolver);
     }
 
     @Test
-    void partialPersist_marksRetryable() {
-        when(outboxMapper.claim(eq(5L), anyString(), any(), any())).thenReturn(1);
-        when(outboxMapper.selectById(5L)).thenReturn(outbox());
+    void fanoutThrows_marksRetryable() {
+        when(claimService.claimOutbox(eq(5L), any(), any(), anyInt()))
+                .thenReturn(Optional.of(new NotificationClaimService.Claimed<>(outbox(), "tok")));
+        when(outboxMapper.lockClaimed(eq(5L), eq("tok"), any())).thenReturn(outbox());
         when(recipientMapper.selectRecipientIds(eq(5L), anyInt(), anyInt())).thenReturn(List.of(8));
         when(explicitRecipientValidator.validate(eq(1), anyList())).thenReturn(List.of(8));
-        when(channelDispatcher.dispatch(any(), anyList())).thenReturn(new DispatchOutcome(List.of(
-                new ChannelPersistResult(NotificationChannel.IN_APP, true, 1, null),
-                new ChannelPersistResult(NotificationChannel.IMMEDIATE_EMAIL, false, 0, "fail")
-        )));
-        when(outboxMapper.markRetryable(eq(5L), anyString(), any(), any(), any())).thenReturn(1);
+        doThrow(new RuntimeException("fail")).when(notificationFanoutService).persist(any(), anyList());
 
         worker.processOne(5L);
 
-        verify(outboxMapper).markRetryable(eq(5L), anyString(), any(), anyString(), any());
+        verify(outboxMapper).markRetryable(eq(5L), eq("tok"), any(), anyString(), any());
         verify(outboxMapper, never()).markDone(any(), any(), any());
+    }
+
+    @Test
+    void recipientResolutionThrows_marksRetryable() {
+        when(claimService.claimOutbox(eq(5L), any(), any(), anyInt()))
+                .thenReturn(Optional.of(new NotificationClaimService.Claimed<>(outbox(), "tok")));
+        when(outboxMapper.lockClaimed(eq(5L), eq("tok"), any())).thenReturn(outbox());
+        when(recipientMapper.selectRecipientIds(eq(5L), anyInt(), anyInt())).thenReturn(List.of(8));
+        when(explicitRecipientValidator.validate(eq(1), anyList())).thenThrow(new RuntimeException("db down"));
+
+        worker.processOne(5L);
+
+        verify(outboxMapper).markRetryable(eq(5L), eq("tok"), any(), eq("db down"), any());
+        verify(outboxMapper, never()).markDone(any(), any(), any());
+        verifyNoInteractions(notificationFanoutService);
     }
 
     private NotificationEventOutbox outbox() {

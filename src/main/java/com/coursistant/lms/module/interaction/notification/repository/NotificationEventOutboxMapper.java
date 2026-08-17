@@ -20,6 +20,10 @@ public interface NotificationEventOutboxMapper {
 
     NotificationEventOutbox selectById(@Param("id") Long id);
 
+    NotificationEventOutbox lockClaimed(@Param("id") Long id,
+                                        @Param("claimToken") String claimToken,
+                                        @Param("now") LocalDateTime now);
+
     List<Long> selectClaimBatch(@Param("now") LocalDateTime now, @Param("batchSize") int batchSize);
 
     int claim(@Param("id") Long id,

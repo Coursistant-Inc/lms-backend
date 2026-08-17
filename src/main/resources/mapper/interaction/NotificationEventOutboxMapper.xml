@@ -41,6 +41,16 @@
         WHERE id = #{id}
     </select>
 
+    <select id="lockClaimed" resultType="com.coursistant.lms.module.interaction.notification.entity.NotificationEventOutbox">
+        SELECT <include refid="Base_Column_List"/>
+        FROM notification_event_outbox
+        WHERE id = #{id}
+          AND claim_token = #{claimToken}
+          AND status = 'PROCESSING'
+          AND lease_until &gt; #{now}
+        FOR UPDATE
+    </select>
+
     <select id="selectClaimBatch" resultType="long">
         SELECT id
         FROM notification_event_outbox
@@ -49,7 +59,6 @@
           AND (lease_until IS NULL OR lease_until &lt; #{now})
         ORDER BY next_attempt_at
         LIMIT #{batchSize}
-        FOR UPDATE SKIP LOCKED
     </select>
 
     <update id="claim">
