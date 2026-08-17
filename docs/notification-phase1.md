@@ -74,6 +74,7 @@ Old builds treat `enabled=false` as “skip outbox and dispatch after commit”;
 ## Rollback (do not drop tables)
 
 1. `provider=log` or `lms.notification.email.enabled=false` — stop real SMTP.
+   Closing `email.enabled` skips the Immediate worker and Digest Phase B (`sendOne`); frozen envelopes stay `PENDING` and send after the switch is turned back on. Digest Phase A collect still runs.
 2. **Set `lms.notification.outbox.enabled=true` before starting the old binary.** Old code with `enabled=false` bypasses outbox and dispatches after commit.
 3. Roll back the binary. Leave the four notification tables in place.
 4. Old code will keep consuming PENDING outbox rows. To halt consumption completely, stop the process; do not use `outbox.enabled=false` on the old binary.

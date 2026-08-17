@@ -1,71 +1,94 @@
 package com.coursistant.lms.module.interaction.notification.it;
 
-import org.junit.jupiter.api.BeforeAll;
+import com.coursistant.lms.module.interaction.notification.event.NotificationEventRelayWorker;
+import com.coursistant.lms.module.interaction.notification.it.support.NotificationPhase1SpringITBase;
+import com.coursistant.lms.module.interaction.notification.repository.NotificationDeliveryMapper;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.jdbc.core.JdbcTemplate;
+import org.mockito.Mockito;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.Mockito.doThrow;
 
-class NotificationChannelPartialFailureIT {
+/**
+ * Pins Relay/Fanout atomicity: in-app and email rows commit together, and a persist
+ * failure rolls both back without marking the outbox DONE.
+ */
+class NotificationChannelPartialFailureIT extends NotificationPhase1SpringITBase {
 
-    @BeforeAll
-    static void start() {
-        NotificationPhase1Mysql.ensureStarted();
+    @Autowired
+    private NotificationEventRelayWorker relayWorker;
+
+    @MockitoSpyBean
+    private NotificationDeliveryMapper deliveryMapper;
+
+    @AfterEach
+    void resetSpies() {
+        Mockito.reset(deliveryMapper);
     }
 
     @Test
-    void retryFillsMissingChannel_withoutRewritingSnapshotOrDuplicateInApp() {
-        JdbcTemplate jdbc = NotificationPhase1Mysql.jdbc();
-        String eventId = NotificationPhase1Mysql.uuid();
-        String eventKey = "partial-" + eventId;
-        long outboxId = NotificationPhase1Mysql.insertOutbox(eventId, "ASSIGNMENT_GRADE_RELEASED",
-                "ASSIGNMENT", 9, eventKey, "FAILED_RETRYABLE");
-        jdbc.update("INSERT INTO notification_event_recipient (outbox_id, recipient_user_id) VALUES (?, 4), (?, 5)",
-                outboxId, outboxId);
-        NotificationPhase1Mysql.insertDelivery(eventId, 4, "ASSIGNMENT_GRADE_RELEASED",
-                "ASSIGNMENT", 9, eventKey, "IN_APP", "SENT");
-        NotificationPhase1Mysql.insertDelivery(eventId, 5, "ASSIGNMENT_GRADE_RELEASED",
-                "ASSIGNMENT", 9, eventKey, "IN_APP", "SENT");
+    void processOne_writesInAppAndImmediateEmail_withoutInAppDeliveryOrDuplicates() {
+        SeededEvent seeded = seedGradeReleased();
 
-        jdbc.update("""
-                INSERT INTO notification_delivery (
-                  event_id, tenant_id, recipient_user_id, course_id, notification_type, subject_type,
-                  subject_id, event_key, channel, status, message, deep_link, occurred_at,
-                  attempt_count, next_attempt_at, unknown_outcome_count, created_at, updated_at
-                ) VALUES (?, 1, 4, 2, 'ASSIGNMENT_GRADE_RELEASED', 'ASSIGNMENT', 9, ?, 'IN_APP', 'SENT',
-                  'msg', '/x', UTC_TIMESTAMP(3), 0, UTC_TIMESTAMP(3), 0, UTC_TIMESTAMP(3), UTC_TIMESTAMP(3))
-                ON DUPLICATE KEY UPDATE id = id
-                """, eventId, eventKey);
-        NotificationPhase1Mysql.insertDelivery(eventId, 4, "ASSIGNMENT_GRADE_RELEASED",
-                "ASSIGNMENT", 9, eventKey, "IMMEDIATE_EMAIL", "PENDING");
-        NotificationPhase1Mysql.insertDelivery(eventId, 5, "ASSIGNMENT_GRADE_RELEASED",
-                "ASSIGNMENT", 9, eventKey, "IMMEDIATE_EMAIL", "PENDING");
+        relayWorker.processOne(seeded.outboxId());
+        relayWorker.processOne(seeded.outboxId());
 
-        jdbc.update("""
-                INSERT INTO notification_event_outbox (
-                  event_id, tenant_id, course_id, notification_type, subject_type, subject_id, event_key,
-                  message, deep_link, occurred_at, recipient_mode, status, attempt_count, next_attempt_at,
-                  created_at, updated_at
-                ) VALUES (?, 1, 2, 'ASSIGNMENT_GRADE_RELEASED', 'ASSIGNMENT', 9, ?, 'msg', '/x',
-                  UTC_TIMESTAMP(3), 'EXPLICIT', 'PENDING', 0, UTC_TIMESTAMP(3), UTC_TIMESTAMP(3), UTC_TIMESTAMP(3))
-                ON DUPLICATE KEY UPDATE id = id
-                """, NotificationPhase1Mysql.uuid(), eventKey);
+        assertEquals("DONE", jdbcTemplate.queryForObject(
+                "SELECT status FROM notification_event_outbox WHERE id = ?", String.class, seeded.outboxId()));
+        assertEquals(2, count("""
+                SELECT COUNT(*) FROM user_notification
+                WHERE notification_type = 'ASSIGNMENT_GRADE_RELEASED' AND subject_id = ?
+                """, seeded.subjectId()));
+        assertEquals(2, count("""
+                SELECT COUNT(*) FROM notification_delivery
+                WHERE event_id = ? AND channel = 'IMMEDIATE_EMAIL'
+                """, seeded.eventId()));
+        assertEquals(0, count("""
+                SELECT COUNT(*) FROM notification_delivery
+                WHERE event_id = ? AND channel = 'IN_APP'
+                """, seeded.eventId()));
+    }
 
-        Integer inApp = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM notification_delivery WHERE event_id = ? AND channel = 'IN_APP'",
-                Integer.class, eventId);
-        Integer email = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM notification_delivery WHERE event_id = ? AND channel = 'IMMEDIATE_EMAIL'",
-                Integer.class, eventId);
-        Integer recipients = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM notification_event_recipient WHERE outbox_id = ?",
-                Integer.class, outboxId);
-        assertEquals(2, inApp);
-        assertEquals(2, email);
-        assertEquals(2, recipients);
+    @Test
+    void processOne_emailPersistThrows_rollsBackInAppAndMarksRetryable() {
+        SeededEvent seeded = seedGradeReleased();
+        doThrow(new IllegalStateException("injected-email-persist-failure"))
+                .when(deliveryMapper).upsertChunk(anyList());
 
-        jdbc.update("UPDATE notification_event_outbox SET status = 'DONE' WHERE id = ?", outboxId);
-        assertEquals("DONE", jdbc.queryForObject(
-                "SELECT status FROM notification_event_outbox WHERE id = ?", String.class, outboxId));
+        relayWorker.processOne(seeded.outboxId());
+
+        assertEquals("FAILED_RETRYABLE", jdbcTemplate.queryForObject(
+                "SELECT status FROM notification_event_outbox WHERE id = ?", String.class, seeded.outboxId()));
+        assertEquals(0, count("""
+                SELECT COUNT(*) FROM user_notification
+                WHERE notification_type = 'ASSIGNMENT_GRADE_RELEASED' AND subject_id = ?
+                """, seeded.subjectId()));
+        assertEquals(0, count("""
+                SELECT COUNT(*) FROM notification_delivery WHERE event_id = ?
+                """, seeded.eventId()));
+    }
+
+    private SeededEvent seedGradeReleased() {
+        int instructorId = insertInstructor();
+        int studentA = insertUser("partial-a-" + uuid() + "@example.com", true, "ACTIVE");
+        int studentB = insertUser("partial-b-" + uuid() + "@example.com", true, "ACTIVE");
+        int courseId = insertCourse(instructorId);
+        enrollStudent(courseId, studentA);
+        enrollStudent(courseId, studentB);
+        String eventId = uuid();
+        int subjectId = 9;
+        long outboxId = insertOutbox(eventId, "ASSIGNMENT_GRADE_RELEASED", "ASSIGNMENT", subjectId,
+                "grade-" + eventId, "EXPLICIT", "PENDING", courseId);
+        jdbcTemplate.update(
+                "INSERT INTO notification_event_recipient (outbox_id, recipient_user_id) VALUES (?, ?), (?, ?)",
+                outboxId, studentA, outboxId, studentB);
+        return new SeededEvent(outboxId, eventId, subjectId);
+    }
+
+    private record SeededEvent(long outboxId, String eventId, int subjectId) {
     }
 }
