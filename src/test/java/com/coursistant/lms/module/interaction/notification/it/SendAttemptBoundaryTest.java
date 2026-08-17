@@ -5,6 +5,7 @@ import com.coursistant.lms.module.interaction.notification.email.ImmediateEmailD
 import com.coursistant.lms.module.interaction.notification.it.support.NotificationPhase1SpringITBase;
 import com.coursistant.lms.module.interaction.notification.repository.NotificationDeliveryMapper;
 import com.coursistant.lms.module.interaction.notification.repository.NotificationDigestEmailMapper;
+import com.coursistant.lms.module.interaction.notification.service.NotificationTimeSupport;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -12,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -40,9 +42,12 @@ class SendAttemptBoundaryTest extends NotificationPhase1SpringITBase {
     @MockitoSpyBean
     private NotificationDeliveryMapper deliveryMapper;
 
+    @MockitoSpyBean
+    private NotificationTimeSupport timeSupport;
+
     @AfterEach
     void resetSpies() {
-        Mockito.reset(digestEmailMapper, deliveryMapper);
+        Mockito.reset(digestEmailMapper, deliveryMapper, timeSupport);
     }
 
     @Test
@@ -77,7 +82,7 @@ class SendAttemptBoundaryTest extends NotificationPhase1SpringITBase {
     @Test
     void digestSendOne_staleMarker_doesNotCallProvider() {
         long digestId = seedFrozenDigest("stale-marker@example.com");
-        doReturn(0).when(digestEmailMapper).markSendAttempted(anyLong(), anyString(), any());
+        doReturn(0).when(digestEmailMapper).markSendAttempted(anyLong(), anyString(), any(), any());
 
         dailyDigestService.sendOne(digestId);
 
@@ -93,12 +98,55 @@ class SendAttemptBoundaryTest extends NotificationPhase1SpringITBase {
         long deliveryId = insertDelivery(uuid(), userId, "ASSIGNMENT_SUBMISSION_RECEIVED",
                 "ASSIGNMENT_SUBMISSION", 3, "receipt-" + uuid(), "IMMEDIATE_EMAIL", "PENDING",
                 courseId, null);
-        doReturn(0).when(deliveryMapper).markSendAttempted(anyLong(), anyString(), any());
+        doReturn(0).when(deliveryMapper).markSendAttempted(anyLong(), anyString(), any(), any());
 
         immediateEmailDeliveryWorker.processOne(deliveryId);
 
         assertTrue(fakeNotificationEmailSender.messages().isEmpty(),
                 "0-row marker update must skip the email provider");
+    }
+
+    @Test
+    void digestSendOne_expiredLeaseAtMarker_skipsProvider() {
+        long digestId = seedFrozenDigest("lease-exp-digest@example.com");
+        LocalDateTime t0 = timeSupport.nowUtc();
+        doReturn(t0, t0.plusSeconds(121), t0.plusSeconds(121), t0.plusSeconds(121))
+                .when(timeSupport).nowUtc();
+
+        dailyDigestService.sendOne(digestId);
+
+        assertTrue(fakeNotificationEmailSender.messages().isEmpty(),
+                "expired lease at marker must skip SMTP");
+        assertEquals("PROCESSING", jdbcTemplate.queryForObject(
+                "SELECT status FROM notification_digest_email WHERE id = ?", String.class, digestId));
+        Boolean stamped = jdbcTemplate.queryForObject(
+                "SELECT send_attempted_at IS NOT NULL FROM notification_digest_email WHERE id = ?",
+                Boolean.class, digestId);
+        assertEquals(Boolean.FALSE, stamped);
+    }
+
+    @Test
+    void immediateProcessOne_expiredLeaseAtMarker_skipsProvider() {
+        int userId = insertUser("lease-exp-imm@example.com", true, "ACTIVE");
+        int instructorId = insertInstructor();
+        int courseId = insertCourse(instructorId);
+        long deliveryId = insertDelivery(uuid(), userId, "ASSIGNMENT_SUBMISSION_RECEIVED",
+                "ASSIGNMENT_SUBMISSION", 3, "receipt-" + uuid(), "IMMEDIATE_EMAIL", "PENDING",
+                courseId, null);
+        LocalDateTime t0 = timeSupport.nowUtc();
+        doReturn(t0, t0.plusSeconds(121), t0.plusSeconds(121), t0.plusSeconds(121))
+                .when(timeSupport).nowUtc();
+
+        immediateEmailDeliveryWorker.processOne(deliveryId);
+
+        assertTrue(fakeNotificationEmailSender.messages().isEmpty(),
+                "expired lease at marker must skip SMTP");
+        assertEquals("PROCESSING", jdbcTemplate.queryForObject(
+                "SELECT status FROM notification_delivery WHERE id = ?", String.class, deliveryId));
+        Boolean stamped = jdbcTemplate.queryForObject(
+                "SELECT send_attempted_at IS NOT NULL FROM notification_delivery WHERE id = ?",
+                Boolean.class, deliveryId);
+        assertEquals(Boolean.FALSE, stamped);
     }
 
     private long seedFrozenDigest(String email) {

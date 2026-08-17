@@ -39,13 +39,16 @@ class ImmediateEmailDeliveryWorkerTest {
     @Mock private NotificationTimeSupport notificationTimeSupport;
     @InjectMocks private ImmediateEmailDeliveryWorker worker;
 
+    private final LocalDateTime t0 = LocalDateTime.of(2026, 8, 16, 1, 0);
+    private final NotificationProperties properties = new NotificationProperties();
+
     @BeforeEach
     void init() {
-        NotificationProperties properties = new NotificationProperties();
         org.springframework.test.util.ReflectionTestUtils.setField(worker, "notificationProperties", properties);
         org.springframework.test.util.ReflectionTestUtils.setField(worker, "notificationJson",
                 new NotificationJson(new ObjectMapper()));
-        when(notificationTimeSupport.nowUtc()).thenReturn(LocalDateTime.of(2026, 8, 16, 1, 0));
+        properties.getEmail().setEnabled(true);
+        org.mockito.Mockito.lenient().when(notificationTimeSupport.nowUtc()).thenReturn(t0);
     }
 
     @Test
@@ -63,7 +66,7 @@ class ImmediateEmailDeliveryWorkerTest {
         when(contactLookup.hasUsableEmail(user)).thenReturn(true);
         when(contactLookup.accountActive(user)).thenReturn(true);
         when(templateFactory.renderImmediate(any(), any())).thenReturn(new RenderedEmail("s", "b"));
-        when(claimService.markDeliverySendAttempted(9L, "tok", LocalDateTime.of(2026, 8, 16, 1, 0))).thenReturn(0);
+        when(claimService.markDeliverySendAttempted(eq(9L), eq("tok"), eq(t0), eq(t0.plusSeconds(120)))).thenReturn(0);
 
         worker.processOne(9L);
 
@@ -102,7 +105,7 @@ class ImmediateEmailDeliveryWorkerTest {
         when(contactLookup.hasUsableEmail(user)).thenReturn(true);
         when(contactLookup.accountActive(user)).thenReturn(true);
         when(templateFactory.renderImmediate(any(), any())).thenReturn(new RenderedEmail("s", "b"));
-        when(claimService.markDeliverySendAttempted(9L, "tok", LocalDateTime.of(2026, 8, 16, 1, 0))).thenReturn(1);
+        when(claimService.markDeliverySendAttempted(eq(9L), eq("tok"), eq(t0), eq(t0.plusSeconds(120)))).thenReturn(1);
         when(emailSender.send(any())).thenReturn(EmailSendResult.retryable(
                 com.coursistant.lms.module.interaction.notification.enums.FailureCategory.RETRYABLE_NETWORK, "down"));
         when(deliveryMapper.markRetry(eq(9L), eq("tok"), any(), anyString(), anyString(), any())).thenReturn(1);
@@ -112,6 +115,44 @@ class ImmediateEmailDeliveryWorkerTest {
         verify(deliveryMapper).markRetry(eq(9L), eq("tok"), any(),
                 eq("RETRYABLE_NETWORK"), anyString(), any());
         verify(deliveryMapper, never()).markSent(any(), any(), any(), any());
+    }
+
+    @Test
+    void processOne_emailDisabled_doesNotClaim() {
+        properties.getEmail().setEnabled(false);
+
+        worker.processOne(9L);
+
+        verify(claimService, never()).claimDelivery(any(), any(), any(), anyInt());
+        verify(emailSender, never()).send(any());
+    }
+
+    @Test
+    void processOne_usesRefreshedNowForMarker() {
+        LocalDateTime t1 = t0.plusMinutes(3);
+        when(notificationTimeSupport.nowUtc()).thenReturn(t0, t1, t1);
+        NotificationDelivery row = delivery();
+        when(claimService.claimDelivery(eq(9L), eq(t0), any(), anyInt()))
+                .thenReturn(Optional.of(new NotificationClaimService.Claimed<>(row, "tok")));
+        User user = new User();
+        user.setId(4);
+        user.setEmail("a@b.com");
+        user.setEmailNotifications(true);
+        user.setStatus("ACTIVE");
+        when(contactLookup.load(anyList())).thenReturn(Map.of(4, user));
+        when(contactLookup.emailEnabled(user)).thenReturn(true);
+        when(contactLookup.hasUsableEmail(user)).thenReturn(true);
+        when(contactLookup.accountActive(user)).thenReturn(true);
+        when(templateFactory.renderImmediate(any(), any())).thenReturn(new RenderedEmail("s", "b"));
+        when(claimService.markDeliverySendAttempted(eq(9L), eq("tok"), eq(t1), eq(t1.plusSeconds(120))))
+                .thenReturn(1);
+        when(emailSender.send(any())).thenReturn(EmailSendResult.retryable(
+                com.coursistant.lms.module.interaction.notification.enums.FailureCategory.RETRYABLE_NETWORK, "down"));
+        when(deliveryMapper.markRetry(eq(9L), eq("tok"), any(), anyString(), anyString(), any())).thenReturn(1);
+
+        worker.processOne(9L);
+
+        verify(claimService).markDeliverySendAttempted(9L, "tok", t1, t1.plusSeconds(120));
     }
 
     private NotificationDelivery delivery() {

@@ -44,6 +44,33 @@ class NotificationPhase1SchemaStaticTest {
     }
 
     @Test
+    void markRetry_clearsSendAttemptedAt() throws Exception {
+        for (String path : List.of(
+                "src/main/resources/mapper/interaction/NotificationDeliveryMapper.xml",
+                "src/main/resources/mapper/interaction/NotificationDigestEmailMapper.xml")) {
+            String xml = Files.readString(Path.of(path));
+            int start = xml.indexOf("<update id=\"markRetry\">");
+            int end = xml.indexOf("</update>", start);
+            String sql = xml.substring(start, end).toLowerCase(Locale.ROOT);
+            assertTrue(sql.contains("send_attempted_at = null"), path);
+        }
+    }
+
+    @Test
+    void markSendAttempted_renewsLease() throws Exception {
+        for (String path : List.of(
+                "src/main/resources/mapper/interaction/NotificationDeliveryMapper.xml",
+                "src/main/resources/mapper/interaction/NotificationDigestEmailMapper.xml")) {
+            String xml = Files.readString(Path.of(path));
+            int start = xml.indexOf("<update id=\"markSendAttempted\">");
+            int end = xml.indexOf("</update>", start);
+            String sql = xml.substring(start, end).toLowerCase(Locale.ROOT);
+            assertTrue(sql.contains("lease_until = #{leaseuntil}"), path);
+            assertTrue(sql.contains("lease_until &gt; #{now}") || sql.contains("lease_until > #{now}"), path);
+        }
+    }
+
+    @Test
     void digestClaimBatch_excludesCollecting() throws Exception {
         String xml = Files.readString(Path.of(
                 "src/main/resources/mapper/interaction/NotificationDigestEmailMapper.xml"));

@@ -11,6 +11,7 @@ import com.coursistant.lms.module.interaction.notification.email.NotificationEma
 import com.coursistant.lms.module.interaction.notification.email.RenderedEmail;
 import com.coursistant.lms.module.interaction.notification.entity.NotificationDelivery;
 import com.coursistant.lms.module.interaction.notification.entity.NotificationDigestEmail;
+import com.coursistant.lms.module.interaction.notification.enums.DeliveryStatus;
 import com.coursistant.lms.module.interaction.notification.enums.DigestEmailStatus;
 import com.coursistant.lms.module.interaction.notification.enums.FailureCategory;
 import com.coursistant.lms.module.interaction.notification.repository.NotificationDeliveryMapper;
@@ -81,6 +82,9 @@ public class DailyDigestService {
                 }
             }
         }
+        if (!notificationProperties.getEmail().isEnabled()) {
+            return;
+        }
         LocalDateTime now = notificationTimeSupport.nowUtc();
         List<Long> ids = digestEmailMapper.selectClaimBatch(
                 now, notificationProperties.getDigest().getBatchSize(), tenantId, digestDate);
@@ -131,6 +135,9 @@ public class DailyDigestService {
     }
 
     public void sendOne(Long digestEmailId) {
+        if (!notificationProperties.getEmail().isEnabled()) {
+            return;
+        }
         LocalDateTime now = notificationTimeSupport.nowUtc();
         LocalDateTime leaseUntil = now.plusSeconds(notificationProperties.getDigest().getLeaseSeconds());
         var claimed = claimService.claimDigestEmail(digestEmailId, now, leaseUntil,
@@ -141,47 +148,57 @@ public class DailyDigestService {
         NotificationDigestEmail row = claimed.get().row();
         String token = claimed.get().token();
         User user = contactLookup.load(List.of(row.getRecipientUserId())).get(row.getRecipientUserId());
+        now = notificationTimeSupport.nowUtc();
         if (!contactLookup.emailEnabled(user)) {
-            digestEmailMapper.markSkipped(digestEmailId, token, "SKIPPED_PREFERENCE",
-                    FailureCategory.PERMANENT_PREFERENCE.name(), now);
-            deliveryMapper.markItemsByDigestEmailId(digestEmailId, "SKIPPED_PREFERENCE", now);
+            if (!claimService.completeDigestTerminal(digestEmailId, token, new NotificationClaimService.DigestTerminal(
+                    DigestEmailStatus.SKIPPED_PREFERENCE.name(), DeliveryStatus.SKIPPED_PREFERENCE.name(),
+                    FailureCategory.PERMANENT_PREFERENCE.name(), null, null), now)) {
+                stale(row, token, DigestEmailStatus.SKIPPED_PREFERENCE.name(), "preference");
+            }
             return;
         }
         List<NotificationDelivery> items = deliveryMapper.selectByDigestEmailId(digestEmailId);
         if (items == null || items.isEmpty()) {
-            digestEmailMapper.markSkipped(digestEmailId, token, "SKIPPED_INELIGIBLE",
-                    FailureCategory.PERMANENT_MISSING_TEMPLATE.name(), now);
+            if (!claimService.completeDigestTerminal(digestEmailId, token, new NotificationClaimService.DigestTerminal(
+                    DigestEmailStatus.SKIPPED_INELIGIBLE.name(), null,
+                    FailureCategory.PERMANENT_MISSING_TEMPLATE.name(), null, null), now)) {
+                stale(row, token, DigestEmailStatus.SKIPPED_INELIGIBLE.name(), "empty-items");
+            }
             return;
         }
         if (!contactLookup.hasUsableEmail(user) || !contactLookup.accountActive(user)) {
-            digestEmailMapper.markPermanent(digestEmailId, token, FailureCategory.PERMANENT_NO_EMAIL.name(),
-                    "no-email", now);
-            deliveryMapper.markItemsByDigestEmailId(digestEmailId, "FAILED_PERMANENT", now);
+            if (!claimService.completeDigestTerminal(digestEmailId, token, new NotificationClaimService.DigestTerminal(
+                    DigestEmailStatus.FAILED_PERMANENT.name(), DeliveryStatus.FAILED_PERMANENT.name(),
+                    FailureCategory.PERMANENT_NO_EMAIL.name(), "no-email", null), now)) {
+                stale(row, token, DigestEmailStatus.FAILED_PERMANENT.name(), "no-email");
+            }
             return;
         }
         RenderedEmail rendered = templateFactory.renderDigest(row.getDigestDate(), groupItems(items));
-        if (claimService.markDigestSendAttempted(digestEmailId, token, now) == 0) {
-            NotificationLog.warn("stale_claim", null, row.getTenantId(), null, "DAILY_DIGEST",
-                    "PROCESSING", null, null, row.getRecipientUserId(), row.getAttemptCount(), token,
-                    "skip-smtp");
+        now = notificationTimeSupport.nowUtc();
+        leaseUntil = now.plusSeconds(notificationProperties.getDigest().getLeaseSeconds());
+        if (claimService.markDigestSendAttempted(digestEmailId, token, now, leaseUntil) == 0) {
+            stale(row, token, DigestEmailStatus.PROCESSING.name(), "skip-smtp");
             return;
         }
         EmailSendResult result = emailSender.send(new EmailMessage(
                 row.getRecipientUserId(), user.getEmail(), rendered.subject(), rendered.textBody()));
         switch (result.status()) {
             case SENT -> {
-                if (digestEmailMapper.markSent(digestEmailId, token, result.providerMessageId(), now) == 0) {
-                    NotificationLog.warn("stale_claim", null, row.getTenantId(), null, "DAILY_DIGEST",
-                            "SENT", null, null, row.getRecipientUserId(), row.getAttemptCount(), token, "markSent");
-                    return;
+                if (!claimService.completeDigestTerminal(digestEmailId, token,
+                        new NotificationClaimService.DigestTerminal(
+                                DigestEmailStatus.SENT.name(), DeliveryStatus.SENT.name(),
+                                null, null, result.providerMessageId()), now)) {
+                    stale(row, token, DigestEmailStatus.SENT.name(), "markSent");
                 }
-                deliveryMapper.markItemsByDigestEmailId(digestEmailId, "SENT", now);
             }
             case DRY_RUN -> {
-                if (digestEmailMapper.markDryRun(digestEmailId, token, result.providerMessageId(), now) == 0) {
-                    return;
+                if (!claimService.completeDigestTerminal(digestEmailId, token,
+                        new NotificationClaimService.DigestTerminal(
+                                DigestEmailStatus.DRY_RUN.name(), DeliveryStatus.DRY_RUN.name(),
+                                null, null, result.providerMessageId()), now)) {
+                    stale(row, token, DigestEmailStatus.DRY_RUN.name(), "markDryRun");
                 }
-                deliveryMapper.markItemsByDigestEmailId(digestEmailId, "DRY_RUN", now);
             }
             case RETRYABLE_FAILURE -> digestEmailMapper.markRetry(digestEmailId, token,
                     now.plusSeconds(Math.max(2, (long) Math.min(3600,
@@ -191,11 +208,15 @@ public class DailyDigestService {
                             : result.failureCategory().name(),
                     NotificationLog.truncateLastError(result.errorMessage()), now);
             case PERMANENT_FAILURE -> {
-                digestEmailMapper.markPermanent(digestEmailId, token,
-                        result.failureCategory() == null ? FailureCategory.PERMANENT_NO_EMAIL.name()
-                                : result.failureCategory().name(),
-                        NotificationLog.truncateLastError(result.errorMessage()), now);
-                deliveryMapper.markItemsByDigestEmailId(digestEmailId, "FAILED_PERMANENT", now);
+                if (!claimService.completeDigestTerminal(digestEmailId, token,
+                        new NotificationClaimService.DigestTerminal(
+                                DigestEmailStatus.FAILED_PERMANENT.name(),
+                                DeliveryStatus.FAILED_PERMANENT.name(),
+                                result.failureCategory() == null ? FailureCategory.PERMANENT_NO_EMAIL.name()
+                                        : result.failureCategory().name(),
+                                NotificationLog.truncateLastError(result.errorMessage()), null), now)) {
+                    stale(row, token, DigestEmailStatus.FAILED_PERMANENT.name(), "provider");
+                }
             }
         }
     }
@@ -216,5 +237,10 @@ public class DailyDigestService {
                     entry.getKey(), titles.get(entry.getKey()), entry.getValue()));
         }
         return groups;
+    }
+
+    private void stale(NotificationDigestEmail row, String token, String status, String detail) {
+        NotificationLog.warn("stale_claim", null, row.getTenantId(), null, "DAILY_DIGEST",
+                status, null, null, row.getRecipientUserId(), row.getAttemptCount(), token, detail);
     }
 }

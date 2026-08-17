@@ -87,7 +87,7 @@
 
     <update id="markSendAttempted">
         UPDATE notification_digest_email
-        SET send_attempted_at = #{now}, updated_at = #{now}
+        SET send_attempted_at = #{now}, lease_until = #{leaseUntil}, updated_at = #{now}
         WHERE id = #{id}
           AND claim_token = #{claimToken}
           AND status = 'PROCESSING'
@@ -97,14 +97,14 @@
     <update id="markSent">
         UPDATE notification_digest_email
         SET status = 'SENT', sent_at = #{now}, provider_message_id = #{providerMessageId},
-            lease_until = NULL, updated_at = #{now}
+            send_attempted_at = NULL, lease_until = NULL, updated_at = #{now}
         WHERE id = #{id} AND claim_token = #{claimToken}
     </update>
 
     <update id="markDryRun">
         UPDATE notification_digest_email
         SET status = 'DRY_RUN', sent_at = #{now}, provider_message_id = #{providerMessageId},
-            lease_until = NULL, updated_at = #{now}
+            send_attempted_at = NULL, lease_until = NULL, updated_at = #{now}
         WHERE id = #{id} AND claim_token = #{claimToken}
     </update>
 
@@ -114,6 +114,7 @@
             next_attempt_at = #{nextAttemptAt},
             failure_category = #{failureCategory},
             last_error = #{lastError},
+            send_attempted_at = NULL,
             lease_until = NULL,
             updated_at = #{now}
         WHERE id = #{id} AND claim_token = #{claimToken}
@@ -124,6 +125,7 @@
         SET status = 'FAILED_PERMANENT',
             failure_category = #{failureCategory},
             last_error = #{lastError},
+            send_attempted_at = NULL,
             lease_until = NULL,
             updated_at = #{now}
         WHERE id = #{id} AND claim_token = #{claimToken}
@@ -133,6 +135,7 @@
         UPDATE notification_digest_email
         SET status = #{status},
             failure_category = #{failureCategory},
+            send_attempted_at = NULL,
             lease_until = NULL,
             updated_at = #{now}
         WHERE id = #{id} AND claim_token = #{claimToken}

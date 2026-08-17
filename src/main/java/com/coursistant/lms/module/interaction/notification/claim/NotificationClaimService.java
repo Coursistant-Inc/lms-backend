@@ -3,6 +3,8 @@ package com.coursistant.lms.module.interaction.notification.claim;
 import com.coursistant.lms.module.interaction.notification.entity.NotificationDelivery;
 import com.coursistant.lms.module.interaction.notification.entity.NotificationDigestEmail;
 import com.coursistant.lms.module.interaction.notification.entity.NotificationEventOutbox;
+import com.coursistant.lms.module.interaction.notification.enums.DeliveryStatus;
+import com.coursistant.lms.module.interaction.notification.enums.DigestEmailStatus;
 import com.coursistant.lms.module.interaction.notification.enums.FailureCategory;
 import com.coursistant.lms.module.interaction.notification.repository.NotificationDeliveryMapper;
 import com.coursistant.lms.module.interaction.notification.repository.NotificationDigestEmailMapper;
@@ -107,17 +109,23 @@ public class NotificationClaimService {
             return Optional.empty();
         }
         if (row.getAttemptCount() != null && row.getAttemptCount() > maxAttempts) {
-            digestEmailMapper.markPermanent(id, token, FailureCategory.ORPHAN_MAX_ATTEMPTS.name(),
-                    FailureCategory.ORPHAN_MAX_ATTEMPTS.name(), now);
-            deliveryMapper.markItemsByDigestEmailId(id, "FAILED_PERMANENT", now);
+            completeDigestTerminal(id, token, new DigestTerminal(
+                    DigestEmailStatus.FAILED_PERMANENT.name(),
+                    DeliveryStatus.FAILED_PERMANENT.name(),
+                    FailureCategory.ORPHAN_MAX_ATTEMPTS.name(),
+                    FailureCategory.ORPHAN_MAX_ATTEMPTS.name(),
+                    null), now);
             return Optional.empty();
         }
         if (row.getSendAttemptedAt() != null) {
             int unknown = row.getUnknownOutcomeCount() == null ? 0 : row.getUnknownOutcomeCount();
             if (unknown >= 1) {
-                digestEmailMapper.markPermanent(id, token, FailureCategory.UNKNOWN_OUTCOME.name(),
-                        FailureCategory.UNKNOWN_OUTCOME.name(), now);
-                deliveryMapper.markItemsByDigestEmailId(id, "FAILED_PERMANENT", now);
+                completeDigestTerminal(id, token, new DigestTerminal(
+                        DigestEmailStatus.FAILED_PERMANENT.name(),
+                        DeliveryStatus.FAILED_PERMANENT.name(),
+                        FailureCategory.UNKNOWN_OUTCOME.name(),
+                        FailureCategory.UNKNOWN_OUTCOME.name(),
+                        null), now);
                 return Optional.empty();
             }
             int promoted = digestEmailMapper.promoteUnknownOnce(id, token, now);
@@ -130,16 +138,44 @@ public class NotificationClaimService {
         return Optional.of(new Claimed<>(row, token));
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public int markDeliverySendAttempted(Long id, String token, LocalDateTime now) {
-        return deliveryMapper.markSendAttempted(id, token, now);
+    @Transactional
+    public boolean completeDigestTerminal(Long id, String token, DigestTerminal terminal, LocalDateTime now) {
+        if (terminal == null || terminal.parentStatus() == null) {
+            throw new IllegalArgumentException("digest terminal is required");
+        }
+        DigestEmailStatus status = DigestEmailStatus.valueOf(terminal.parentStatus());
+        int parent = switch (status) {
+            case SENT -> digestEmailMapper.markSent(id, token, terminal.providerMessageId(), now);
+            case DRY_RUN -> digestEmailMapper.markDryRun(id, token, terminal.providerMessageId(), now);
+            case FAILED_PERMANENT -> digestEmailMapper.markPermanent(id, token, terminal.failureCategory(),
+                    terminal.lastError(), now);
+            case SKIPPED_PREFERENCE, SKIPPED_INELIGIBLE -> digestEmailMapper.markSkipped(id, token,
+                    terminal.parentStatus(), terminal.failureCategory(), now);
+            default -> throw new IllegalArgumentException("unsupported digest terminal: " + status);
+        };
+        if (parent == 0) {
+            return false;
+        }
+        if (terminal.itemStatus() != null) {
+            deliveryMapper.markItemsByDigestEmailId(id, terminal.itemStatus(), now);
+        }
+        return true;
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public int markDigestSendAttempted(Long id, String token, LocalDateTime now) {
-        return digestEmailMapper.markSendAttempted(id, token, now);
+    public int markDeliverySendAttempted(Long id, String token, LocalDateTime now, LocalDateTime leaseUntil) {
+        return deliveryMapper.markSendAttempted(id, token, now, leaseUntil);
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public int markDigestSendAttempted(Long id, String token, LocalDateTime now, LocalDateTime leaseUntil) {
+        return digestEmailMapper.markSendAttempted(id, token, now, leaseUntil);
     }
 
     public record Claimed<T>(T row, String token) {
+    }
+
+    public record DigestTerminal(String parentStatus, String itemStatus, String failureCategory,
+                                 String lastError, String providerMessageId) {
     }
 }

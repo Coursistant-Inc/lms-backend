@@ -100,4 +100,29 @@ class NotificationClaimServiceTest {
         verify(deliveryMapper).markPermanent(eq(9L), anyString(),
                 eq(FailureCategory.ORPHAN_MAX_ATTEMPTS.name()), any(), eq(now));
     }
+
+    @Test
+    void completeDigestTerminal_parentZero_doesNotCascadeItems() {
+        when(digestEmailMapper.markSkipped(eq(20L), eq("tok"), eq("SKIPPED_PREFERENCE"),
+                eq(FailureCategory.PERMANENT_PREFERENCE.name()), eq(now))).thenReturn(0);
+
+        boolean ok = claimService.completeDigestTerminal(20L, "tok",
+                new NotificationClaimService.DigestTerminal("SKIPPED_PREFERENCE", "SKIPPED_PREFERENCE",
+                        FailureCategory.PERMANENT_PREFERENCE.name(), null, null), now);
+
+        org.junit.jupiter.api.Assertions.assertFalse(ok);
+        verify(deliveryMapper, never()).markItemsByDigestEmailId(any(), any(), any());
+    }
+
+    @Test
+    void completeDigestTerminal_parentOne_cascadesItems() {
+        when(digestEmailMapper.markSent(eq(20L), eq("tok"), eq("mid-1"), eq(now))).thenReturn(1);
+        when(deliveryMapper.markItemsByDigestEmailId(eq(20L), eq("SENT"), eq(now))).thenReturn(2);
+
+        boolean ok = claimService.completeDigestTerminal(20L, "tok",
+                new NotificationClaimService.DigestTerminal("SENT", "SENT", null, null, "mid-1"), now);
+
+        assertTrue(ok);
+        verify(deliveryMapper).markItemsByDigestEmailId(eq(20L), eq("SENT"), eq(now));
+    }
 }

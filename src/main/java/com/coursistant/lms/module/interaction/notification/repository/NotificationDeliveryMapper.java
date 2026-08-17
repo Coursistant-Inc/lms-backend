@@ -31,7 +31,8 @@ public interface NotificationDeliveryMapper {
 
     int markSendAttempted(@Param("id") Long id,
                           @Param("claimToken") String claimToken,
-                          @Param("now") LocalDateTime now);
+                          @Param("now") LocalDateTime now,
+                          @Param("leaseUntil") LocalDateTime leaseUntil);
 
     int markSent(@Param("id") Long id,
                  @Param("claimToken") String claimToken,

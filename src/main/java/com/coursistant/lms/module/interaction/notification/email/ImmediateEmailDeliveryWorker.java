@@ -70,6 +70,9 @@ public class ImmediateEmailDeliveryWorker {
     }
 
     public void processOne(Long id) {
+        if (!notificationProperties.getEmail().isEnabled()) {
+            return;
+        }
         LocalDateTime now = notificationTimeSupport.nowUtc();
         LocalDateTime leaseUntil = now.plusSeconds(notificationProperties.getEmail().getLeaseSeconds());
         Optional<NotificationClaimService.Claimed<NotificationDelivery>> claimed =
@@ -80,6 +83,7 @@ public class ImmediateEmailDeliveryWorker {
         NotificationDelivery row = claimed.get().row();
         String token = claimed.get().token();
         User user = contactLookup.load(List.of(row.getRecipientUserId())).get(row.getRecipientUserId());
+        now = notificationTimeSupport.nowUtc();
         if (!contactLookup.emailEnabled(user)) {
             int n = deliveryMapper.markSkipped(id, token, "SKIPPED_PREFERENCE",
                     FailureCategory.PERMANENT_PREFERENCE.name(), now);
@@ -105,7 +109,9 @@ public class ImmediateEmailDeliveryWorker {
                     "template", now);
             return;
         }
-        if (claimService.markDeliverySendAttempted(id, token, now) == 0) {
+        now = notificationTimeSupport.nowUtc();
+        leaseUntil = now.plusSeconds(notificationProperties.getEmail().getLeaseSeconds());
+        if (claimService.markDeliverySendAttempted(id, token, now, leaseUntil) == 0) {
             NotificationLog.warn("stale_claim", row.getEventId(), row.getTenantId(),
                     row.getNotificationType(), row.getChannel(), "PROCESSING",
                     null, null, row.getRecipientUserId(), row.getAttemptCount(), token,
