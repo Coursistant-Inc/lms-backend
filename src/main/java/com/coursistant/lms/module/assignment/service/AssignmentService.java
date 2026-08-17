@@ -516,6 +516,13 @@ public class AssignmentService {
         }
 
         Assignment updated = requireAssignment(courseId, assignmentId, userId);
+        if (AssignmentAccessService.STATE_PUBLISHED.equals(existing.getState())
+                && (!java.util.Objects.equals(existing.getDueAt(), updated.getDueAt())
+                || !java.util.Objects.equals(existing.getLateUntil(), updated.getLateUntil()))) {
+            assignmentMapper.incrementScheduleVersion(assignmentId);
+            updated = requireAssignment(courseId, assignmentId, userId);
+            assignmentNotificationService.recordScheduleChanged(updated, userId);
+        }
         return buildStaffResponse(updated, zone, activeStudents(courseId).size());
     }
 
@@ -523,9 +530,6 @@ public class AssignmentService {
     public AssignmentResponse publish(Integer courseId, Integer assignmentId, Integer userId) {
         Assignment assignment = assignmentAccessService.requireAssignmentConfigurable(courseId, assignmentId, userId);
         ZoneId zone = tenantTimezoneService.requireZoneForCourse(courseId);
-        if (AssignmentAccessService.STATE_PUBLISHED.equals(assignment.getState())) {
-            return buildStaffResponse(assignment, zone, activeStudents(courseId).size());
-        }
 
         if (AssignmentAccessService.SUBMISSION_TYPE_GROUP.equals(assignment.getSubmissionType())) {
             if (assignment.getGroupSetId() == null) {
@@ -536,11 +540,15 @@ public class AssignmentService {
             groupAccessService.requireGroupSetInCourse(courseId, assignment.getGroupSetId());
         }
 
-        assignmentMapper.updateState(assignmentId, AssignmentAccessService.STATE_PUBLISHED);
+        int published = assignmentMapper.publishAndIncrementPublicationVersion(assignmentId);
+        if (published == 0) {
+            Assignment current = requireAssignment(courseId, assignmentId, userId);
+            return buildStaffResponse(current, zone, activeStudents(courseId).size());
+        }
         assignmentAuditService.write(courseId, assignmentId, userId, AssignmentAuditService.ASSIGNMENT_PUBLISHED, (String) null);
 
         Assignment updated = requireAssignment(courseId, assignmentId, userId);
-        assignmentNotificationService.recordAssignmentPublished(updated);
+        assignmentNotificationService.recordAssignmentPublished(updated, userId);
         return buildStaffResponse(updated, zone, activeStudents(courseId).size());
     }
 

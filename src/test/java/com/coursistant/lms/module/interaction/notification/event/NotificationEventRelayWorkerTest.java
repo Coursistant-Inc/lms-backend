@@ -77,6 +77,7 @@ class NotificationEventRelayWorkerTest {
         verify(outboxMapper).markDone(eq(5L), eq("tok"), any());
         verify(outboxMapper, never()).markRetryable(any(), any(), any(), any(), any());
         verifyNoInteractions(notificationRecipientResolver);
+        verify(explicitRecipientValidator, never()).shouldExcludeActor(any(), any(), any());
     }
 
     @Test

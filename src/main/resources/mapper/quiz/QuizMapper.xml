@@ -6,7 +6,8 @@
         id, course_id AS courseId, title, instructions,
         opens_at AS opensAt, closes_at AS closesAt, time_limit_seconds AS timeLimitSeconds,
         attempts_allowed AS attemptsAllowed, result_visibility AS resultVisibility,
-        state, version, created_by AS createdBy, created_at AS createdAt, updated_at AS updatedAt
+        state, version, publication_version AS publicationVersion,
+        created_by AS createdBy, created_at AS createdAt, updated_at AS updatedAt
     </sql>
 
     <insert id="insert" parameterType="com.coursistant.lms.module.quiz.entity.Quiz" useGeneratedKeys="true" keyProperty="id">
@@ -48,6 +49,17 @@
 
     <update id="updateState">
         UPDATE quiz SET state = #{state}, version = version + 1, updated_at = UTC_TIMESTAMP(3) WHERE id = #{id}
+    </update>
+
+    <update id="publishAndIncrementPublicationVersion">
+        UPDATE quiz
+        SET state = 'Published',
+            version = version + 1,
+            publication_version = publication_version + 1,
+            updated_at = UTC_TIMESTAMP(3)
+        WHERE id = #{id}
+          AND state &lt;&gt; 'Published'
+          AND version = #{expectedVersion}
     </update>
 
     <delete id="deleteById">

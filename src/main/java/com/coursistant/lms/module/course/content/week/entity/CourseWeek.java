@@ -11,6 +11,7 @@ public class CourseWeek implements Serializable {
     private String title;
     private Integer orderPosition;
     private String state;
+    private Integer publicationVersion;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -52,6 +53,14 @@ public class CourseWeek implements Serializable {
 
     public void setState(String state) {
         this.state = state;
+    }
+
+    public Integer getPublicationVersion() {
+        return publicationVersion;
+    }
+
+    public void setPublicationVersion(Integer publicationVersion) {
+        this.publicationVersion = publicationVersion;
     }
 
     public LocalDateTime getCreatedAt() {

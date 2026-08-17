@@ -60,14 +60,14 @@ public class NotificationPublisher {
                 || payload.getMessage() == null || payload.getDeepLink() == null) {
             throw new IllegalArgumentException("Incomplete notification event");
         }
-        NotificationPolicy.Mapping mapping = NotificationPolicy.forType(payload.getNotificationType());
-        if (payload.getRecipientMode() != null && payload.getRecipientMode() != mapping.recipientMode()) {
-            throw new IllegalArgumentException("Recipient mode " + payload.getRecipientMode()
-                    + " does not match policy " + mapping.recipientMode()
-                    + " for " + payload.getNotificationType());
+        if (payload.getRecipientMode() != RecipientMode.EXPLICIT) {
+            throw new IllegalArgumentException("New notification events must use EXPLICIT recipient snapshots");
         }
-        RecipientMode mode = mapping.recipientMode();
-        payload.setRecipientMode(mode);
+        if (payload.getRecipientIds() == null) {
+            throw new IllegalArgumentException("recipientIds is required (empty snapshot allowed)");
+        }
+        NotificationPolicy.forType(payload.getNotificationType());
+        RecipientMode mode = RecipientMode.EXPLICIT;
 
         String candidateEventId = UUID.randomUUID().toString();
         payload.setEventId(candidateEventId);

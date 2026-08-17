@@ -47,6 +47,17 @@ public interface AssignmentMapper {
 
     int updateState(@Param("id") Integer id, @Param("state") String state);
 
+    /**
+     * Sets Published and increments publication_version only when currently unpublished.
+     * Must not be written by {@link #updateById}.
+     */
+    int publishAndIncrementPublicationVersion(@Param("id") Integer id);
+
+    /**
+     * Atomic schedule_version increment. Must not be written by {@link #updateById}.
+     */
+    int incrementScheduleVersion(@Param("id") Integer id);
+
     /** Always writes group_set_id, including {@code null} when switching to Individual. */
     int updateGroupSetId(@Param("id") Integer id, @Param("groupSetId") Integer groupSetId);
 

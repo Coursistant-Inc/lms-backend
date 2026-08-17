@@ -23,6 +23,13 @@ public interface QuizMapper {
 
     int updateState(@Param("id") Integer id, @Param("state") String state);
 
+    /**
+     * Sets Published, increments optimistic version and publication_version in one row.
+     * Must not be written by {@link #updateById}.
+     */
+    int publishAndIncrementPublicationVersion(@Param("id") Integer id,
+                                              @Param("expectedVersion") Integer expectedVersion);
+
     int deleteById(@Param("id") Integer id);
 
     int countAttemptsByQuizId(@Param("quizId") Integer quizId);

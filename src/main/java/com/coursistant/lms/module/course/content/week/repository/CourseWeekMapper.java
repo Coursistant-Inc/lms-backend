@@ -23,4 +23,10 @@ public interface CourseWeekMapper {
     int updateOrderPosition(@Param("id") Integer id, @Param("orderPosition") Integer orderPosition);
 
     int updateState(@Param("id") Integer id, @Param("state") String state);
+
+    /**
+     * Sets Published and increments publication_version only when currently unpublished.
+     * Must not be written by {@link #updateById}.
+     */
+    int publishAndIncrementPublicationVersion(@Param("id") Integer id);
 }

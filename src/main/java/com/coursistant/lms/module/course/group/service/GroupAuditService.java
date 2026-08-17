@@ -22,7 +22,7 @@ public class GroupAuditService {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public void write(Integer tenantId,
+    public Integer write(Integer tenantId,
                       Integer courseId,
                       Integer groupSetId,
                       Integer groupId,
@@ -46,6 +46,7 @@ public class GroupAuditService {
         audit.setAfterJson(toMembershipJson(after));
         audit.setDetailJson(toJson(detail));
         groupMembershipAuditMapper.insert(audit);
+        return audit.getId();
     }
 
     public String toMembershipJson(GroupMembership membership) {

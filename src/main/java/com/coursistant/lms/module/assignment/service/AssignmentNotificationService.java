@@ -8,12 +8,16 @@ import com.coursistant.lms.module.interaction.notification.enums.NotificationTyp
 import com.coursistant.lms.module.interaction.notification.enums.RecipientMode;
 import com.coursistant.lms.module.interaction.notification.enums.SubjectType;
 import com.coursistant.lms.module.interaction.notification.event.NotificationPublisher;
+import com.coursistant.lms.module.interaction.notification.service.NotificationEventKeys;
 import com.coursistant.lms.module.interaction.notification.service.NotificationMessageFactory;
+import com.coursistant.lms.module.interaction.notification.service.NotificationRecipientResolver;
 import com.coursistant.lms.module.interaction.notification.service.NotificationTimeSupport;
+import com.coursistant.lms.module.tenant.service.TenantTimezoneService;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -34,7 +38,13 @@ public class AssignmentNotificationService {
     @Resource
     private NotificationTimeSupport notificationTimeSupport;
 
-    public void recordAssignmentPublished(Assignment assignment) {
+    @Resource
+    private NotificationRecipientResolver notificationRecipientResolver;
+
+    @Resource
+    private TenantTimezoneService tenantTimezoneService;
+
+    public void recordAssignmentPublished(Assignment assignment, Integer actorUserId) {
         Course course = loadCourse(assignment);
         if (course == null) {
             return;
@@ -44,10 +54,45 @@ public class AssignmentNotificationService {
         payload.setMessage(notificationMessageFactory.assignmentPublished(assignment.getTitle()));
         payload.setSubjectType(SubjectType.ASSIGNMENT);
         payload.setSubjectId(assignment.getId());
-        payload.setEventKey("published");
+        payload.setEventKey(NotificationEventKeys.assignmentPublished(
+                assignment.getId(), assignment.getPublicationVersion()));
         payload.setDeepLink("/courses/" + assignment.getCourseId() + "/assignments/" + assignment.getId());
-        payload.setRecipientMode(RecipientMode.COURSE_ACTIVE_STUDENTS);
+        payload.setActorUserId(actorUserId);
+        payload.setRecipientMode(RecipientMode.EXPLICIT);
+        payload.setRecipientIds(notificationRecipientResolver.resolveForType(
+                NotificationType.ASSIGNMENT_PUBLISHED, assignment.getCourseId(), actorUserId));
         payload.setTemplateVars(courseVars(course, assignment.getTitle(), payload.getDeepLink()));
+        notificationPublisher.publishInTransaction(payload);
+    }
+
+    public void recordScheduleChanged(Assignment assignment, Integer actorUserId) {
+        Course course = loadCourse(assignment);
+        if (course == null) {
+            return;
+        }
+        ZoneId zone = tenantTimezoneService.requireZoneForCourse(assignment.getCourseId());
+        String dueAt = notificationMessageFactory.formatUtc(assignment.getDueAt(), zone);
+        String lateUntil = assignment.getLateUntil() == null
+                ? null : notificationMessageFactory.formatUtc(assignment.getLateUntil(), zone);
+        NotificationDispatchPayload payload = basePayload(course, assignment);
+        payload.setNotificationType(NotificationType.ASSIGNMENT_SCHEDULE_CHANGED);
+        payload.setMessage(notificationMessageFactory.assignmentScheduleChanged(
+                assignment.getTitle(), dueAt, lateUntil));
+        payload.setSubjectType(SubjectType.ASSIGNMENT);
+        payload.setSubjectId(assignment.getId());
+        payload.setEventKey(NotificationEventKeys.assignmentSchedule(
+                assignment.getId(), assignment.getScheduleVersion()));
+        payload.setDeepLink("/courses/" + assignment.getCourseId() + "/assignments/" + assignment.getId());
+        payload.setActorUserId(actorUserId);
+        payload.setRecipientMode(RecipientMode.EXPLICIT);
+        payload.setRecipientIds(notificationRecipientResolver.resolveForType(
+                NotificationType.ASSIGNMENT_SCHEDULE_CHANGED, assignment.getCourseId(), actorUserId));
+        Map<String, String> vars = courseVars(course, assignment.getTitle(), payload.getDeepLink());
+        vars.put("dueAt", dueAt);
+        if (lateUntil != null) {
+            vars.put("lateUntil", lateUntil);
+        }
+        payload.setTemplateVars(vars);
         notificationPublisher.publishInTransaction(payload);
     }
 
@@ -55,7 +100,8 @@ public class AssignmentNotificationService {
                                          Integer submissionId, Integer versionNo, Integer submissionVersionId,
                                          LocalDateTime submittedAt) {
         Course course = loadCourse(assignment);
-        if (course == null || recipientIds == null || recipientIds.isEmpty() || submissionVersionId == null) {
+        if (course == null || recipientIds == null || recipientIds.isEmpty() || submissionVersionId == null
+                || submissionId == null) {
             return;
         }
         String deepLink = "/courses/" + assignment.getCourseId() + "/assignments/" + assignment.getId()
@@ -64,7 +110,7 @@ public class AssignmentNotificationService {
         payload.setNotificationType(NotificationType.ASSIGNMENT_SUBMISSION_RECEIVED);
         payload.setMessage(notificationMessageFactory.submissionReceived(assignment.getTitle(), submittedAt));
         payload.setSubjectType(SubjectType.ASSIGNMENT_SUBMISSION);
-        payload.setSubjectId(submissionId != null ? submissionId : assignment.getId());
+        payload.setSubjectId(submissionId);
         payload.setEventKey("submission:" + submissionVersionId);
         payload.setDeepLink(deepLink);
         payload.setRecipientMode(RecipientMode.EXPLICIT);
@@ -75,11 +121,6 @@ public class AssignmentNotificationService {
         vars.put("versionNo", versionNo == null ? "" : String.valueOf(versionNo));
         payload.setTemplateVars(vars);
         notificationPublisher.publishInTransaction(payload);
-    }
-
-    public void recordSubmissionReceived(Assignment assignment, List<Integer> recipientIds,
-                                         Integer submissionVersionId, Integer versionNo, LocalDateTime submittedAt) {
-        recordSubmissionReceived(assignment, recipientIds, null, versionNo, submissionVersionId, submittedAt);
     }
 
     public void recordGradesReleased(Assignment assignment, List<Integer> studentUserIds, Integer auditId) {

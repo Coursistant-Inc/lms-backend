@@ -16,6 +16,7 @@ public class NotificationResponse {
     private String deepLink;
     private LocalDateTime createdAt;
     private LocalDateTime readAt;
+    private String availability;
 
     public Integer getNotificationId() {
         return notificationId;
@@ -111,5 +112,13 @@ public class NotificationResponse {
 
     public void setReadAt(LocalDateTime readAt) {
         this.readAt = readAt;
+    }
+
+    public String getAvailability() {
+        return availability;
+    }
+
+    public void setAvailability(String availability) {
+        this.availability = availability;
     }
 }

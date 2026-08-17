@@ -20,6 +20,7 @@ public class Quiz implements Serializable {
     private String resultVisibility;
     private String state;
     private Integer version;
+    private Integer publicationVersion;
     private Integer createdBy;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

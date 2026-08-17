@@ -11,11 +11,22 @@ import com.coursistant.lms.module.course.content.week.dto.ReorderWeeksRequest;
 import com.coursistant.lms.module.course.content.week.dto.WeekResponse;
 import com.coursistant.lms.module.course.content.week.entity.CourseWeek;
 import com.coursistant.lms.module.course.content.week.repository.CourseWeekMapper;
+import com.coursistant.lms.module.course.course.entity.Course;
+import com.coursistant.lms.module.course.course.repository.CourseMapper;
 import com.coursistant.lms.module.course.course.service.CourseAuditActions;
 import com.coursistant.lms.module.course.course.service.CourseAuditService;
 import com.coursistant.lms.module.file.storage.S3ObjectKeyResolver;
 import com.coursistant.lms.module.file.storage.S3ObjectPayload;
 import com.coursistant.lms.module.file.storage.S3ObjectStorage;
+import com.coursistant.lms.module.interaction.notification.dto.NotificationDispatchPayload;
+import com.coursistant.lms.module.interaction.notification.enums.NotificationType;
+import com.coursistant.lms.module.interaction.notification.enums.RecipientMode;
+import com.coursistant.lms.module.interaction.notification.enums.SubjectType;
+import com.coursistant.lms.module.interaction.notification.event.NotificationPublisher;
+import com.coursistant.lms.module.interaction.notification.service.NotificationEventKeys;
+import com.coursistant.lms.module.interaction.notification.service.NotificationMessageFactory;
+import com.coursistant.lms.module.interaction.notification.service.NotificationRecipientResolver;
+import com.coursistant.lms.module.interaction.notification.service.NotificationTimeSupport;
 import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.shared.api.ErrorType;
 import com.coursistant.lms.shared.security.ActorContext;
@@ -72,6 +83,21 @@ public class CourseWeekService {
 
     @Resource
     private CourseAuditService courseAuditService;
+
+    @Resource
+    private CourseMapper courseMapper;
+
+    @Resource
+    private NotificationPublisher notificationPublisher;
+
+    @Resource
+    private NotificationRecipientResolver notificationRecipientResolver;
+
+    @Resource
+    private NotificationMessageFactory notificationMessageFactory;
+
+    @Resource
+    private NotificationTimeSupport notificationTimeSupport;
 
     public List<WeekResponse> list(ActorContext actor, Integer courseId) {
         boolean draftView = courseContentAccessService.canViewDraftContent(actor, courseId);
@@ -139,11 +165,13 @@ public class CourseWeekService {
 
     @Transactional
     public WeekResponse publish(ActorContext actor, Integer courseId, Integer weekId) {
-        CourseWeek week = courseContentAccessService.requireWeekWritable(actor, courseId, weekId);
-        if (!STATE_PUBLISHED.equals(week.getState())) {
-            courseWeekMapper.updateState(weekId, STATE_PUBLISHED);
+        courseContentAccessService.requireWeekWritable(actor, courseId, weekId);
+        int published = courseWeekMapper.publishAndIncrementPublicationVersion(weekId);
+        CourseWeek week = courseWeekMapper.selectById(weekId);
+        if (published == 1) {
+            publishWeekNotification(actor, courseId, week);
         }
-        return toResponse(courseWeekMapper.selectById(weekId));
+        return toResponse(week);
     }
 
     @Transactional
@@ -230,6 +258,35 @@ public class CourseWeekService {
             throw new ApiException(ErrorType.BAD_REQUEST, "title must be at most 255 characters");
         }
         return trimmed;
+    }
+
+    private void publishWeekNotification(ActorContext actor, Integer courseId, CourseWeek week) {
+        Course course = courseMapper.selectById(courseId);
+        if (course == null || course.getTenantId() == null || course.getArchivedAt() != null || week == null) {
+            return;
+        }
+        Integer actorUserId = NotificationRecipientResolver.userActorId(actor);
+        NotificationDispatchPayload payload = new NotificationDispatchPayload();
+        payload.setTenantId(course.getTenantId());
+        payload.setCourseId(courseId);
+        payload.setNotificationType(NotificationType.WEEK_PUBLISHED);
+        payload.setMessage(notificationMessageFactory.weekPublished(week.getTitle()));
+        payload.setSubjectType(SubjectType.WEEK);
+        payload.setSubjectId(week.getId());
+        payload.setEventKey(NotificationEventKeys.weekPublished(week.getId(), week.getPublicationVersion()));
+        payload.setDeepLink("/courses/" + courseId + "/weeks/" + week.getId());
+        payload.setActorUserId(actorUserId);
+        payload.setRecipientMode(RecipientMode.EXPLICIT);
+        payload.setRecipientIds(notificationRecipientResolver.resolveForType(
+                NotificationType.WEEK_PUBLISHED, courseId, actorUserId));
+        payload.setCreatedAt(notificationTimeSupport.nowUtc());
+        Map<String, String> vars = new java.util.LinkedHashMap<>();
+        vars.put("courseCode", course.getCourseCode() == null ? "" : course.getCourseCode());
+        vars.put("courseTitle", course.getTitle() == null ? "" : course.getTitle());
+        vars.put("weekTitle", week.getTitle() == null ? "" : week.getTitle());
+        vars.put("deepLink", payload.getDeepLink());
+        payload.setTemplateVars(vars);
+        notificationPublisher.publishInTransaction(payload);
     }
 
     private List<WeekResponse> toResponses(List<CourseWeek> weeks) {

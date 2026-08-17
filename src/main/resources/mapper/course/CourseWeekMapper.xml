@@ -10,6 +10,7 @@
         title,
         order_position AS orderPosition,
         state,
+        publication_version AS publicationVersion,
         created_at AS createdAt,
         updated_at AS updatedAt
     </sql>
@@ -55,6 +56,14 @@
 
     <update id="updateState">
         UPDATE course_week SET state = #{state} WHERE id = #{id}
+    </update>
+
+    <update id="publishAndIncrementPublicationVersion">
+        UPDATE course_week
+        SET state = 'Published',
+            publication_version = publication_version + 1
+        WHERE id = #{id}
+          AND state &lt;&gt; 'Published'
     </update>
 
     <delete id="deleteById">

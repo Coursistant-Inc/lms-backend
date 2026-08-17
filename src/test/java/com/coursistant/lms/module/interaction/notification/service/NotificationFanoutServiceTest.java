@@ -72,6 +72,30 @@ class NotificationFanoutServiceTest {
     }
 
     @Test
+    void phase2Types_useDailyDigestChannel() {
+        User user = new User();
+        user.setId(4);
+        user.setEmail("a@b.com");
+        user.setEmailNotifications(true);
+        user.setStatus("ACTIVE");
+        when(contactLookup.load(List.of(4))).thenReturn(Map.of(4, user));
+        when(contactLookup.accountActive(user)).thenReturn(true);
+        when(contactLookup.emailEnabled(user)).thenReturn(true);
+        when(contactLookup.hasUsableEmail(user)).thenReturn(true);
+        when(tenantTimeZoneResolver.digestDate(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()))
+                .thenReturn(java.time.LocalDate.of(2026, 8, 17));
+
+        NotificationDispatchPayload payload = payload();
+        payload.setNotificationType(NotificationType.WEEK_PUBLISHED);
+        payload.setSubjectType(SubjectType.WEEK);
+        payload.setEventKey("week:1:publication:1");
+        fanout.persist(payload, List.of(4));
+
+        verify(notificationDeliveryMapper).upsertChunk(rowsCaptor.capture());
+        assertEquals("DAILY_DIGEST", rowsCaptor.getValue().get(0).getChannel());
+    }
+
+    @Test
     void emailDisabledGlobally_writesInAppOnly() {
         NotificationProperties properties = new NotificationProperties();
         properties.getEmail().setEnabled(false);

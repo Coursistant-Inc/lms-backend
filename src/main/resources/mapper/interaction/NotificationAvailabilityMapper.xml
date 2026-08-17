@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.coursistant.lms.module.interaction.notification.repository.NotificationAvailabilityMapper">
+
+    <select id="selectAnnouncements"
+            resultType="com.coursistant.lms.module.interaction.notification.dto.NotificationSubjectRef">
+        SELECT id, course_id AS courseId
+        FROM course_announcement
+        WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+    </select>
+
+    <select id="selectAssignments"
+            resultType="com.coursistant.lms.module.interaction.notification.dto.NotificationSubjectRef">
+        SELECT id, course_id AS courseId, state
+        FROM assignment
+        WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+    </select>
+
+    <select id="selectSubmissions"
+            resultType="com.coursistant.lms.module.interaction.notification.dto.NotificationSubjectRef">
+        SELECT s.id,
+               a.course_id AS courseId,
+               a.state,
+               s.owner_user_id AS ownerUserId,
+               s.group_id AS groupId
+        FROM assignment_submission s
+        INNER JOIN assignment a ON a.id = s.assignment_id
+        WHERE s.id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+    </select>
+
+    <select id="selectQuizzes"
+            resultType="com.coursistant.lms.module.interaction.notification.dto.NotificationSubjectRef">
+        SELECT id, course_id AS courseId, state
+        FROM quiz
+        WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+    </select>
+
+    <select id="selectWeeks"
+            resultType="com.coursistant.lms.module.interaction.notification.dto.NotificationSubjectRef">
+        SELECT id, course_id AS courseId, state
+        FROM course_week
+        WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+    </select>
+
+    <select id="selectCourseEvents"
+            resultType="com.coursistant.lms.module.interaction.notification.dto.NotificationSubjectRef">
+        SELECT id, course_id AS courseId
+        FROM course_event
+        WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+    </select>
+
+    <select id="selectGroupSets"
+            resultType="com.coursistant.lms.module.interaction.notification.dto.NotificationSubjectRef">
+        SELECT id, course_id AS courseId
+        FROM group_set
+        WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+    </select>
+
+    <select id="selectGroupIdsForUser" resultType="java.lang.Integer">
+        SELECT group_id FROM group_membership WHERE user_id = #{userId}
+    </select>
+</mapper>

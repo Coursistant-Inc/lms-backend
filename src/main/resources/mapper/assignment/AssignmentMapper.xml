@@ -18,6 +18,8 @@
         max_file_size_bytes AS maxFileSizeBytes,
         max_file_count AS maxFileCount,
         state,
+        publication_version AS publicationVersion,
+        schedule_version AS scheduleVersion,
         current_rubric_version_id AS currentRubricVersionId,
         created_by AS createdBy,
         created_at AS createdAt,
@@ -146,6 +148,20 @@
     <update id="updateState">
         UPDATE assignment
         SET state = #{state}
+        WHERE id = #{id}
+    </update>
+
+    <update id="publishAndIncrementPublicationVersion">
+        UPDATE assignment
+        SET state = 'Published',
+            publication_version = publication_version + 1
+        WHERE id = #{id}
+          AND state &lt;&gt; 'Published'
+    </update>
+
+    <update id="incrementScheduleVersion">
+        UPDATE assignment
+        SET schedule_version = schedule_version + 1
         WHERE id = #{id}
     </update>
 

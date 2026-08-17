@@ -154,15 +154,28 @@ public class NotificationEventRelayWorker {
     }
 
     private List<Integer> resolveRecipients(NotificationEventOutbox row) {
-        RecipientMode mode = RecipientMode.valueOf(row.getRecipientMode());
-        List<Integer> raw;
-        if (mode == RecipientMode.EXPLICIT) {
-            raw = loadExplicit(row.getId());
-            List<Integer> validated = explicitRecipientValidator.validate(row.getTenantId(), raw);
-            return excludeActor(NotificationType.valueOf(row.getNotificationType()), row.getActorUserId(), validated);
+        RecipientMode mode;
+        try {
+            mode = RecipientMode.valueOf(row.getRecipientMode());
+        } catch (IllegalArgumentException e) {
+            throw new RelayFailure("unknown_recipient_mode", row.getRecipientMode(), e);
         }
-        raw = notificationRecipientResolver.resolveActiveStudentRecipients(row.getCourseId());
-        return excludeActor(NotificationType.valueOf(row.getNotificationType()), row.getActorUserId(), raw);
+        NotificationType type;
+        try {
+            type = NotificationType.valueOf(row.getNotificationType());
+        } catch (IllegalArgumentException e) {
+            throw new RelayFailure("unknown_notification_type", row.getNotificationType(), e);
+        }
+        if (mode == RecipientMode.EXPLICIT) {
+            List<Integer> raw = loadExplicit(row.getId());
+            return explicitRecipientValidator.validate(row.getTenantId(), raw);
+        }
+        if (mode == RecipientMode.COURSE_ACTIVE_STUDENTS) {
+            // Legacy Phase 1 outbox rows only. New producers always write EXPLICIT snapshots.
+            List<Integer> raw = notificationRecipientResolver.resolveActiveStudentRecipients(row.getCourseId());
+            return excludeActor(type, row.getActorUserId(), raw);
+        }
+        throw new RelayFailure("unknown_recipient_mode", String.valueOf(mode), null);
     }
 
     private List<Integer> loadExplicit(Long outboxId) {

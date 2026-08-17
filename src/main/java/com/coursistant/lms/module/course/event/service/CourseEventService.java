@@ -11,6 +11,15 @@ import com.coursistant.lms.module.course.event.repository.CourseEventMapper;
 import com.coursistant.lms.module.course.schedule.dto.SessionWithCourseCode;
 import com.coursistant.lms.module.course.schedule.repository.CourseSessionMapper;
 import com.coursistant.lms.module.tenant.service.TenantTimezoneService;
+import com.coursistant.lms.module.interaction.notification.dto.NotificationDispatchPayload;
+import com.coursistant.lms.module.interaction.notification.enums.NotificationType;
+import com.coursistant.lms.module.interaction.notification.enums.RecipientMode;
+import com.coursistant.lms.module.interaction.notification.enums.SubjectType;
+import com.coursistant.lms.module.interaction.notification.event.NotificationPublisher;
+import com.coursistant.lms.module.interaction.notification.service.NotificationEventKeys;
+import com.coursistant.lms.module.interaction.notification.service.NotificationMessageFactory;
+import com.coursistant.lms.module.interaction.notification.service.NotificationRecipientResolver;
+import com.coursistant.lms.module.interaction.notification.service.NotificationTimeSupport;
 import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.module.course.content.CourseContentAccessService;
 import com.coursistant.lms.shared.api.ErrorType;
@@ -63,6 +72,18 @@ public class CourseEventService {
 
     @Resource
     private CourseContentAccessService courseContentAccessService;
+
+    @Resource
+    private NotificationPublisher notificationPublisher;
+
+    @Resource
+    private NotificationRecipientResolver notificationRecipientResolver;
+
+    @Resource
+    private NotificationMessageFactory notificationMessageFactory;
+
+    @Resource
+    private NotificationTimeSupport notificationTimeSupport;
 
     public List<CourseEventResponse> listByCourseId(Integer courseId) {
         requireCourse(courseId);
@@ -183,7 +204,9 @@ public class CourseEventService {
         event.setLocation(blankToNull(request.getLocation()));
         event.setDescription(blankToNull(request.getDescription()));
         courseEventMapper.insert(event);
-        return toResponse(requireEventInCourse(courseId, event.getId()));
+        CourseEvent persisted = requireEventInCourse(courseId, event.getId());
+        publishCreatedNotification(actor, courseId, persisted);
+        return toResponse(persisted);
     }
 
     @Transactional
@@ -298,6 +321,37 @@ public class CourseEventService {
             throw new ApiException(ErrorType.COURSE_EVENT_NOT_FOUND);
         }
         return event;
+    }
+
+    private void publishCreatedNotification(ActorContext actor, Integer courseId, CourseEvent event) {
+        Course course = courseMapper.selectById(courseId);
+        if (course == null || course.getTenantId() == null || course.getArchivedAt() != null || event == null) {
+            return;
+        }
+        Integer actorUserId = NotificationRecipientResolver.userActorId(actor);
+        String eventTime = notificationMessageFactory.formatLocal(event.getEventDate(), event.getStartTime());
+        NotificationDispatchPayload payload = new NotificationDispatchPayload();
+        payload.setTenantId(course.getTenantId());
+        payload.setCourseId(courseId);
+        payload.setNotificationType(NotificationType.COURSE_EVENT_CREATED);
+        payload.setMessage(notificationMessageFactory.courseEventCreated(event.getName(), eventTime));
+        payload.setSubjectType(SubjectType.COURSE_EVENT);
+        payload.setSubjectId(event.getId());
+        payload.setEventKey(NotificationEventKeys.courseEventCreated(event.getId()));
+        payload.setDeepLink("/courses/" + courseId + "/events/" + event.getId());
+        payload.setActorUserId(actorUserId);
+        payload.setRecipientMode(RecipientMode.EXPLICIT);
+        payload.setRecipientIds(notificationRecipientResolver.resolveForType(
+                NotificationType.COURSE_EVENT_CREATED, courseId, actorUserId));
+        payload.setCreatedAt(notificationTimeSupport.nowUtc());
+        java.util.Map<String, String> vars = new java.util.LinkedHashMap<>();
+        vars.put("courseCode", course.getCourseCode() == null ? "" : course.getCourseCode());
+        vars.put("courseTitle", course.getTitle() == null ? "" : course.getTitle());
+        vars.put("eventTitle", event.getName() == null ? "" : event.getName());
+        vars.put("eventTime", eventTime);
+        vars.put("deepLink", payload.getDeepLink());
+        payload.setTemplateVars(vars);
+        notificationPublisher.publishInTransaction(payload);
     }
 
     private CourseEventResponse toResponse(CourseEvent event) {

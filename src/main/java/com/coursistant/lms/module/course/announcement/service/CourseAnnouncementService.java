@@ -17,7 +17,9 @@ import com.coursistant.lms.module.interaction.notification.enums.NotificationTyp
 import com.coursistant.lms.module.interaction.notification.enums.RecipientMode;
 import com.coursistant.lms.module.interaction.notification.enums.SubjectType;
 import com.coursistant.lms.module.interaction.notification.event.NotificationPublisher;
+import com.coursistant.lms.module.interaction.notification.service.NotificationEventKeys;
 import com.coursistant.lms.module.interaction.notification.service.NotificationMessageFactory;
+import com.coursistant.lms.module.interaction.notification.service.NotificationRecipientResolver;
 import com.coursistant.lms.module.interaction.notification.service.NotificationTimeSupport;
 import com.coursistant.lms.module.user.account.entity.User;
 import com.coursistant.lms.module.user.account.repository.UserMapper;
@@ -66,14 +68,17 @@ public class CourseAnnouncementService {
     @Resource
     private NotificationTimeSupport notificationTimeSupport;
 
+    @Resource
+    private NotificationRecipientResolver notificationRecipientResolver;
+
     public List<AnnouncementSummaryResponse> listByCourse(Integer courseId, Integer userId) {
-        requireCourseNotArchived(courseId);
+        requireCourse(courseId);
         return courseAnnouncementMapper.selectSummariesByCourseId(courseId, userId, LIST_LIMIT);
     }
 
     @Transactional
     public AnnouncementResponse getById(Integer courseId, Integer announcementId, Integer userId) {
-        requireCourseNotArchived(courseId);
+        requireCourse(courseId);
         CourseAnnouncement announcement = requireAnnouncementInCourse(courseId, announcementId);
         markAnnouncementRead(announcementId, userId);
         return toDetail(announcement, true);
@@ -110,10 +115,12 @@ public class CourseAnnouncementService {
         payload.setMessage(notificationMessageFactory.announcementPosted(persisted.getTitle()));
         payload.setSubjectType(SubjectType.ANNOUNCEMENT);
         payload.setSubjectId(persisted.getId());
-        payload.setEventKey("published");
+        payload.setEventKey(NotificationEventKeys.announcementPublished(persisted.getId()));
         payload.setDeepLink("/courses/" + courseId + "/announcements/" + persisted.getId());
         payload.setActorUserId(authorUserId);
-        payload.setRecipientMode(RecipientMode.COURSE_ACTIVE_STUDENTS);
+        payload.setRecipientMode(RecipientMode.EXPLICIT);
+        payload.setRecipientIds(notificationRecipientResolver.resolveForType(
+                NotificationType.ANNOUNCEMENT_POSTED, courseId, authorUserId));
         payload.setCreatedAt(notificationTimeSupport.nowUtc());
         Map<String, String> vars = new LinkedHashMap<>();
         vars.put("courseCode", course.getCourseCode() == null ? "" : course.getCourseCode());

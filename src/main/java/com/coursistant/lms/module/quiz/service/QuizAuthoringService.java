@@ -15,9 +15,11 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 public class QuizAuthoringService {
@@ -37,6 +39,8 @@ public class QuizAuthoringService {
     @Lazy
     @Resource
     private QuizQuestionService quizQuestionService;
+    @Resource
+    private QuizNotificationService quizNotificationService;
 
     public List<QuizResponse> list(HttpServletRequest request, Integer courseId, Integer userId) {
         quizAccessService.requireCourse(courseId);
@@ -91,6 +95,10 @@ public class QuizAuthoringService {
         if (body.getExpectedVersion() != null && !body.getExpectedVersion().equals(quiz.getVersion())) {
             throw new ApiException(ErrorType.QUIZ_VERSION_CONFLICT);
         }
+        LocalDateTime oldOpensAt = quiz.getOpensAt();
+        LocalDateTime oldClosesAt = quiz.getClosesAt();
+        Integer oldTimeLimitSeconds = quiz.getTimeLimitSeconds();
+        boolean published = QuizConstants.STATE_PUBLISHED.equals(quiz.getState());
         boolean hasAttempts = quizMapper.countAttemptsByQuizId(quizId) > 0;
         ZoneId zone = tenantTimezoneService.requireZoneForCourse(courseId);
         if (body.getTitle() != null) {
@@ -134,7 +142,17 @@ public class QuizAuthoringService {
             throw new ApiException(ErrorType.QUIZ_VERSION_CONFLICT);
         }
         quizAuditService.log(courseId, quizId, null, userId, "QUIZ_UPDATED", null, null);
-        return toResponse(quizMapper.selectById(quizId), zone);
+        Quiz updated = quizMapper.selectById(quizId);
+        if (published) {
+            if (!Objects.equals(oldOpensAt, updated.getOpensAt())
+                    || !Objects.equals(oldClosesAt, updated.getClosesAt())) {
+                quizNotificationService.recordScheduleChanged(updated, userId);
+            }
+            if (!Objects.equals(oldTimeLimitSeconds, updated.getTimeLimitSeconds())) {
+                quizNotificationService.recordTimeLimitChanged(updated, userId);
+            }
+        }
+        return toResponse(updated, zone);
     }
 
     @Transactional
@@ -142,9 +160,18 @@ public class QuizAuthoringService {
         quizAccessService.requireNewActivityEnabled();
         Quiz quiz = quizAccessService.requireQuizConfigurable(courseId, quizId, userId);
         validatePublishable(quiz);
-        quizMapper.updateState(quizId, QuizConstants.STATE_PUBLISHED);
+        int published = quizMapper.publishAndIncrementPublicationVersion(quizId, quiz.getVersion());
+        if (published == 0) {
+            Quiz current = quizMapper.selectById(quizId);
+            if (current != null && QuizConstants.STATE_PUBLISHED.equals(current.getState())) {
+                return toResponse(current, tenantTimezoneService.requireZoneForCourse(courseId));
+            }
+            throw new ApiException(ErrorType.QUIZ_VERSION_CONFLICT);
+        }
         quizAuditService.log(courseId, quizId, null, userId, "QUIZ_PUBLISHED", null, null);
-        return toResponse(quizMapper.selectById(quizId), tenantTimezoneService.requireZoneForCourse(courseId));
+        Quiz updated = quizMapper.selectById(quizId);
+        quizNotificationService.recordQuizPublished(updated, userId);
+        return toResponse(updated, tenantTimezoneService.requireZoneForCourse(courseId));
     }
 
     @Transactional

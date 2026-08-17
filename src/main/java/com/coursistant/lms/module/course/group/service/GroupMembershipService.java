@@ -30,6 +30,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -100,9 +101,10 @@ public class GroupMembershipService {
             throw new ApiException(ErrorType.GROUP_ALREADY_IN_SET);
         }
 
-        writeAudit(course, membership, null, membership, GroupMembershipAudit.ACTOR_USER, userId,
+        Integer auditId = writeAudit(course, membership, null, membership, GroupMembershipAudit.ACTOR_USER, userId,
                 GroupMembershipAudit.JOIN_SELF, null);
-        groupNotificationService.notifyMembershipChanged(course, GroupMembershipAudit.JOIN_SELF, userId, groupId);
+        groupNotificationService.notifyAdded(course, groupSetId, groupId, userId,
+                GroupMembershipAudit.ACTOR_USER, userId, auditId, memberUserIds(groupId));
         return mutationResponse(groupSet, membership, userId, false);
     }
 
@@ -127,9 +129,10 @@ public class GroupMembershipService {
 
         GroupMembership before = copy(existing);
         groupMembershipMapper.deleteById(existing.getId());
-        writeAudit(course, before, before, null, GroupMembershipAudit.ACTOR_USER, userId,
+        Integer auditId = writeAudit(course, before, before, null, GroupMembershipAudit.ACTOR_USER, userId,
                 GroupMembershipAudit.LEAVE_SELF, null);
-        groupNotificationService.notifyMembershipChanged(course, GroupMembershipAudit.LEAVE_SELF, userId, groupId);
+        groupNotificationService.notifyRemoved(course, groupSetId, groupId, userId,
+                GroupMembershipAudit.ACTOR_USER, userId, auditId, memberUserIds(groupId));
 
         MembershipMutationResponse response = new MembershipMutationResponse();
         response.setMembership(null);
@@ -165,15 +168,18 @@ public class GroupMembershipService {
         lockAndAssertStudentCapacity(course, groupSet, target, userId);
 
         GroupMembership before = copy(existing);
+        Integer oldGroupId = existing.getGroupId();
         existing.setGroupId(target.getId());
         existing.setJoinedAt(LocalDateTime.now());
         existing.setAddedByType(GroupMembership.ADDED_BY_SELF);
         existing.setAddedByUserId(userId);
         groupMembershipMapper.updateById(existing);
 
-        writeAudit(course, existing, before, existing, GroupMembershipAudit.ACTOR_USER, userId,
+        Integer auditId = writeAudit(course, existing, before, existing, GroupMembershipAudit.ACTOR_USER, userId,
                 GroupMembershipAudit.SWITCH_SELF, null);
-        groupNotificationService.notifyMembershipChanged(course, GroupMembershipAudit.SWITCH_SELF, userId, target.getId());
+        groupNotificationService.notifyMoved(course, groupSetId, oldGroupId, target.getId(), userId,
+                GroupMembershipAudit.ACTOR_USER, userId, auditId,
+                memberUserIds(oldGroupId), memberUserIds(target.getId()));
         return mutationResponse(groupSet, existing, userId, false);
     }
 
@@ -236,11 +242,11 @@ public class GroupMembershipService {
                     ErrorType.GROUP_ALREADY_IN_SET.getDefaultMessage(), data);
         }
 
-        writeAudit(course, membership, null, membership, GroupMembershipAudit.ACTOR_USER, actorUserId,
+        Integer auditId = writeAudit(course, membership, null, membership, GroupMembershipAudit.ACTOR_USER, actorUserId,
                 GroupMembershipAudit.ASSIGN_STAFF,
                 Map.of("confirmCapacityOverfill", Boolean.TRUE.equals(request.getConfirmCapacityOverfill())));
-        groupNotificationService.notifyMembershipChanged(course, GroupMembershipAudit.ASSIGN_STAFF,
-                request.getUserId(), groupId);
+        groupNotificationService.notifyAdded(course, groupSetId, groupId, request.getUserId(),
+                GroupMembershipAudit.ACTOR_USER, actorUserId, auditId, memberUserIds(groupId));
         return mutationResponse(groupSet, membership, actorUserId, true);
     }
 
@@ -276,15 +282,18 @@ public class GroupMembershipService {
                 true, true);
 
         GroupMembership before = copy(existing);
+        Integer oldGroupId = existing.getGroupId();
         existing.setGroupId(target.getId());
         existing.setJoinedAt(LocalDateTime.now());
         existing.setAddedByType(GroupMembership.ADDED_BY_STAFF);
         existing.setAddedByUserId(actorUserId);
         groupMembershipMapper.updateById(existing);
 
-        writeAudit(course, existing, before, existing, GroupMembershipAudit.ACTOR_USER, actorUserId,
+        Integer auditId = writeAudit(course, existing, before, existing, GroupMembershipAudit.ACTOR_USER, actorUserId,
                 GroupMembershipAudit.MOVE_STAFF, null);
-        groupNotificationService.notifyMembershipChanged(course, GroupMembershipAudit.MOVE_STAFF, userId, target.getId());
+        groupNotificationService.notifyMoved(course, groupSetId, oldGroupId, target.getId(), userId,
+                GroupMembershipAudit.ACTOR_USER, actorUserId, auditId,
+                memberUserIds(oldGroupId), memberUserIds(target.getId()));
         return mutationResponse(groupSet, existing, actorUserId, true);
     }
 
@@ -311,10 +320,10 @@ public class GroupMembershipService {
 
         GroupMembership before = copy(existing);
         groupMembershipMapper.deleteById(existing.getId());
-        writeAudit(course, before, before, null, GroupMembershipAudit.ACTOR_USER, actorUserId,
+        Integer auditId = writeAudit(course, before, before, null, GroupMembershipAudit.ACTOR_USER, actorUserId,
                 GroupMembershipAudit.REMOVE_STAFF, null);
-        groupNotificationService.notifyMembershipChanged(course, GroupMembershipAudit.REMOVE_STAFF,
-                targetUserId, groupId);
+        groupNotificationService.notifyRemoved(course, groupSetId, groupId, targetUserId,
+                GroupMembershipAudit.ACTOR_USER, actorUserId, auditId, memberUserIds(groupId));
 
         MembershipMutationResponse response = new MembershipMutationResponse();
         response.setMembership(null);
@@ -338,6 +347,11 @@ public class GroupMembershipService {
 
         String batchId = UUID.randomUUID().toString();
         List<MembershipResponse> assigned = new ArrayList<>();
+        Map<Integer, LinkedHashSet<Integer>> membersByGroup = new HashMap<>();
+        for (CourseGroup group : groups) {
+            LinkedHashSet<Integer> ids = new LinkedHashSet<>(memberUserIds(group.getId()));
+            membersByGroup.put(group.getId(), ids);
+        }
         int groupIndex = 0;
         for (Integer studentId : studentIds) {
             CourseGroup placed = null;
@@ -358,10 +372,12 @@ public class GroupMembershipService {
             GroupMembership membership = newMembership(courseId, groupSetId, placed.getId(), studentId,
                     GroupMembership.ADDED_BY_STAFF, actorUserId);
             groupMembershipMapper.insert(membership);
-            writeAudit(course, membership, null, membership, GroupMembershipAudit.ACTOR_USER, actorUserId,
+            Integer auditId = writeAudit(course, membership, null, membership, GroupMembershipAudit.ACTOR_USER, actorUserId,
                     GroupMembershipAudit.DISTRIBUTE_RANDOM, Map.of("batchId", batchId));
-            groupNotificationService.notifyMembershipChanged(course, GroupMembershipAudit.DISTRIBUTE_RANDOM,
-                    studentId, placed.getId());
+            LinkedHashSet<Integer> members = membersByGroup.computeIfAbsent(placed.getId(), ignored -> new LinkedHashSet<>());
+            members.add(studentId);
+            groupNotificationService.notifyAdded(course, groupSetId, placed.getId(), studentId,
+                    GroupMembershipAudit.ACTOR_USER, actorUserId, auditId, new ArrayList<>(members));
             assigned.add(groupResponseAssembler.toMembershipResponse(membership));
         }
         return assigned;
@@ -393,7 +409,9 @@ public class GroupMembershipService {
         for (GroupMembership membership : memberships) {
             GroupMembership before = copy(membership);
             groupMembershipMapper.deleteById(membership.getId());
-            writeAudit(course, before, before, null, actorType, actorId, auditAction, null);
+            Integer auditId = writeAudit(course, before, before, null, actorType, actorId, auditAction, null);
+            groupNotificationService.notifyRemoved(course, membership.getGroupSetId(), membership.getGroupId(),
+                    userId, actorType, actorId, auditId, memberUserIds(membership.getGroupId()));
         }
     }
 
@@ -476,12 +494,12 @@ public class GroupMembershipService {
         return new ArrayList<>();
     }
 
-    private void writeAudit(Course course, GroupMembership entityRef, GroupMembership before, GroupMembership after,
+    private Integer writeAudit(Course course, GroupMembership entityRef, GroupMembership before, GroupMembership after,
                             String actorType, Integer actorUserId, String action, Map<String, ?> detail) {
         Integer groupId = after != null ? after.getGroupId() : (before != null ? before.getGroupId() : null);
         Integer groupSetId = after != null ? after.getGroupSetId() : (before != null ? before.getGroupSetId() : null);
         Integer targetUserId = after != null ? after.getUserId() : (before != null ? before.getUserId() : null);
-        groupAuditService.write(
+        return groupAuditService.write(
                 course.getTenantId(),
                 course.getId(),
                 groupSetId,
@@ -493,6 +511,23 @@ public class GroupMembershipService {
                 before,
                 after,
                 detail);
+    }
+
+    private List<Integer> memberUserIds(Integer groupId) {
+        if (groupId == null) {
+            return List.of();
+        }
+        List<GroupMembership> memberships = groupMembershipMapper.selectByGroupId(groupId);
+        if (memberships == null || memberships.isEmpty()) {
+            return List.of();
+        }
+        List<Integer> ids = new ArrayList<>();
+        for (GroupMembership membership : memberships) {
+            if (membership != null && membership.getUserId() != null) {
+                ids.add(membership.getUserId());
+            }
+        }
+        return ids;
     }
 
     private GroupMembership copy(GroupMembership source) {

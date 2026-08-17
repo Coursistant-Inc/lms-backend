@@ -30,6 +30,9 @@ public class NotificationService {
     @Resource
     private NotificationTimeSupport notificationTimeSupport;
 
+    @Resource
+    private NotificationAvailabilityChecker availabilityChecker;
+
     public NotificationPageResponse list(Integer userId, Integer page, Integer size) {
         Integer tenantId = requireTenantId(userId);
         int pageNum = normalizePage(page);
@@ -38,6 +41,7 @@ public class NotificationService {
 
         long total = userNotificationMapper.countByRecipient(tenantId, userId);
         List<NotificationResponse> items = userNotificationMapper.selectPage(tenantId, userId, offset, pageSize);
+        availabilityChecker.fill(userId, items);
 
         NotificationPageResponse response = new NotificationPageResponse();
         response.setItems(items);

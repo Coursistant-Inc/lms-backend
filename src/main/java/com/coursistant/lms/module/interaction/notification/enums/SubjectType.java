@@ -6,5 +6,8 @@ public enum SubjectType {
     QUIZ,
     ASSIGNMENT_GRADE,
     QUIZ_GRADE,
-    ASSIGNMENT_SUBMISSION
+    ASSIGNMENT_SUBMISSION,
+    WEEK,
+    COURSE_EVENT,
+    GROUP_SET
 }

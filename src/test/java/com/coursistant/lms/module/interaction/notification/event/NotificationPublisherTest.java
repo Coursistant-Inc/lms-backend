@@ -50,7 +50,8 @@ class NotificationPublisherTest {
                 new NotificationJson(new ObjectMapper()));
         org.springframework.test.util.ReflectionTestUtils.setField(publisher, "notificationProperties",
                 new NotificationProperties());
-        when(notificationTimeSupport.nowUtc()).thenReturn(LocalDateTime.of(2026, 8, 16, 1, 0));
+        org.mockito.Mockito.lenient().when(notificationTimeSupport.nowUtc())
+                .thenReturn(LocalDateTime.of(2026, 8, 16, 1, 0));
     }
 
     @Test
@@ -112,6 +113,35 @@ class NotificationPublisherTest {
         verify(recipientMapper).insertChunk(anyList());
         verify(notificationSupport, never()).afterCommit(any());
         verify(relayWorker, never()).getIfAvailable();
+    }
+
+    @Test
+    void emptySnapshot_isAllowedAndDoesNotInsertRecipients() {
+        NotificationDispatchPayload payload = payload(List.of());
+        when(outboxMapper.selectByDedupeKey(1, "ASSIGNMENT_GRADE_RELEASED", "ASSIGNMENT", 9, "release:7"))
+                .thenAnswer(inv -> {
+                    NotificationEventOutbox persisted = new NotificationEventOutbox();
+                    persisted.setId(10L);
+                    persisted.setEventId(payload.getEventId());
+                    return persisted;
+                });
+        try (MockedStatic<TransactionSynchronizationManager> tx = mockStatic(TransactionSynchronizationManager.class)) {
+            tx.when(TransactionSynchronizationManager::isActualTransactionActive).thenReturn(true);
+            assertEquals(10L, publisher.publishInTransaction(payload));
+        }
+        verify(recipientMapper, never()).insertChunk(anyList());
+    }
+
+    @Test
+    void nonExplicitMode_isRejected() {
+        NotificationDispatchPayload payload = payload(List.of(1));
+        payload.setRecipientMode(RecipientMode.COURSE_ACTIVE_STUDENTS);
+        try (MockedStatic<TransactionSynchronizationManager> tx = mockStatic(TransactionSynchronizationManager.class)) {
+            tx.when(TransactionSynchronizationManager::isActualTransactionActive).thenReturn(true);
+            org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                    () -> publisher.publishInTransaction(payload));
+        }
+        verify(outboxMapper, never()).insertIgnoreDuplicate(any());
     }
 
     private NotificationDispatchPayload payload(List<Integer> recipients) {

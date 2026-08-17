@@ -20,6 +20,8 @@ public class Assignment implements Serializable {
     private Long maxFileSizeBytes;
     private Integer maxFileCount;
     private String state;
+    private Integer publicationVersion;
+    private Integer scheduleVersion;
     private Integer currentRubricVersionId;
     private Integer createdBy;
     private LocalDateTime createdAt;
@@ -127,6 +129,22 @@ public class Assignment implements Serializable {
 
     public void setState(String state) {
         this.state = state;
+    }
+
+    public Integer getPublicationVersion() {
+        return publicationVersion;
+    }
+
+    public void setPublicationVersion(Integer publicationVersion) {
+        this.publicationVersion = publicationVersion;
+    }
+
+    public Integer getScheduleVersion() {
+        return scheduleVersion;
+    }
+
+    public void setScheduleVersion(Integer scheduleVersion) {
+        this.scheduleVersion = scheduleVersion;
     }
 
     public Integer getCurrentRubricVersionId() {

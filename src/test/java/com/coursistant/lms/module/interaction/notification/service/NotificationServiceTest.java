@@ -34,6 +34,9 @@ class NotificationServiceTest {
     @Mock
     private NotificationTimeSupport notificationTimeSupport;
 
+    @Mock
+    private NotificationAvailabilityChecker availabilityChecker;
+
     @InjectMocks
     private NotificationService notificationService;
 
@@ -81,6 +84,7 @@ class NotificationServiceTest {
         when(userNotificationMapper.selectPage(7, 10, 0, 20)).thenReturn(List.of());
 
         var page = notificationService.list(10, 1, 20);
+        verify(availabilityChecker).fill(eq(10), any());
         assertEquals(2L, page.getTotal());
         assertEquals(1, page.getPage());
         assertEquals(20, page.getSize());
