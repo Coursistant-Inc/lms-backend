@@ -8,12 +8,13 @@ import com.coursistant.lms.module.course.content.syllabus.entity.CourseSyllabusV
 import com.coursistant.lms.module.course.content.syllabus.repository.CourseSyllabusMapper;
 import com.coursistant.lms.module.course.content.syllabus.repository.CourseSyllabusVersionMapper;
 import com.coursistant.lms.module.course.course.service.CourseAuthorizationService;
-import com.coursistant.lms.module.file.storage.S3DownloadBody;
+import com.coursistant.lms.module.file.storage.FileSignature;
 import com.coursistant.lms.module.file.storage.S3ObjectKeyResolver;
 import com.coursistant.lms.module.file.storage.S3ObjectNotFoundException;
 import com.coursistant.lms.module.file.storage.S3ObjectPayload;
 import com.coursistant.lms.module.file.storage.S3ObjectStorage;
 import com.coursistant.lms.module.file.storage.S3StorageException;
+import com.coursistant.lms.module.file.storage.SecureFileResponse;
 import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.shared.api.ErrorType;
 import com.coursistant.lms.shared.security.ActorContext;
@@ -21,8 +22,6 @@ import jakarta.annotation.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.InputStreamResource;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -75,11 +74,11 @@ public class CourseSyllabusService {
     @Transactional
     public SyllabusResponse upload(ActorContext actor, Integer courseId, MultipartFile file) {
         courseContentAccessService.requireCourseManagerWritable(actor, courseId);
-        courseContentFilePolicy.validateSyllabusPdf(file);
+        String canonicalMime = courseContentFilePolicy.validateSyllabusPdf(file);
 
         String objectKey = OBJECT_PREFIX + courseId + "/" + UUID.randomUUID().toString().replace("-", "") + ".pdf";
         try {
-            s3ObjectStorage.putObject(physicalKey(objectKey), file);
+            s3ObjectStorage.putObject(physicalKey(objectKey), file, canonicalMime);
         } catch (S3StorageException e) {
             log.warn("Failed to upload syllabus for course {}: {}", courseId, e.getMessage());
             throw new ApiException(ErrorType.STORAGE_FAILURE, "Failed to upload syllabus file");
@@ -89,7 +88,7 @@ public class CourseSyllabusService {
         version.setCourseId(courseId);
         version.setObjectKey(objectKey);
         version.setOriginalFilename(resolveFilename(file));
-        version.setContentType(resolveContentType(file));
+        version.setContentType(canonicalMime);
         version.setSizeBytes(file.getSize());
         version.setUploadedBy(actor.getActorId());
         courseSyllabusVersionMapper.insert(version);
@@ -160,17 +159,15 @@ public class CourseSyllabusService {
 
         try {
             S3ObjectPayload payload = s3ObjectStorage.getObject(physicalKey(version.getObjectKey()));
-            MediaType mediaType = resolveMediaType(version.getContentType(), payload);
-            String disposition = (attachment ? "attachment" : "inline")
-                    + "; filename=\"" + sanitizeFilename(version.getOriginalFilename()) + "\"";
-            long length = S3DownloadBody.contentLength(payload);
-            ResponseEntity.BodyBuilder builder = ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_DISPOSITION, disposition)
-                    .contentType(mediaType);
-            if (length >= 0) {
-                builder.contentLength(length);
-            }
-            return builder.body(S3DownloadBody.resource(payload));
+            return SecureFileResponse.from(
+                    payload,
+                    version.getOriginalFilename(),
+                    courseContentFilePolicy.extensionOf(version.getOriginalFilename()),
+                    attachment,
+                    ErrorType.UNSUPPORTED_FILE_TYPE,
+                    FileSignature.Kind.PDF);
+        } catch (ApiException e) {
+            throw e;
         } catch (S3ObjectNotFoundException e) {
             throw new ApiException(ErrorType.SYLLABUS_NOT_FOUND, "Failed to load syllabus file");
         } catch (S3StorageException e) {
@@ -215,33 +212,5 @@ public class CourseSyllabusService {
     private String resolveFilename(MultipartFile file) {
         String filename = file.getOriginalFilename();
         return (filename == null || filename.isBlank()) ? "syllabus.pdf" : filename;
-    }
-
-    private String resolveContentType(MultipartFile file) {
-        String contentType = file.getContentType();
-        return (contentType == null || contentType.isBlank()) ? MediaType.APPLICATION_PDF_VALUE : contentType;
-    }
-
-    private MediaType resolveMediaType(String contentType, S3ObjectPayload payload) {
-        if (contentType != null && !contentType.isBlank()) {
-            return resolveMediaType(contentType);
-        }
-        String fromStorage = payload.metadata() != null ? payload.metadata().contentType() : null;
-        return resolveMediaType(fromStorage);
-    }
-
-    private MediaType resolveMediaType(String contentType) {
-        try {
-            return contentType == null ? MediaType.APPLICATION_PDF : MediaType.parseMediaType(contentType);
-        } catch (Exception e) {
-            return MediaType.APPLICATION_PDF;
-        }
-    }
-
-    private String sanitizeFilename(String filename) {
-        if (filename == null || filename.isBlank()) {
-            return "syllabus.pdf";
-        }
-        return filename.replace("\"", "");
     }
 }

@@ -77,10 +77,33 @@ class S3ObjectStorageTest {
     }
 
     @Test
-    void putObject_multipart_delegatesAndDefaultsBlankContentType() throws Exception {
+    void putObject_multipart_usesExplicitCanonicalMimeNotClientType() throws Exception {
+        MultipartFile file = new MockMultipartFile(
+                "file", "x.png", "text/html", FileSignatureSamples.PNG);
+
+        storage.putObject("img.png", file, "image/png");
+
+        ArgumentCaptor<PutObjectRequest> captor = ArgumentCaptor.forClass(PutObjectRequest.class);
+        verify(s3Client).putObject(captor.capture(), any(RequestBody.class));
+        assertEquals("image/png", captor.getValue().contentType());
+        assertEquals("img.png", captor.getValue().key());
+    }
+
+    @Test
+    void putObject_multipartOverloadRequiresCanonicalMime() {
+        long twoArgMultipart = java.util.Arrays.stream(S3ObjectStorage.class.getMethods())
+                .filter(m -> "putObject".equals(m.getName())
+                        && m.getParameterCount() == 2
+                        && MultipartFile.class.isAssignableFrom(m.getParameterTypes()[1]))
+                .count();
+        assertEquals(0, twoArgMultipart);
+    }
+
+    @Test
+    void putObject_multipart_blankCanonicalMimeDefaultsToOctetStream() throws Exception {
         MultipartFile file = new MockMultipartFile("file", "x.bin", "  ", "abc".getBytes(StandardCharsets.UTF_8));
 
-        storage.putObject("disk/x.bin", file);
+        storage.putObject("disk/x.bin", file, "  ");
 
         ArgumentCaptor<PutObjectRequest> captor = ArgumentCaptor.forClass(PutObjectRequest.class);
         verify(s3Client).putObject(captor.capture(), any(RequestBody.class));
@@ -240,7 +263,7 @@ class S3ObjectStorageTest {
     @Test
     void nullStreamAndNullMultipart_doNotCallSdk() {
         assertThrows(IllegalArgumentException.class, () -> storage.putObject("k", (InputStream) null, 0, "text/plain"));
-        assertThrows(IllegalArgumentException.class, () -> storage.putObject("k", (MultipartFile) null));
+        assertThrows(IllegalArgumentException.class, () -> storage.putObject("k", (MultipartFile) null, "image/png"));
         verify(s3Client, never()).putObject(any(PutObjectRequest.class), any(RequestBody.class));
     }
 

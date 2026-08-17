@@ -8,6 +8,8 @@ import com.coursistant.lms.module.course.content.week.entity.CourseWeek;
 import com.coursistant.lms.module.course.course.service.CourseAuditService;
 import com.coursistant.lms.module.course.storage.service.MinioOutboxService;
 import com.coursistant.lms.module.course.storage.service.UploadOperationService;
+import com.coursistant.lms.module.file.storage.FileDownloadHeaders;
+import com.coursistant.lms.module.file.storage.FileSignatureSamples;
 import com.coursistant.lms.module.file.storage.S3ObjectKeyResolver;
 import com.coursistant.lms.module.file.storage.S3ObjectMetadata;
 import com.coursistant.lms.module.file.storage.S3ObjectNotFoundException;
@@ -26,15 +28,22 @@ import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.io.InputStreamResource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockMultipartFile;
 
 import java.io.ByteArrayInputStream;
+import java.io.FilterInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -69,6 +78,8 @@ class CourseMaterialServiceStorageTest {
     @BeforeEach
     void policy() {
         org.mockito.Mockito.lenient().when(courseContentFilePolicy.bucket()).thenReturn("lms-uploads");
+        org.mockito.Mockito.lenient().when(courseContentFilePolicy.validateFile(any()))
+                .thenReturn("application/pdf");
     }
 
     @Test
@@ -83,7 +94,7 @@ class CourseMaterialServiceStorageTest {
         service.create(actor, 1, 2, new MockMultipartFile[]{file}, null, null, new MockHttpServletRequest());
 
         ArgumentCaptor<String> key = ArgumentCaptor.forClass(String.class);
-        verify(s3ObjectStorage).putObject(key.capture(), eq(file));
+        verify(s3ObjectStorage).putObject(key.capture(), eq(file), eq("application/pdf"));
         assertEquals("lms-uploads/course-content/1/weeks/2/materials/abc.pdf", key.getValue());
         verify(s3ObjectStorage, never()).copyObject(anyString(), anyString());
     }
@@ -94,7 +105,8 @@ class CourseMaterialServiceStorageTest {
         when(courseContentFilePolicy.extensionOf("a.pdf")).thenReturn("pdf");
         when(courseContentFilePolicy.buildObjectKey(anyString(), eq("a.pdf"))).thenReturn("k.pdf");
         when(courseMaterialMapper.selectMaxOrderPosition(2)).thenReturn(null);
-        doThrow(new S3StorageException("timeout")).when(s3ObjectStorage).putObject(anyString(), eq(file));
+        doThrow(new S3StorageException("timeout")).when(s3ObjectStorage)
+                .putObject(anyString(), eq(file), anyString());
 
         ApiException ex = assertThrows(ApiException.class,
                 () -> service.create(actor, 1, 2, new MockMultipartFile[]{file}, null, null, new MockHttpServletRequest()));
@@ -124,7 +136,8 @@ class CourseMaterialServiceStorageTest {
         service.create(actor, 1, 2, new MockMultipartFile[]{file}, null, null, request);
 
         InOrder inOrder = inOrder(s3ObjectStorage, minioOutboxService);
-        inOrder.verify(s3ObjectStorage).putObject(eq("lms-uploads/staging/op-1/materials/abc.pdf"), eq(file));
+        inOrder.verify(s3ObjectStorage).putObject(eq("lms-uploads/staging/op-1/materials/abc.pdf"), eq(file),
+                eq("application/pdf"));
         inOrder.verify(s3ObjectStorage).copyObject(
                 "lms-uploads/staging/op-1/materials/abc.pdf",
                 "lms-uploads/course-content/1/weeks/2/materials/abc.pdf");
@@ -186,15 +199,113 @@ class CourseMaterialServiceStorageTest {
         CourseWeek week = week();
         when(courseContentAccessService.requireWeekReadable(actor, 1, 2)).thenReturn(week);
         when(courseMaterialMapper.selectById(9)).thenReturn(material(9, "k.pdf"));
-        byte[] body = "pdf".getBytes();
+        byte[] body = FileSignatureSamples.PDF;
         when(s3ObjectStorage.getObject("lms-uploads/k.pdf")).thenReturn(
-                new S3ObjectPayload(new ByteArrayInputStream(body), new S3ObjectMetadata("application/pdf", 3L, "e")));
+                new S3ObjectPayload(new ByteArrayInputStream(body),
+                        new S3ObjectMetadata("application/pdf", (long) body.length, "e")));
 
         ResponseEntity<?> response = service.download(actor, 1, 2, 9);
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(3L, response.getHeaders().getContentLength());
+        assertEquals(body.length, response.getHeaders().getContentLength());
+        assertEquals("application/pdf", response.getHeaders().getContentType().toString());
+        assertTrue(response.getHeaders().getFirst(HttpHeaders.CONTENT_DISPOSITION).startsWith("attachment"));
+        assertSecurityHeaders(response);
         InputStreamResource resource = (InputStreamResource) response.getBody();
-        assertEquals("pdf", new String(resource.getInputStream().readAllBytes()));
+        assertEquals(new String(body), new String(resource.getInputStream().readAllBytes()));
+    }
+
+    @Test
+    void xssU2_create_persistsCanonicalPngNotClientHtml() {
+        MockMultipartFile file = new MockMultipartFile(
+                "files", "test.png", "text/html", FileSignatureSamples.PNG);
+        when(courseContentFilePolicy.validateFile(file)).thenReturn("image/png");
+        when(courseContentFilePolicy.extensionOf("test.png")).thenReturn("png");
+        when(courseContentFilePolicy.buildObjectKey(anyString(), eq("test.png")))
+                .thenReturn("course-content/1/weeks/2/materials/abc.png");
+        when(courseMaterialMapper.selectMaxOrderPosition(2)).thenReturn(0);
+        stubInsert(7);
+        when(courseMaterialMapper.selectById(7)).thenReturn(material(7, "course-content/1/weeks/2/materials/abc.png"));
+
+        service.create(actor, 1, 2, new MockMultipartFile[]{file}, null, null, new MockHttpServletRequest());
+
+        ArgumentCaptor<CourseMaterial> inserted = ArgumentCaptor.forClass(CourseMaterial.class);
+        verify(courseMaterialMapper).insert(inserted.capture());
+        assertEquals("image/png", inserted.getValue().getContentType());
+        verify(s3ObjectStorage).putObject(anyString(), eq(file), eq("image/png"));
+    }
+
+    @Test
+    void xssP1_htmlStoredAsPng_previewIs400AndClosesStream() throws Exception {
+        CourseWeek week = week();
+        when(courseContentAccessService.requireWeekReadable(actor, 1, 2)).thenReturn(week);
+        CourseMaterial material = material(9, "poison.png");
+        material.setContentType("text/html");
+        material.setExtension("png");
+        material.setDisplayName("test.png");
+        when(courseMaterialMapper.selectById(9)).thenReturn(material);
+        when(courseContentFilePolicy.isPreviewable("text/html", "png")).thenReturn(true);
+        AtomicBoolean closed = new AtomicBoolean(false);
+        InputStream tracking = new FilterInputStream(new ByteArrayInputStream(FileSignatureSamples.HTML)) {
+            @Override
+            public void close() throws IOException {
+                closed.set(true);
+                super.close();
+            }
+        };
+        when(s3ObjectStorage.getObject("lms-uploads/poison.png")).thenReturn(
+                new S3ObjectPayload(tracking, new S3ObjectMetadata("text/html",
+                        (long) FileSignatureSamples.HTML.length, "e")));
+
+        ApiException ex = assertThrows(ApiException.class, () -> service.preview(actor, 1, 2, 9));
+        assertEquals(ErrorType.BAD_REQUEST, ex.getErrorType());
+        assertTrue(closed.get());
+    }
+
+    @Test
+    void xssP1b_staleHtmlMimeButRealPng_previewsAsPng() throws Exception {
+        CourseWeek week = week();
+        when(courseContentAccessService.requireWeekReadable(actor, 1, 2)).thenReturn(week);
+        CourseMaterial material = material(9, "k.png");
+        material.setContentType("text/html");
+        material.setExtension("png");
+        material.setDisplayName("test.png");
+        when(courseMaterialMapper.selectById(9)).thenReturn(material);
+        when(courseContentFilePolicy.isPreviewable("text/html", "png")).thenReturn(true);
+        when(s3ObjectStorage.getObject("lms-uploads/k.png")).thenReturn(
+                new S3ObjectPayload(new ByteArrayInputStream(FileSignatureSamples.PNG),
+                        new S3ObjectMetadata("text/html", (long) FileSignatureSamples.PNG.length, "e")));
+
+        ResponseEntity<InputStreamResource> response = service.preview(actor, 1, 2, 9);
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals("image/png", response.getHeaders().getContentType().toString());
+        assertTrue(response.getHeaders().getFirst(HttpHeaders.CONTENT_DISPOSITION).startsWith("inline"));
+        assertFalse("text/html".equalsIgnoreCase(String.valueOf(response.getHeaders().getContentType())));
+        assertSecurityHeaders(response);
+        assertEquals(FileSignatureSamples.PNG.length, response.getBody().getInputStream().readAllBytes().length);
+    }
+
+    @Test
+    void xssP2_pdfPreview_hasInlineCanonicalMimeAndCsp() throws Exception {
+        CourseWeek week = week();
+        when(courseContentAccessService.requireWeekReadable(actor, 1, 2)).thenReturn(week);
+        when(courseMaterialMapper.selectById(9)).thenReturn(material(9, "k.pdf"));
+        when(courseContentFilePolicy.isPreviewable("application/pdf", "pdf")).thenReturn(true);
+        when(s3ObjectStorage.getObject("lms-uploads/k.pdf")).thenReturn(
+                new S3ObjectPayload(new ByteArrayInputStream(FileSignatureSamples.PDF),
+                        new S3ObjectMetadata("application/pdf", (long) FileSignatureSamples.PDF.length, "e")));
+
+        ResponseEntity<InputStreamResource> response = service.preview(actor, 1, 2, 9);
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals("application/pdf", response.getHeaders().getContentType().toString());
+        assertTrue(response.getHeaders().getFirst(HttpHeaders.CONTENT_DISPOSITION).startsWith("inline"));
+        assertSecurityHeaders(response);
+    }
+
+    private static void assertSecurityHeaders(ResponseEntity<?> response) {
+        assertEquals("nosniff", response.getHeaders().getFirst("X-Content-Type-Options"));
+        String csp = response.getHeaders().getFirst(FileDownloadHeaders.CONTENT_SECURITY_POLICY_HEADER);
+        assertTrue(csp != null && csp.contains("sandbox") && csp.contains("default-src 'none'"));
+        assertEquals(FileDownloadHeaders.CONTENT_SECURITY_POLICY, csp);
     }
 
     private void stubInsert(int id) {

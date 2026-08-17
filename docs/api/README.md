@@ -24,7 +24,7 @@ Base URL / server: `/api` (matches `server.servlet.context-path`).
 
 ## Generate (export)
 
-Does **not** require a manually started server or local MySQL. Uses the `openapi` Spring profile (H2 + mocked Redis/MinIO/Mail) via Failsafe IT:
+Does **not** require a manually started server or local MySQL. Uses the `openapi` Spring profile (H2 + mocked Redis/S3/Mail) via Failsafe IT:
 
 ```powershell
 ./scripts/export-openapi.ps1 -Module all

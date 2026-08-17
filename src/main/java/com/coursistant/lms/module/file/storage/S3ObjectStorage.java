@@ -56,13 +56,13 @@ public class S3ObjectStorage {
         }
     }
 
-    public void putObject(String key, MultipartFile file) {
+    public void putObject(String key, MultipartFile file, String canonicalMime) {
         requireKey(key);
         if (file == null) {
             throw new IllegalArgumentException("file must not be null");
         }
         try (InputStream in = file.getInputStream()) {
-            putObject(key, in, file.getSize(), file.getContentType());
+            putObject(key, in, file.getSize(), canonicalMime);
         } catch (IOException e) {
             throw new S3StorageException("Failed to read multipart file for key " + key, e);
         }

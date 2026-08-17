@@ -26,7 +26,17 @@ public final class S3DownloadBody {
         if (payload == null) {
             throw new IllegalArgumentException("payload must not be null");
         }
-        InputStream filter = new OnceClosedStream(payload);
+        return resource(payload, payload.content());
+    }
+
+    public static InputStreamResource resource(S3ObjectPayload payload, InputStream body) {
+        if (payload == null) {
+            throw new IllegalArgumentException("payload must not be null");
+        }
+        if (body == null) {
+            throw new IllegalArgumentException("body must not be null");
+        }
+        InputStream filter = new OnceClosedStream(payload, body);
         long length = contentLength(payload);
         return new InputStreamResource(filter) {
             @Override
@@ -48,8 +58,8 @@ public final class S3DownloadBody {
         private final S3ObjectPayload payload;
         private final AtomicBoolean closed = new AtomicBoolean(false);
 
-        private OnceClosedStream(S3ObjectPayload payload) {
-            super(payload.content());
+        private OnceClosedStream(S3ObjectPayload payload, InputStream body) {
+            super(body);
             this.payload = payload;
         }
 

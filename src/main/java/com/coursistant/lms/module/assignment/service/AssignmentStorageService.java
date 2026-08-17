@@ -1,5 +1,8 @@
 package com.coursistant.lms.module.assignment.service;
 
+import com.coursistant.lms.module.file.storage.FileDownloadHeaders;
+import com.coursistant.lms.module.file.storage.FileObjectSniff;
+import com.coursistant.lms.module.file.storage.FileSignature;
 import com.coursistant.lms.module.file.storage.S3DownloadBody;
 import com.coursistant.lms.module.file.storage.S3ObjectKeyResolver;
 import com.coursistant.lms.module.file.storage.S3ObjectPayload;
@@ -38,9 +41,10 @@ public class AssignmentStorageService {
     @Resource
     private AssignmentFilePolicy assignmentFilePolicy;
 
-    public void upload(String objectKey, MultipartFile file, Integer courseId, Integer assignmentId, Integer userId) {
+    public void upload(String objectKey, MultipartFile file, String canonicalMime,
+                       Integer courseId, Integer assignmentId, Integer userId) {
         try {
-            s3ObjectStorage.putObject(physicalKey(objectKey), file);
+            s3ObjectStorage.putObject(physicalKey(objectKey), file, canonicalMime);
         } catch (S3StorageException e) {
             log.error("Assignment object upload failed: courseId={}, assignmentId={}, userId={}, errorType={}, objectKey={}, cause={}",
                     courseId, assignmentId, userId, ErrorType.STORAGE_FAILURE, objectKey, e.getMessage());
@@ -51,25 +55,48 @@ public class AssignmentStorageService {
     public ResponseEntity<InputStreamResource> stream(String objectKey, String originalName, String contentType,
                                                       boolean attachment, Integer courseId, Integer assignmentId,
                                                       Integer userId) {
+        S3ObjectPayload payload = null;
         try {
-            S3ObjectPayload payload = s3ObjectStorage.getObject(physicalKey(objectKey));
-            String filename = assignmentFilePolicy.sanitizeFilename(originalName);
-            String disposition = (attachment ? "attachment" : "inline")
+            payload = s3ObjectStorage.getObject(physicalKey(objectKey));
+            FileObjectSniff.Result sniffed = FileObjectSniff.wrap(payload);
+            payload = sniffed.payload();
+            if (!attachment && !FileSignature.isPreviewable(sniffed.kind())) {
+                sniffed.abort();
+                throw new ApiException(ErrorType.UNSUPPORTED_FILE_TYPE,
+                        "Preview is only available for PDF and image files; use download instead");
+            }
+            String filename = FileDownloadHeaders.sanitizeFilename(originalName);
+            boolean unknown = sniffed.kind() == FileSignature.Kind.UNKNOWN;
+            MediaType mediaType = unknown
+                    ? MediaType.APPLICATION_OCTET_STREAM
+                    : MediaType.parseMediaType(FileSignature.canonicalMime(
+                            sniffed.kind(), assignmentFilePolicy.extensionOf(originalName)));
+            String disposition = (attachment || !FileSignature.isPreviewable(sniffed.kind()) ? "attachment" : "inline")
                     + "; filename=\"" + filename + "\""
                     + "; filename*=UTF-8''" + URLEncoder.encode(filename, StandardCharsets.UTF_8).replace("+", "%20");
-            MediaType mediaType = resolveMediaType(contentType, payload);
-            long length = S3DownloadBody.contentLength(payload);
+            long length = S3DownloadBody.contentLength(sniffed.payload());
             ResponseEntity.BodyBuilder builder = ResponseEntity.ok()
                     .header(HttpHeaders.CONTENT_DISPOSITION, disposition)
                     .contentType(mediaType);
+            FileDownloadHeaders.applySecurity(builder);
             if (length >= 0) {
                 builder.contentLength(length);
             }
-            return builder.body(S3DownloadBody.resource(payload));
+            return builder.body(S3DownloadBody.resource(sniffed.payload(), sniffed.stream()));
+        } catch (ApiException e) {
+            throw e;
         } catch (S3StorageException e) {
+            if (payload != null) {
+                payload.close();
+            }
             log.error("Assignment object download failed: courseId={}, assignmentId={}, userId={}, errorType={}, objectKey={}, cause={}",
                     courseId, assignmentId, userId, ErrorType.STORAGE_FAILURE, objectKey, e.getMessage());
             throw new ApiException(ErrorType.STORAGE_FAILURE, "Failed to load the requested file");
+        } catch (RuntimeException e) {
+            if (payload != null) {
+                payload.close();
+            }
+            throw e;
         }
     }
 
@@ -90,24 +117,5 @@ public class AssignmentStorageService {
 
     private String physicalKey(String objectKey) {
         return s3ObjectKeyResolver.resolve(assignmentFilePolicy.bucket(), objectKey);
-    }
-
-    private MediaType resolveMediaType(String contentType, S3ObjectPayload payload) {
-        if (contentType != null && !contentType.isBlank()) {
-            try {
-                return MediaType.parseMediaType(contentType);
-            } catch (Exception e) {
-                return MediaType.APPLICATION_OCTET_STREAM;
-            }
-        }
-        String fromStorage = payload.metadata() != null ? payload.metadata().contentType() : null;
-        if (fromStorage == null || fromStorage.isBlank()) {
-            return MediaType.APPLICATION_OCTET_STREAM;
-        }
-        try {
-            return MediaType.parseMediaType(fromStorage);
-        } catch (Exception e) {
-            return MediaType.APPLICATION_OCTET_STREAM;
-        }
     }
 }

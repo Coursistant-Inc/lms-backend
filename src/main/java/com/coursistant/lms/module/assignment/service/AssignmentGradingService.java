@@ -392,20 +392,20 @@ public class AssignmentGradingService {
         assignmentAccessService.requireGradingWritable(courseId, userId);
         Assignment assignment = requireAssignment(courseId, assignmentId, userId);
         requireInRoster(courseId, assignmentId, studentUserId, userId);
-        assignmentFilePolicy.validateAnnotatedFile(file);
+        String canonicalMime = assignmentFilePolicy.validateAnnotatedFile(file);
 
         AssignmentGrade existing = requireGrade(courseId, assignmentId, studentUserId, userId);
         String previousKey = existing.getAnnotatedObjectKey();
 
         String objectKey = assignmentFilePolicy.annotatedKey(courseId, assignmentId, studentUserId,
                 file.getOriginalFilename());
-        assignmentStorageService.upload(objectKey, file, courseId, assignmentId, userId);
+        assignmentStorageService.upload(objectKey, file, canonicalMime, courseId, assignmentId, userId);
 
         AssignmentGrade patch = new AssignmentGrade();
         patch.setId(existing.getId());
         patch.setAnnotatedObjectKey(objectKey);
         patch.setAnnotatedOriginalName(assignmentFilePolicy.sanitizeFilename(file.getOriginalFilename()));
-        patch.setAnnotatedContentType(file.getContentType());
+        patch.setAnnotatedContentType(canonicalMime);
         patch.setAnnotatedSizeBytes(file.getSize());
         patch.setEditedBy(userId);
         assignmentGradeMapper.updateById(patch);
@@ -465,20 +465,20 @@ public class AssignmentGradingService {
         Assignment assignment = requireAssignment(courseId, assignmentId, userId);
         requireGroupAssignment(courseId, assignmentId, userId, assignment);
         requireGroupInRoster(courseId, assignment, groupId, userId);
-        assignmentFilePolicy.validateAnnotatedFile(file);
+        String canonicalMime = assignmentFilePolicy.validateAnnotatedFile(file);
 
         AssignmentGrade existing = requireGroupGrade(courseId, assignmentId, groupId, userId);
         String previousKey = existing.getAnnotatedObjectKey();
 
         String objectKey = assignmentFilePolicy.annotatedGroupKey(courseId, assignmentId, groupId,
                 file.getOriginalFilename());
-        assignmentStorageService.upload(objectKey, file, courseId, assignmentId, userId);
+        assignmentStorageService.upload(objectKey, file, canonicalMime, courseId, assignmentId, userId);
 
         AssignmentGrade patch = new AssignmentGrade();
         patch.setId(existing.getId());
         patch.setAnnotatedObjectKey(objectKey);
         patch.setAnnotatedOriginalName(assignmentFilePolicy.sanitizeFilename(file.getOriginalFilename()));
-        patch.setAnnotatedContentType(file.getContentType());
+        patch.setAnnotatedContentType(canonicalMime);
         patch.setAnnotatedSizeBytes(file.getSize());
         patch.setEditedBy(userId);
         assignmentGradeMapper.updateById(patch);

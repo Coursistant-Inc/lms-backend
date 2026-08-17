@@ -1,6 +1,5 @@
 package com.coursistant.lms.shared.openapi;
 
-import io.minio.MinioClient;
 import org.mockito.Mockito;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
@@ -13,7 +12,7 @@ import org.springframework.mail.javamail.JavaMailSender;
 import software.amazon.awssdk.services.s3.S3Client;
 
 /**
- * Stubs external infra for the openapi profile so contract export needs no Redis/MinIO/Mail.
+ * Stubs external infra for the openapi profile so contract export needs no Redis/S3/Mail.
  */
 @TestConfiguration
 @Profile("openapi")
@@ -52,12 +51,6 @@ public class OpenApiTestInfrastructureConfig {
     @Bean(name = "refreshTokenRedisTemplate")
     public RedisTemplate<String, Object> refreshTokenRedisTemplate() {
         return mockRedisTemplate();
-    }
-
-    @Bean
-    @Primary
-    public MinioClient minioClient() {
-        return Mockito.mock(MinioClient.class);
     }
 
     @Bean

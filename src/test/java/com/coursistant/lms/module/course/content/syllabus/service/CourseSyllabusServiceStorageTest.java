@@ -7,6 +7,8 @@ import com.coursistant.lms.module.course.content.syllabus.entity.CourseSyllabusV
 import com.coursistant.lms.module.course.content.syllabus.repository.CourseSyllabusMapper;
 import com.coursistant.lms.module.course.content.syllabus.repository.CourseSyllabusVersionMapper;
 import com.coursistant.lms.module.course.course.service.CourseAuthorizationService;
+import com.coursistant.lms.module.file.storage.FileDownloadHeaders;
+import com.coursistant.lms.module.file.storage.FileSignatureSamples;
 import com.coursistant.lms.module.file.storage.S3ObjectKeyResolver;
 import com.coursistant.lms.module.file.storage.S3ObjectMetadata;
 import com.coursistant.lms.module.file.storage.S3ObjectNotFoundException;
@@ -25,6 +27,7 @@ import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.io.InputStreamResource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockMultipartFile;
@@ -33,8 +36,10 @@ import java.io.ByteArrayInputStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -58,12 +63,15 @@ class CourseSyllabusServiceStorageTest {
     @BeforeEach
     void policy() {
         org.mockito.Mockito.lenient().when(courseContentFilePolicy.bucket()).thenReturn("lms-uploads");
+        org.mockito.Mockito.lenient().when(courseContentFilePolicy.validateSyllabusPdf(any()))
+                .thenReturn("application/pdf");
+        org.mockito.Mockito.lenient().when(courseContentFilePolicy.extensionOf(anyString())).thenReturn("pdf");
     }
 
     @Test
     void upload_putFailure_is503() {
         MockMultipartFile file = new MockMultipartFile("file", "s.pdf", "application/pdf", "x".getBytes());
-        doThrow(new S3StorageException("timeout")).when(s3ObjectStorage).putObject(anyString(), any());
+        doThrow(new S3StorageException("timeout")).when(s3ObjectStorage).putObject(anyString(), any(), anyString());
 
         ApiException ex = assertThrows(ApiException.class, () -> service.upload(actor, 8, file));
         assertEquals(ErrorType.STORAGE_FAILURE, ex.getErrorType());
@@ -78,7 +86,7 @@ class CourseSyllabusServiceStorageTest {
         service.upload(actor, 8, file);
 
         ArgumentCaptor<String> key = ArgumentCaptor.forClass(String.class);
-        verify(s3ObjectStorage).putObject(key.capture(), any());
+        verify(s3ObjectStorage).putObject(key.capture(), any(), eq("application/pdf"));
         org.junit.jupiter.api.Assertions.assertTrue(key.getValue().startsWith("lms-uploads/syllabus/8/"));
     }
 
@@ -142,13 +150,38 @@ class CourseSyllabusServiceStorageTest {
         version.setContentType("application/pdf");
         when(courseSyllabusMapper.selectByCourseId(8)).thenReturn(syllabus);
         when(courseSyllabusVersionMapper.selectById(3)).thenReturn(version);
-        byte[] body = "pdf".getBytes();
+        byte[] body = FileSignatureSamples.PDF;
         when(s3ObjectStorage.getObject("lms-uploads/syllabus/8/a.pdf")).thenReturn(
-                new S3ObjectPayload(new ByteArrayInputStream(body), new S3ObjectMetadata("application/pdf", 3L, "e")));
+                new S3ObjectPayload(new ByteArrayInputStream(body),
+                        new S3ObjectMetadata("application/pdf", (long) body.length, "e")));
 
         ResponseEntity<InputStreamResource> response = service.download(actor, 8);
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(3L, response.getHeaders().getContentLength());
+        assertEquals(body.length, response.getHeaders().getContentLength());
         assertEquals("application/pdf", response.getHeaders().getContentType().toString());
+        assertTrue(response.getHeaders().getFirst(HttpHeaders.CONTENT_DISPOSITION).startsWith("attachment"));
+        assertEquals("nosniff", response.getHeaders().getFirst("X-Content-Type-Options"));
+        assertEquals(FileDownloadHeaders.CONTENT_SECURITY_POLICY,
+                response.getHeaders().getFirst(FileDownloadHeaders.CONTENT_SECURITY_POLICY_HEADER));
+    }
+
+    @Test
+    void preview_htmlBytes_isUnsupportedFileType() {
+        CourseSyllabus syllabus = new CourseSyllabus();
+        syllabus.setCourseId(8);
+        syllabus.setCurrentVersionId(3);
+        CourseSyllabusVersion version = new CourseSyllabusVersion();
+        version.setId(3);
+        version.setObjectKey("syllabus/8/a.pdf");
+        version.setOriginalFilename("a.pdf");
+        version.setContentType("application/pdf");
+        when(courseSyllabusMapper.selectByCourseId(8)).thenReturn(syllabus);
+        when(courseSyllabusVersionMapper.selectById(3)).thenReturn(version);
+        when(s3ObjectStorage.getObject("lms-uploads/syllabus/8/a.pdf")).thenReturn(
+                new S3ObjectPayload(new ByteArrayInputStream(FileSignatureSamples.HTML),
+                        new S3ObjectMetadata("application/pdf", (long) FileSignatureSamples.HTML.length, "e")));
+
+        ApiException ex = assertThrows(ApiException.class, () -> service.preview(actor, 8));
+        assertEquals(ErrorType.UNSUPPORTED_FILE_TYPE, ex.getErrorType());
     }
 }

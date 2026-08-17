@@ -91,11 +91,6 @@ pagehelper:
   support-methods-arguments: true
   params: count=countSql
 
-minio:
-  url: http://localhost:9000
-  access-key: ${MINIO_ACCESS_KEY}
-  secret-key: ${MINIO_SECRET_KEY}
-
 # S3 is required. enabled=false or a blank region/bucket fails startup.
 # Credentials come from DefaultCredentialsProvider (process env / ~/.aws), not these keys.
 aws:

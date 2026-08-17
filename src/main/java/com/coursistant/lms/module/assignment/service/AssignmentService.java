@@ -669,15 +669,15 @@ public class AssignmentService {
 
         List<AssignmentAttachmentResponse> created = new ArrayList<>();
         for (MultipartFile file : files) {
-            assignmentFilePolicy.validateAttachmentFile(file);
+            String canonicalMime = assignmentFilePolicy.validateAttachmentFile(file);
             String objectKey = assignmentFilePolicy.attachmentKey(courseId, assignmentId, file.getOriginalFilename());
-            assignmentStorageService.upload(objectKey, file, courseId, assignmentId, userId);
+            assignmentStorageService.upload(objectKey, file, canonicalMime, courseId, assignmentId, userId);
 
             AssignmentAttachment attachment = new AssignmentAttachment();
             attachment.setAssignmentId(assignmentId);
             attachment.setObjectKey(objectKey);
             attachment.setOriginalName(assignmentFilePolicy.sanitizeFilename(file.getOriginalFilename()));
-            attachment.setContentType(file.getContentType());
+            attachment.setContentType(canonicalMime);
             attachment.setSizeBytes(file.getSize());
             attachment.setUploadedBy(userId);
             assignmentAttachmentMapper.insert(attachment);

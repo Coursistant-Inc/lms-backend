@@ -14,12 +14,12 @@ import com.coursistant.lms.module.course.course.service.CourseAuditService;
 import com.coursistant.lms.module.course.storage.entity.UploadOperation;
 import com.coursistant.lms.module.course.storage.service.MinioOutboxService;
 import com.coursistant.lms.module.course.storage.service.UploadOperationService;
-import com.coursistant.lms.module.file.storage.S3DownloadBody;
 import com.coursistant.lms.module.file.storage.S3ObjectKeyResolver;
 import com.coursistant.lms.module.file.storage.S3ObjectNotFoundException;
 import com.coursistant.lms.module.file.storage.S3ObjectPayload;
 import com.coursistant.lms.module.file.storage.S3ObjectStorage;
 import com.coursistant.lms.module.file.storage.S3StorageException;
+import com.coursistant.lms.module.file.storage.SecureFileResponse;
 import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.shared.api.ErrorType;
 import com.coursistant.lms.shared.security.ActorContext;
@@ -28,9 +28,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.InputStreamResource;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -113,7 +111,7 @@ public class CourseMaterialService {
                     if (file == null || file.isEmpty()) {
                         continue;
                     }
-                    courseContentFilePolicy.validateFile(file);
+                    String canonicalMime = courseContentFilePolicy.validateFile(file);
                     String originalFilename = file.getOriginalFilename();
                     String extension = courseContentFilePolicy.extensionOf(originalFilename);
                     String objectKey = courseContentFilePolicy.buildObjectKey(
@@ -123,7 +121,7 @@ public class CourseMaterialService {
                             originalFilename);
 
                     try {
-                        s3ObjectStorage.putObject(physicalKey(objectKey), file);
+                        s3ObjectStorage.putObject(physicalKey(objectKey), file, canonicalMime);
                     } catch (S3StorageException e) {
                         log.warn("Failed to upload course material to S3: key={}", objectKey, e);
                         throw new ApiException(ErrorType.STORAGE_FAILURE, "Failed to upload file");
@@ -154,7 +152,7 @@ public class CourseMaterialService {
                     material.setDisplayName(trimToLength(baseName(originalFilename)));
                     material.setOrderPosition(nextOrder++);
                     material.setOriginalFilename(originalFilename);
-                    material.setContentType(file.getContentType());
+                    material.setContentType(canonicalMime);
                     material.setExtension(extension);
                     material.setSizeBytes(file.getSize());
                     material.setObjectKey(finalKey);
@@ -290,15 +288,14 @@ public class CourseMaterialService {
 
         try {
             S3ObjectPayload payload = s3ObjectStorage.getObject(physicalKey(material.getObjectKey()));
-            MediaType mediaType = resolveMediaType(material.getContentType(), payload);
-            long length = S3DownloadBody.contentLength(payload);
-            ResponseEntity.BodyBuilder builder = ResponseEntity.ok()
-                    .contentType(mediaType)
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + sanitizeHeaderValue(material.getDisplayName()) + "\"");
-            if (length >= 0) {
-                builder.contentLength(length);
-            }
-            return builder.body(S3DownloadBody.resource(payload));
+            return SecureFileResponse.from(
+                    payload,
+                    material.getDisplayName(),
+                    material.getExtension(),
+                    false,
+                    ErrorType.BAD_REQUEST);
+        } catch (ApiException e) {
+            throw e;
         } catch (S3ObjectNotFoundException e) {
             throw new ApiException(ErrorType.NOT_FOUND, "Material file not found");
         } catch (S3StorageException e) {
@@ -320,15 +317,14 @@ public class CourseMaterialService {
 
         try {
             S3ObjectPayload payload = s3ObjectStorage.getObject(physicalKey(material.getObjectKey()));
-            MediaType mediaType = resolveMediaType(material.getContentType(), payload);
-            long length = S3DownloadBody.contentLength(payload);
-            ResponseEntity.BodyBuilder builder = ResponseEntity.ok()
-                    .contentType(mediaType)
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + sanitizeHeaderValue(material.getOriginalFilename()) + "\"");
-            if (length >= 0) {
-                builder.contentLength(length);
-            }
-            return builder.body(S3DownloadBody.resource(payload));
+            return SecureFileResponse.from(
+                    payload,
+                    material.getOriginalFilename(),
+                    material.getExtension(),
+                    true,
+                    ErrorType.BAD_REQUEST);
+        } catch (ApiException e) {
+            throw e;
         } catch (S3ObjectNotFoundException e) {
             throw new ApiException(ErrorType.NOT_FOUND, "Material file not found");
         } catch (S3StorageException e) {
@@ -376,29 +372,6 @@ public class CourseMaterialService {
         return s3ObjectKeyResolver.resolve(courseContentFilePolicy.bucket(), objectKey);
     }
 
-    private MediaType resolveMediaType(String contentType, S3ObjectPayload payload) {
-        if (contentType != null && !contentType.isBlank()) {
-            try {
-                return MediaType.parseMediaType(contentType);
-            } catch (Exception e) {
-                return MediaType.APPLICATION_OCTET_STREAM;
-            }
-        }
-        String fromStorage = payload.metadata() != null ? payload.metadata().contentType() : null;
-        return resolveMediaType(fromStorage);
-    }
-
-    private MediaType resolveMediaType(String contentType) {
-        if (contentType == null || contentType.isBlank()) {
-            return MediaType.APPLICATION_OCTET_STREAM;
-        }
-        try {
-            return MediaType.parseMediaType(contentType);
-        } catch (Exception e) {
-            return MediaType.APPLICATION_OCTET_STREAM;
-        }
-    }
-
     private String baseName(String filename) {
         if (filename == null || filename.isBlank()) {
             return "Untitled file";
@@ -407,12 +380,5 @@ public class CourseMaterialService {
         int slash = normalized.lastIndexOf('/');
         String name = slash >= 0 ? normalized.substring(slash + 1) : normalized;
         return name.isBlank() ? "Untitled file" : name;
-    }
-
-    private String sanitizeHeaderValue(String value) {
-        if (value == null || value.isBlank()) {
-            return "file";
-        }
-        return value.replace("\"", "'");
     }
 }

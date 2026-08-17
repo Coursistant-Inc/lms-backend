@@ -1,5 +1,6 @@
 package com.coursistant.lms.module.assignment.service;
 
+import com.coursistant.lms.module.file.storage.FileSignature;
 import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.shared.api.ErrorType;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -20,7 +21,7 @@ import java.util.UUID;
 
 /**
  * File rules for the assignment module: the 100MB system ceiling, per-assignment type and size
- * constraints for student submissions, PDF-only rubrics, and the MinIO object key layout.
+ * constraints for student submissions, PDF-only rubrics, and the object key layout.
  */
 @Component
 public class AssignmentFilePolicy {
@@ -154,8 +155,10 @@ public class AssignmentFilePolicy {
 
     /**
      * Validates a student submission file against the assignment's own type and size limits.
+     *
+     * @return canonical MIME from the file signature
      */
-    public void validateSubmissionFile(MultipartFile file, List<String> allowedTypes, Long maxFileSizeBytes) {
+    public String validateSubmissionFile(MultipartFile file, List<String> allowedTypes, Long maxFileSizeBytes) {
         requireNonEmpty(file);
         long limit = maxFileSizeBytes == null ? SYSTEM_MAX_FILE_BYTES : Math.min(maxFileSizeBytes, SYSTEM_MAX_FILE_BYTES);
         if (file.getSize() > limit) {
@@ -167,13 +170,16 @@ public class AssignmentFilePolicy {
             throw new ApiException(ErrorType.UNSUPPORTED_FILE_TYPE,
                     "Allowed file types for this assignment: " + String.join(", ", allowedTypes));
         }
+        return requireSignature(file, extension, "File content does not match its extension");
     }
 
     /**
      * Instructor-provided assignment attachments: system size ceiling plus a broad allow-list.
      * These are independent of the student submission {@code allowedFileTypes}.
+     *
+     * @return canonical MIME from the file signature
      */
-    public void validateAttachmentFile(MultipartFile file) {
+    public String validateAttachmentFile(MultipartFile file) {
         requireNonEmpty(file);
         requireWithinSystemLimit(file);
         String extension = extensionOf(file.getOriginalFilename());
@@ -181,25 +187,30 @@ public class AssignmentFilePolicy {
             throw new ApiException(ErrorType.UNSUPPORTED_FILE_TYPE,
                     "Attachment must be one of: " + String.join(", ", ATTACHMENT_EXTENSIONS));
         }
+        return requireSignature(file, extension, "Attachment content does not match its extension");
     }
 
     /**
      * Rubrics are PDF-only.
+     *
+     * @return canonical MIME from the file signature
      */
-    public void validateRubricPdf(MultipartFile file) {
+    public String validateRubricPdf(MultipartFile file) {
         requireNonEmpty(file);
         requireWithinSystemLimit(file);
         String extension = extensionOf(file.getOriginalFilename());
-        String contentType = file.getContentType() == null ? "" : file.getContentType().toLowerCase(Locale.ROOT);
-        if (!"pdf".equals(extension) && !"application/pdf".equals(contentType)) {
+        if (!"pdf".equals(extension)) {
             throw new ApiException(ErrorType.UNSUPPORTED_FILE_TYPE, "Rubric must be a PDF file");
         }
+        return requireSignature(file, extension, "Rubric must be a PDF file");
     }
 
     /**
      * Annotated feedback files returned to a student; PDF or image, within the system ceiling.
+     *
+     * @return canonical MIME from the file signature
      */
-    public void validateAnnotatedFile(MultipartFile file) {
+    public String validateAnnotatedFile(MultipartFile file) {
         requireNonEmpty(file);
         requireWithinSystemLimit(file);
         String extension = extensionOf(file.getOriginalFilename());
@@ -207,6 +218,7 @@ public class AssignmentFilePolicy {
             throw new ApiException(ErrorType.UNSUPPORTED_FILE_TYPE,
                     "Annotated file must be a PDF, DOCX, or image");
         }
+        return requireSignature(file, extension, "Annotated file content does not match its extension");
     }
 
     // --- Helpers ---
@@ -223,11 +235,7 @@ public class AssignmentFilePolicy {
     }
 
     public boolean isPreviewable(String contentType, String filename) {
-        if (PREVIEWABLE_EXTENSIONS.contains(extensionOf(filename))) {
-            return true;
-        }
-        String type = contentType == null ? "" : contentType.toLowerCase(Locale.ROOT);
-        return type.equals("application/pdf") || type.startsWith("image/");
+        return PREVIEWABLE_EXTENSIONS.contains(extensionOf(filename));
     }
 
     public String sanitizeFilename(String filename) {
@@ -255,6 +263,14 @@ public class AssignmentFilePolicy {
             log.error("Failed to compute SHA-256 for upload '{}': {}", file.getOriginalFilename(), e.getMessage());
             throw new ApiException(ErrorType.INTERNAL_ERROR, "Failed to compute file checksum");
         }
+    }
+
+    private String requireSignature(MultipartFile file, String extension, String message) {
+        FileSignature.Kind kind = FileSignature.detect(file);
+        if (!FileSignature.matchesExtension(kind, extension)) {
+            throw new ApiException(ErrorType.UNSUPPORTED_FILE_TYPE, message);
+        }
+        return FileSignature.canonicalMime(kind, extension);
     }
 
     private void requireNonEmpty(MultipartFile file) {

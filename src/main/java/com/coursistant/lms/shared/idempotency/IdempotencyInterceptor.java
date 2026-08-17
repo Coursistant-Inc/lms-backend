@@ -57,7 +57,7 @@ public class IdempotencyInterceptor implements HandlerInterceptor {
             throw new ApiException(ErrorType.IDEMPOTENCY_KEY_INVALID);
         }
 
-        // Multipart: SHA-256 fingerprint before Redis claim (never MinIO-first).
+        // Multipart: SHA-256 fingerprint before Redis claim (never storage-first).
         String fingerprint = MultipartFingerprint.isMultipart(request)
                 ? MultipartFingerprint.compute(request)
                 : computeFingerprint(request);

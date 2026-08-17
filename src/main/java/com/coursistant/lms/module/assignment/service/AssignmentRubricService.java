@@ -79,7 +79,7 @@ public class AssignmentRubricService {
     public RubricResponse upload(Integer courseId, Integer assignmentId, Integer userId, MultipartFile file,
                                  Boolean confirmReplaceAfterGrading) {
         Assignment assignment = assignmentAccessService.requireAssignmentConfigurable(courseId, assignmentId, userId);
-        assignmentFilePolicy.validateRubricPdf(file);
+        String canonicalMime = assignmentFilePolicy.validateRubricPdf(file);
 
         int gradedCount = assignmentMapper.countGradesByAssignmentId(assignmentId);
         boolean replacingAfterGrading = gradedCount > 0 && assignment.getCurrentRubricVersionId() != null;
@@ -93,14 +93,14 @@ public class AssignmentRubricService {
         int nextVersionNo = (maxVersionNo == null ? 0 : maxVersionNo) + 1;
 
         String objectKey = assignmentFilePolicy.rubricKey(courseId, assignmentId, file.getOriginalFilename());
-        assignmentStorageService.upload(objectKey, file, courseId, assignmentId, userId);
+        assignmentStorageService.upload(objectKey, file, canonicalMime, courseId, assignmentId, userId);
 
         AssignmentRubricVersion version = new AssignmentRubricVersion();
         version.setAssignmentId(assignmentId);
         version.setVersionNo(nextVersionNo);
         version.setObjectKey(objectKey);
         version.setOriginalName(assignmentFilePolicy.sanitizeFilename(file.getOriginalFilename()));
-        version.setContentType(file.getContentType() == null ? "application/pdf" : file.getContentType());
+        version.setContentType(canonicalMime);
         version.setSizeBytes(file.getSize());
         version.setUploadedBy(userId);
         assignmentRubricVersionMapper.insert(version);

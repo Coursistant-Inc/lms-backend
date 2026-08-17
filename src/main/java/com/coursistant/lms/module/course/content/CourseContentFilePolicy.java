@@ -1,5 +1,6 @@
 package com.coursistant.lms.module.course.content;
 
+import com.coursistant.lms.module.file.storage.FileSignature;
 import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.shared.api.ErrorType;
 import org.springframework.beans.factory.annotation.Value;
@@ -22,27 +23,10 @@ public class CourseContentFilePolicy {
     private static final long DEFAULT_MAX_FILE_BYTES = 209_715_200L; // 200MB
     private static final String BUCKET = "lms-uploads";
 
-    private static final Set<String> SYLLABUS_CONTENT_TYPES = Set.of("application/pdf");
     private static final Set<String> SYLLABUS_EXTENSIONS = Set.of("pdf");
-
-    private static final Set<String> MATERIAL_CONTENT_TYPES = Set.of(
-            "application/pdf",
-            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            "application/zip",
-            "application/x-zip-compressed",
-            "application/octet-stream",
-            "image/png",
-            "image/jpeg",
-            "image/jpg",
-            "image/gif",
-            "image/webp"
-    );
     private static final Set<String> MATERIAL_EXTENSIONS = Set.of(
             "pdf", "pptx", "docx", "xlsx", "zip", "png", "jpg", "jpeg", "gif", "webp"
     );
-
     private static final Set<String> PREVIEWABLE_EXTENSIONS = Set.of(
             "pdf", "png", "jpg", "jpeg", "gif", "webp"
     );
@@ -58,28 +42,32 @@ public class CourseContentFilePolicy {
     }
 
     /**
-     * The shared MinIO bucket used for all course content objects (syllabus, materials, ...).
+     * The shared object-storage bucket used for all course content objects (syllabus, materials, ...).
      */
     public String bucket() {
         return BUCKET;
     }
 
     /**
-     * Syllabus uploads must be a PDF file within the configured size limit.
+     * Syllabus uploads must be a real PDF within the configured size limit.
+     *
+     * @return canonical MIME from the file signature
      */
-    public void validateSyllabusPdf(MultipartFile file) {
+    public String validateSyllabusPdf(MultipartFile file) {
         requireNonEmpty(file);
         requireWithinSizeLimit(file);
-        requireAllowedType(file, SYLLABUS_CONTENT_TYPES, SYLLABUS_EXTENSIONS, "Syllabus must be a PDF file");
+        return requireAllowedAndSigned(file, SYLLABUS_EXTENSIONS, "Syllabus must be a PDF file");
     }
 
     /**
      * Weekly material uploads allow PDF, PPTX, DOCX, XLSX, common images, and ZIP archives.
+     *
+     * @return canonical MIME from the file signature
      */
-    public void validateMaterialFile(MultipartFile file) {
+    public String validateMaterialFile(MultipartFile file) {
         requireNonEmpty(file);
         requireWithinSizeLimit(file);
-        requireAllowedType(file, MATERIAL_CONTENT_TYPES, MATERIAL_EXTENSIONS,
+        return requireAllowedAndSigned(file, MATERIAL_EXTENSIONS,
                 "Material must be a PDF, PPTX, DOCX, XLSX, image, or ZIP file");
     }
 
@@ -87,8 +75,8 @@ public class CourseContentFilePolicy {
      * Alias for {@link #validateMaterialFile(MultipartFile)}, kept for callers that
      * validate a generic course content file without naming the specific content type.
      */
-    public void validateFile(MultipartFile file) {
-        validateMaterialFile(file);
+    public String validateFile(MultipartFile file) {
+        return validateMaterialFile(file);
     }
 
     /**
@@ -131,7 +119,7 @@ public class CourseContentFilePolicy {
     }
 
     /**
-     * Builds a collision-free MinIO object key under the given logical prefix,
+     * Builds a collision-free object key under the given logical prefix,
      * preserving the original file's extension.
      */
     public String buildObjectKey(String prefix, String originalFilename) {
@@ -141,16 +129,23 @@ public class CourseContentFilePolicy {
     }
 
     /**
-     * Whether a file with the given content type/extension can be streamed inline
-     * for browser preview (PDF or common image formats).
+     * Hint for list/response assembly. Actual preview still sniffs the download stream.
      */
     public boolean isPreviewable(String contentType, String extension) {
         String ext = extension == null ? "" : extension.toLowerCase(Locale.ROOT);
-        if (PREVIEWABLE_EXTENSIONS.contains(ext)) {
-            return true;
+        return PREVIEWABLE_EXTENSIONS.contains(ext);
+    }
+
+    private String requireAllowedAndSigned(MultipartFile file, Set<String> allowedExtensions, String message) {
+        String extension = extensionOf(file.getOriginalFilename());
+        if (!allowedExtensions.contains(extension)) {
+            throw new ApiException(ErrorType.UNSUPPORTED_FILE_TYPE, message);
         }
-        String type = contentType == null ? "" : contentType.toLowerCase(Locale.ROOT);
-        return type.equals("application/pdf") || type.startsWith("image/");
+        FileSignature.Kind kind = FileSignature.detect(file);
+        if (!FileSignature.matchesExtension(kind, extension)) {
+            throw new ApiException(ErrorType.UNSUPPORTED_FILE_TYPE, message);
+        }
+        return FileSignature.canonicalMime(kind, extension);
     }
 
     private void requireNonEmpty(MultipartFile file) {
@@ -163,17 +158,6 @@ public class CourseContentFilePolicy {
         if (file.getSize() > maxFileBytes) {
             throw new ApiException(ErrorType.FILE_TOO_LARGE,
                     "File exceeds the maximum allowed size of " + maxFileBytes + " bytes");
-        }
-    }
-
-    private void requireAllowedType(MultipartFile file, Set<String> allowedContentTypes,
-                                     Set<String> allowedExtensions, String message) {
-        String contentType = file.getContentType() == null ? "" : file.getContentType().toLowerCase(Locale.ROOT);
-        String extension = extensionOf(file.getOriginalFilename());
-        boolean contentTypeOk = allowedContentTypes.contains(contentType);
-        boolean extensionOk = allowedExtensions.contains(extension);
-        if (!contentTypeOk && !extensionOk) {
-            throw new ApiException(ErrorType.UNSUPPORTED_FILE_TYPE, message);
         }
     }
 }

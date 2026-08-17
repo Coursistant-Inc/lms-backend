@@ -74,8 +74,6 @@ public abstract class NotificationPhase1SpringITBase {
         registry.add("DB_PASSWORD", MYSQL::getPassword);
         registry.add("MAIL_USERNAME", () -> "test@example.com");
         registry.add("MAIL_PASSWORD", () -> "test");
-        registry.add("MINIO_ACCESS_KEY", () -> "test");
-        registry.add("MINIO_SECRET_KEY", () -> "test");
         registry.add("API_BASE_URL", () -> "http://localhost");
         registry.add("REDIS_DEFAULT_PASSWORD", () -> "");
         registry.add("aws.s3.enabled", () -> "false");

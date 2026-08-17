@@ -148,12 +148,6 @@
         </dependency> <!-- Apache POI 解析 Excel 需要 commons-collections 支持 -->
 
         <dependency>
-            <groupId>io.minio</groupId>
-            <artifactId>minio</artifactId>
-            <version>8.5.17</version>
-        </dependency> <!-- MinIO dependency -->
-
-        <dependency>
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>s3</artifactId>
         </dependency> <!-- AWS S3 (SDK v2, version from BOM) -->

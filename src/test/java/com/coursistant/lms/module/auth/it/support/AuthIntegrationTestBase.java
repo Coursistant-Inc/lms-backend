@@ -110,8 +110,6 @@ public abstract class AuthIntegrationTestBase {
         registry.add("token.public-key-path", () -> "classpath:test-public.pem");
         registry.add("MAIL_USERNAME", () -> "test@example.com");
         registry.add("MAIL_PASSWORD", () -> "test");
-        registry.add("MINIO_ACCESS_KEY", () -> "test");
-        registry.add("MINIO_SECRET_KEY", () -> "test");
         registry.add("API_BASE_URL", () -> "http://localhost");
     }
 

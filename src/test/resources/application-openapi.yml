@@ -1,4 +1,4 @@
-# OpenAPI contract export profile — no MySQL/Redis/MinIO/Mail required.
+# OpenAPI contract export profile — no MySQL/Redis/S3/Mail required.
 spring:
   main:
     allow-bean-definition-overriding: true
@@ -24,11 +24,6 @@ mybatis:
   type-aliases-package: com.coursistant.lms.module.auth.admin.entity,com.coursistant.lms.module.auth.token.entity,com.coursistant.lms.module.user.account.entity,com.coursistant.lms.module.course,com.coursistant.lms.module.assignment.entity,com.coursistant.lms.module.quiz.entity,com.coursistant.lms.module.tenant
   configuration:
     log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl
-
-minio:
-  url: http://127.0.0.1:9
-  access-key: openapi
-  secret-key: openapi
 
 aws:
   s3:

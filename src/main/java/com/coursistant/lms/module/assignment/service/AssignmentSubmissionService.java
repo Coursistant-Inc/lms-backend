@@ -146,17 +146,17 @@ public class AssignmentSubmissionService {
         List<String> allowedTypes = assignmentFilePolicy.parseAllowedTypes(assignment.getAllowedFileTypes());
         List<StagingFileResponse> created = new ArrayList<>();
         for (MultipartFile file : files) {
-            assignmentFilePolicy.validateSubmissionFile(file, allowedTypes, assignment.getMaxFileSizeBytes());
+            String canonicalMime = assignmentFilePolicy.validateSubmissionFile(file, allowedTypes, assignment.getMaxFileSizeBytes());
             String objectKey = assignmentFilePolicy.stagingKey(courseId, assignmentId, userId, file.getOriginalFilename());
             String checksum = assignmentFilePolicy.checksumSha256(file);
-            assignmentStorageService.upload(objectKey, file, courseId, assignmentId, userId);
+            assignmentStorageService.upload(objectKey, file, canonicalMime, courseId, assignmentId, userId);
 
             AssignmentSubmissionStagingFile staging = new AssignmentSubmissionStagingFile();
             staging.setAssignmentId(assignmentId);
             staging.setOwnerUserId(userId);
             staging.setObjectKey(objectKey);
             staging.setOriginalName(assignmentFilePolicy.sanitizeFilename(file.getOriginalFilename()));
-            staging.setContentType(file.getContentType());
+            staging.setContentType(canonicalMime);
             staging.setSizeBytes(file.getSize());
             staging.setChecksumSha256(checksum);
             staging.setConsumed(false);

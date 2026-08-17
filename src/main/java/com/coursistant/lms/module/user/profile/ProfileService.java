@@ -1,6 +1,9 @@
 package com.coursistant.lms.module.user.profile;
 
 import cn.hutool.core.util.StrUtil;
+import com.coursistant.lms.module.file.storage.FileDownloadHeaders;
+import com.coursistant.lms.module.file.storage.FileObjectSniff;
+import com.coursistant.lms.module.file.storage.FileSignature;
 import com.coursistant.lms.module.file.storage.S3DownloadBody;
 import com.coursistant.lms.module.file.storage.S3ObjectKeyResolver;
 import com.coursistant.lms.module.file.storage.S3ObjectNotFoundException;
@@ -106,13 +109,22 @@ public class ProfileService {
             throw new ApiException(ErrorType.INVALID_AVATAR_FILE, "Avatar must be at most 5MB");
         }
 
-        String extension = resolveAllowedExtension(file);
+        FileSignature.Kind kind = FileSignature.detect(file);
+        String extension;
+        if (kind == FileSignature.Kind.JPEG) {
+            extension = "jpg";
+        } else if (kind == FileSignature.Kind.PNG) {
+            extension = "png";
+        } else {
+            throw new ApiException(ErrorType.INVALID_AVATAR_FILE, "Avatar must be JPG or PNG");
+        }
+        String canonicalMime = FileSignature.canonicalMime(kind, extension);
         User user = requireUser(userId);
         String oldKey = user.getAvatar();
         String newKey = userId + "/" + UUID.randomUUID().toString().replace("-", "") + "." + extension;
 
         try {
-            s3ObjectStorage.putObject(physicalKey(newKey), file);
+            s3ObjectStorage.putObject(physicalKey(newKey), file, canonicalMime);
         } catch (S3StorageException e) {
             logger.log(Level.WARNING, "Avatar upload to S3 failed for user " + userId, e);
             throw new ApiException(ErrorType.STORAGE_FAILURE, "Failed to upload avatar");
@@ -155,15 +167,29 @@ public class ProfileService {
         String key = user.getAvatar();
         try {
             S3ObjectPayload payload = s3ObjectStorage.getObject(physicalKey(key));
-            MediaType mediaType = mediaTypeForKey(key);
-            long length = S3DownloadBody.contentLength(payload);
+            FileObjectSniff.Result sniffed;
+            try {
+                sniffed = FileObjectSniff.wrap(payload);
+            } catch (RuntimeException e) {
+                payload.close();
+                throw e;
+            }
+            if (sniffed.kind() != FileSignature.Kind.JPEG && sniffed.kind() != FileSignature.Kind.PNG) {
+                sniffed.abort();
+                throw new ApiException(ErrorType.NOT_FOUND, "Avatar not found");
+            }
+            String mime = FileSignature.canonicalMime(sniffed.kind(), extensionOfKey(key));
+            long length = S3DownloadBody.contentLength(sniffed.payload());
             ResponseEntity.BodyBuilder builder = ResponseEntity.ok()
                     .header(HttpHeaders.CACHE_CONTROL, "private, max-age=300")
-                    .contentType(mediaType);
+                    .contentType(MediaType.parseMediaType(mime));
+            FileDownloadHeaders.applySecurity(builder);
             if (length >= 0) {
                 builder.contentLength(length);
             }
-            return builder.body(S3DownloadBody.resource(payload));
+            return builder.body(S3DownloadBody.resource(sniffed.payload(), sniffed.stream()));
+        } catch (ApiException e) {
+            throw e;
         } catch (S3ObjectNotFoundException e) {
             throw new ApiException(ErrorType.NOT_FOUND, "Avatar not found");
         } catch (S3StorageException e) {
@@ -214,34 +240,17 @@ public class ProfileService {
         }
     }
 
-    private String resolveAllowedExtension(MultipartFile file) {
-        String contentType = file.getContentType() == null ? "" : file.getContentType().toLowerCase(Locale.ROOT);
-        String original = file.getOriginalFilename() == null ? "" : file.getOriginalFilename().toLowerCase(Locale.ROOT);
-
-        boolean jpeg = contentType.equals("image/jpeg") || contentType.equals("image/jpg")
-                || original.endsWith(".jpg") || original.endsWith(".jpeg");
-        boolean png = contentType.equals("image/png") || original.endsWith(".png");
-
-        if (jpeg && !png) {
-            return "jpg";
+    private static String extensionOfKey(String key) {
+        if (key == null) {
+            return "";
         }
-        if (png && !jpeg) {
-            return "png";
-        }
-        if (jpeg) {
-            return "jpg";
-        }
-        if (png) {
-            return "png";
-        }
-        throw new ApiException(ErrorType.INVALID_AVATAR_FILE, "Avatar must be JPG or PNG");
-    }
-
-    private MediaType mediaTypeForKey(String key) {
         String lower = key.toLowerCase(Locale.ROOT);
-        if (lower.endsWith(".png")) {
-            return MediaType.IMAGE_PNG;
+        int slash = lower.lastIndexOf('/');
+        String name = slash >= 0 ? lower.substring(slash + 1) : lower;
+        int dot = name.lastIndexOf('.');
+        if (dot < 0 || dot == name.length() - 1) {
+            return "";
         }
-        return MediaType.IMAGE_JPEG;
+        return name.substring(dot + 1);
     }
 }

@@ -5,7 +5,7 @@ import org.springframework.stereotype.Component;
 import java.util.Set;
 
 /**
- * Maps a logical MinIO-style bucket plus object key onto a single-bucket S3 physical key.
+ * Maps a logical bucket plus object key onto a single-bucket S3 physical key.
  * Logical buckets become prefixes; callers keep generating the same logical keys.
  */
 @Component

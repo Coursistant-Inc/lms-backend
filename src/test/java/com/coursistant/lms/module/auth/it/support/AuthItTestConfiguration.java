@@ -2,7 +2,6 @@ package com.coursistant.lms.module.auth.it.support;
 
 import com.coursistant.lms.module.auth.support.FakeEmailCapture;
 import com.coursistant.lms.shared.util.EmailUtil;
-import io.minio.MinioClient;
 import org.mockito.Mockito;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
@@ -43,12 +42,6 @@ public class AuthItTestConfiguration {
                 capture.record(to, subject, content);
             }
         };
-    }
-
-    @Bean
-    @Primary
-    public MinioClient minioClient() {
-        return Mockito.mock(MinioClient.class);
     }
 
     @Bean
