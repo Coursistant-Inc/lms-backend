@@ -12,7 +12,7 @@ import com.coursistant.lms.module.interaction.notification.dto.NotificationDispa
 import com.coursistant.lms.module.interaction.notification.enums.NotificationType;
 import com.coursistant.lms.module.interaction.notification.enums.RecipientMode;
 import com.coursistant.lms.module.interaction.notification.enums.SubjectType;
-import com.coursistant.lms.module.interaction.notification.service.NotificationCommitHook;
+import com.coursistant.lms.module.interaction.notification.event.NotificationPublisher;
 import com.coursistant.lms.module.interaction.notification.service.NotificationMessageFactory;
 import com.coursistant.lms.module.interaction.notification.service.NotificationTimeSupport;
 import com.coursistant.lms.module.user.account.entity.User;
@@ -57,7 +57,7 @@ class CourseAnnouncementServiceTest {
     private NotificationMessageFactory notificationMessageFactory;
 
     @Mock
-    private NotificationCommitHook notificationCommitHook;
+    private NotificationPublisher notificationPublisher;
 
     @Mock
     private NotificationTimeSupport notificationTimeSupport;
@@ -96,7 +96,7 @@ class CourseAnnouncementServiceTest {
         });
         when(notificationMessageFactory.announcementPosted("Hello")).thenReturn("New announcement: Hello");
         when(notificationTimeSupport.nowUtc()).thenReturn(java.time.LocalDateTime.of(2026, 7, 1, 12, 0, 0));
-        doNothing().when(notificationCommitHook).publishInTransaction(any());
+        when(notificationPublisher.publishInTransaction(any())).thenReturn(1L);
 
         CreateAnnouncementRequest request = new CreateAnnouncementRequest();
         request.setTitle("Hello");
@@ -109,7 +109,7 @@ class CourseAnnouncementServiceTest {
 
         ArgumentCaptor<NotificationDispatchPayload> captor =
                 ArgumentCaptor.forClass(NotificationDispatchPayload.class);
-        verify(notificationCommitHook).publishInTransaction(captor.capture());
+        verify(notificationPublisher).publishInTransaction(captor.capture());
         NotificationDispatchPayload payload = captor.getValue();
         assertEquals(3, payload.getTenantId());
         assertEquals(17, payload.getCourseId());
@@ -120,7 +120,6 @@ class CourseAnnouncementServiceTest {
         assertEquals("/courses/17/announcements/99", payload.getDeepLink());
         assertEquals(RecipientMode.COURSE_ACTIVE_STUDENTS, payload.getRecipientMode());
         assertEquals(10, payload.getActorUserId());
-        verify(notificationCommitHook, never()).afterCommitDispatch(any());
     }
 
     @Test
@@ -154,7 +153,7 @@ class CourseAnnouncementServiceTest {
         });
         when(notificationMessageFactory.announcementPosted("Hello")).thenReturn("New announcement: Hello");
         when(notificationTimeSupport.nowUtc()).thenReturn(java.time.LocalDateTime.of(2026, 7, 1, 12, 0, 0));
-        doNothing().when(notificationCommitHook).publishInTransaction(any());
+        when(notificationPublisher.publishInTransaction(any())).thenReturn(1L);
 
         CreateAnnouncementRequest request = new CreateAnnouncementRequest();
         request.setTitle("Hello");
@@ -166,7 +165,7 @@ class CourseAnnouncementServiceTest {
 
         ArgumentCaptor<NotificationDispatchPayload> captor =
                 ArgumentCaptor.forClass(NotificationDispatchPayload.class);
-        verify(notificationCommitHook).publishInTransaction(captor.capture());
+        verify(notificationPublisher).publishInTransaction(captor.capture());
         assertEquals(RecipientMode.COURSE_ACTIVE_STUDENTS, captor.getValue().getRecipientMode());
     }
 

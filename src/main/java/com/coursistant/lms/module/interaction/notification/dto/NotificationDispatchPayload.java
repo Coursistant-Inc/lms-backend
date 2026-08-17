@@ -12,6 +12,7 @@ import java.util.Map;
 
 public class NotificationDispatchPayload {
 
+    private String eventId;
     private Integer tenantId;
     private Integer courseId;
     private NotificationType notificationType;
@@ -25,6 +26,14 @@ public class NotificationDispatchPayload {
     private Integer actorUserId;
     private RecipientMode recipientMode;
     private Map<String, String> templateVars = new LinkedHashMap<>();
+
+    public String getEventId() {
+        return eventId;
+    }
+
+    public void setEventId(String eventId) {
+        this.eventId = eventId;
+    }
 
     public Integer getTenantId() {
         return tenantId;

@@ -516,12 +516,6 @@ public class AssignmentService {
         }
 
         Assignment updated = requireAssignment(courseId, assignmentId, userId);
-        if (newDueAt != null && AssignmentAccessService.STATE_PUBLISHED.equals(updated.getState())) {
-            List<Integer> recipients = activeStudentIds(courseId);
-            LocalDateTime previousDueAt = existing.getDueAt();
-            assignmentNotificationService.afterCommit(
-                    () -> assignmentNotificationService.notifyDueDateChanged(updated, previousDueAt, recipients));
-        }
         return buildStaffResponse(updated, zone, activeStudents(courseId).size());
     }
 

@@ -16,7 +16,7 @@ import com.coursistant.lms.module.interaction.notification.dto.NotificationDispa
 import com.coursistant.lms.module.interaction.notification.enums.NotificationType;
 import com.coursistant.lms.module.interaction.notification.enums.RecipientMode;
 import com.coursistant.lms.module.interaction.notification.enums.SubjectType;
-import com.coursistant.lms.module.interaction.notification.service.NotificationCommitHook;
+import com.coursistant.lms.module.interaction.notification.event.NotificationPublisher;
 import com.coursistant.lms.module.interaction.notification.service.NotificationMessageFactory;
 import com.coursistant.lms.module.interaction.notification.service.NotificationTimeSupport;
 import com.coursistant.lms.module.user.account.entity.User;
@@ -61,7 +61,7 @@ public class CourseAnnouncementService {
     private NotificationMessageFactory notificationMessageFactory;
 
     @Resource
-    private NotificationCommitHook notificationCommitHook;
+    private NotificationPublisher notificationPublisher;
 
     @Resource
     private NotificationTimeSupport notificationTimeSupport;
@@ -121,7 +121,7 @@ public class CourseAnnouncementService {
         vars.put("announcementTitle", persisted.getTitle() == null ? "" : persisted.getTitle());
         vars.put("deepLink", payload.getDeepLink());
         payload.setTemplateVars(vars);
-        notificationCommitHook.publishInTransaction(payload);
+        notificationPublisher.publishInTransaction(payload);
         return toDetail(persisted, false);
     }
 

@@ -7,15 +7,11 @@ import com.coursistant.lms.module.interaction.notification.dto.NotificationDispa
 import com.coursistant.lms.module.interaction.notification.enums.NotificationType;
 import com.coursistant.lms.module.interaction.notification.enums.RecipientMode;
 import com.coursistant.lms.module.interaction.notification.enums.SubjectType;
-import com.coursistant.lms.module.interaction.notification.event.NotificationEventPublisher;
+import com.coursistant.lms.module.interaction.notification.event.NotificationPublisher;
 import com.coursistant.lms.module.interaction.notification.service.NotificationMessageFactory;
 import com.coursistant.lms.module.interaction.notification.service.NotificationTimeSupport;
 import jakarta.annotation.Resource;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -26,8 +22,6 @@ import java.util.Map;
 @Service
 public class AssignmentNotificationService {
 
-    private static final Logger log = LoggerFactory.getLogger(AssignmentNotificationService.class);
-
     @Resource
     private CourseMapper courseMapper;
 
@@ -35,30 +29,10 @@ public class AssignmentNotificationService {
     private NotificationMessageFactory notificationMessageFactory;
 
     @Resource
-    private NotificationEventPublisher notificationEventPublisher;
+    private NotificationPublisher notificationPublisher;
 
     @Resource
     private NotificationTimeSupport notificationTimeSupport;
-
-    public void afterCommit(Runnable action) {
-        if (action == null) {
-            return;
-        }
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    runSafely(action);
-                }
-            });
-        } else {
-            runSafely(action);
-        }
-    }
-
-    public void notifyAssignmentPublished(Assignment assignment, List<Integer> studentUserIds) {
-        recordAssignmentPublished(assignment);
-    }
 
     public void recordAssignmentPublished(Assignment assignment) {
         Course course = loadCourse(assignment);
@@ -74,17 +48,7 @@ public class AssignmentNotificationService {
         payload.setDeepLink("/courses/" + assignment.getCourseId() + "/assignments/" + assignment.getId());
         payload.setRecipientMode(RecipientMode.COURSE_ACTIVE_STUDENTS);
         payload.setTemplateVars(courseVars(course, assignment.getTitle(), payload.getDeepLink()));
-        notificationEventPublisher.publishInTransaction(payload);
-    }
-
-    public void notifyDueDateChanged(Assignment assignment, LocalDateTime previousDueAt, List<Integer> studentUserIds) {
-        runSafely(() -> log.info("Notify due date changed: courseId={}, assignmentId={}, from={}, to={}, recipients={}",
-                assignment.getCourseId(), assignment.getId(), previousDueAt, assignment.getDueAt(), size(studentUserIds)));
-    }
-
-    public void notifySubmissionReceived(Assignment assignment, Integer studentUserId, Integer versionNo,
-                                         LocalDateTime submittedAt) {
-        recordSubmissionReceived(assignment, List.of(studentUserId), null, versionNo, submittedAt);
+        notificationPublisher.publishInTransaction(payload);
     }
 
     public void recordSubmissionReceived(Assignment assignment, List<Integer> recipientIds,
@@ -110,23 +74,12 @@ public class AssignmentNotificationService {
         vars.put("submittedAt", submittedAt == null ? "" : submittedAt.toString());
         vars.put("versionNo", versionNo == null ? "" : String.valueOf(versionNo));
         payload.setTemplateVars(vars);
-        notificationEventPublisher.publishInTransaction(payload);
+        notificationPublisher.publishInTransaction(payload);
     }
 
     public void recordSubmissionReceived(Assignment assignment, List<Integer> recipientIds,
                                          Integer submissionVersionId, Integer versionNo, LocalDateTime submittedAt) {
         recordSubmissionReceived(assignment, recipientIds, null, versionNo, submissionVersionId, submittedAt);
-    }
-
-    public void notifyGroupSubmissionReplaced(Assignment assignment, Integer groupId, Integer submitterUserId,
-                                              Integer versionNo) {
-        runSafely(() -> log.info(
-                "Notify GROUP_SUBMISSION_REPLACED: courseId={}, assignmentId={}, groupId={}, submitterUserId={}, versionNo={}",
-                assignment.getCourseId(), assignment.getId(), groupId, submitterUserId, versionNo));
-    }
-
-    public void notifyGradesReleased(Assignment assignment, List<Integer> studentUserIds, Integer auditId) {
-        recordGradesReleased(assignment, studentUserIds, auditId);
     }
 
     public void recordGradesReleased(Assignment assignment, List<Integer> studentUserIds, Integer auditId) {
@@ -145,11 +98,7 @@ public class AssignmentNotificationService {
         payload.setRecipientMode(RecipientMode.EXPLICIT);
         payload.setRecipientIds(copyRecipients(studentUserIds));
         payload.setTemplateVars(courseVars(course, assignment.getTitle(), deepLink));
-        notificationEventPublisher.publishInTransaction(payload);
-    }
-
-    public void notifyGradeCorrectedAfterRelease(Assignment assignment, List<Integer> studentUserIds, Integer auditId) {
-        recordGradeCorrectedAfterRelease(assignment, studentUserIds, auditId);
+        notificationPublisher.publishInTransaction(payload);
     }
 
     public void recordGradeCorrectedAfterRelease(Assignment assignment, List<Integer> studentUserIds, Integer auditId) {
@@ -168,7 +117,7 @@ public class AssignmentNotificationService {
         payload.setRecipientMode(RecipientMode.EXPLICIT);
         payload.setRecipientIds(copyRecipients(studentUserIds));
         payload.setTemplateVars(courseVars(course, assignment.getTitle(), deepLink));
-        notificationEventPublisher.publishInTransaction(payload);
+        notificationPublisher.publishInTransaction(payload);
     }
 
     private NotificationDispatchPayload basePayload(Course course, Assignment assignment) {
@@ -184,7 +133,7 @@ public class AssignmentNotificationService {
             return null;
         }
         Course course = courseMapper.selectById(assignment.getCourseId());
-        if (course == null || course.getTenantId() == null) {
+        if (course == null || course.getTenantId() == null || course.getArchivedAt() != null) {
             return null;
         }
         return course;
@@ -199,22 +148,10 @@ public class AssignmentNotificationService {
         return vars;
     }
 
-    private void runSafely(Runnable action) {
-        try {
-            action.run();
-        } catch (Exception e) {
-            log.warn("Assignment notification failed (ignored): {}", e.getMessage());
-        }
-    }
-
     private List<Integer> copyRecipients(List<Integer> values) {
         if (values == null || values.isEmpty()) {
             return new ArrayList<>();
         }
         return new ArrayList<>(values);
-    }
-
-    private int size(List<Integer> values) {
-        return values == null ? 0 : values.size();
     }
 }

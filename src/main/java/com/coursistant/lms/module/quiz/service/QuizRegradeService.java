@@ -6,9 +6,8 @@ import com.coursistant.lms.module.interaction.notification.dto.NotificationDispa
 import com.coursistant.lms.module.interaction.notification.enums.NotificationType;
 import com.coursistant.lms.module.interaction.notification.enums.RecipientMode;
 import com.coursistant.lms.module.interaction.notification.enums.SubjectType;
-import com.coursistant.lms.module.interaction.notification.service.NotificationCommitHook;
+import com.coursistant.lms.module.interaction.notification.event.NotificationPublisher;
 import com.coursistant.lms.module.interaction.notification.service.NotificationMessageFactory;
-import com.coursistant.lms.module.interaction.notification.service.NotificationRecipientResolver;
 import com.coursistant.lms.module.interaction.notification.service.NotificationTimeSupport;
 import com.coursistant.lms.module.quiz.dto.authoring.PatchAnswerKeyRequest;
 import com.coursistant.lms.module.quiz.dto.authoring.QuestionResponse;
@@ -55,11 +54,9 @@ public class QuizRegradeService {
     @Resource
     private CourseMapper courseMapper;
     @Resource
-    private NotificationRecipientResolver notificationRecipientResolver;
-    @Resource
     private NotificationMessageFactory notificationMessageFactory;
     @Resource
-    private NotificationCommitHook notificationCommitHook;
+    private NotificationPublisher notificationPublisher;
 
     @Resource
     private NotificationTimeSupport notificationTimeSupport;
@@ -126,9 +123,7 @@ public class QuizRegradeService {
         if (!affectedReleasedUsers.isEmpty()) {
             Course course = courseMapper.selectById(courseId);
             Quiz quiz = quizMapper.selectById(quizId);
-            List<Integer> recipients = notificationRecipientResolver.filterCandidateRecipients(
-                    course, new ArrayList<>(affectedReleasedUsers));
-            if (course != null && course.getTenantId() != null && quiz != null && !recipients.isEmpty()) {
+            if (course != null && course.getTenantId() != null && course.getArchivedAt() == null && quiz != null) {
                 NotificationDispatchPayload payload = new NotificationDispatchPayload();
                 payload.setTenantId(course.getTenantId());
                 payload.setCourseId(courseId);
@@ -138,7 +133,7 @@ public class QuizRegradeService {
                 payload.setSubjectId(quizId);
                 payload.setEventKey("correct:regrade:" + questionId + ":" + question.getVersion());
                 payload.setDeepLink("/courses/" + courseId + "/quizzes/" + quizId + "/my-grade");
-                payload.setRecipientIds(recipients);
+                payload.setRecipientIds(new ArrayList<>(affectedReleasedUsers));
                 payload.setRecipientMode(RecipientMode.EXPLICIT);
                 payload.setCreatedAt(notificationTimeSupport.nowUtc());
                 Map<String, String> vars = new LinkedHashMap<>();
@@ -147,7 +142,7 @@ public class QuizRegradeService {
                 vars.put("quizTitle", quiz.getTitle() == null ? "" : quiz.getTitle());
                 vars.put("deepLink", payload.getDeepLink());
                 payload.setTemplateVars(vars);
-                notificationCommitHook.afterCommitDispatch(payload);
+                notificationPublisher.publishInTransaction(payload);
             }
         }
 

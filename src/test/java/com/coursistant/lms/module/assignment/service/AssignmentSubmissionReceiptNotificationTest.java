@@ -7,7 +7,7 @@ import com.coursistant.lms.module.interaction.notification.dto.NotificationDispa
 import com.coursistant.lms.module.interaction.notification.enums.NotificationType;
 import com.coursistant.lms.module.interaction.notification.enums.RecipientMode;
 import com.coursistant.lms.module.interaction.notification.enums.SubjectType;
-import com.coursistant.lms.module.interaction.notification.event.NotificationEventPublisher;
+import com.coursistant.lms.module.interaction.notification.event.NotificationPublisher;
 import com.coursistant.lms.module.interaction.notification.service.NotificationMessageFactory;
 import com.coursistant.lms.module.interaction.notification.service.NotificationTimeSupport;
 import org.junit.jupiter.api.Test;
@@ -25,7 +25,6 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -34,7 +33,7 @@ class AssignmentSubmissionReceiptNotificationTest {
 
     @Mock private CourseMapper courseMapper;
     @Mock private NotificationMessageFactory notificationMessageFactory;
-    @Mock private NotificationEventPublisher notificationEventPublisher;
+    @Mock private NotificationPublisher notificationPublisher;
     @Mock private NotificationTimeSupport notificationTimeSupport;
     @InjectMocks private AssignmentNotificationService service;
 
@@ -45,14 +44,14 @@ class AssignmentSubmissionReceiptNotificationTest {
         when(courseMapper.selectById(2)).thenReturn(course);
         when(notificationTimeSupport.nowUtc()).thenReturn(LocalDateTime.of(2026, 8, 16, 1, 0));
         when(notificationMessageFactory.submissionReceived(any(), any())).thenReturn("Submission received: HW");
-        when(notificationEventPublisher.publishInTransaction(any(NotificationDispatchPayload.class))).thenReturn(11L);
+        when(notificationPublisher.publishInTransaction(any(NotificationDispatchPayload.class))).thenReturn(11L);
 
         service.recordSubmissionReceived(assignment, List.of(50, 51), 88, 2, 9001,
                 LocalDateTime.of(2026, 8, 16, 1, 0));
 
         ArgumentCaptor<NotificationDispatchPayload> captor =
                 ArgumentCaptor.forClass(NotificationDispatchPayload.class);
-        verify(notificationEventPublisher).publishInTransaction(captor.capture());
+        verify(notificationPublisher).publishInTransaction(captor.capture());
         NotificationDispatchPayload payload = captor.getValue();
         assertEquals(NotificationType.ASSIGNMENT_SUBMISSION_RECEIVED, payload.getNotificationType());
         assertEquals(SubjectType.ASSIGNMENT_SUBMISSION, payload.getSubjectType());
@@ -66,12 +65,6 @@ class AssignmentSubmissionReceiptNotificationTest {
     }
 
     @Test
-    void notifyGroupSubmissionReplaced_doesNotWriteOutbox() {
-        service.notifyGroupSubmissionReplaced(assignment(), 3, 50, 2);
-        verify(notificationEventPublisher, never()).publishInTransaction(any(NotificationDispatchPayload.class));
-    }
-
-    @Test
     void submit_snapshotsGroupMembersInBusinessTransaction() throws Exception {
         String src = Files.readString(Path.of(
                 "src/main/java/com/coursistant/lms/module/assignment/service/AssignmentSubmissionService.java"));
@@ -80,7 +73,7 @@ class AssignmentSubmissionReceiptNotificationTest {
         String body = src.substring(submit, nextMethod);
         assertTrue(body.contains("groupMembershipMapper.selectByGroupId(groupId)"));
         assertTrue(body.contains("recordSubmissionReceived("));
-        assertTrue(body.contains("notifyGroupSubmissionReplaced("));
+        assertTrue(!body.contains("notifyGroupSubmissionReplaced("));
         assertTrue(!body.contains("afterCommit("));
     }
 

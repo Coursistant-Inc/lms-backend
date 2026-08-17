@@ -6,9 +6,8 @@ import com.coursistant.lms.module.interaction.notification.dto.NotificationDispa
 import com.coursistant.lms.module.interaction.notification.enums.NotificationType;
 import com.coursistant.lms.module.interaction.notification.enums.RecipientMode;
 import com.coursistant.lms.module.interaction.notification.enums.SubjectType;
-import com.coursistant.lms.module.interaction.notification.service.NotificationCommitHook;
+import com.coursistant.lms.module.interaction.notification.event.NotificationPublisher;
 import com.coursistant.lms.module.interaction.notification.service.NotificationMessageFactory;
-import com.coursistant.lms.module.interaction.notification.service.NotificationRecipientResolver;
 import com.coursistant.lms.module.interaction.notification.service.NotificationTimeSupport;
 import com.coursistant.lms.module.quiz.dto.grading.GradeAnswerRequest;
 import com.coursistant.lms.module.quiz.dto.grading.GradingSummaryResponse;
@@ -56,11 +55,9 @@ public class QuizGradingService {
     @Resource
     private CourseMapper courseMapper;
     @Resource
-    private NotificationRecipientResolver notificationRecipientResolver;
-    @Resource
     private NotificationMessageFactory notificationMessageFactory;
     @Resource
-    private NotificationCommitHook notificationCommitHook;
+    private NotificationPublisher notificationPublisher;
 
     @Resource
     private NotificationTimeSupport notificationTimeSupport;
@@ -195,8 +192,7 @@ public class QuizGradingService {
         if (!enteredUserIds.isEmpty() && auditId != null) {
             Course course = courseMapper.selectById(courseId);
             Quiz quiz = quizMapper.selectById(quizId);
-            List<Integer> recipients = notificationRecipientResolver.filterCandidateRecipients(course, enteredUserIds);
-            if (course != null && course.getTenantId() != null && quiz != null && !recipients.isEmpty()) {
+            if (course != null && course.getTenantId() != null && course.getArchivedAt() == null && quiz != null) {
                 NotificationDispatchPayload payload = new NotificationDispatchPayload();
                 payload.setTenantId(course.getTenantId());
                 payload.setCourseId(courseId);
@@ -206,11 +202,11 @@ public class QuizGradingService {
                 payload.setSubjectId(quizId);
                 payload.setEventKey("release:" + auditId);
                 payload.setDeepLink("/courses/" + courseId + "/quizzes/" + quizId + "/my-grade");
-                payload.setRecipientIds(recipients);
+                payload.setRecipientIds(enteredUserIds);
                 payload.setRecipientMode(RecipientMode.EXPLICIT);
                 payload.setCreatedAt(notificationTimeSupport.nowUtc());
                 payload.setTemplateVars(quizVars(course, quiz, payload.getDeepLink()));
-                notificationCommitHook.afterCommitDispatch(payload);
+                notificationPublisher.publishInTransaction(payload);
             }
         }
     }
@@ -230,9 +226,7 @@ public class QuizGradingService {
         }
         Course course = courseMapper.selectById(courseId);
         Quiz quiz = quizMapper.selectById(quizId);
-        List<Integer> recipients = notificationRecipientResolver.filterCandidateRecipients(
-                course, List.of(studentUserId));
-        if (course == null || course.getTenantId() == null || quiz == null || recipients.isEmpty()) {
+        if (course == null || course.getTenantId() == null || course.getArchivedAt() != null || quiz == null) {
             return;
         }
         NotificationDispatchPayload payload = new NotificationDispatchPayload();
@@ -244,11 +238,11 @@ public class QuizGradingService {
         payload.setSubjectId(quizId);
         payload.setEventKey("correct:" + scoreAuditId);
         payload.setDeepLink("/courses/" + courseId + "/quizzes/" + quizId + "/my-grade");
-        payload.setRecipientIds(recipients);
+        payload.setRecipientIds(List.of(studentUserId));
         payload.setRecipientMode(RecipientMode.EXPLICIT);
         payload.setCreatedAt(createdAt != null ? createdAt : notificationTimeSupport.nowUtc());
         payload.setTemplateVars(quizVars(course, quiz, payload.getDeepLink()));
-        notificationCommitHook.afterCommitDispatch(payload);
+        notificationPublisher.publishInTransaction(payload);
     }
 
     private Map<String, String> quizVars(Course course, Quiz quiz, String deepLink) {

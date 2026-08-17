@@ -256,7 +256,6 @@ public class AssignmentSubmissionService {
 
         Integer maxVersionNo = assignmentSubmissionVersionMapper.selectMaxVersionNo(submission.getId());
         int nextVersionNo = (maxVersionNo == null ? 0 : maxVersionNo) + 1;
-        boolean replacing = submission.getCurrentVersionId() != null;
 
         AssignmentSubmissionVersion version = new AssignmentSubmissionVersion();
         version.setSubmissionId(submission.getId());
@@ -318,9 +317,6 @@ public class AssignmentSubmissionService {
         }
         assignmentNotificationService.recordSubmissionReceived(
                 assignment, receiptRecipients, submission.getId(), nextVersionNo, version.getId(), now);
-        if (groupAssignment && replacing) {
-            assignmentNotificationService.notifyGroupSubmissionReplaced(assignment, groupId, userId, nextVersionNo);
-        }
 
         return buildSubmissionResponse(assignment, userId, zone, assignmentTimeSupport.nowUtc());
     }

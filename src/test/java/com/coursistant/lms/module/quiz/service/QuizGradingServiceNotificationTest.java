@@ -4,9 +4,8 @@ import com.coursistant.lms.module.course.course.entity.Course;
 import com.coursistant.lms.module.course.course.repository.CourseMapper;
 import com.coursistant.lms.module.interaction.notification.dto.NotificationDispatchPayload;
 import com.coursistant.lms.module.interaction.notification.enums.NotificationType;
-import com.coursistant.lms.module.interaction.notification.service.NotificationCommitHook;
+import com.coursistant.lms.module.interaction.notification.event.NotificationPublisher;
 import com.coursistant.lms.module.interaction.notification.service.NotificationMessageFactory;
-import com.coursistant.lms.module.interaction.notification.service.NotificationRecipientResolver;
 import com.coursistant.lms.module.interaction.notification.service.NotificationTimeSupport;
 import com.coursistant.lms.module.quiz.dto.grading.GradeAnswerRequest;
 import com.coursistant.lms.module.quiz.entity.Quiz;
@@ -38,7 +37,6 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doNothing;
@@ -60,9 +58,8 @@ class QuizGradingServiceNotificationTest {
     @Mock private QuizTimeSupport quizTimeSupport;
     @Mock private QuizAuditService quizAuditService;
     @Mock private CourseMapper courseMapper;
-    @Mock private NotificationRecipientResolver notificationRecipientResolver;
     @Mock private NotificationMessageFactory notificationMessageFactory;
-    @Mock private NotificationCommitHook notificationCommitHook;
+    @Mock private NotificationPublisher notificationPublisher;
     @Mock private NotificationTimeSupport notificationTimeSupport;
 
     @InjectMocks
@@ -81,7 +78,7 @@ class QuizGradingServiceNotificationTest {
         quizGradingService.gradeAnswer(1, 9, 100, 7, 20, body);
 
         verify(quizAccessService, never()).requireInstructor(1, 20);
-        verify(notificationCommitHook, never()).afterCommitDispatch(any());
+        verify(notificationPublisher, never()).publishInTransaction(any());
         verify(quizScoreAuditMapper).insert(any(QuizScoreAudit.class));
     }
 
@@ -99,7 +96,7 @@ class QuizGradingServiceNotificationTest {
         ApiException ex = assertThrows(ApiException.class,
                 () -> quizGradingService.gradeAnswer(1, 9, 100, 7, 20, body));
         assertEquals(ErrorType.NOT_COURSE_INSTRUCTOR, ex.getErrorType());
-        verify(notificationCommitHook, never()).afterCommitDispatch(any());
+        verify(notificationPublisher, never()).publishInTransaction(any());
     }
 
     @Test
@@ -114,7 +111,7 @@ class QuizGradingServiceNotificationTest {
         ApiException ex = assertThrows(ApiException.class,
                 () -> quizGradingService.gradeAnswer(1, 9, 100, 7, 20, body));
         assertEquals(ErrorType.BAD_REQUEST, ex.getErrorType());
-        verify(notificationCommitHook, never()).afterCommitDispatch(any());
+        verify(notificationPublisher, never()).publishInTransaction(any());
     }
 
     @Test
@@ -137,10 +134,8 @@ class QuizGradingServiceNotificationTest {
         quiz.setId(9);
         quiz.setTitle("Midterm");
         when(quizMapper.selectById(9)).thenReturn(quiz);
-        when(notificationRecipientResolver.filterCandidateRecipients(eq(course), anyList()))
-                .thenReturn(List.of(50));
         when(notificationMessageFactory.quizGradeCorrected("Midterm")).thenReturn("Quiz grade corrected: Midterm");
-        doNothing().when(notificationCommitHook).afterCommitDispatch(any());
+        when(notificationPublisher.publishInTransaction(any())).thenReturn(1L);
 
         GradeAnswerRequest body = new GradeAnswerRequest();
         body.setScore(new BigDecimal("1.0"));
@@ -150,7 +145,7 @@ class QuizGradingServiceNotificationTest {
 
         ArgumentCaptor<NotificationDispatchPayload> captor =
                 ArgumentCaptor.forClass(NotificationDispatchPayload.class);
-        verify(notificationCommitHook).afterCommitDispatch(captor.capture());
+        verify(notificationPublisher).publishInTransaction(captor.capture());
         assertEquals(NotificationType.QUIZ_GRADE_CORRECTED, captor.getValue().getNotificationType());
         assertEquals("correct:55", captor.getValue().getEventKey());
     }

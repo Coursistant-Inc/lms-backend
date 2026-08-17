@@ -1,9 +1,8 @@
 package com.coursistant.lms.module.quiz.service;
 
 import com.coursistant.lms.module.course.course.repository.CourseMapper;
-import com.coursistant.lms.module.interaction.notification.service.NotificationCommitHook;
+import com.coursistant.lms.module.interaction.notification.event.NotificationPublisher;
 import com.coursistant.lms.module.interaction.notification.service.NotificationMessageFactory;
-import com.coursistant.lms.module.interaction.notification.service.NotificationRecipientResolver;
 import com.coursistant.lms.module.interaction.notification.service.NotificationTimeSupport;
 import com.coursistant.lms.module.quiz.dto.authoring.OptionKeyInput;
 import com.coursistant.lms.module.quiz.dto.authoring.PatchAnswerKeyRequest;
@@ -52,9 +51,8 @@ class QuizRegradeServiceNotificationTest {
     @Mock private QuizAuditService quizAuditService;
     @Mock private QuizMapper quizMapper;
     @Mock private CourseMapper courseMapper;
-    @Mock private NotificationRecipientResolver notificationRecipientResolver;
     @Mock private NotificationMessageFactory notificationMessageFactory;
-    @Mock private NotificationCommitHook notificationCommitHook;
+    @Mock private NotificationPublisher notificationPublisher;
     @Mock private NotificationTimeSupport notificationTimeSupport;
 
     @InjectMocks
@@ -115,7 +113,6 @@ class QuizRegradeServiceNotificationTest {
 
         quizRegradeService.regradeAnswerKey(1, 9, 7, 20, body);
 
-        verify(notificationCommitHook, never()).afterCommitDispatch(any());
-        verify(notificationRecipientResolver, never()).filterCandidateRecipients(any(), anyList());
+        verify(notificationPublisher, never()).publishInTransaction(any());
     }
 }
