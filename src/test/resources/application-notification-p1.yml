@@ -1,0 +1,56 @@
+# Sliced notification Spring IT profile. Container JDBC is injected by
+# NotificationPhase1SpringITBase. Never point this file at developer lms_v2.
+
+spring:
+  main:
+    banner-mode: off
+    web-application-type: none
+    allow-bean-definition-overriding: true
+  task:
+    scheduling:
+      enabled: false
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 8
+      minimum-idle: 1
+      connection-timeout: 5000
+      auto-commit: true
+  mail:
+    host: localhost
+    port: 25
+    username: test
+    password: test
+
+mybatis:
+  mapper-locations: classpath:mapper/**/*.xml
+  type-aliases-package: com.coursistant.lms.module
+  configuration:
+    map-underscore-to-camel-case: true
+
+lms:
+  notification:
+    outbox:
+      enabled: true
+      poll-ms: 60000
+      batch-size: 50
+      max-attempts: 8
+      recipient-insert-chunk: 500
+      lease-seconds: 120
+    digest:
+      default-time-zone: America/Los_Angeles
+      batch-size: 50
+      lease-seconds: 120
+      max-attempts: 5
+    email:
+      enabled: true
+      provider: log
+      poll-ms: 60000
+      batch-size: 50
+      max-attempts: 5
+      lease-seconds: 120
+
+logging:
+  level:
+    root: WARN
+    com.coursistant.lms.module.interaction.notification: INFO

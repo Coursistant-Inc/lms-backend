@@ -307,6 +307,7 @@
                     <includes>
                         <include>**/auth/it/**/*IT.java</include>
                         <include>**/course/it/**/*IT.java</include>
+                        <include>**/interaction/notification/it/**/*IT.java</include>
                         <include>**/shared/openapi/**/*IT.java</include>
                     </includes>
                 </configuration>
