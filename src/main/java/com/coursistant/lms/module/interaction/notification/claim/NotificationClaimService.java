@@ -2,12 +2,15 @@ package com.coursistant.lms.module.interaction.notification.claim;
 
 import com.coursistant.lms.module.interaction.notification.entity.NotificationDelivery;
 import com.coursistant.lms.module.interaction.notification.entity.NotificationDigestEmail;
+import com.coursistant.lms.module.interaction.notification.entity.NotificationEventOutbox;
 import com.coursistant.lms.module.interaction.notification.enums.FailureCategory;
 import com.coursistant.lms.module.interaction.notification.repository.NotificationDeliveryMapper;
 import com.coursistant.lms.module.interaction.notification.repository.NotificationDigestEmailMapper;
+import com.coursistant.lms.module.interaction.notification.repository.NotificationEventOutboxMapper;
 import com.coursistant.lms.module.interaction.notification.support.NotificationLog;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -22,6 +25,28 @@ public class NotificationClaimService {
 
     @Resource
     private NotificationDigestEmailMapper digestEmailMapper;
+
+    @Resource
+    private NotificationEventOutboxMapper outboxMapper;
+
+    @Transactional
+    public Optional<Claimed<NotificationEventOutbox>> claimOutbox(Long id, LocalDateTime now,
+                                                                 LocalDateTime leaseUntil, int maxAttempts) {
+        String token = UUID.randomUUID().toString();
+        int claimed = outboxMapper.claim(id, token, leaseUntil, now);
+        if (claimed == 0) {
+            return Optional.empty();
+        }
+        NotificationEventOutbox row = outboxMapper.selectById(id);
+        if (row == null) {
+            return Optional.empty();
+        }
+        if (row.getAttemptCount() != null && row.getAttemptCount() > maxAttempts) {
+            outboxMapper.markPermanent(id, token, FailureCategory.ORPHAN_MAX_ATTEMPTS.name(), now);
+            return Optional.empty();
+        }
+        return Optional.of(new Claimed<>(row, token));
+    }
 
     @Transactional
     public Optional<Claimed<NotificationDelivery>> claimDelivery(Long id, LocalDateTime now,
@@ -84,6 +109,7 @@ public class NotificationClaimService {
         if (row.getAttemptCount() != null && row.getAttemptCount() > maxAttempts) {
             digestEmailMapper.markPermanent(id, token, FailureCategory.ORPHAN_MAX_ATTEMPTS.name(),
                     FailureCategory.ORPHAN_MAX_ATTEMPTS.name(), now);
+            deliveryMapper.markItemsByDigestEmailId(id, "FAILED_PERMANENT", now);
             return Optional.empty();
         }
         if (row.getSendAttemptedAt() != null) {
@@ -91,6 +117,7 @@ public class NotificationClaimService {
             if (unknown >= 1) {
                 digestEmailMapper.markPermanent(id, token, FailureCategory.UNKNOWN_OUTCOME.name(),
                         FailureCategory.UNKNOWN_OUTCOME.name(), now);
+                deliveryMapper.markItemsByDigestEmailId(id, "FAILED_PERMANENT", now);
                 return Optional.empty();
             }
             int promoted = digestEmailMapper.promoteUnknownOnce(id, token, now);
@@ -101,6 +128,16 @@ public class NotificationClaimService {
             row.setSendAttemptedAt(null);
         }
         return Optional.of(new Claimed<>(row, token));
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public int markDeliverySendAttempted(Long id, String token, LocalDateTime now) {
+        return deliveryMapper.markSendAttempted(id, token, now);
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public int markDigestSendAttempted(Long id, String token, LocalDateTime now) {
+        return digestEmailMapper.markSendAttempted(id, token, now);
     }
 
     public record Claimed<T>(T row, String token) {

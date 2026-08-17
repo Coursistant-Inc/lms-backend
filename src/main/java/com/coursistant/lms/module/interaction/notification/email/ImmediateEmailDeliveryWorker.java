@@ -14,7 +14,6 @@ import jakarta.annotation.Resource;
 import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -106,7 +105,7 @@ public class ImmediateEmailDeliveryWorker {
                     "template", now);
             return;
         }
-        if (markSendAttempted(id, token, now) == 0) {
+        if (claimService.markDeliverySendAttempted(id, token, now) == 0) {
             NotificationLog.warn("stale_claim", row.getEventId(), row.getTenantId(),
                     row.getNotificationType(), row.getChannel(), "PROCESSING",
                     null, null, row.getRecipientUserId(), row.getAttemptCount(), token,
@@ -118,11 +117,6 @@ public class ImmediateEmailDeliveryWorker {
         applyResult(row, token, result, now);
     }
 
-    @Transactional
-    public int markSendAttempted(Long id, String token, LocalDateTime now) {
-        return deliveryMapper.markSendAttempted(id, token, now);
-    }
-
     private void applyResult(NotificationDelivery row, String token, EmailSendResult result, LocalDateTime now) {
         int n = switch (result.status()) {
             case SENT -> deliveryMapper.markSent(row.getId(), token, result.providerMessageId(), now);
@@ -131,11 +125,11 @@ public class ImmediateEmailDeliveryWorker {
                     backoff(now, row.getAttemptCount()),
                     result.failureCategory() == null ? FailureCategory.RETRYABLE_NETWORK.name()
                             : result.failureCategory().name(),
-                    truncate(result.errorMessage()), now);
+                    NotificationLog.truncateLastError(result.errorMessage()), now);
             case PERMANENT_FAILURE -> deliveryMapper.markPermanent(row.getId(), token,
                     result.failureCategory() == null ? FailureCategory.PERMANENT_NO_EMAIL.name()
                             : result.failureCategory().name(),
-                    truncate(result.errorMessage()), now);
+                    NotificationLog.truncateLastError(result.errorMessage()), now);
         };
         if (n == 0) {
             stale(row, token, "applyResult");
@@ -153,12 +147,5 @@ public class ImmediateEmailDeliveryWorker {
         NotificationLog.warn("stale_claim", row.getEventId(), row.getTenantId(),
                 row.getNotificationType(), row.getChannel(), row.getStatus(),
                 null, null, row.getRecipientUserId(), row.getAttemptCount(), token, detail);
-    }
-
-    private String truncate(String error) {
-        if (error == null) {
-            return null;
-        }
-        return error.length() > 512 ? error.substring(0, 512) : error;
     }
 }

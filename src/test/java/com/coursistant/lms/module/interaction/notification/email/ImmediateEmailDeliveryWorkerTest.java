@@ -63,7 +63,7 @@ class ImmediateEmailDeliveryWorkerTest {
         when(contactLookup.hasUsableEmail(user)).thenReturn(true);
         when(contactLookup.accountActive(user)).thenReturn(true);
         when(templateFactory.renderImmediate(any(), any())).thenReturn(new RenderedEmail("s", "b"));
-        when(deliveryMapper.markSendAttempted(9L, "tok", LocalDateTime.of(2026, 8, 16, 1, 0))).thenReturn(0);
+        when(claimService.markDeliverySendAttempted(9L, "tok", LocalDateTime.of(2026, 8, 16, 1, 0))).thenReturn(0);
 
         worker.processOne(9L);
 
@@ -102,7 +102,7 @@ class ImmediateEmailDeliveryWorkerTest {
         when(contactLookup.hasUsableEmail(user)).thenReturn(true);
         when(contactLookup.accountActive(user)).thenReturn(true);
         when(templateFactory.renderImmediate(any(), any())).thenReturn(new RenderedEmail("s", "b"));
-        when(deliveryMapper.markSendAttempted(9L, "tok", LocalDateTime.of(2026, 8, 16, 1, 0))).thenReturn(1);
+        when(claimService.markDeliverySendAttempted(9L, "tok", LocalDateTime.of(2026, 8, 16, 1, 0))).thenReturn(1);
         when(emailSender.send(any())).thenReturn(EmailSendResult.retryable(
                 com.coursistant.lms.module.interaction.notification.enums.FailureCategory.RETRYABLE_NETWORK, "down"));
         when(deliveryMapper.markRetry(eq(9L), eq("tok"), any(), anyString(), anyString(), any())).thenReturn(1);

@@ -7,8 +7,6 @@ import com.coursistant.lms.module.course.enrollment.repository.EnrollmentMapper;
 import com.coursistant.lms.module.user.account.entity.User;
 import com.coursistant.lms.module.user.account.repository.UserMapper;
 import jakarta.annotation.Resource;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -18,14 +16,11 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Resolves / filters notification recipients in the business transaction.
- * Active Student only; course not archived; user exists; tenant matches course.
- * Fail-open: mapper/DB failures return empty recipients so core business TX still commits.
+ * Resolves COURSE_ACTIVE_STUDENTS at Relay time. Course archive is a producer-time gate,
+ * not a second suppression here. Mapper/DB failures propagate so Relay can retry.
  */
 @Component
 public class NotificationRecipientResolver {
-
-    private static final Logger log = LoggerFactory.getLogger(NotificationRecipientResolver.class);
 
     @Resource
     private CourseMapper courseMapper;
@@ -37,33 +32,11 @@ public class NotificationRecipientResolver {
     private UserMapper userMapper;
 
     public List<Integer> resolveActiveStudentRecipients(Integer courseId) {
-        try {
-            return resolveActiveStudentRecipientsInternal(courseId);
-        } catch (Exception e) {
-            log.warn("Notification recipient resolve failed; skipping notifications. courseId={}",
-                    courseId, e);
-            return Collections.emptyList();
-        }
-    }
-
-    public List<Integer> filterCandidateRecipients(Course course, List<Integer> candidateIds) {
-        try {
-            return filterCandidateRecipientsInternal(course, candidateIds);
-        } catch (Exception e) {
-            Integer courseId = course != null ? course.getId() : null;
-            int candidateSize = candidateIds == null ? 0 : candidateIds.size();
-            log.warn("Notification recipient filter failed; skipping notifications. courseId={} candidateSize={}",
-                    courseId, candidateSize, e);
-            return Collections.emptyList();
-        }
-    }
-
-    private List<Integer> resolveActiveStudentRecipientsInternal(Integer courseId) {
         if (courseId == null) {
             return Collections.emptyList();
         }
         Course course = courseMapper.selectById(courseId);
-        if (!isEligibleCourse(course)) {
+        if (!isResolvableCourse(course)) {
             return Collections.emptyList();
         }
         List<Enrollment> students = enrollmentMapper.selectActiveStudentsByCourseId(courseId);
@@ -76,11 +49,11 @@ public class NotificationRecipientResolver {
                 candidateIds.add(enrollment.getUserId());
             }
         }
-        return filterCandidateRecipientsInternal(course, candidateIds);
+        return filterCandidateRecipients(course, candidateIds);
     }
 
-    private List<Integer> filterCandidateRecipientsInternal(Course course, List<Integer> candidateIds) {
-        if (!isEligibleCourse(course) || candidateIds == null || candidateIds.isEmpty()) {
+    public List<Integer> filterCandidateRecipients(Course course, List<Integer> candidateIds) {
+        if (!isResolvableCourse(course) || candidateIds == null || candidateIds.isEmpty()) {
             return Collections.emptyList();
         }
         Set<Integer> uniqueIds = new HashSet<>();
@@ -129,10 +102,9 @@ public class NotificationRecipientResolver {
         return result;
     }
 
-    private boolean isEligibleCourse(Course course) {
+    private boolean isResolvableCourse(Course course) {
         return course != null
                 && course.getId() != null
-                && course.getTenantId() != null
-                && course.getArchivedAt() == null;
+                && course.getTenantId() != null;
     }
 }

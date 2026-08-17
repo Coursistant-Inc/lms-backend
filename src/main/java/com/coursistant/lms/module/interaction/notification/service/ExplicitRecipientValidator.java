@@ -5,8 +5,6 @@ import com.coursistant.lms.module.user.account.entity.User;
 import com.coursistant.lms.module.user.account.repository.UserMapper;
 import com.coursistant.lms.shared.enums.AccountStatus;
 import jakarta.annotation.Resource;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -18,19 +16,11 @@ import java.util.Set;
 @Component
 public class ExplicitRecipientValidator {
 
-    private static final Logger log = LoggerFactory.getLogger(ExplicitRecipientValidator.class);
-
     @Resource
     private UserMapper userMapper;
 
     public List<Integer> validate(Integer tenantId, List<Integer> candidateIds) {
-        try {
-            return validateInternal(tenantId, candidateIds);
-        } catch (Exception e) {
-            log.warn("Explicit recipient validation failed; skipping. tenantId={} size={}",
-                    tenantId, candidateIds == null ? 0 : candidateIds.size(), e);
-            return Collections.emptyList();
-        }
+        return validateInternal(tenantId, candidateIds);
     }
 
     private List<Integer> validateInternal(Integer tenantId, List<Integer> candidateIds) {

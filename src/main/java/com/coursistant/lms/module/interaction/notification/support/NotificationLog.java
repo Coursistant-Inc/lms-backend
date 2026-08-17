@@ -7,7 +7,18 @@ public final class NotificationLog {
 
     private static final Logger log = LoggerFactory.getLogger("notification");
 
+    public static final int LAST_ERROR_MAX_LENGTH = 512;
+
     private NotificationLog() {
+    }
+
+    public static String truncateLastError(String value) {
+        if (value == null) {
+            return null;
+        }
+        return value.length() > LAST_ERROR_MAX_LENGTH
+                ? value.substring(0, LAST_ERROR_MAX_LENGTH)
+                : value;
     }
 
     public static void info(String event, String eventId, Integer tenantId, String eventType,

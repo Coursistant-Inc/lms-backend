@@ -4,6 +4,7 @@ import com.coursistant.lms.module.interaction.notification.entity.NotificationDe
 import com.coursistant.lms.module.interaction.notification.enums.FailureCategory;
 import com.coursistant.lms.module.interaction.notification.repository.NotificationDeliveryMapper;
 import com.coursistant.lms.module.interaction.notification.repository.NotificationDigestEmailMapper;
+import com.coursistant.lms.module.interaction.notification.repository.NotificationEventOutboxMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -27,6 +28,7 @@ class NotificationClaimServiceTest {
 
     @Mock private NotificationDeliveryMapper deliveryMapper;
     @Mock private NotificationDigestEmailMapper digestEmailMapper;
+    @Mock private NotificationEventOutboxMapper outboxMapper;
     @InjectMocks private NotificationClaimService claimService;
 
     private final LocalDateTime now = LocalDateTime.of(2026, 8, 16, 1, 0);
