@@ -221,7 +221,8 @@ public class DailyDigestService {
             }
             case UNKNOWN_OUTCOME -> NotificationLog.warn("unknown_outcome", null, row.getTenantId(), null,
                     "DAILY_DIGEST", "PROCESSING", FailureCategory.UNKNOWN_OUTCOME.name(), null,
-                    row.getRecipientUserId(), row.getAttemptCount(), token, "smtp-read-timeout");
+                    row.getRecipientUserId(), row.getAttemptCount(), token,
+                    result.errorMessage() == null ? "smtp-unknown-outcome" : result.errorMessage());
         }
     }
 

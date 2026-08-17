@@ -125,7 +125,8 @@ public class ImmediateEmailDeliveryWorker {
             NotificationLog.warn("unknown_outcome", row.getEventId(), row.getTenantId(),
                     row.getNotificationType(), row.getChannel(), "PROCESSING",
                     FailureCategory.UNKNOWN_OUTCOME.name(), null, row.getRecipientUserId(),
-                    row.getAttemptCount(), token, "smtp-read-timeout");
+                    row.getAttemptCount(), token,
+                    result.errorMessage() == null ? "smtp-unknown-outcome" : result.errorMessage());
             return;
         }
         applyResult(row, token, result, resultNow);
