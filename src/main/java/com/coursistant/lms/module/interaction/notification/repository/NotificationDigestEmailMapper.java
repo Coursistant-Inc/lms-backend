@@ -25,7 +25,10 @@ public interface NotificationDigestEmailMapper {
 
     int markSkippedIneligible(@Param("id") Long id, @Param("now") LocalDateTime now);
 
-    List<Long> selectClaimBatch(@Param("now") LocalDateTime now, @Param("batchSize") int batchSize);
+    List<Long> selectClaimBatch(@Param("now") LocalDateTime now,
+                                @Param("batchSize") int batchSize,
+                                @Param("tenantId") Integer tenantId,
+                                @Param("digestDate") LocalDate digestDate);
 
     int claim(@Param("id") Long id,
               @Param("claimToken") String claimToken,

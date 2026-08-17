@@ -21,7 +21,8 @@ import com.coursistant.lms.module.interaction.notification.support.NotificationL
 import com.coursistant.lms.module.user.account.entity.User;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -60,15 +61,19 @@ public class DailyDigestService {
     @Resource
     private NotificationProperties notificationProperties;
 
+    @Resource
+    private PlatformTransactionManager transactionManager;
+
     public void run(LocalDate digestDate, Integer tenantId) {
         if (digestDate == null) {
-            digestDate = LocalDate.now();
+            throw new IllegalArgumentException("digestDate is required");
         }
         List<DigestRecipientKey> keys = deliveryMapper.selectPendingDigestRecipients(digestDate, tenantId);
         if (keys != null) {
             for (DigestRecipientKey key : keys) {
                 try {
-                    collectOne(key.getTenantId(), key.getRecipientUserId(), digestDate);
+                    new TransactionTemplate(transactionManager).executeWithoutResult(status ->
+                            collectOne(key.getTenantId(), key.getRecipientUserId(), digestDate));
                 } catch (Exception e) {
                     NotificationLog.warn("digest_phase_a_failed", null, key.getTenantId(), null,
                             "DAILY_DIGEST", null, null, null, key.getRecipientUserId(), null, null,
@@ -77,7 +82,8 @@ public class DailyDigestService {
             }
         }
         LocalDateTime now = notificationTimeSupport.nowUtc();
-        List<Long> ids = digestEmailMapper.selectClaimBatch(now, notificationProperties.getDigest().getBatchSize());
+        List<Long> ids = digestEmailMapper.selectClaimBatch(
+                now, notificationProperties.getDigest().getBatchSize(), tenantId, digestDate);
         if (ids == null) {
             return;
         }
@@ -91,8 +97,7 @@ public class DailyDigestService {
         }
     }
 
-    @Transactional
-    public void collectOne(Integer tenantId, Integer recipientUserId, LocalDate digestDate) {
+    void collectOne(Integer tenantId, Integer recipientUserId, LocalDate digestDate) {
         LocalDateTime now = notificationTimeSupport.nowUtc();
         User user = contactLookup.load(List.of(recipientUserId)).get(recipientUserId);
         if (!contactLookup.emailEnabled(user)) {
@@ -148,17 +153,17 @@ public class DailyDigestService {
                     FailureCategory.PERMANENT_MISSING_TEMPLATE.name(), now);
             return;
         }
-        RenderedEmail rendered = templateFactory.renderDigest(row.getDigestDate(), groupItems(items));
-        if (digestEmailMapper.markSendAttempted(digestEmailId, token, now) == 0) {
-            NotificationLog.warn("stale_claim", null, row.getTenantId(), null, "DAILY_DIGEST",
-                    "PROCESSING", null, null, row.getRecipientUserId(), row.getAttemptCount(), token,
-                    "skip-smtp");
-            return;
-        }
-        if (!contactLookup.hasUsableEmail(user)) {
+        if (!contactLookup.hasUsableEmail(user) || !contactLookup.accountActive(user)) {
             digestEmailMapper.markPermanent(digestEmailId, token, FailureCategory.PERMANENT_NO_EMAIL.name(),
                     "no-email", now);
             deliveryMapper.markItemsByDigestEmailId(digestEmailId, "FAILED_PERMANENT", now);
+            return;
+        }
+        RenderedEmail rendered = templateFactory.renderDigest(row.getDigestDate(), groupItems(items));
+        if (claimService.markDigestSendAttempted(digestEmailId, token, now) == 0) {
+            NotificationLog.warn("stale_claim", null, row.getTenantId(), null, "DAILY_DIGEST",
+                    "PROCESSING", null, null, row.getRecipientUserId(), row.getAttemptCount(), token,
+                    "skip-smtp");
             return;
         }
         EmailSendResult result = emailSender.send(new EmailMessage(
@@ -184,12 +189,12 @@ public class DailyDigestService {
                                     row.getAttemptCount() == null ? 1 : row.getAttemptCount())))),
                     result.failureCategory() == null ? FailureCategory.RETRYABLE_NETWORK.name()
                             : result.failureCategory().name(),
-                    result.errorMessage(), now);
+                    NotificationLog.truncateLastError(result.errorMessage()), now);
             case PERMANENT_FAILURE -> {
                 digestEmailMapper.markPermanent(digestEmailId, token,
                         result.failureCategory() == null ? FailureCategory.PERMANENT_NO_EMAIL.name()
                                 : result.failureCategory().name(),
-                        result.errorMessage(), now);
+                        NotificationLog.truncateLastError(result.errorMessage()), now);
                 deliveryMapper.markItemsByDigestEmailId(digestEmailId, "FAILED_PERMANENT", now);
             }
         }

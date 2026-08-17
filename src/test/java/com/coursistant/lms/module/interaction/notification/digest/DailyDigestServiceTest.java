@@ -133,6 +133,41 @@ class DailyDigestServiceTest {
     }
 
     @Test
+    void run_requiresDigestDate() {
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                () -> service.run(null, 1));
+        verify(deliveryMapper, never()).selectPendingDigestRecipients(any(), any());
+    }
+
+    @Test
+    void sendOne_truncatesLastErrorTo512() {
+        NotificationDigestEmail row = new NotificationDigestEmail();
+        row.setId(20L);
+        row.setRecipientUserId(4);
+        row.setTenantId(1);
+        row.setDigestDate(digestDate);
+        row.setAttemptCount(1);
+        when(claimService.claimDigestEmail(eq(20L), any(), any(), anyInt()))
+                .thenReturn(Optional.of(new NotificationClaimService.Claimed<>(row, "tok")));
+        User user = enabledUser();
+        when(contactLookup.load(List.of(4))).thenReturn(Map.of(4, user));
+        when(contactLookup.emailEnabled(user)).thenReturn(true);
+        when(contactLookup.hasUsableEmail(user)).thenReturn(true);
+        when(contactLookup.accountActive(user)).thenReturn(true);
+        when(deliveryMapper.selectByDigestEmailId(20L)).thenReturn(List.of(item("CS101", "Intro", "A")));
+        when(templateFactory.renderDigest(any(), anyList())).thenReturn(new RenderedEmail("s", "b"));
+        when(claimService.markDigestSendAttempted(20L, "tok", now)).thenReturn(1);
+        when(emailSender.send(any())).thenReturn(EmailSendResult.retryable(
+                FailureCategory.RETRYABLE_NETWORK, "x".repeat(600)));
+
+        service.sendOne(20L);
+
+        org.mockito.ArgumentCaptor<String> error = org.mockito.ArgumentCaptor.forClass(String.class);
+        verify(digestEmailMapper).markRetry(eq(20L), eq("tok"), any(), any(), error.capture(), any());
+        assertEquals(512, error.getValue().length());
+    }
+
+    @Test
     void sendOne_retryable_doesNotMarkItemsSent() {
         NotificationDigestEmail row = new NotificationDigestEmail();
         row.setId(20L);
@@ -146,9 +181,10 @@ class DailyDigestServiceTest {
         when(contactLookup.load(List.of(4))).thenReturn(Map.of(4, user));
         when(contactLookup.emailEnabled(user)).thenReturn(true);
         when(contactLookup.hasUsableEmail(user)).thenReturn(true);
+        when(contactLookup.accountActive(user)).thenReturn(true);
         when(deliveryMapper.selectByDigestEmailId(20L)).thenReturn(List.of(item("CS101", "Intro", "A")));
         when(templateFactory.renderDigest(any(), anyList())).thenReturn(new RenderedEmail("s", "b"));
-        when(digestEmailMapper.markSendAttempted(20L, "tok", now)).thenReturn(1);
+        when(claimService.markDigestSendAttempted(20L, "tok", now)).thenReturn(1);
         when(emailSender.send(any())).thenReturn(EmailSendResult.retryable(
                 FailureCategory.RETRYABLE_NETWORK, "smtp"));
 
