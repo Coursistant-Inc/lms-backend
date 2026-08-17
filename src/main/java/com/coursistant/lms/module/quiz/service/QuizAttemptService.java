@@ -39,6 +39,8 @@ public class QuizAttemptService {
     private QuizFinalizeService quizFinalizeService;
     @Resource
     private QuizAuditService quizAuditService;
+    @Resource
+    private QuizGradeMapper quizGradeMapper;
 
     @Transactional
     public AttemptResponse start(Integer courseId, Integer quizId, Integer userId) {
@@ -85,7 +87,7 @@ public class QuizAttemptService {
         }
         quizAuditService.log(courseId, quizId, attempt.getId(), userId, "ATTEMPT_STARTED", null,
                 Map.of("attemptNumber", attempt.getAttemptNumber()));
-        return buildResponse(attempt, quiz);
+        return buildResponse(attempt, quiz, false);
     }
 
     public AttemptResponse getCurrent(Integer courseId, Integer quizId, Integer userId) {
@@ -106,7 +108,10 @@ public class QuizAttemptService {
         Quiz quiz = quizAccessService.requireQuizReadable(request, courseId, quizId, userId);
         QuizAttempt attempt = requireAttempt(quizId, attemptId);
         assertAttemptReadable(request, courseId, quizId, attempt, userId);
-        return buildResponse(attempt, quiz);
+        boolean owner = attempt.getUserId().equals(userId);
+        boolean nonOwnerStaff = !owner && (quizAccessService.isStaffViewer(request, courseId, userId)
+                || quizAccessService.isGradingTa(courseId, userId, quizId));
+        return buildResponse(attempt, quiz, nonOwnerStaff);
     }
 
     public List<AttemptSummaryResponse> listAttempts(HttpServletRequest request, Integer courseId, Integer quizId,
@@ -140,7 +145,7 @@ public class QuizAttemptService {
         QuizAttempt attempt = requireOwnedInProgress(courseId, quizId, attemptId, userId);
         Quiz quiz = quizMapper.selectByCourseIdAndId(courseId, quizId);
         attempt = quizFinalizeService.finalizeAttempt(attempt.getId(), QuizConstants.CLOSE_MANUAL);
-        return buildResponse(attempt, quiz);
+        return buildResponse(attempt, quiz, false);
     }
 
     public ReceiptResponse getReceipt(Integer courseId, Integer quizId, Integer attemptId, Integer userId) {
@@ -165,7 +170,7 @@ public class QuizAttemptService {
             String reason = resolveCloseReason(attempt, quiz, courseId);
             attempt = quizFinalizeService.finalizeAttempt(attempt.getId(), reason);
         }
-        return buildResponse(attempt, quiz);
+        return buildResponse(attempt, quiz, false);
     }
 
     public boolean shouldFinalize(QuizAttempt attempt, Quiz quiz, Integer courseId) {
@@ -241,7 +246,7 @@ public class QuizAttemptService {
         throw new ApiException(ErrorType.ACCESS_DENIED);
     }
 
-    AttemptResponse buildResponse(QuizAttempt attempt, Quiz quiz) {
+    AttemptResponse buildResponse(QuizAttempt attempt, Quiz quiz, boolean nonOwnerStaff) {
         AttemptResponse r = new AttemptResponse();
         r.setId(attempt.getId());
         r.setQuizId(attempt.getQuizId());
@@ -254,10 +259,7 @@ public class QuizAttemptService {
         r.setDeadlineAt(attempt.getDeadlineAt());
         r.setSubmittedAt(quizTimeSupport.toInstant(attempt.getSubmittedAt()));
         r.setServerNowUtc(quizTimeSupport.nowUtc());
-        r.setAutoScore(attempt.getAutoScore());
-        r.setManualScore(attempt.getManualScore());
-        r.setTotalScore(attempt.getTotalScore());
-        r.setManualGradingComplete(attempt.getManualGradingComplete());
+        applyScoreVisibility(r, attempt, quiz, nonOwnerStaff);
         List<SavedAnswerResponse> answers = new ArrayList<>();
         for (QuizAttemptAnswer a : quizAttemptAnswerMapper.selectByAttemptId(attempt.getId())) {
             SavedAnswerResponse sa = new SavedAnswerResponse();
@@ -270,5 +272,29 @@ public class QuizAttemptService {
         }
         r.setAnswers(answers);
         return r;
+    }
+
+    private void applyScoreVisibility(AttemptResponse r, QuizAttempt attempt, Quiz quiz, boolean nonOwnerStaff) {
+        if (nonOwnerStaff) {
+            r.setAutoScore(attempt.getAutoScore());
+            r.setManualScore(attempt.getManualScore());
+            r.setTotalScore(attempt.getTotalScore());
+            r.setManualGradingComplete(attempt.getManualGradingComplete());
+            return;
+        }
+        QuizGrade grade = quizGradeMapper.selectByQuizIdAndUserId(quiz.getId(), attempt.getUserId());
+        boolean released = grade != null && QuizConstants.GRADE_RELEASED.equals(grade.getStatus());
+        boolean instant = QuizConstants.VISIBILITY_INSTANT_AUTO.equals(quiz.getResultVisibility());
+        boolean manualPending = !Boolean.TRUE.equals(attempt.getManualGradingComplete());
+        if (QuizScoreVisibility.showAutoScore(instant, released)) {
+            r.setAutoScore(attempt.getAutoScore());
+        }
+        if (QuizScoreVisibility.showManualAndTotal(released, manualPending)) {
+            r.setManualScore(attempt.getManualScore());
+            r.setTotalScore(attempt.getTotalScore());
+        }
+        if (QuizScoreVisibility.showManualGradingStatus(instant, released)) {
+            r.setManualGradingComplete(attempt.getManualGradingComplete());
+        }
     }
 }

@@ -35,13 +35,17 @@ public class AttemptResponse {
     private Instant submittedAt;
     @Schema(description = "Server clock at response time (UTC local)")
     private LocalDateTime serverNowUtc;
-    @Schema(description = "Auto-scored points")
+    @Schema(description = "Auto-scored points. Null for the attempt owner until resultVisibility "
+            + "and grade release allow it.")
     private BigDecimal autoScore;
-    @Schema(description = "Manual (short-answer) points")
+    @Schema(description = "Manual (short-answer) points. Null for the attempt owner until the "
+            + "grade is Released and manual grading is complete.")
     private BigDecimal manualScore;
-    @Schema(description = "Total points")
+    @Schema(description = "Total points. Null for the attempt owner until the grade is Released "
+            + "and manual grading is complete.")
     private BigDecimal totalScore;
-    @Schema(description = "Whether all short answers have been graded")
+    @Schema(description = "Whether all short answers have been graded. Null for the attempt owner "
+            + "on AfterRelease quizzes until the grade is Released.")
     private Boolean manualGradingComplete;
     @Schema(description = "Saved answers for this attempt")
     private List<SavedAnswerResponse> answers;

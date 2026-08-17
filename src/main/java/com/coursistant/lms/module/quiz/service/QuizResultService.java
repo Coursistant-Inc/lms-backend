@@ -115,7 +115,7 @@ public class QuizResultService {
             if (ans != null) {
                 item.setSelectedOptionIds(quizJsonUtil.parseOptionIds(ans.getSelectedOptionIdsJson()));
                 item.setTextAnswer(ans.getTextAnswer());
-                if (shouldShowQuestionScore(instant, released, manualPending)) {
+                if (QuizScoreVisibility.showQuestionScore(instant, released)) {
                     item.setScore(ans.getScore());
                 }
             }
@@ -134,29 +134,15 @@ public class QuizResultService {
 
     static void applyVisibility(MyResultResponse r, boolean instant, boolean released,
                                 boolean manualPending, QuizAttempt attempt) {
-        if (instant) {
+        if (QuizScoreVisibility.showAutoScore(instant, released)) {
             r.setAutoScore(attempt.getAutoScore());
+        }
+        if (QuizScoreVisibility.showManualGradingStatus(instant, released)) {
             r.setManualGradingPending(manualPending);
-            if (released && !manualPending) {
-                r.setManualScore(attempt.getManualScore());
-                r.setTotalScore(attempt.getTotalScore());
-            }
-            return;
         }
-        if (released) {
-            r.setAutoScore(attempt.getAutoScore());
-            r.setManualGradingPending(manualPending);
-            if (!manualPending) {
-                r.setManualScore(attempt.getManualScore());
-                r.setTotalScore(attempt.getTotalScore());
-            }
+        if (QuizScoreVisibility.showManualAndTotal(released, manualPending)) {
+            r.setManualScore(attempt.getManualScore());
+            r.setTotalScore(attempt.getTotalScore());
         }
-    }
-
-    static boolean shouldShowQuestionScore(boolean instant, boolean released, boolean manualPending) {
-        if (instant) {
-            return true;
-        }
-        return released;
     }
 }
