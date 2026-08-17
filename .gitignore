@@ -32,6 +32,7 @@ public.pem
 *.pem
 *.md
 !docs/api/**/*.md
+!docs/notification-phase1.md
 !README.md
 xlearnedu_west2.pem
 

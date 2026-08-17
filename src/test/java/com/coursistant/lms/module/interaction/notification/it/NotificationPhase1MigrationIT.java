@@ -18,7 +18,9 @@ class NotificationPhase1MigrationIT {
     @Test
     void scriptsAreIdempotentAndGateCheckPasses() {
         NotificationPhase1Mysql.runSql("sql/notification_phase1.sql");
+        NotificationPhase1Mysql.runSql("sql/notification_phase1_gate_check.sql");
         NotificationPhase1Mysql.runSql("sql/notification_phase1.sql");
+        NotificationPhase1Mysql.runSql("sql/notification_phase1_gate_check.sql");
         JdbcTemplate jdbc = NotificationPhase1Mysql.jdbc();
         Map<String, Object> row = jdbc.queryForMap("""
                 SELECT
@@ -38,7 +40,16 @@ class NotificationPhase1MigrationIT {
                       AND index_name = 'uk_delivery_dedupe') AS uk_delivery_dedupe,
                   (SELECT COUNT(*) FROM information_schema.columns
                     WHERE table_schema = DATABASE() AND table_name = 'notification_delivery'
-                      AND column_name IN ('claim_token', 'send_attempted_at', 'unknown_outcome_count')) AS delivery_claim_columns
+                      AND column_name IN ('claim_token', 'send_attempted_at', 'unknown_outcome_count')) AS delivery_claim_columns,
+                  (SELECT COUNT(*) FROM notification_digest_email e
+                    WHERE e.status IN ('SENT', 'DRY_RUN', 'FAILED_PERMANENT', 'SKIPPED_PREFERENCE', 'SKIPPED_INELIGIBLE')
+                      AND EXISTS (
+                        SELECT 1 FROM notification_delivery d
+                        WHERE d.digest_email_id = e.id AND d.status = 'PROCESSING'
+                      )) AS digest_terminal_parent_processing_children,
+                  (SELECT COUNT(*) FROM notification_digest_email
+                    WHERE status = 'COLLECTING'
+                      AND updated_at < DATE_SUB(UTC_TIMESTAMP(3), INTERVAL 10 MINUTE)) AS overdue_collecting
                 """);
         assertEquals(1L, ((Number) row.get("outbox_table")).longValue());
         assertEquals(1L, ((Number) row.get("recipient_table")).longValue());
@@ -47,5 +58,7 @@ class NotificationPhase1MigrationIT {
         assertEquals(1L, ((Number) row.get("uk_outbox_event")).longValue());
         assertEquals(1L, ((Number) row.get("uk_delivery_dedupe")).longValue());
         assertEquals(3L, ((Number) row.get("delivery_claim_columns")).longValue());
+        assertEquals(0L, ((Number) row.get("digest_terminal_parent_processing_children")).longValue());
+        assertEquals(0L, ((Number) row.get("overdue_collecting")).longValue());
     }
 }

@@ -5,8 +5,14 @@ FROM notification_event_outbox
 GROUP BY notification_type, status
 ORDER BY notification_type, status;
 
+SELECT notification_type, COUNT(*) AS cnt
+FROM user_notification
+GROUP BY notification_type
+ORDER BY notification_type;
+
 SELECT channel, status, failure_category, COUNT(*) AS cnt
 FROM notification_delivery
+WHERE channel <> 'IN_APP'
 GROUP BY channel, status, failure_category
 ORDER BY channel, status, failure_category;
 

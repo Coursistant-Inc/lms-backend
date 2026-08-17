@@ -53,7 +53,25 @@ class NotificationPhase1SchemaStaticTest {
         assertTrue(sql.contains("PENDING"));
         assertTrue(sql.contains("FAILED_RETRYABLE"));
         assertTrue(sql.contains("PROCESSING"));
+        assertTrue(sql.contains("digest_date"));
+        assertTrue(sql.contains("tenant_id"));
         assertFalse(sql.contains("COLLECTING"));
+        assertFalse(sql.toLowerCase(Locale.ROOT).contains("skip locked"));
+    }
+
+    @Test
+    void claimBatches_areCandidateSelectsWithoutSkipLocked() throws Exception {
+        for (String path : List.of(
+                "src/main/resources/mapper/interaction/NotificationEventOutboxMapper.xml",
+                "src/main/resources/mapper/interaction/NotificationDeliveryMapper.xml",
+                "src/main/resources/mapper/interaction/NotificationDigestEmailMapper.xml")) {
+            String xml = Files.readString(Path.of(path));
+            int start = xml.indexOf("<select id=\"selectClaimBatch\"");
+            int end = xml.indexOf("</select>", start);
+            String sql = xml.substring(start, end).toLowerCase(Locale.ROOT);
+            assertFalse(sql.contains("skip locked"), path);
+            assertFalse(sql.contains("for update"), path);
+        }
     }
 
     @Test
@@ -64,6 +82,12 @@ class NotificationPhase1SchemaStaticTest {
         assertTrue(Files.exists(Path.of("sql/notification_phase1_drop.sql")));
         String gate = Files.readString(Path.of("sql/notification_phase1_gate_check.sql"));
         assertTrue(gate.contains("COUNT(DISTINCT index_name)"));
+        assertTrue(gate.contains("digest_terminal_parent_processing_children"));
+        assertTrue(gate.contains("overdue_collecting"));
+        assertTrue(gate.contains("long_pending_outbox"));
+        String stats = Files.readString(Path.of("sql/notification_phase1_stats.sql"));
+        assertTrue(stats.contains("user_notification"));
+        assertTrue(stats.contains("channel <> 'IN_APP'") || stats.contains("channel != 'IN_APP'"));
     }
 
     private static void assertColumnsCovered(String ddl, String table, String mapperPath) throws Exception {
