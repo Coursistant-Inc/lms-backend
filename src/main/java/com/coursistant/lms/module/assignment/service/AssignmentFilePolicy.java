@@ -2,6 +2,7 @@ package com.coursistant.lms.module.assignment.service;
 
 import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.shared.api.ErrorType;
+import com.coursistant.lms.shared.file.PdfFileValidator;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -167,6 +168,7 @@ public class AssignmentFilePolicy {
             throw new ApiException(ErrorType.UNSUPPORTED_FILE_TYPE,
                     "Allowed file types for this assignment: " + String.join(", ", allowedTypes));
         }
+        PdfFileValidator.validateIfPdf(file);
     }
 
     /**
@@ -181,6 +183,7 @@ public class AssignmentFilePolicy {
             throw new ApiException(ErrorType.UNSUPPORTED_FILE_TYPE,
                     "Attachment must be one of: " + String.join(", ", ATTACHMENT_EXTENSIONS));
         }
+        PdfFileValidator.validateIfPdf(file);
     }
 
     /**
@@ -194,6 +197,7 @@ public class AssignmentFilePolicy {
         if (!"pdf".equals(extension) && !"application/pdf".equals(contentType)) {
             throw new ApiException(ErrorType.UNSUPPORTED_FILE_TYPE, "Rubric must be a PDF file");
         }
+        PdfFileValidator.validateIfPdf(file);
     }
 
     /**
@@ -207,6 +211,7 @@ public class AssignmentFilePolicy {
             throw new ApiException(ErrorType.UNSUPPORTED_FILE_TYPE,
                     "Annotated file must be a PDF, DOCX, or image");
         }
+        PdfFileValidator.validateIfPdf(file);
     }
 
     // --- Helpers ---

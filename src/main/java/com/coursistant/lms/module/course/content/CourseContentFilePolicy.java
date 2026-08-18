@@ -2,6 +2,7 @@ package com.coursistant.lms.module.course.content;
 
 import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.shared.api.ErrorType;
+import com.coursistant.lms.shared.file.PdfFileValidator;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
@@ -71,6 +72,7 @@ public class CourseContentFilePolicy {
         requireNonEmpty(file);
         requireWithinSizeLimit(file);
         requireAllowedType(file, SYLLABUS_CONTENT_TYPES, SYLLABUS_EXTENSIONS, "Syllabus must be a PDF file");
+        PdfFileValidator.validateIfPdf(file);
     }
 
     /**
@@ -81,6 +83,7 @@ public class CourseContentFilePolicy {
         requireWithinSizeLimit(file);
         requireAllowedType(file, MATERIAL_CONTENT_TYPES, MATERIAL_EXTENSIONS,
                 "Material must be a PDF, PPTX, DOCX, XLSX, image, or ZIP file");
+        PdfFileValidator.validateIfPdf(file);
     }
 
     /**
