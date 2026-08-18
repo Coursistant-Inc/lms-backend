@@ -330,6 +330,15 @@ public class AssignmentController {
                 currentUserId(request));
     }
 
+    @GetMapping("/{assignmentId}/attachments/{attachmentId}/preview")
+    public ResponseEntity<InputStreamResource> previewAttachment(HttpServletRequest request,
+                                                                 @PathVariable Integer courseId,
+                                                                 @PathVariable Integer assignmentId,
+                                                                 @PathVariable Integer attachmentId) {
+        return assignmentService.previewAttachment(request, courseId, assignmentId, attachmentId,
+                currentUserId(request));
+    }
+
     @DeleteMapping("/{assignmentId}/attachments/{attachmentId}")
     @Operation(
             operationId = "assignmentDeleteAttachment",

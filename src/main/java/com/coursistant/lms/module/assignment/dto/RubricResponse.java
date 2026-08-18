@@ -25,6 +25,7 @@ public class RubricResponse {
     private Integer totalVersions;
     private Boolean canRestorePrevious;
     private String downloadUrl;
+    private String previewUrl;
     private Integer gradedAgainstPreviousRubricCount;
 
     public boolean isPosted() {
@@ -121,6 +122,14 @@ public class RubricResponse {
 
     public void setDownloadUrl(String downloadUrl) {
         this.downloadUrl = downloadUrl;
+    }
+
+    public String getPreviewUrl() {
+        return previewUrl;
+    }
+
+    public void setPreviewUrl(String previewUrl) {
+        this.previewUrl = previewUrl;
     }
 
     public Integer getGradedAgainstPreviousRubricCount() {

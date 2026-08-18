@@ -149,6 +149,13 @@ public class AssignmentRubricController {
         return assignmentRubricService.download(request, courseId, assignmentId, currentUserId(request));
     }
 
+    @GetMapping("/preview")
+    public ResponseEntity<InputStreamResource> preview(HttpServletRequest request,
+                                                       @PathVariable Integer courseId,
+                                                       @PathVariable Integer assignmentId) {
+        return assignmentRubricService.preview(request, courseId, assignmentId, currentUserId(request));
+    }
+
     @PostMapping("/restore-previous")
     @Operation(
             operationId = "assignmentRestorePreviousRubric",

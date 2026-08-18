@@ -197,6 +197,13 @@ public class AssignmentResponseAssembler {
         response.setCreatedAt(assignmentTimeSupport.toInstant(attachment.getCreatedAt()));
         response.setDownloadUrl(absoluteUrl("/v2/courses/" + courseId + "/assignments/"
                 + attachment.getAssignmentId() + "/attachments/" + attachment.getId() + "/download"));
+        boolean previewAvailable = assignmentFilePolicy.isPreviewable(
+                attachment.getContentType(), attachment.getOriginalName());
+        response.setPreviewAvailable(previewAvailable);
+        if (previewAvailable) {
+            response.setPreviewUrl(absoluteUrl("/v2/courses/" + courseId + "/assignments/"
+                    + attachment.getAssignmentId() + "/attachments/" + attachment.getId() + "/preview"));
+        }
         return response;
     }
 
@@ -221,6 +228,7 @@ public class AssignmentResponseAssembler {
         response.setUploadedAt(currentVersion.getCreatedAt());
         response.setCanRestorePrevious(canRestorePrevious);
         response.setDownloadUrl(absoluteUrl("/v2/courses/" + courseId + "/assignments/" + assignmentId + "/rubric/download"));
+        response.setPreviewUrl(absoluteUrl("/v2/courses/" + courseId + "/assignments/" + assignmentId + "/rubric/preview"));
         return response;
     }
 
