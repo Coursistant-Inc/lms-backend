@@ -115,6 +115,18 @@ class S3UploadRollbackTest {
     }
 
     @Test
+    void abortIfNoTransaction_txActiveWithoutSync_enqueuesImmediately() {
+        S3UploadRollback rollback = new S3UploadRollback(minioOutboxService);
+        TransactionSynchronizationManager.setActualTransactionActive(true);
+
+        S3UploadRollback.Scope scope = rollback.open(4, "op-4");
+        scope.remember("lms-uploads", "nosync.pdf");
+        scope.abortIfNoTransaction();
+
+        verify(minioOutboxService).enqueueAbortStagingIndependent("lms-uploads", "nosync.pdf", 4, "op-4");
+    }
+
+    @Test
     void abortIfNoTransaction_isNoOpWhenSyncAlreadyRegistered() {
         S3UploadRollback rollback = new S3UploadRollback(minioOutboxService);
         TransactionSynchronizationManager.initSynchronization();

@@ -52,15 +52,12 @@ public class S3UploadRollback {
         }
 
         /**
-         * Compensates immediately when this call is not running inside a Spring
-         * transaction that already registered {@code afterCompletion}. No-op when
-         * a rollback callback is already registered.
+         * Compensates immediately unless a rollback {@code afterCompletion} callback
+         * was successfully registered. An active transaction without synchronization
+         * does not skip compensation.
          */
         public void abortIfNoTransaction() {
             if (syncRegistered) {
-                return;
-            }
-            if (TransactionSynchronizationManager.isActualTransactionActive()) {
                 return;
             }
             abortRemembered();
@@ -74,7 +71,6 @@ public class S3UploadRollback {
                     || !TransactionSynchronizationManager.isSynchronizationActive()) {
                 return;
             }
-            syncRegistered = true;
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCompletion(int status) {
@@ -83,6 +79,7 @@ public class S3UploadRollback {
                     }
                 }
             });
+            syncRegistered = true;
         }
 
         private void abortRemembered() {
