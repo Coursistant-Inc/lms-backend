@@ -40,6 +40,7 @@ import com.coursistant.lms.module.course.group.repository.GroupMembershipMapper;
 import com.coursistant.lms.module.course.group.service.GroupAccessService;
 import com.coursistant.lms.module.interaction.notification.service.NotificationRecipientResolver;
 import com.coursistant.lms.module.tenant.service.TenantTimezoneService;
+import com.coursistant.lms.module.file.storage.S3UploadRollback;
 import com.coursistant.lms.shared.api.ErrorType;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
@@ -146,6 +147,9 @@ public class AssignmentService {
 
     @Resource
     private TenantTimezoneService tenantTimezoneService;
+
+    @Resource
+    private S3UploadRollback s3UploadRollback;
 
     // ------------------------------------------------------------------ read
 
@@ -667,27 +671,43 @@ public class AssignmentService {
                     "At least one file is required");
         }
 
-        List<AssignmentAttachmentResponse> created = new ArrayList<>();
-        for (MultipartFile file : files) {
-            String canonicalMime = assignmentFilePolicy.validateAttachmentFile(file);
-            String objectKey = assignmentFilePolicy.attachmentKey(courseId, assignmentId, file.getOriginalFilename());
-            assignmentStorageService.upload(objectKey, file, canonicalMime, courseId, assignmentId, userId);
-
-            AssignmentAttachment attachment = new AssignmentAttachment();
-            attachment.setAssignmentId(assignmentId);
-            attachment.setObjectKey(objectKey);
-            attachment.setOriginalName(assignmentFilePolicy.sanitizeFilename(file.getOriginalFilename()));
-            attachment.setContentType(canonicalMime);
-            attachment.setSizeBytes(file.getSize());
-            attachment.setUploadedBy(userId);
-            assignmentAttachmentMapper.insert(attachment);
-
-            assignmentAuditService.write(courseId, assignmentId, userId, AssignmentAuditService.ATTACHMENT_ADDED,
-                    Map.of("attachmentId", attachment.getId(), "originalName", attachment.getOriginalName()));
-            created.add(assignmentResponseAssembler.toAttachmentResponse(courseId,
-                    assignmentAttachmentMapper.selectById(attachment.getId())));
+        record PreparedAttachment(MultipartFile file, String canonicalMime, String objectKey) {
         }
-        return created;
+        List<PreparedAttachment> prepared = new ArrayList<>();
+        for (MultipartFile file : files) {
+            prepared.add(new PreparedAttachment(
+                    file,
+                    assignmentFilePolicy.validateAttachmentFile(file),
+                    assignmentFilePolicy.attachmentKey(courseId, assignmentId, file.getOriginalFilename())));
+        }
+
+        S3UploadRollback.Scope rollback = s3UploadRollback.open(courseId, null);
+        List<AssignmentAttachmentResponse> created = new ArrayList<>();
+        try {
+            for (PreparedAttachment item : prepared) {
+                assignmentStorageService.upload(item.objectKey(), item.file(), item.canonicalMime(),
+                        courseId, assignmentId, userId);
+                rollback.remember(assignmentFilePolicy.bucket(), item.objectKey());
+
+                AssignmentAttachment attachment = new AssignmentAttachment();
+                attachment.setAssignmentId(assignmentId);
+                attachment.setObjectKey(item.objectKey());
+                attachment.setOriginalName(assignmentFilePolicy.sanitizeFilename(item.file().getOriginalFilename()));
+                attachment.setContentType(item.canonicalMime());
+                attachment.setSizeBytes(item.file().getSize());
+                attachment.setUploadedBy(userId);
+                assignmentAttachmentMapper.insert(attachment);
+
+                assignmentAuditService.write(courseId, assignmentId, userId, AssignmentAuditService.ATTACHMENT_ADDED,
+                        Map.of("attachmentId", attachment.getId(), "originalName", attachment.getOriginalName()));
+                created.add(assignmentResponseAssembler.toAttachmentResponse(courseId,
+                        assignmentAttachmentMapper.selectById(attachment.getId())));
+            }
+            return created;
+        } catch (RuntimeException e) {
+            rollback.abortIfNoTransaction();
+            throw e;
+        }
     }
 
     public ResponseEntity<InputStreamResource> downloadAttachment(HttpServletRequest request, Integer courseId,

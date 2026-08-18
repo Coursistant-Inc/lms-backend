@@ -16,14 +16,18 @@ import com.coursistant.lms.module.course.group.entity.CourseGroup;
 import com.coursistant.lms.module.course.group.repository.CourseGroupMapper;
 import com.coursistant.lms.module.course.group.repository.GroupMembershipMapper;
 import com.coursistant.lms.module.course.group.service.GroupAccessService;
+import com.coursistant.lms.module.course.storage.service.MinioOutboxService;
+import com.coursistant.lms.module.file.storage.S3UploadRollback;
 import com.coursistant.lms.module.tenant.service.TenantTimezoneService;
 import com.coursistant.lms.module.user.account.repository.UserMapper;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -63,9 +67,21 @@ class AssignmentGradingServiceGroupNotificationTest {
     @Mock private GroupMembershipMapper groupMembershipMapper;
     @Mock private GroupAccessService groupAccessService;
     @Mock private TenantTimezoneService tenantTimezoneService;
+    @Mock private MinioOutboxService minioOutboxService;
 
     @InjectMocks
     private AssignmentGradingService assignmentGradingService;
+
+    @BeforeEach
+    void injectRollback() {
+        ReflectionTestUtils.setField(assignmentGradingService, "s3UploadRollback",
+                new S3UploadRollback(minioOutboxService));
+        org.mockito.Mockito.lenient().when(assignmentFilePolicy.bucket()).thenReturn("lms-uploads");
+        org.mockito.Mockito.lenient().when(assignmentFilePolicy.validateAnnotatedFile(any()))
+                .thenReturn("application/pdf");
+        org.mockito.Mockito.lenient().when(assignmentResponseAssembler.absoluteUrl(any()))
+                .thenReturn("/api/x");
+    }
 
     @Test
     void upsertGroupGrade_releasedCorrection_usesExistingIdSnapshotNotCurrentMembership() {

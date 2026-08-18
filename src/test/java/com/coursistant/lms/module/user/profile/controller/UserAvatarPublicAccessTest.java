@@ -4,6 +4,8 @@ import com.coursistant.lms.module.file.storage.S3ObjectKeyResolver;
 import com.coursistant.lms.module.file.storage.S3ObjectMetadata;
 import com.coursistant.lms.module.file.storage.S3ObjectPayload;
 import com.coursistant.lms.module.file.storage.S3ObjectStorage;
+import com.coursistant.lms.module.file.storage.S3UploadRollback;
+import com.coursistant.lms.module.course.storage.service.MinioOutboxService;
 import com.coursistant.lms.module.interaction.notification.service.NotificationDeliveryOpsService;
 import com.coursistant.lms.module.interaction.notification.service.NotificationSupport;
 import com.coursistant.lms.module.user.account.entity.User;
@@ -78,6 +80,7 @@ class UserAvatarPublicAccessTest {
             IdempotencyFilter.class,
             IdempotencyInterceptor.class,
             ProfileService.class,
+            S3UploadRollback.class,
             S3ObjectKeyResolver.class,
             UserAvatarController.class,
             ProfileMeController.class,
@@ -97,6 +100,9 @@ class UserAvatarPublicAccessTest {
 
     @MockitoBean
     private S3ObjectStorage s3ObjectStorage;
+
+    @MockitoBean
+    private MinioOutboxService minioOutboxService;
 
     @MockitoBean
     private AvatarUrlBuilder avatarUrlBuilder;

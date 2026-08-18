@@ -101,6 +101,8 @@ aws:
     endpoint-override: ${AWS_S3_ENDPOINT:}
 
 lms:
+  idempotency:
+    pending-ttl-seconds: 900
   content:
     max-file-bytes: 209715200
   notification:

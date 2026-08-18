@@ -10,6 +10,8 @@ import com.coursistant.lms.module.file.storage.S3ObjectNotFoundException;
 import com.coursistant.lms.module.file.storage.S3ObjectPayload;
 import com.coursistant.lms.module.file.storage.S3ObjectStorage;
 import com.coursistant.lms.module.file.storage.S3StorageException;
+import com.coursistant.lms.module.file.storage.S3UploadRollback;
+import com.coursistant.lms.module.course.storage.service.MinioOutboxService;
 import com.coursistant.lms.module.user.account.entity.User;
 import com.coursistant.lms.module.user.account.repository.UserMapper;
 import com.coursistant.lms.module.user.profile.dto.ProfileResponse;
@@ -48,6 +50,12 @@ public class ProfileService {
 
     @Resource
     private S3ObjectKeyResolver s3ObjectKeyResolver;
+
+    @Resource
+    private S3UploadRollback s3UploadRollback;
+
+    @Resource
+    private MinioOutboxService minioOutboxService;
 
     @Resource
     private AvatarUrlBuilder avatarUrlBuilder;
@@ -101,6 +109,7 @@ public class ProfileService {
         return toResponse(user);
     }
 
+    @Transactional
     public ProfileResponse uploadAvatar(Integer userId, MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new ApiException(ErrorType.INVALID_AVATAR_FILE, "Avatar file is required");
@@ -123,25 +132,32 @@ public class ProfileService {
         String oldKey = user.getAvatar();
         String newKey = userId + "/" + UUID.randomUUID().toString().replace("-", "") + "." + extension;
 
+        S3UploadRollback.Scope rollback = s3UploadRollback.open(null, null);
         try {
-            s3ObjectStorage.putObject(physicalKey(newKey), file, canonicalMime);
-        } catch (S3StorageException e) {
-            logger.log(Level.WARNING, "Avatar upload to S3 failed for user " + userId, e);
-            throw new ApiException(ErrorType.STORAGE_FAILURE, "Failed to upload avatar");
+            try {
+                s3ObjectStorage.putObject(physicalKey(newKey), file, canonicalMime);
+            } catch (S3StorageException e) {
+                logger.log(Level.WARNING, "Avatar upload to S3 failed for user " + userId, e);
+                throw new ApiException(ErrorType.STORAGE_FAILURE, "Failed to upload avatar");
+            }
+            rollback.remember(AVATAR_BUCKET, newKey);
+
+            User patch = new User();
+            patch.setId(userId);
+            patch.setAvatar(newKey);
+            userMapper.updateById(patch);
+            user.setAvatar(newKey);
+            evictUserCache(user);
+
+            if (StrUtil.isNotBlank(oldKey) && !oldKey.equals(newKey)) {
+                minioOutboxService.enqueueDelete(AVATAR_BUCKET, oldKey, null, null);
+            }
+
+            return toResponse(user);
+        } catch (RuntimeException e) {
+            rollback.abortIfNoTransaction();
+            throw e;
         }
-
-        User patch = new User();
-        patch.setId(userId);
-        patch.setAvatar(newKey);
-        userMapper.updateById(patch);
-        user.setAvatar(newKey);
-        evictUserCache(user);
-
-        if (StrUtil.isNotBlank(oldKey) && !oldKey.equals(newKey)) {
-            deleteQuietly(oldKey);
-        }
-
-        return toResponse(user);
     }
 
     public ProfileResponse deleteAvatar(Integer userId) {

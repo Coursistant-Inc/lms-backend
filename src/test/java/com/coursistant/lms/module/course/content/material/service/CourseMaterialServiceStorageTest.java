@@ -16,6 +16,7 @@ import com.coursistant.lms.module.file.storage.S3ObjectNotFoundException;
 import com.coursistant.lms.module.file.storage.S3ObjectPayload;
 import com.coursistant.lms.module.file.storage.S3ObjectStorage;
 import com.coursistant.lms.module.file.storage.S3StorageException;
+import com.coursistant.lms.module.file.storage.S3UploadRollback;
 import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.shared.api.ErrorType;
 import com.coursistant.lms.shared.security.ActorContext;
@@ -33,6 +34,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.io.ByteArrayInputStream;
 import java.io.FilterInputStream;
@@ -77,6 +79,7 @@ class CourseMaterialServiceStorageTest {
 
     @BeforeEach
     void policy() {
+        ReflectionTestUtils.setField(service, "s3UploadRollback", new S3UploadRollback(minioOutboxService));
         org.mockito.Mockito.lenient().when(courseContentFilePolicy.bucket()).thenReturn("lms-uploads");
         org.mockito.Mockito.lenient().when(courseContentFilePolicy.validateFile(any()))
                 .thenReturn("application/pdf");
@@ -166,7 +169,21 @@ class CourseMaterialServiceStorageTest {
         ApiException ex = assertThrows(ApiException.class,
                 () -> service.create(actor, 1, 2, new MockMultipartFile[]{file}, null, null, request));
         assertEquals(ErrorType.STORAGE_FAILURE, ex.getErrorType());
-        verify(minioOutboxService).enqueueAbortStagingIndependent("lms-uploads", "staging/src.pdf", 1, "op-1");
+        verify(minioOutboxService, org.mockito.Mockito.atLeastOnce())
+                .enqueueAbortStagingIndependent("lms-uploads", "staging/src.pdf", 1, "op-1");
+    }
+
+    @Test
+    void orphanV3_putThenDbFailure_enqueuesIndependentAbort() {
+        MockMultipartFile file = new MockMultipartFile("files", "a.pdf", "application/pdf", "x".getBytes());
+        when(courseContentFilePolicy.extensionOf("a.pdf")).thenReturn("pdf");
+        when(courseContentFilePolicy.buildObjectKey(anyString(), eq("a.pdf"))).thenReturn("k.pdf");
+        when(courseMaterialMapper.selectMaxOrderPosition(2)).thenReturn(0);
+        doThrow(new RuntimeException("db")).when(courseMaterialMapper).insert(any());
+
+        assertThrows(RuntimeException.class,
+                () -> service.create(actor, 1, 2, new MockMultipartFile[]{file}, null, null, new MockHttpServletRequest()));
+        verify(minioOutboxService).enqueueAbortStagingIndependent("lms-uploads", "k.pdf", 1, null);
     }
 
     @Test

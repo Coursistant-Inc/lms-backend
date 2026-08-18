@@ -5,6 +5,7 @@ import com.coursistant.lms.module.assignment.entity.Assignment;
 import com.coursistant.lms.module.assignment.entity.AssignmentRubricVersion;
 import com.coursistant.lms.module.assignment.repository.AssignmentMapper;
 import com.coursistant.lms.module.assignment.repository.AssignmentRubricVersionMapper;
+import com.coursistant.lms.module.file.storage.S3UploadRollback;
 import com.coursistant.lms.shared.api.ErrorType;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
@@ -47,6 +48,9 @@ public class AssignmentRubricService {
 
     @Resource
     private AssignmentResponseAssembler assignmentResponseAssembler;
+
+    @Resource
+    private S3UploadRollback s3UploadRollback;
 
     @Resource
     private AssignmentAuditService assignmentAuditService;
@@ -93,30 +97,37 @@ public class AssignmentRubricService {
         int nextVersionNo = (maxVersionNo == null ? 0 : maxVersionNo) + 1;
 
         String objectKey = assignmentFilePolicy.rubricKey(courseId, assignmentId, file.getOriginalFilename());
-        assignmentStorageService.upload(objectKey, file, canonicalMime, courseId, assignmentId, userId);
+        S3UploadRollback.Scope rollback = s3UploadRollback.open(courseId, null);
+        try {
+            assignmentStorageService.upload(objectKey, file, canonicalMime, courseId, assignmentId, userId);
+            rollback.remember(assignmentFilePolicy.bucket(), objectKey);
 
-        AssignmentRubricVersion version = new AssignmentRubricVersion();
-        version.setAssignmentId(assignmentId);
-        version.setVersionNo(nextVersionNo);
-        version.setObjectKey(objectKey);
-        version.setOriginalName(assignmentFilePolicy.sanitizeFilename(file.getOriginalFilename()));
-        version.setContentType(canonicalMime);
-        version.setSizeBytes(file.getSize());
-        version.setUploadedBy(userId);
-        assignmentRubricVersionMapper.insert(version);
+            AssignmentRubricVersion version = new AssignmentRubricVersion();
+            version.setAssignmentId(assignmentId);
+            version.setVersionNo(nextVersionNo);
+            version.setObjectKey(objectKey);
+            version.setOriginalName(assignmentFilePolicy.sanitizeFilename(file.getOriginalFilename()));
+            version.setContentType(canonicalMime);
+            version.setSizeBytes(file.getSize());
+            version.setUploadedBy(userId);
+            assignmentRubricVersionMapper.insert(version);
 
-        assignmentMapper.updateCurrentRubricVersionId(assignmentId, version.getId());
+            assignmentMapper.updateCurrentRubricVersionId(assignmentId, version.getId());
 
-        assignmentAuditService.write(courseId, assignmentId, userId, AssignmentAuditService.RUBRIC_UPLOADED,
-                Map.of("rubricVersionId", version.getId(), "versionNo", nextVersionNo));
-        RubricResponse response = toResponse(requireAssignment(courseId, assignmentId, userId));
-        if (replacingAfterGrading) {
-            assignmentAuditService.write(courseId, assignmentId, userId,
-                    AssignmentAuditService.RUBRIC_REPLACED_AFTER_GRADING,
-                    Map.of("rubricVersionId", version.getId(), "gradedCount", gradedCount));
-            response.setGradedAgainstPreviousRubricCount(gradedCount);
+            assignmentAuditService.write(courseId, assignmentId, userId, AssignmentAuditService.RUBRIC_UPLOADED,
+                    Map.of("rubricVersionId", version.getId(), "versionNo", nextVersionNo));
+            RubricResponse response = toResponse(requireAssignment(courseId, assignmentId, userId));
+            if (replacingAfterGrading) {
+                assignmentAuditService.write(courseId, assignmentId, userId,
+                        AssignmentAuditService.RUBRIC_REPLACED_AFTER_GRADING,
+                        Map.of("rubricVersionId", version.getId(), "gradedCount", gradedCount));
+                response.setGradedAgainstPreviousRubricCount(gradedCount);
+            }
+            return response;
+        } catch (RuntimeException e) {
+            rollback.abortIfNoTransaction();
+            throw e;
         }
-        return response;
     }
 
     /**

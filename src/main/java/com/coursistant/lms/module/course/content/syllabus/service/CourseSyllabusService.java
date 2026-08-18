@@ -14,6 +14,7 @@ import com.coursistant.lms.module.file.storage.S3ObjectNotFoundException;
 import com.coursistant.lms.module.file.storage.S3ObjectPayload;
 import com.coursistant.lms.module.file.storage.S3ObjectStorage;
 import com.coursistant.lms.module.file.storage.S3StorageException;
+import com.coursistant.lms.module.file.storage.S3UploadRollback;
 import com.coursistant.lms.module.file.storage.SecureFileResponse;
 import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.shared.api.ErrorType;
@@ -57,6 +58,9 @@ public class CourseSyllabusService {
     @Resource
     private S3ObjectKeyResolver s3ObjectKeyResolver;
 
+    @Resource
+    private S3UploadRollback s3UploadRollback;
+
     public SyllabusResponse getSyllabus(ActorContext actor, Integer courseId) {
         courseAuthorizationService.requireVisibleCourse(actor, courseId);
         boolean managerView = courseAuthorizationService.isCourseManager(actor, courseId);
@@ -77,38 +81,45 @@ public class CourseSyllabusService {
         String canonicalMime = courseContentFilePolicy.validateSyllabusPdf(file);
 
         String objectKey = OBJECT_PREFIX + courseId + "/" + UUID.randomUUID().toString().replace("-", "") + ".pdf";
+        S3UploadRollback.Scope rollback = s3UploadRollback.open(courseId, null);
         try {
-            s3ObjectStorage.putObject(physicalKey(objectKey), file, canonicalMime);
-        } catch (S3StorageException e) {
-            log.warn("Failed to upload syllabus for course {}: {}", courseId, e.getMessage());
-            throw new ApiException(ErrorType.STORAGE_FAILURE, "Failed to upload syllabus file");
+            try {
+                s3ObjectStorage.putObject(physicalKey(objectKey), file, canonicalMime);
+            } catch (S3StorageException e) {
+                log.warn("Failed to upload syllabus for course {}: {}", courseId, e.getMessage());
+                throw new ApiException(ErrorType.STORAGE_FAILURE, "Failed to upload syllabus file");
+            }
+            rollback.remember(courseContentFilePolicy.bucket(), objectKey);
+
+            CourseSyllabusVersion version = new CourseSyllabusVersion();
+            version.setCourseId(courseId);
+            version.setObjectKey(objectKey);
+            version.setOriginalFilename(resolveFilename(file));
+            version.setContentType(canonicalMime);
+            version.setSizeBytes(file.getSize());
+            version.setUploadedBy(actor.getActorId());
+            courseSyllabusVersionMapper.insert(version);
+
+            CourseSyllabus existing = courseSyllabusMapper.selectByCourseId(courseId);
+            if (existing == null) {
+                CourseSyllabus newRow = new CourseSyllabus();
+                newRow.setCourseId(courseId);
+                newRow.setCurrentVersionId(version.getId());
+                newRow.setPreviousVersionId(null);
+                courseSyllabusMapper.insert(newRow);
+            } else {
+                CourseSyllabus patch = new CourseSyllabus();
+                patch.setCourseId(courseId);
+                patch.setCurrentVersionId(version.getId());
+                patch.setPreviousVersionId(existing.getCurrentVersionId());
+                courseSyllabusMapper.updateVersions(patch);
+            }
+
+            return toResponse(courseSyllabusMapper.selectByCourseId(courseId), true);
+        } catch (RuntimeException e) {
+            rollback.abortIfNoTransaction();
+            throw e;
         }
-
-        CourseSyllabusVersion version = new CourseSyllabusVersion();
-        version.setCourseId(courseId);
-        version.setObjectKey(objectKey);
-        version.setOriginalFilename(resolveFilename(file));
-        version.setContentType(canonicalMime);
-        version.setSizeBytes(file.getSize());
-        version.setUploadedBy(actor.getActorId());
-        courseSyllabusVersionMapper.insert(version);
-
-        CourseSyllabus existing = courseSyllabusMapper.selectByCourseId(courseId);
-        if (existing == null) {
-            CourseSyllabus newRow = new CourseSyllabus();
-            newRow.setCourseId(courseId);
-            newRow.setCurrentVersionId(version.getId());
-            newRow.setPreviousVersionId(null);
-            courseSyllabusMapper.insert(newRow);
-        } else {
-            CourseSyllabus patch = new CourseSyllabus();
-            patch.setCourseId(courseId);
-            patch.setCurrentVersionId(version.getId());
-            patch.setPreviousVersionId(existing.getCurrentVersionId());
-            courseSyllabusMapper.updateVersions(patch);
-        }
-
-        return toResponse(courseSyllabusMapper.selectByCourseId(courseId), true);
     }
 
     @Transactional

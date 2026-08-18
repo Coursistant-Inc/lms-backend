@@ -19,6 +19,7 @@ import com.coursistant.lms.module.file.storage.S3ObjectNotFoundException;
 import com.coursistant.lms.module.file.storage.S3ObjectPayload;
 import com.coursistant.lms.module.file.storage.S3ObjectStorage;
 import com.coursistant.lms.module.file.storage.S3StorageException;
+import com.coursistant.lms.module.file.storage.S3UploadRollback;
 import com.coursistant.lms.module.file.storage.SecureFileResponse;
 import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.shared.api.ErrorType;
@@ -79,6 +80,9 @@ public class CourseMaterialService {
     @Resource
     private CourseAuditService courseAuditService;
 
+    @Resource
+    private S3UploadRollback s3UploadRollback;
+
     @Transactional
     public List<MaterialResponse> create(ActorContext actor, Integer courseId, Integer weekId,
                                           MultipartFile[] files, String linkUrl, String linkDisplayName,
@@ -105,39 +109,61 @@ public class CourseMaterialService {
         List<CourseMaterial> created = new ArrayList<>();
         String stagingPrefix = uploadOp == null ? null : ("staging/" + uploadOp.getId() + "/");
 
-        try {
-            if (hasFiles) {
-                for (MultipartFile file : files) {
-                    if (file == null || file.isEmpty()) {
-                        continue;
-                    }
-                    String canonicalMime = courseContentFilePolicy.validateFile(file);
-                    String originalFilename = file.getOriginalFilename();
-                    String extension = courseContentFilePolicy.extensionOf(originalFilename);
-                    String objectKey = courseContentFilePolicy.buildObjectKey(
-                            stagingPrefix != null
-                                    ? stagingPrefix + "materials"
-                                    : "course-content/" + courseId + "/weeks/" + weekId + "/materials",
-                            originalFilename);
+        record PreparedMaterial(MultipartFile file, String canonicalMime, String originalFilename,
+                                String extension, String objectKey) {
+        }
+        List<PreparedMaterial> prepared = new ArrayList<>();
+        if (hasFiles) {
+            for (MultipartFile file : files) {
+                if (file == null || file.isEmpty()) {
+                    continue;
+                }
+                String canonicalMime = courseContentFilePolicy.validateFile(file);
+                String originalFilename = file.getOriginalFilename();
+                String extension = courseContentFilePolicy.extensionOf(originalFilename);
+                String objectKey = courseContentFilePolicy.buildObjectKey(
+                        stagingPrefix != null
+                                ? stagingPrefix + "materials"
+                                : "course-content/" + courseId + "/weeks/" + weekId + "/materials",
+                        originalFilename);
+                prepared.add(new PreparedMaterial(file, canonicalMime, originalFilename, extension, objectKey));
+            }
+        }
+        String normalizedLinkUrl = null;
+        String linkName = null;
+        if (hasLink) {
+            normalizedLinkUrl = validateAndNormalizeUrl(linkUrl);
+            linkName = linkDisplayName != null && !linkDisplayName.isBlank()
+                    ? linkDisplayName.trim()
+                    : normalizedLinkUrl;
+        }
 
+        S3UploadRollback.Scope rollback = s3UploadRollback.open(
+                courseId, uploadOp == null ? null : uploadOp.getId());
+        try {
+            if (!prepared.isEmpty()) {
+                for (PreparedMaterial item : prepared) {
                     try {
-                        s3ObjectStorage.putObject(physicalKey(objectKey), file, canonicalMime);
+                        s3ObjectStorage.putObject(physicalKey(item.objectKey()), item.file(), item.canonicalMime());
                     } catch (S3StorageException e) {
-                        log.warn("Failed to upload course material to S3: key={}", objectKey, e);
+                        log.warn("Failed to upload course material to S3: key={}", item.objectKey(), e);
                         throw new ApiException(ErrorType.STORAGE_FAILURE, "Failed to upload file");
                     }
+                    rollback.remember(courseContentFilePolicy.bucket(), item.objectKey());
 
-                    String finalKey = objectKey;
+                    String finalKey = item.objectKey();
                     if (stagingPrefix != null) {
                         finalKey = courseContentFilePolicy.buildObjectKey(
-                                "course-content/" + courseId + "/weeks/" + weekId + "/materials", originalFilename);
+                                "course-content/" + courseId + "/weeks/" + weekId + "/materials",
+                                item.originalFilename());
                         try {
-                            s3ObjectStorage.copyObject(physicalKey(objectKey), physicalKey(finalKey));
+                            s3ObjectStorage.copyObject(physicalKey(item.objectKey()), physicalKey(finalKey));
+                            rollback.remember(courseContentFilePolicy.bucket(), finalKey);
                             minioOutboxService.enqueueDelete(
-                                    courseContentFilePolicy.bucket(), objectKey, courseId, uploadOp.getId());
+                                    courseContentFilePolicy.bucket(), item.objectKey(), courseId, uploadOp.getId());
                         } catch (RuntimeException e) {
                             minioOutboxService.enqueueAbortStagingIndependent(
-                                    courseContentFilePolicy.bucket(), objectKey, courseId, uploadOp.getId());
+                                    courseContentFilePolicy.bucket(), item.objectKey(), courseId, uploadOp.getId());
                             if (e instanceof ApiException api) {
                                 throw api;
                             }
@@ -149,12 +175,12 @@ public class CourseMaterialService {
                     material.setWeekId(weekId);
                     material.setCourseId(courseId);
                     material.setMaterialType(TYPE_FILE);
-                    material.setDisplayName(trimToLength(baseName(originalFilename)));
+                    material.setDisplayName(trimToLength(baseName(item.originalFilename())));
                     material.setOrderPosition(nextOrder++);
-                    material.setOriginalFilename(originalFilename);
-                    material.setContentType(canonicalMime);
-                    material.setExtension(extension);
-                    material.setSizeBytes(file.getSize());
+                    material.setOriginalFilename(item.originalFilename());
+                    material.setContentType(item.canonicalMime());
+                    material.setExtension(item.extension());
+                    material.setSizeBytes(item.file().getSize());
                     material.setObjectKey(finalKey);
                     material.setUploadedBy(actor.getActorId());
                     courseMaterialMapper.insert(material);
@@ -163,18 +189,13 @@ public class CourseMaterialService {
             }
 
             if (hasLink) {
-                String normalizedUrl = validateAndNormalizeUrl(linkUrl);
-                String displayName = linkDisplayName != null && !linkDisplayName.isBlank()
-                        ? linkDisplayName.trim()
-                        : normalizedUrl;
-
                 CourseMaterial material = new CourseMaterial();
                 material.setWeekId(weekId);
                 material.setCourseId(courseId);
                 material.setMaterialType(TYPE_LINK);
-                material.setDisplayName(trimToLength(displayName));
+                material.setDisplayName(trimToLength(linkName));
                 material.setOrderPosition(nextOrder);
-                material.setLinkUrl(normalizedUrl);
+                material.setLinkUrl(normalizedLinkUrl);
                 material.setUploadedBy(actor.getActorId());
                 courseMaterialMapper.insert(material);
                 created.add(courseMaterialMapper.selectById(material.getId()));
@@ -189,6 +210,7 @@ public class CourseMaterialService {
                     null, Map.of("count", created.size()), idemKey);
             return materialResponseAssembler.toResponses(created);
         } catch (RuntimeException e) {
+            rollback.abortIfNoTransaction();
             if (uploadOp != null) {
                 uploadOperationService.markFailed(uploadOp.getId());
             }

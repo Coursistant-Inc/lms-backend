@@ -15,6 +15,8 @@ import com.coursistant.lms.module.file.storage.S3ObjectNotFoundException;
 import com.coursistant.lms.module.file.storage.S3ObjectPayload;
 import com.coursistant.lms.module.file.storage.S3ObjectStorage;
 import com.coursistant.lms.module.file.storage.S3StorageException;
+import com.coursistant.lms.module.file.storage.S3UploadRollback;
+import com.coursistant.lms.module.course.storage.service.MinioOutboxService;
 import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.shared.api.ErrorType;
 import com.coursistant.lms.shared.security.ActorContext;
@@ -31,6 +33,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.io.ByteArrayInputStream;
 
@@ -54,6 +57,7 @@ class CourseSyllabusServiceStorageTest {
     @Mock private CourseContentFilePolicy courseContentFilePolicy;
     @Mock private S3ObjectStorage s3ObjectStorage;
     @Spy private S3ObjectKeyResolver s3ObjectKeyResolver = new S3ObjectKeyResolver();
+    @Mock private MinioOutboxService minioOutboxService;
 
     @InjectMocks
     private CourseSyllabusService service;
@@ -62,6 +66,7 @@ class CourseSyllabusServiceStorageTest {
 
     @BeforeEach
     void policy() {
+        ReflectionTestUtils.setField(service, "s3UploadRollback", new S3UploadRollback(minioOutboxService));
         org.mockito.Mockito.lenient().when(courseContentFilePolicy.bucket()).thenReturn("lms-uploads");
         org.mockito.Mockito.lenient().when(courseContentFilePolicy.validateSyllabusPdf(any()))
                 .thenReturn("application/pdf");
@@ -88,6 +93,18 @@ class CourseSyllabusServiceStorageTest {
         ArgumentCaptor<String> key = ArgumentCaptor.forClass(String.class);
         verify(s3ObjectStorage).putObject(key.capture(), any(), eq("application/pdf"));
         org.junit.jupiter.api.Assertions.assertTrue(key.getValue().startsWith("lms-uploads/syllabus/8/"));
+    }
+
+    @Test
+    void orphanV3_putThenDbFailure_enqueuesIndependentAbort() {
+        MockMultipartFile file = new MockMultipartFile("file", "s.pdf", "application/pdf", "x".getBytes());
+        doThrow(new RuntimeException("db")).when(courseSyllabusVersionMapper).insert(any());
+
+        assertThrows(RuntimeException.class, () -> service.upload(actor, 8, file));
+        ArgumentCaptor<String> objectKey = ArgumentCaptor.forClass(String.class);
+        verify(minioOutboxService).enqueueAbortStagingIndependent(eq("lms-uploads"), objectKey.capture(), eq(8),
+                org.mockito.ArgumentMatchers.isNull());
+        org.junit.jupiter.api.Assertions.assertTrue(objectKey.getValue().startsWith("syllabus/8/"));
     }
 
     @Test

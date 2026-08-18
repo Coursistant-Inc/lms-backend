@@ -24,6 +24,7 @@ import com.coursistant.lms.module.course.group.repository.GroupMembershipMapper;
 import com.coursistant.lms.module.user.account.entity.User;
 import com.coursistant.lms.module.user.account.repository.UserMapper;
 import com.coursistant.lms.module.tenant.service.TenantTimezoneService;
+import com.coursistant.lms.module.file.storage.S3UploadRollback;
 import com.coursistant.lms.shared.api.ErrorType;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
@@ -116,6 +117,9 @@ public class AssignmentSubmissionService {
     @Resource
     private TenantTimezoneService tenantTimezoneService;
 
+    @Resource
+    private S3UploadRollback s3UploadRollback;
+
     // --------------------------------------------------------------- staging
 
     /**
@@ -144,29 +148,47 @@ public class AssignmentSubmissionService {
         }
 
         List<String> allowedTypes = assignmentFilePolicy.parseAllowedTypes(assignment.getAllowedFileTypes());
-        List<StagingFileResponse> created = new ArrayList<>();
-        for (MultipartFile file : files) {
-            String canonicalMime = assignmentFilePolicy.validateSubmissionFile(file, allowedTypes, assignment.getMaxFileSizeBytes());
-            String objectKey = assignmentFilePolicy.stagingKey(courseId, assignmentId, userId, file.getOriginalFilename());
-            String checksum = assignmentFilePolicy.checksumSha256(file);
-            assignmentStorageService.upload(objectKey, file, canonicalMime, courseId, assignmentId, userId);
-
-            AssignmentSubmissionStagingFile staging = new AssignmentSubmissionStagingFile();
-            staging.setAssignmentId(assignmentId);
-            staging.setOwnerUserId(userId);
-            staging.setObjectKey(objectKey);
-            staging.setOriginalName(assignmentFilePolicy.sanitizeFilename(file.getOriginalFilename()));
-            staging.setContentType(canonicalMime);
-            staging.setSizeBytes(file.getSize());
-            staging.setChecksumSha256(checksum);
-            staging.setConsumed(false);
-            staging.setCreatedAt(now);
-            staging.setExpiresAt(now.plusHours(STAGING_TTL_HOURS));
-            assignmentSubmissionStagingFileMapper.insert(staging);
-
-            created.add(submissionResponseAssembler.toStagingResponse(staging));
+        record PreparedStaging(MultipartFile file, String canonicalMime, String objectKey, String checksum) {
         }
-        return created;
+        List<PreparedStaging> prepared = new ArrayList<>();
+        for (MultipartFile file : files) {
+            String canonicalMime = assignmentFilePolicy.validateSubmissionFile(
+                    file, allowedTypes, assignment.getMaxFileSizeBytes());
+            prepared.add(new PreparedStaging(
+                    file,
+                    canonicalMime,
+                    assignmentFilePolicy.stagingKey(courseId, assignmentId, userId, file.getOriginalFilename()),
+                    assignmentFilePolicy.checksumSha256(file)));
+        }
+
+        S3UploadRollback.Scope rollback = s3UploadRollback.open(courseId, null);
+        List<StagingFileResponse> created = new ArrayList<>();
+        try {
+            for (PreparedStaging item : prepared) {
+                assignmentStorageService.upload(item.objectKey(), item.file(), item.canonicalMime(),
+                        courseId, assignmentId, userId);
+                rollback.remember(assignmentFilePolicy.bucket(), item.objectKey());
+
+                AssignmentSubmissionStagingFile staging = new AssignmentSubmissionStagingFile();
+                staging.setAssignmentId(assignmentId);
+                staging.setOwnerUserId(userId);
+                staging.setObjectKey(item.objectKey());
+                staging.setOriginalName(assignmentFilePolicy.sanitizeFilename(item.file().getOriginalFilename()));
+                staging.setContentType(item.canonicalMime());
+                staging.setSizeBytes(item.file().getSize());
+                staging.setChecksumSha256(item.checksum());
+                staging.setConsumed(false);
+                staging.setCreatedAt(now);
+                staging.setExpiresAt(now.plusHours(STAGING_TTL_HOURS));
+                assignmentSubmissionStagingFileMapper.insert(staging);
+
+                created.add(submissionResponseAssembler.toStagingResponse(staging));
+            }
+            return created;
+        } catch (RuntimeException e) {
+            rollback.abortIfNoTransaction();
+            throw e;
+        }
     }
 
     public List<StagingFileResponse> listStagingFiles(Integer courseId, Integer assignmentId, Integer userId) {

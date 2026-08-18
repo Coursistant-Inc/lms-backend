@@ -32,6 +32,8 @@ import com.coursistant.lms.module.course.group.repository.GroupMembershipMapper;
 import com.coursistant.lms.module.course.group.service.GroupAccessService;
 import com.coursistant.lms.module.user.account.entity.User;
 import com.coursistant.lms.module.user.account.repository.UserMapper;
+import com.coursistant.lms.module.course.storage.service.MinioOutboxService;
+import com.coursistant.lms.module.file.storage.S3UploadRollback;
 import com.coursistant.lms.module.tenant.service.TenantTimezoneService;
 import com.coursistant.lms.shared.api.ErrorType;
 import jakarta.annotation.Resource;
@@ -136,6 +138,12 @@ public class AssignmentGradingService {
 
     @Resource
     private TenantTimezoneService tenantTimezoneService;
+
+    @Resource
+    private S3UploadRollback s3UploadRollback;
+
+    @Resource
+    private MinioOutboxService minioOutboxService;
 
     // ---------------------------------------------------------------- roster
 
@@ -399,35 +407,42 @@ public class AssignmentGradingService {
 
         String objectKey = assignmentFilePolicy.annotatedKey(courseId, assignmentId, studentUserId,
                 file.getOriginalFilename());
-        assignmentStorageService.upload(objectKey, file, canonicalMime, courseId, assignmentId, userId);
+        S3UploadRollback.Scope rollback = s3UploadRollback.open(courseId, null);
+        try {
+            assignmentStorageService.upload(objectKey, file, canonicalMime, courseId, assignmentId, userId);
+            rollback.remember(assignmentFilePolicy.bucket(), objectKey);
 
-        AssignmentGrade patch = new AssignmentGrade();
-        patch.setId(existing.getId());
-        patch.setAnnotatedObjectKey(objectKey);
-        patch.setAnnotatedOriginalName(assignmentFilePolicy.sanitizeFilename(file.getOriginalFilename()));
-        patch.setAnnotatedContentType(canonicalMime);
-        patch.setAnnotatedSizeBytes(file.getSize());
-        patch.setEditedBy(userId);
-        assignmentGradeMapper.updateById(patch);
+            AssignmentGrade patch = new AssignmentGrade();
+            patch.setId(existing.getId());
+            patch.setAnnotatedObjectKey(objectKey);
+            patch.setAnnotatedOriginalName(assignmentFilePolicy.sanitizeFilename(file.getOriginalFilename()));
+            patch.setAnnotatedContentType(canonicalMime);
+            patch.setAnnotatedSizeBytes(file.getSize());
+            patch.setEditedBy(userId);
+            assignmentGradeMapper.updateById(patch);
 
-        assignmentAuditService.write(courseId, assignmentId, userId,
-                AssignmentAuditService.GRADE_ANNOTATED_FILE_UPLOADED,
-                Map.of("studentUserId", studentUserId, "originalName",
-                        String.valueOf(patch.getAnnotatedOriginalName())));
+            assignmentAuditService.write(courseId, assignmentId, userId,
+                    AssignmentAuditService.GRADE_ANNOTATED_FILE_UPLOADED,
+                    Map.of("studentUserId", studentUserId, "originalName",
+                            String.valueOf(patch.getAnnotatedOriginalName())));
 
-        boolean annotatedKeyChanged = !Objects.equals(previousKey, objectKey);
-        if (GRADE_RELEASED.equals(existing.getStatus()) && annotatedKeyChanged) {
-            Integer correctionAuditId = assignmentAuditService.write(courseId, assignmentId, userId,
-                    AssignmentAuditService.GRADE_CORRECTED_AFTER_RELEASE,
-                    Map.of("studentUserId", studentUserId, "annotatedFileChanged", true));
-            assignmentNotificationService.recordGradeCorrectedAfterRelease(
-                    assignment, List.of(studentUserId), correctionAuditId);
+            boolean annotatedKeyChanged = !Objects.equals(previousKey, objectKey);
+            if (GRADE_RELEASED.equals(existing.getStatus()) && annotatedKeyChanged) {
+                Integer correctionAuditId = assignmentAuditService.write(courseId, assignmentId, userId,
+                        AssignmentAuditService.GRADE_CORRECTED_AFTER_RELEASE,
+                        Map.of("studentUserId", studentUserId, "annotatedFileChanged", true));
+                assignmentNotificationService.recordGradeCorrectedAfterRelease(
+                        assignment, List.of(studentUserId), correctionAuditId);
+            }
+
+            if (previousKey != null && !previousKey.equals(objectKey)) {
+                minioOutboxService.enqueueDelete(assignmentFilePolicy.bucket(), previousKey, courseId, null);
+            }
+            return toGradeResponse(assignment, requireGrade(courseId, assignmentId, studentUserId, userId));
+        } catch (RuntimeException e) {
+            rollback.abortIfNoTransaction();
+            throw e;
         }
-
-        if (previousKey != null && !previousKey.equals(objectKey)) {
-            assignmentStorageService.deleteQuietly(previousKey);
-        }
-        return toGradeResponse(assignment, requireGrade(courseId, assignmentId, studentUserId, userId));
     }
 
     /**
@@ -472,36 +487,43 @@ public class AssignmentGradingService {
 
         String objectKey = assignmentFilePolicy.annotatedGroupKey(courseId, assignmentId, groupId,
                 file.getOriginalFilename());
-        assignmentStorageService.upload(objectKey, file, canonicalMime, courseId, assignmentId, userId);
+        S3UploadRollback.Scope rollback = s3UploadRollback.open(courseId, null);
+        try {
+            assignmentStorageService.upload(objectKey, file, canonicalMime, courseId, assignmentId, userId);
+            rollback.remember(assignmentFilePolicy.bucket(), objectKey);
 
-        AssignmentGrade patch = new AssignmentGrade();
-        patch.setId(existing.getId());
-        patch.setAnnotatedObjectKey(objectKey);
-        patch.setAnnotatedOriginalName(assignmentFilePolicy.sanitizeFilename(file.getOriginalFilename()));
-        patch.setAnnotatedContentType(canonicalMime);
-        patch.setAnnotatedSizeBytes(file.getSize());
-        patch.setEditedBy(userId);
-        assignmentGradeMapper.updateById(patch);
+            AssignmentGrade patch = new AssignmentGrade();
+            patch.setId(existing.getId());
+            patch.setAnnotatedObjectKey(objectKey);
+            patch.setAnnotatedOriginalName(assignmentFilePolicy.sanitizeFilename(file.getOriginalFilename()));
+            patch.setAnnotatedContentType(canonicalMime);
+            patch.setAnnotatedSizeBytes(file.getSize());
+            patch.setEditedBy(userId);
+            assignmentGradeMapper.updateById(patch);
 
-        assignmentAuditService.write(courseId, assignmentId, userId,
-                AssignmentAuditService.GRADE_ANNOTATED_FILE_UPLOADED,
-                Map.of("groupId", groupId, "originalName",
-                        String.valueOf(patch.getAnnotatedOriginalName())));
+            assignmentAuditService.write(courseId, assignmentId, userId,
+                    AssignmentAuditService.GRADE_ANNOTATED_FILE_UPLOADED,
+                    Map.of("groupId", groupId, "originalName",
+                            String.valueOf(patch.getAnnotatedOriginalName())));
 
-        boolean annotatedKeyChanged = !Objects.equals(previousKey, objectKey);
-        if (GRADE_RELEASED.equals(existing.getStatus()) && annotatedKeyChanged) {
-            Integer correctionAuditId = assignmentAuditService.write(courseId, assignmentId, userId,
-                    AssignmentAuditService.GRADE_CORRECTED_AFTER_RELEASE,
-                    Map.of("groupId", groupId, "annotatedFileChanged", true));
-            List<Integer> snapshotUserIds = releaseRecipientUserIds(existing.getId());
-            assignmentNotificationService.recordGradeCorrectedAfterRelease(
-                    assignment, snapshotUserIds, correctionAuditId);
+            boolean annotatedKeyChanged = !Objects.equals(previousKey, objectKey);
+            if (GRADE_RELEASED.equals(existing.getStatus()) && annotatedKeyChanged) {
+                Integer correctionAuditId = assignmentAuditService.write(courseId, assignmentId, userId,
+                        AssignmentAuditService.GRADE_CORRECTED_AFTER_RELEASE,
+                        Map.of("groupId", groupId, "annotatedFileChanged", true));
+                List<Integer> snapshotUserIds = releaseRecipientUserIds(existing.getId());
+                assignmentNotificationService.recordGradeCorrectedAfterRelease(
+                        assignment, snapshotUserIds, correctionAuditId);
+            }
+
+            if (previousKey != null && !previousKey.equals(objectKey)) {
+                minioOutboxService.enqueueDelete(assignmentFilePolicy.bucket(), previousKey, courseId, null);
+            }
+            return toGradeResponse(assignment, requireGroupGrade(courseId, assignmentId, groupId, userId));
+        } catch (RuntimeException e) {
+            rollback.abortIfNoTransaction();
+            throw e;
         }
-
-        if (previousKey != null && !previousKey.equals(objectKey)) {
-            assignmentStorageService.deleteQuietly(previousKey);
-        }
-        return toGradeResponse(assignment, requireGroupGrade(courseId, assignmentId, groupId, userId));
     }
 
     /**

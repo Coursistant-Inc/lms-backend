@@ -8,10 +8,13 @@ import com.coursistant.lms.module.file.storage.S3ObjectNotFoundException;
 import com.coursistant.lms.module.file.storage.S3ObjectPayload;
 import com.coursistant.lms.module.file.storage.S3ObjectStorage;
 import com.coursistant.lms.module.file.storage.S3StorageException;
+import com.coursistant.lms.module.file.storage.S3UploadRollback;
+import com.coursistant.lms.module.course.storage.service.MinioOutboxService;
 import com.coursistant.lms.module.user.account.entity.User;
 import com.coursistant.lms.module.user.account.repository.UserMapper;
 import com.coursistant.lms.shared.api.ApiException;
 import com.coursistant.lms.shared.api.ErrorType;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -24,6 +27,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.io.ByteArrayInputStream;
 
@@ -34,6 +38,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.startsWith;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -52,9 +57,16 @@ class ProfileServiceStorageTest {
     private AvatarUrlBuilder avatarUrlBuilder;
     @Mock
     private RedisTemplate<String, Object> generalRedisTemplate;
+    @Mock
+    private MinioOutboxService minioOutboxService;
 
     @InjectMocks
     private ProfileService profileService;
+
+    @BeforeEach
+    void injectRollback() {
+        ReflectionTestUtils.setField(profileService, "s3UploadRollback", new S3UploadRollback(minioOutboxService));
+    }
 
     @Test
     void uploadAvatar_emptyFile_is400() {
@@ -77,6 +89,34 @@ class ProfileServiceStorageTest {
         verify(s3ObjectStorage).putObject(key.capture(), eq(file), eq("image/png"));
         assertEquals(true, key.getValue().startsWith("avatar/1/"));
         assertEquals(true, key.getValue().endsWith(".png"));
+        verify(minioOutboxService, never()).enqueueDelete(any(), any(), any(), any());
+        verify(s3ObjectStorage, never()).deleteObject(anyString());
+    }
+
+    @Test
+    void orphanV3_putThenDbFailure_enqueuesIndependentAbort() {
+        when(userMapper.selectById(1)).thenReturn(user(1, null));
+        MockMultipartFile file = new MockMultipartFile("file", "a.png", "image/png", FileSignatureSamples.PNG);
+        doThrow(new RuntimeException("db")).when(userMapper).updateById(any());
+
+        assertThrows(RuntimeException.class, () -> profileService.uploadAvatar(1, file));
+
+        ArgumentCaptor<String> physical = ArgumentCaptor.forClass(String.class);
+        verify(s3ObjectStorage).putObject(physical.capture(), eq(file), eq("image/png"));
+        String logical = physical.getValue().substring("avatar/".length());
+        verify(minioOutboxService).enqueueAbortStagingIndependent(eq("avatar"), eq(logical), isNull(), isNull());
+    }
+
+    @Test
+    void orphanV7_replacingAvatar_enqueuesDeleteNotQuietDelete() {
+        when(userMapper.selectById(1)).thenReturn(user(1, "1/old.jpg"));
+        MockMultipartFile file = new MockMultipartFile("file", "a.png", "image/png", FileSignatureSamples.PNG);
+
+        profileService.uploadAvatar(1, file);
+
+        verify(minioOutboxService).enqueueDelete("avatar", "1/old.jpg", null, null);
+        verify(s3ObjectStorage, never()).deleteObject(anyString());
+        verify(minioOutboxService, never()).enqueueAbortStagingIndependent(any(), any(), any(), any());
     }
 
     @Test
