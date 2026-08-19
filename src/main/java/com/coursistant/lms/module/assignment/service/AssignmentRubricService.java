@@ -61,13 +61,24 @@ public class AssignmentRubricService {
 
     public ResponseEntity<InputStreamResource> download(HttpServletRequest request, Integer courseId,
                                                         Integer assignmentId, Integer userId) {
+        return stream(request, courseId, assignmentId, userId, true);
+    }
+
+    public ResponseEntity<InputStreamResource> preview(HttpServletRequest request, Integer courseId,
+                                                       Integer assignmentId, Integer userId) {
+        return stream(request, courseId, assignmentId, userId, false);
+    }
+
+    private ResponseEntity<InputStreamResource> stream(HttpServletRequest request, Integer courseId,
+                                                       Integer assignmentId, Integer userId,
+                                                       boolean attachmentDisposition) {
         Assignment assignment = assignmentAccessService.requireAssignmentReadable(request, courseId, assignmentId, userId);
         AssignmentRubricVersion current = currentVersion(assignment);
         if (current == null) {
             throw AssignmentErrors.fail(log, courseId, assignmentId, userId, ErrorType.RUBRIC_NOT_FOUND, null);
         }
         return assignmentStorageService.stream(current.getObjectKey(), current.getOriginalName(),
-                current.getContentType(), true, courseId, assignmentId, userId);
+                current.getContentType(), attachmentDisposition, courseId, assignmentId, userId);
     }
 
     /**
