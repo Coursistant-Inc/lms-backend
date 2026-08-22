@@ -195,8 +195,15 @@ public class AssignmentResponseAssembler {
         response.setSizeBytes(attachment.getSizeBytes());
         response.setUploadedBy(attachment.getUploadedBy());
         response.setCreatedAt(assignmentTimeSupport.toInstant(attachment.getCreatedAt()));
-        response.setDownloadUrl(absoluteUrl("/v2/courses/" + courseId + "/assignments/"
-                + attachment.getAssignmentId() + "/attachments/" + attachment.getId() + "/download"));
+        String base = "/v2/courses/" + courseId + "/assignments/"
+                + attachment.getAssignmentId() + "/attachments/" + attachment.getId();
+        response.setDownloadUrl(absoluteUrl(base + "/download"));
+        boolean previewable = assignmentFilePolicy.isPreviewable(attachment.getContentType(),
+                attachment.getOriginalName());
+        response.setPreviewAvailable(previewable);
+        if (previewable) {
+            response.setPreviewUrl(absoluteUrl(base + "/preview"));
+        }
         return response;
     }
 
@@ -220,7 +227,14 @@ public class AssignmentResponseAssembler {
         response.setUploadedBy(currentVersion.getUploadedBy());
         response.setUploadedAt(currentVersion.getCreatedAt());
         response.setCanRestorePrevious(canRestorePrevious);
-        response.setDownloadUrl(absoluteUrl("/v2/courses/" + courseId + "/assignments/" + assignmentId + "/rubric/download"));
+        String base = "/v2/courses/" + courseId + "/assignments/" + assignmentId + "/rubric";
+        response.setDownloadUrl(absoluteUrl(base + "/download"));
+        boolean previewable = assignmentFilePolicy.isPreviewable(currentVersion.getContentType(),
+                currentVersion.getOriginalName());
+        response.setPreviewAvailable(previewable);
+        if (previewable) {
+            response.setPreviewUrl(absoluteUrl(base + "/preview"));
+        }
         return response;
     }
 

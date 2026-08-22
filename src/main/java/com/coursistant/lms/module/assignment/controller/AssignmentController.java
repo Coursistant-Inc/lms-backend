@@ -330,6 +330,59 @@ public class AssignmentController {
                 currentUserId(request));
     }
 
+    @GetMapping("/{assignmentId}/attachments/{attachmentId}/preview")
+    @Operation(
+            operationId = "assignmentPreviewAttachment",
+            summary = "Preview an assignment attachment inline",
+            description = "Course members with assignment visibility. Returns raw bytes with Content-Disposition: "
+                    + "inline for PDF and images. Students cannot preview attachments on Draft assignments "
+                    + "(ASSIGNMENT_NOT_FOUND). Non-previewable types return UNSUPPORTED_FILE_TYPE — use download."
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "Attachment bytes for inline preview",
+                    content = {
+                            @Content(mediaType = MediaType.APPLICATION_OCTET_STREAM_VALUE,
+                                    schema = @Schema(type = "string", format = "binary")),
+                            @Content(mediaType = "application/pdf",
+                                    schema = @Schema(type = "string", format = "binary")),
+                            @Content(mediaType = "image/png",
+                                    schema = @Schema(type = "string", format = "binary")),
+                            @Content(mediaType = "image/jpeg",
+                                    schema = @Schema(type = "string", format = "binary"))
+                    },
+                    headers = {
+                            @Header(
+                                    name = "Content-Disposition",
+                                    description = "inline; filename=\"...\"; filename*=UTF-8''...",
+                                    schema = @Schema(type = "string",
+                                            example = "inline; filename=\"brief.pdf\"; filename*=UTF-8''brief.pdf")),
+                            @Header(
+                                    name = "Content-Type",
+                                    description = "Stored content type, or application/octet-stream when unknown",
+                                    schema = @Schema(type = "string", example = "application/pdf"))
+                    }
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "400",
+                    description = "UNSUPPORTED_FILE_TYPE when the attachment is not PDF or image",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse"))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "404",
+                    description = "ASSIGNMENT_NOT_FOUND or attachment NOT_FOUND",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
+    })
+    public ResponseEntity<InputStreamResource> previewAttachment(HttpServletRequest request,
+                                                                 @PathVariable Integer courseId,
+                                                                 @PathVariable Integer assignmentId,
+                                                                 @PathVariable Integer attachmentId) {
+        return assignmentService.previewAttachment(request, courseId, assignmentId, attachmentId,
+                currentUserId(request));
+    }
+
     @DeleteMapping("/{assignmentId}/attachments/{attachmentId}")
     @Operation(
             operationId = "assignmentDeleteAttachment",

@@ -9,10 +9,10 @@ servers:
 security:
 - bearerAuth: []
 tags:
-- description: "PDF rubric upload, download, and version restore"
-  name: AssignmentRubrics
 - description: Student view of own released/unreleased assignment grades in a course
   name: MyGrades
+- description: "PDF rubric upload, download, preview, and version restore"
+  name: AssignmentRubrics
 - description: SYSTEM_ADMIN audited grade corrections (not daily grading)
   name: SystemGradeCorrections
 - description: "Student staging, submit, and submission file access"
@@ -357,6 +357,81 @@ paths:
                 $ref: "#/components/schemas/ApiErrorResponse"
           description: ASSIGNMENT_NOT_FOUND or attachment NOT_FOUND
       summary: Download an assignment attachment
+      tags:
+      - Assignments
+  /v2/courses/{courseId}/assignments/{assignmentId}/attachments/{attachmentId}/preview:
+    get:
+      description: "Course members with assignment visibility. Returns raw bytes with\
+        \ Content-Disposition: inline for PDF and images. Students cannot preview\
+        \ attachments on Draft assignments (ASSIGNMENT_NOT_FOUND). Non-previewable\
+        \ types return UNSUPPORTED_FILE_TYPE — use download."
+      operationId: assignmentPreviewAttachment
+      parameters:
+      - in: path
+        name: courseId
+        required: true
+        schema:
+          type: integer
+          format: int32
+      - in: path
+        name: assignmentId
+        required: true
+        schema:
+          type: integer
+          format: int32
+      - in: path
+        name: attachmentId
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+          description: Attachment bytes for inline preview
+          headers:
+            Content-Disposition:
+              description: inline; filename="..."; filename*=UTF-8''...
+              schema:
+                type: string
+                example: inline; filename="brief.pdf"; filename*=UTF-8''brief.pdf
+              style: simple
+            Content-Type:
+              description: "Stored content type, or application/octet-stream when\
+                \ unknown"
+              schema:
+                type: string
+                example: application/pdf
+              style: simple
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: UNSUPPORTED_FILE_TYPE when the attachment is not PDF or image
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: ASSIGNMENT_NOT_FOUND or attachment NOT_FOUND
+      summary: Preview an assignment attachment inline
       tags:
       - Assignments
   /v2/courses/{courseId}/assignments/{assignmentId}/due-date-change-preview:
@@ -879,6 +954,58 @@ paths:
                 $ref: "#/components/schemas/ApiErrorResponse"
           description: ASSIGNMENT_NOT_FOUND or RUBRIC_NOT_FOUND
       summary: Download current rubric PDF
+      tags:
+      - AssignmentRubrics
+  /v2/courses/{courseId}/assignments/{assignmentId}/rubric/preview:
+    get:
+      description: "Course members with assignment visibility. Returns PDF bytes with\
+        \ Content-Disposition: inline. Students cannot access Draft assignment rubrics."
+      operationId: assignmentPreviewRubric
+      parameters:
+      - in: path
+        name: courseId
+        required: true
+        schema:
+          type: integer
+          format: int32
+      - in: path
+        name: assignmentId
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        "200":
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+          description: Rubric PDF bytes for inline preview
+          headers:
+            Content-Disposition:
+              description: inline; filename="..."; filename*=UTF-8''...
+              schema:
+                type: string
+                example: inline; filename="rubric.pdf"; filename*=UTF-8''rubric.pdf
+              style: simple
+            Content-Type:
+              description: Typically application/pdf
+              schema:
+                type: string
+                example: application/pdf
+              style: simple
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiErrorResponse"
+          description: ASSIGNMENT_NOT_FOUND or RUBRIC_NOT_FOUND
+      summary: Preview current rubric PDF inline
       tags:
       - AssignmentRubrics
   /v2/courses/{courseId}/assignments/{assignmentId}/rubric/restore-previous:

@@ -274,6 +274,9 @@ class S3BusinessLiveTest {
                     "files", "作业 附件.pdf", "application/pdf", attachPdf);
             assertEquals(HttpStatus.OK, attachResp.getStatusCode());
             int attachmentId = json(attachResp).path("data").get(0).path("id").asInt();
+            JsonNode attachNode = json(attachResp).path("data").get(0);
+            assertTrue(attachNode.path("previewAvailable").asBoolean());
+            assertTrue(attachNode.path("previewUrl").asText().contains("/attachments/" + attachmentId + "/preview"));
             AssignmentAttachment attachment = assignmentAttachmentMapper.selectById(attachmentId);
             assertDbFileRow(attachment.getObjectKey(), attachment.getOriginalName(),
                     attachment.getSizeBytes(), attachment.getContentType(),
@@ -284,6 +287,15 @@ class S3BusinessLiveTest {
                     "/v2/courses/" + courseId + "/assignments/" + assignmentId + "/attachments/"
                             + attachmentId + "/download");
             assertBytesEqual(attachPdf, attachDownload.getBody());
+            ResponseEntity<byte[]> attachPreview = exchangeBytes(instructorToken,
+                    "/v2/courses/" + courseId + "/assignments/" + assignmentId + "/attachments/"
+                            + attachmentId + "/preview");
+            assertEquals(HttpStatus.OK, attachPreview.getStatusCode());
+            assertBytesEqual(attachPdf, attachPreview.getBody());
+            String attachPreviewDisposition = attachPreview.getHeaders().getFirst(HttpHeaders.CONTENT_DISPOSITION);
+            if (attachPreviewDisposition != null) {
+                assertTrue(attachPreviewDisposition.toLowerCase().contains("inline"));
+            }
 
             ResponseEntity<String> draftStudentDownload = exchangeString(studentToken, HttpMethod.GET,
                     "/v2/courses/" + courseId + "/assignments/" + assignmentId + "/attachments/"
@@ -297,6 +309,11 @@ class S3BusinessLiveTest {
                             + attachmentId + "/download");
             assertEquals(HttpStatus.OK, publishedStudentDownload.getStatusCode());
             assertBytesEqual(attachPdf, publishedStudentDownload.getBody());
+            ResponseEntity<byte[]> publishedStudentPreview = exchangeBytes(studentToken,
+                    "/v2/courses/" + courseId + "/assignments/" + assignmentId + "/attachments/"
+                            + attachmentId + "/preview");
+            assertEquals(HttpStatus.OK, publishedStudentPreview.getStatusCode());
+            assertBytesEqual(attachPdf, publishedStudentPreview.getBody());
 
             exchangeJson(instructorToken, HttpMethod.DELETE,
                     "/v2/courses/" + courseId + "/assignments/" + assignmentId + "/attachments/" + attachmentId, null);

@@ -25,6 +25,15 @@ class AssignmentFilePolicyTest {
     }
 
     @Test
+    void isPreviewable_pdfAndImagesOnly() {
+        assertEquals(true, policy.isPreviewable("application/pdf", "brief.pdf"));
+        assertEquals(true, policy.isPreviewable("image/png", "diagram.PNG"));
+        assertEquals(false, policy.isPreviewable("application/zip", "bundle.zip"));
+        assertEquals(false, policy.isPreviewable("application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                "prompt.docx"));
+    }
+
+    @Test
     void htmlNamedPng_isUnsupportedEvenIfClientSaysImage() {
         MockMultipartFile file = new MockMultipartFile(
                 "file", "a.png", "image/png", FileSignatureSamples.HTML);

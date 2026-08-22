@@ -349,15 +349,6 @@ public class AssignmentSubmissionService {
                                               Integer userId) {
         Assignment assignment = assignmentAccessService.requireAssignmentReadable(request, courseId, assignmentId, userId);
         ZoneId zone = tenantTimezoneService.requireZoneForCourse(courseId);
-        if (AssignmentAccessService.SUBMISSION_TYPE_GROUP.equals(assignment.getSubmissionType())) {
-            return buildSubmissionResponse(assignment, userId, zone, assignmentTimeSupport.nowUtc());
-        }
-        AssignmentSubmission submission = assignmentSubmissionMapper
-                .selectByAssignmentIdAndOwnerUserId(assignmentId, userId);
-        if (submission == null || submission.getCurrentVersionId() == null) {
-            throw AssignmentErrors.fail(log, courseId, assignmentId, userId, ErrorType.NOT_FOUND,
-                    "No formal submission yet");
-        }
         return buildSubmissionResponse(assignment, userId, zone, assignmentTimeSupport.nowUtc());
     }
 

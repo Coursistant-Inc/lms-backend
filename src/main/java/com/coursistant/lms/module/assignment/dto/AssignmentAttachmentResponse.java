@@ -15,7 +15,9 @@ public class AssignmentAttachmentResponse {
     private String contentType;
     private Long sizeBytes;
     private Integer uploadedBy;
+    private boolean previewAvailable;
     private String downloadUrl;
+    private String previewUrl;
     private Instant createdAt;
 
     public Integer getId() {
@@ -66,12 +68,28 @@ public class AssignmentAttachmentResponse {
         this.uploadedBy = uploadedBy;
     }
 
+    public boolean isPreviewAvailable() {
+        return previewAvailable;
+    }
+
+    public void setPreviewAvailable(boolean previewAvailable) {
+        this.previewAvailable = previewAvailable;
+    }
+
     public String getDownloadUrl() {
         return downloadUrl;
     }
 
     public void setDownloadUrl(String downloadUrl) {
         this.downloadUrl = downloadUrl;
+    }
+
+    public String getPreviewUrl() {
+        return previewUrl;
+    }
+
+    public void setPreviewUrl(String previewUrl) {
+        this.previewUrl = previewUrl;
     }
 
     public Instant getCreatedAt() {

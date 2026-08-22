@@ -24,7 +24,9 @@ public class RubricResponse {
     private LocalDateTime uploadedAt;
     private Integer totalVersions;
     private Boolean canRestorePrevious;
+    private boolean previewAvailable;
     private String downloadUrl;
+    private String previewUrl;
     private Integer gradedAgainstPreviousRubricCount;
 
     public boolean isPosted() {
@@ -115,12 +117,28 @@ public class RubricResponse {
         this.canRestorePrevious = canRestorePrevious;
     }
 
+    public boolean isPreviewAvailable() {
+        return previewAvailable;
+    }
+
+    public void setPreviewAvailable(boolean previewAvailable) {
+        this.previewAvailable = previewAvailable;
+    }
+
     public String getDownloadUrl() {
         return downloadUrl;
     }
 
     public void setDownloadUrl(String downloadUrl) {
         this.downloadUrl = downloadUrl;
+    }
+
+    public String getPreviewUrl() {
+        return previewUrl;
+    }
+
+    public void setPreviewUrl(String previewUrl) {
+        this.previewUrl = previewUrl;
     }
 
     public Integer getGradedAgainstPreviousRubricCount() {

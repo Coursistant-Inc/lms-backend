@@ -713,10 +713,27 @@ public class AssignmentService {
     public ResponseEntity<InputStreamResource> downloadAttachment(HttpServletRequest request, Integer courseId,
                                                                   Integer assignmentId, Integer attachmentId,
                                                                   Integer userId) {
+        return streamAttachment(request, courseId, assignmentId, attachmentId, userId, true);
+    }
+
+    public ResponseEntity<InputStreamResource> previewAttachment(HttpServletRequest request, Integer courseId,
+                                                                 Integer assignmentId, Integer attachmentId,
+                                                                 Integer userId) {
+        return streamAttachment(request, courseId, assignmentId, attachmentId, userId, false);
+    }
+
+    private ResponseEntity<InputStreamResource> streamAttachment(HttpServletRequest request, Integer courseId,
+                                                                 Integer assignmentId, Integer attachmentId,
+                                                                 Integer userId, boolean attachmentDisposition) {
         assignmentAccessService.requireAssignmentReadable(request, courseId, assignmentId, userId);
         AssignmentAttachment attachment = requireAttachment(courseId, assignmentId, attachmentId, userId);
+        if (!attachmentDisposition
+                && !assignmentFilePolicy.isPreviewable(attachment.getContentType(), attachment.getOriginalName())) {
+            throw AssignmentErrors.fail(log, courseId, assignmentId, userId, ErrorType.UNSUPPORTED_FILE_TYPE,
+                    "Preview is only available for PDF and image files; use download instead");
+        }
         return assignmentStorageService.stream(attachment.getObjectKey(), attachment.getOriginalName(),
-                attachment.getContentType(), true, courseId, assignmentId, userId);
+                attachment.getContentType(), attachmentDisposition, courseId, assignmentId, userId);
     }
 
     @Transactional

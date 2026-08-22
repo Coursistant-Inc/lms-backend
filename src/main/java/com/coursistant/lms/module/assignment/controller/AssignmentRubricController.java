@@ -26,11 +26,11 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
- * Rubric upload, read, download, and pointer rollback. Rubrics are PDF-only.
+ * Rubric upload, read, download, preview, and pointer rollback. Rubrics are PDF-only.
  */
 @RestController
 @RequestMapping("/v2/courses/{courseId}/assignments/{assignmentId}/rubric")
-@Tag(name = "AssignmentRubrics", description = "PDF rubric upload, download, and version restore")
+@Tag(name = "AssignmentRubrics", description = "PDF rubric upload, download, preview, and version restore")
 public class AssignmentRubricController {
 
     @Resource
@@ -147,6 +147,47 @@ public class AssignmentRubricController {
                                                         @PathVariable Integer courseId,
                                                         @PathVariable Integer assignmentId) {
         return assignmentRubricService.download(request, courseId, assignmentId, currentUserId(request));
+    }
+
+    @GetMapping("/preview")
+    @Operation(
+            operationId = "assignmentPreviewRubric",
+            summary = "Preview current rubric PDF inline",
+            description = "Course members with assignment visibility. Returns PDF bytes with "
+                    + "Content-Disposition: inline. Students cannot access Draft assignment rubrics."
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "Rubric PDF bytes for inline preview",
+                    content = {
+                            @Content(mediaType = "application/pdf",
+                                    schema = @Schema(type = "string", format = "binary")),
+                            @Content(mediaType = MediaType.APPLICATION_OCTET_STREAM_VALUE,
+                                    schema = @Schema(type = "string", format = "binary"))
+                    },
+                    headers = {
+                            @Header(
+                                    name = "Content-Disposition",
+                                    description = "inline; filename=\"...\"; filename*=UTF-8''...",
+                                    schema = @Schema(type = "string",
+                                            example = "inline; filename=\"rubric.pdf\"; filename*=UTF-8''rubric.pdf")),
+                            @Header(
+                                    name = "Content-Type",
+                                    description = "Typically application/pdf",
+                                    schema = @Schema(type = "string", example = "application/pdf"))
+                    }
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "404",
+                    description = "ASSIGNMENT_NOT_FOUND or RUBRIC_NOT_FOUND",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(ref = "#/components/schemas/ApiErrorResponse")))
+    })
+    public ResponseEntity<InputStreamResource> preview(HttpServletRequest request,
+                                                       @PathVariable Integer courseId,
+                                                       @PathVariable Integer assignmentId) {
+        return assignmentRubricService.preview(request, courseId, assignmentId, currentUserId(request));
     }
 
     @PostMapping("/restore-previous")

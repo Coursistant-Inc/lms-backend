@@ -40,7 +40,7 @@ public final class OpenApiContractSupport {
             "auth", 21,
             "user", 13,
             "course", 79,
-            "assignment", 39,
+            "assignment", 41,
             "quiz", 29,
             "notification", 5
     );
